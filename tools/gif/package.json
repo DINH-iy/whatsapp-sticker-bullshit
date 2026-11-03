@@ -1,0 +1,7 @@
+{
+  "name": "sticker-gif-tools",
+  "private": true,
+  "scripts": { "build": "node build.cjs" },
+  "dependencies": { "gifenc": "1.0.3", "gifuct-js": "2.1.2" },
+  "devDependencies": { "esbuild": "0.25.12" }
+}

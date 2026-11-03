@@ -1,0 +1,256 @@
+﻿@page "/"
+@implements IAsyncDisposable
+@inject LibraryStore Store
+@inject IWhatsAppExporter Exporter
+@inject IJSRuntime JS
+
+<PageTitle>Stickers</PageTitle>
+<header class="page-header"><h1>Stickers</h1><label class="button primary file-button">Add images<InputFile OnChange="Import" accept=".jpg,.jpeg,.png,.gif,.webp" multiple disabled="@busy" /></label></header>
+@if (notice is not null) { <div class="notice" role="status">@notice<button class="text-button" @onclick="() => notice = null" aria-label="Close message">×</button></div> }
+@if (busy) { <p role="status">@busyText</p> }
+<div class="toolbar">
+    <input class="search" aria-label="Search images" placeholder="Search" @bind="search" @bind:event="oninput" />
+    <select aria-label="Pack" value="@activePack" @onchange="SelectPack"><option value="">All images</option>@foreach (var p in library.Packs) { <option value="@p.Id">@p.Name</option> }</select>
+    <button class="button" @onclick="() => showNewPack = !showNewPack">New pack</button>
+</div>
+@if (showNewPack)
+{
+    <form class="inline-form" @onsubmit="CreatePack" @onsubmit:preventDefault>
+        <input aria-label="New pack name" @bind="newPackName" @bind:event="oninput" maxlength="128" placeholder="Pack name" required />
+        <select aria-label="Pack type" @bind="newPackType"><option value="animated">Animated</option><option value="static">Static</option></select>
+        <button class="button primary" disabled="@busy">Create</button><button type="button" class="button" @onclick="() => showNewPack = false">Cancel</button>
+    </form>
+}
+@if (CurrentPack is not null)
+{
+    <div class="pack-tools"><input aria-label="Pack name" @bind="packName" @bind:event="oninput" maxlength="128" /><button class="button" @onclick="RenamePack" disabled="@busy">Rename</button><button class="button" @onclick="() => deletePack = true">Delete pack</button><button class="button primary" @onclick="Export" disabled="@(busy || !Exporter.IsAvailable || Validation.Count > 0)">Add to WhatsApp</button></div>
+    @if (!Exporter.IsAvailable) { <p class="helper">WhatsApp export requires the Android app.</p> }
+    @if (Validation.Count > 0) { <details class="validation"><summary>Export requirements</summary><ul>@foreach (var error in Validation) { <li>@error</li> }</ul></details> }
+}
+@if (selected.Count > 0)
+{
+    <div class="selection-bar"><strong>@selected.Count selected</strong><select aria-label="Destination pack" @bind="destination"><option value="">Choose pack</option>@foreach (var p in library.Packs) { <option value="@p.Id">@p.Name</option> }</select><button class="button" @onclick="CopySelection" disabled="@(busy || destination == "")">Copy to pack</button>@if (CurrentPack is not null) { <button class="button" @onclick="RemoveSelection" disabled="@busy">Remove from pack</button> }<button class="text-button" @onclick="() => selected.Clear()">Clear</button></div>
+}
+@if (!Visible.Any()) { <p class="empty-state">No images.</p> }
+else
+{
+    <div class="image-grid">@foreach (var image in Visible)
+    {
+        <article class="image-card" @key="image.Id">
+            <input type="checkbox" class="image-select" aria-label="Select @image.Name" checked="@selected.Contains(image.Id)" @onchange="() => Toggle(image.Id)" />
+            <button class="image-preview" aria-label="Edit @image.Name" @onclick="() => Edit(image)"><img src="@previews[image.Id]" alt="@image.Name" loading="lazy" /></button>
+            <strong>@image.Name</strong><small>@image.Width × @image.Height @(image.Animated ? "· Animated" : "")</small>
+            <div class="card-actions"><button class="text-button" @onclick="() => Edit(image)">Edit</button><button class="text-button danger" @onclick="() => pendingRemoval = image">Remove</button>@if (CurrentPack is not null) { <button class="text-button" aria-label="Move @image.Name earlier" @onclick="() => Reorder(image.Id, -1)">←</button><button class="text-button" aria-label="Move @image.Name later" @onclick="() => Reorder(image.Id, 1)">→</button> }</div>
+        </article>
+    }</div>
+}
+@if (editing is not null)
+{
+    <div class="modal-backdrop"><section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="edit-title">
+        <h2 id="edit-title">Edit image</h2>
+        <img class="edit-preview" src="@editPreview" alt="@editing.Name" />
+        <label>Name<input @bind="editName" @bind:event="oninput" maxlength="128" /></label>
+        <div class="edit-tools">
+            @if (!editing.Animated && !replacementAnimated) { <button class="button" @onclick="Rotate" disabled="@busy">Rotate</button><button class="button" @onclick="Crop" disabled="@busy">Crop square</button><button class="button" @onclick="ResetImage" disabled="@busy">Reset</button> }
+            <label class="button file-button">Replace<InputFile OnChange="Replace" accept=".jpg,.jpeg,.png,.gif,.webp" disabled="@busy" /></label>
+        </div>
+        @if (IsGif && gifDuration > 0)
+        {
+            <div class="gif-trim">
+                <div class="trim-timeline">
+                    <div class="timeline-frames" aria-hidden="true">@foreach (var frame in gifThumbnails) { <img src="@frame" alt="" /> }</div>
+                    <div class="timeline-mask left" style="width:@TrimLeft%"></div>
+                    <div class="timeline-mask right" style="width:@TrimRight%"></div>
+                    <div class="timeline-selection" style="left:@TrimLeft%;right:@TrimRight%"></div>
+                    <input class="trim-handle start" type="range" aria-label="Trim start" min="0" max="@GifMax" step="0.01" @bind="trimStart" @bind:event="oninput" @bind:after="TrimStartChanged" @onchange="PreviewTrim" disabled="@busy" />
+                    <input class="trim-handle end" type="range" aria-label="Trim end" min="0" max="@GifMax" step="0.01" @bind="trimEnd" @bind:event="oninput" @bind:after="TrimEndChanged" @onchange="PreviewTrim" disabled="@busy" />
+                </div>
+                <div class="edit-tools"><button class="button" @onclick="ResetTrim" disabled="@busy">Reset trim</button><span class="helper">@Math.Max(0, trimEnd - trimStart).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) s</span></div>
+            </div>
+        }
+        else if (!IsGif && (editing.Animated || replacementAnimated)) { <p class="helper">Trimming is available for GIF files.</p> }
+        @if (editError is not null) { <p class="error" role="alert">@editError</p> }
+        <div class="dialog-actions"><button class="button" @onclick="() => editing = null" disabled="@busy">Cancel</button><button class="button primary" @onclick="Save" disabled="@busy">Save</button></div>
+    </section></div>
+}
+@if (pendingRemoval is not null || deletePack)
+{
+    <div class="modal-backdrop"><section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="remove-title"><h2 id="remove-title">@(deletePack ? "Delete pack?" : "Remove image?")</h2><p>@(deletePack ? "Images remain in the library." : pendingRemoval!.Name)</p><div class="dialog-actions"><button class="button" @onclick="CancelRemoval">Cancel</button><button class="button danger" @onclick="ConfirmRemoval" disabled="@busy">Remove</button></div></section></div>
+}
+
+@code {
+    private StickerLibrary library = new();
+    private readonly Dictionary<Guid, string> previews = [];
+    private readonly HashSet<Guid> selected = [];
+    private Guid? activePack;
+    private string search = "", destination = "", newPackName = "", newPackType = "animated", packName = "", editName = "", editPreview = "", editSource = "";
+    private bool busy, showNewPack, deletePack, square, replacementAnimated, transformed;
+    private int rotation;
+    private string? notice, editError;
+    private Sticker? editing, pendingRemoval;
+    private byte[]? replacement;
+    private IJSObjectReference? editor;
+    private IJSObjectReference? gifEditor;
+    private string busyText = "Processing…";
+    private double gifDuration, trimStart, trimEnd;
+    private string? trimmedPreview;
+    private List<string> gifThumbnails = [];
+    private bool IsGif => editSource.StartsWith("data:image/gif;base64,", StringComparison.Ordinal);
+    private string GifMax => gifDuration.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+    private bool HasTrim => IsGif && gifDuration > 0 && (trimStart != 0 || trimEnd != gifDuration);
+    private string TrimLeft => (trimStart / gifDuration * 100).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+    private string TrimRight => ((gifDuration - trimEnd) / gifDuration * 100).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+    private sealed class GifInfo { public double Duration { get; set; } public int FrameCount { get; set; } public List<string> Thumbnails { get; set; } = []; }
+    private StickerPack? CurrentPack => library.Packs.FirstOrDefault(p => p.Id == activePack);
+    private IReadOnlyList<Sticker> PackImages => CurrentPack is { } p ? p.StickerIds.Select(id => library.Stickers.FirstOrDefault(s => s.Id == id)).OfType<Sticker>().ToList() : [];
+    private IReadOnlyList<string> Validation => CurrentPack is { } p ? PackRules.Validate(p, PackImages) : [];
+    private IEnumerable<Sticker> Visible => (activePack is null ? library.Stickers.AsEnumerable().Reverse() : PackImages).Where(s => s.Name.Contains(search, StringComparison.OrdinalIgnoreCase));
+
+    protected override Task OnInitializedAsync() => Run(() => Task.CompletedTask);
+    private async Task Reload()
+    {
+        library = await Store.ReadAsync();
+        previews.Clear();
+        foreach (var image in library.Stickers) previews[image.Id] = await Store.PreviewAsync(image);
+        selected.IntersectWith(library.Stickers.Select(s => s.Id));
+    }
+    private async Task Run(Func<Task> action)
+    {
+        if (busy) return;
+        busy = true; notice = null;
+        try { await action(); await Reload(); }
+        catch (Exception e) when (e is IOException or InvalidDataException or InvalidOperationException or NotSupportedException or System.Text.Json.JsonException) { notice = e.Message; }
+        finally { busy = false; }
+    }
+    private static async Task<byte[]> ReadFile(IBrowserFile file)
+    {
+        await using var stream = file.OpenReadStream(LibraryStore.MaxImportBytes);
+        using var memory = new MemoryStream(); await stream.CopyToAsync(memory); return memory.ToArray();
+    }
+    private Task Import(InputFileChangeEventArgs e) => Run(async () =>
+    {
+        List<string> errors = [];
+        foreach (var file in e.GetMultipleFiles(30))
+        {
+            try { await Store.ImportAsync(file.Name, await ReadFile(file)); }
+            catch (Exception ex) when (ex is IOException or InvalidDataException or InvalidOperationException) { errors.Add($"{file.Name}: {ex.Message}"); }
+        }
+        if (errors.Count > 0) notice = string.Join(" ", errors);
+    });
+    private void SelectPack(ChangeEventArgs e) { activePack = Guid.TryParse(e.Value?.ToString(), out var id) ? id : null; selected.Clear(); packName = CurrentPack?.Name ?? ""; }
+    private Task CreatePack() => Run(async () => { await Store.CreatePackAsync(newPackName, newPackType == "animated"); showNewPack = false; newPackName = ""; });
+    private Task RenamePack() => Run(() => Store.RenamePackAsync(activePack!.Value, packName));
+    private void Toggle(Guid id) { if (!selected.Add(id)) selected.Remove(id); }
+    private Task CopySelection() => Run(async () => { await Store.AddToPackAsync(Guid.Parse(destination), selected); selected.Clear(); });
+    private Task RemoveSelection() => Run(async () => { await Store.RemoveFromPackAsync(activePack!.Value, selected); selected.Clear(); });
+    private Task Reorder(Guid id, int direction) => Run(() => Store.ReorderAsync(activePack!.Value, id, direction));
+    private async Task Edit(Sticker image)
+    {
+        editing = image; editName = image.Name; editSource = editPreview = previews[image.Id];
+        replacement = null; rotation = 0; square = false; transformed = false; replacementAnimated = false; editError = null;
+        gifDuration = trimStart = trimEnd = 0; trimmedPreview = null; gifThumbnails = [];
+        if (IsGif)
+        {
+            busy = true;
+            try { await InspectGif(); }
+            catch (JSException) { editError = "Could not read this GIF, or it is too large to edit."; }
+            finally { busy = false; }
+        }
+    }
+    private async Task Replace(InputFileChangeEventArgs e)
+    {
+        if (busy) return;
+        busy = true; editError = null;
+        try
+        {
+            var bytes = await ReadFile(e.File); var info = MediaInspector.Inspect(bytes);
+            replacement = bytes; replacementAnimated = info.Animated; rotation = 0; square = false; transformed = false;
+            editPreview = editSource = $"data:{info.MimeType};base64,{Convert.ToBase64String(bytes)}";
+            gifDuration = trimStart = trimEnd = 0; trimmedPreview = null; gifThumbnails = [];
+            if (IsGif) await InspectGif();
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or InvalidOperationException or JSException) { editError = ex is JSException ? "Could not read this GIF, or it is too large to edit." : ex.Message; }
+        finally { busy = false; }
+    }
+    private Task Rotate() { rotation = (rotation + 90) % 360; return Transform(); }
+    private async Task InspectGif()
+    {
+        gifEditor ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/gif-editor.js");
+        var info = await gifEditor.InvokeAsync<GifInfo>("inspect", editSource);
+        gifDuration = trimEnd = info.Duration; trimStart = 0;
+        gifThumbnails = info.Thumbnails;
+    }
+    private void TrimStartChanged() { trimStart = Math.Clamp(trimStart, 0, Math.Max(0, trimEnd - 0.01)); ResetTrimPreview(); }
+    private void TrimEndChanged() { trimEnd = Math.Clamp(trimEnd, Math.Min(gifDuration, trimStart + 0.01), gifDuration); ResetTrimPreview(); }
+    private void ResetTrimPreview() { trimmedPreview = null; editPreview = editSource; editError = null; }
+    private void ResetTrim() { trimStart = 0; trimEnd = gifDuration; ResetTrimPreview(); }
+    private void ValidateTrim()
+    {
+        if (!double.IsFinite(trimStart) || !double.IsFinite(trimEnd) || trimStart < 0 || trimEnd > gifDuration || trimEnd - trimStart < 0.01)
+            throw new InvalidOperationException("Start must be before end, within the GIF duration.");
+    }
+    private async Task<string> BuildTrim()
+    {
+        ValidateTrim();
+        return trimmedPreview ??= await gifEditor!.InvokeAsync<string>("trim", editSource, trimStart, trimEnd);
+    }
+    private async Task PreviewTrim()
+    {
+        if (busy) return;
+        busy = true; busyText = "Trimming…"; editError = null;
+        try { editPreview = await BuildTrim(); }
+        catch (Exception ex) when (ex is JSException or InvalidOperationException) { editError = ex is JSException ? "Could not trim this GIF. Try a shorter selection or a smaller GIF." : ex.Message; }
+        finally { busy = false; busyText = "Processing…"; }
+    }
+    private Task Crop() { square = true; return Transform(); }
+    private void ResetImage() { editPreview = editSource; rotation = 0; square = false; transformed = false; editError = null; }
+    private async Task Transform()
+    {
+        if (busy) return;
+        busy = true; editError = null;
+        try
+        {
+            editor ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/image-editor.js");
+            editPreview = await editor.InvokeAsync<string>("transform", editSource, rotation, square); transformed = true;
+        }
+        catch (JSException) { editError = "Could not edit this image."; }
+        finally { busy = false; }
+    }
+    private async Task Save()
+    {
+        if (busy || editing is null) return;
+        busy = true; editError = null;
+        try
+        {
+            if (string.IsNullOrWhiteSpace(editName) || editName.Trim().Length > 128) throw new InvalidOperationException("Name: 1–128 characters.");
+            var bytes = transformed ? Convert.FromBase64String(editPreview[(editPreview.IndexOf(',') + 1)..]) : replacement;
+            if (HasTrim)
+            {
+                busyText = "Trimming…";
+                var gif = await BuildTrim();
+                bytes = Convert.FromBase64String(gif[(gif.IndexOf(',') + 1)..]);
+            }
+            if (bytes is not null) await Store.ReplaceImageAsync(editing.Id, bytes);
+            await Store.EditStickerAsync(editing.Id, editName, editing.Tags); await Reload(); editing = null;
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or InvalidOperationException or JSException) { editError = ex is JSException ? "Could not trim this GIF. Try a shorter selection or a smaller GIF." : ex.Message; }
+        finally { busy = false; busyText = "Processing…"; }
+    }
+    private void CancelRemoval() { pendingRemoval = null; deletePack = false; }
+    private Task ConfirmRemoval() => Run(async () =>
+    {
+        if (deletePack) { await Store.DeletePackAsync(activePack!.Value); activePack = null; }
+        else if (pendingRemoval is not null) await Store.DeleteStickersAsync([pendingRemoval.Id]);
+        CancelRemoval();
+    });
+    private Task Export() => Run(async () => { if (CurrentPack is { } p) await Exporter.ExportAsync(p, PackImages); });
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (editor is not null) await editor.DisposeAsync();
+            if (gifEditor is not null) { await gifEditor.InvokeVoidAsync("dispose"); await gifEditor.DisposeAsync(); }
+        }
+        catch (JSDisconnectedException) { }
+    }
+}

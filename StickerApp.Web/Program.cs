@@ -1,0 +1,42 @@
+using StickerApp.Web.Components;
+using StickerApp.Shared.Services;
+using StickerApp.Web.Services;
+using StickerApp.Core;
+using Microsoft.AspNetCore.DataProtection;
+
+var builder = WebApplication.CreateBuilder(args);
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+if (builder.Environment.IsDevelopment())
+    builder.Services.AddDataProtection().UseEphemeralDataProtectionProvider();
+
+// Add services to the container.
+builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents()
+    .AddHubOptions(options => options.MaximumReceiveMessageSize = 16 * 1024 * 1024);
+
+// Add device-specific services used by the StickerApp.Shared project
+builder.Services.AddSingleton<IFormFactor, FormFactor>();
+builder.Services.AddSingleton(new LibraryStore(Path.Combine(builder.Environment.ContentRootPath, ".data")));
+builder.Services.AddSingleton<IWhatsAppExporter, BrowserWhatsAppExporter>();
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Error", createScopeForErrors: true);
+    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
+    app.UseHsts();
+}
+
+// This first build is a local development tool; bind to localhost only.
+
+app.UseStaticFiles();
+app.UseAntiforgery();
+
+app.MapRazorComponents<App>()
+    .AddInteractiveServerRenderMode()
+    .AddAdditionalAssemblies(typeof(StickerApp.Shared._Imports).Assembly);
+
+app.Run();

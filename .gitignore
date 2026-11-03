@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+.vs/
+.tools/
+.data/
+*.user
+*.suo
+*.apk
+*.aab
+**/node_modules/
