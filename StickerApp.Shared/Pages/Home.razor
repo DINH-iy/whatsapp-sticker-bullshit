@@ -14,11 +14,40 @@
         <a class="button icon-button" href="gifs" title="Find GIFs" aria-label="Find GIFs">
             <Icon Name="search" />
         </a>
-        <label class="button file-button" title="Open a shared sticker pack ZIP file">
+        <label class="button file-button" title="Open a .wastickers pack or an editable ZIP backup">
             <Icon Name="folder-import" />
-            <span>Import pack (.zip)</span>
-            <InputFile OnChange="ImportPack" accept=".zip" disabled="@busy" aria-label="Import pack ZIP file" />
+            <span>Import pack</span>
+            <InputFile OnChange="ImportPack" accept=".zip,.wastickers" disabled="@busy" aria-label="Import pack file" />
         </label>
+        @if (CurrentPack is not null)
+        {
+            @if (renamingPack)
+            {
+                <form class="pack-name-row" @onsubmit="RenamePack" @onsubmit:preventDefault>
+                    <input aria-label="New pack name" @bind="packName" @bind:event="oninput" maxlength="128" required disabled="@busy" />
+                    <button class="button" type="submit" disabled="@(busy || string.IsNullOrWhiteSpace(packName))">Save</button>
+                    <button class="button" type="button" @onclick="() => renamingPack = false" disabled="@busy">Cancel</button>
+                </form>
+            }
+            else
+            {
+                <div class="pack-name-row">
+                    <button class="button" type="button" @onclick="BeginRenamePack" disabled="@busy">
+                        <Icon Name="edit" /> Rename
+                    </button>
+                </div>
+            }
+            <PackCoverPicker Pack="@CurrentPack" OnChanged="Reload" />
+            <div class="pack-actions">
+                <button class="button icon-button" type="button" @onclick="() => packToShare = CurrentPack"
+                        title="Share or export pack" aria-label="Share or export pack" disabled="@busy">
+                    <Icon Name="share" />
+                </button>
+                <button class="button icon-button danger" @onclick="() => deletePack = true" disabled="@busy" title="Delete pack" aria-label="Delete pack">
+                    <Icon Name="trash" />
+                </button>
+            </div>
+        }
         @if (CurrentPack is null)
         {
             <label class="button primary file-button" title="Choose images or GIFs from your device">
@@ -53,46 +82,30 @@
 
 @if (CurrentPack is not null)
 {
-    <div class="pack-tools">
-        @if (renamingPack)
-        {
-            <form class="pack-name-row" @onsubmit="RenamePack" @onsubmit:preventDefault>
-                <input aria-label="New pack name" @bind="packName" @bind:event="oninput" maxlength="128" required disabled="@busy" />
-                <button class="button" type="submit" disabled="@(busy || string.IsNullOrWhiteSpace(packName))">Save</button>
-                <button class="button" type="button" @onclick="() => renamingPack = false" disabled="@busy">Cancel</button>
-            </form>
-        }
-        else
-        {
-            <div class="pack-name-row">
-                <button class="button" type="button" @onclick="BeginRenamePack" disabled="@busy">
-                    <Icon Name="edit" /> Rename
-                </button>
-            </div>
-        }
-        <PackCoverPicker Pack="@CurrentPack" OnChanged="Reload" />
-        <div class="pack-actions">
-            <button class="button icon-button" type="button" @onclick="() => packToShare = CurrentPack"
-                    title="Share or export pack" aria-label="Share or export pack" disabled="@busy">
-                <Icon Name="share" />
-            </button>
-            <button class="button icon-button danger" @onclick="() => deletePack = true" disabled="@busy" title="Delete pack" aria-label="Delete pack">
-                <Icon Name="trash" />
-            </button>
-            <button class="button primary" title="@(Exporter.IsAvailable ? "Add this pack to WhatsApp" : "Open the Android or iPhone app to add packs to WhatsApp")"
-                    @onclick="Export" disabled="@(busy || !Exporter.IsAvailable || Validation.Count > 0)">
-                <Icon Name="whatsapp" /> Add to WhatsApp
-            </button>
-        </div>
-    </div>
+    <button class="button primary floating-whatsapp" title="@(Exporter.IsAvailable ? "Add this pack to WhatsApp" : "Open the Android or iPhone app to add packs to WhatsApp")"
+            @onclick="Export" disabled="@(busy || !Exporter.IsAvailable || Validation.Count > 0)">
+        <Icon Name="whatsapp" /> Add to WhatsApp
+    </button>
     @if (Validation.Count > 0)
     {
         <details class="validation" open>
             <summary>Fix before adding to WhatsApp</summary>
             <ul>
-                @foreach (var validationError in Validation)
+                @foreach (var issue in Issues)
                 {
-                    <li>@validationError</li>
+                    <li>
+                        @issue.Message
+                        @if (issue.StickerId is not null && issue.Action is not null)
+                        {
+                            <div class="validation-actions">
+                                <button class="button" disabled="@busy" @onclick="() => FixIssue(issue)">@issue.Action</button>
+                                @if (issue.Action == "Prepare sticker")
+                                {
+                                    <button class="button" disabled="@busy" @onclick='() => FixIssue(issue with { Action = "Edit / replace" })'>Edit / trim</button>
+                                }
+                            </div>
+                        }
+                    </li>
                 }
             </ul>
             <a href="settings#faq">View requirements &amp; FAQ</a>
@@ -132,7 +145,7 @@
 }
 else
 {
-    <div class="image-grid">
+    <div class="image-grid @(CurrentPack is not null ? "pack-stickers" : "")">
         @if (CurrentPack is { } currentPack)
         {
             <AddTile Title="Add sticker" Hint="@(currentPack.StickerIds.Count >= 30 ? "Pack full · 30/30 stickers" : "Choose images or GIFs")">
@@ -152,28 +165,17 @@ else
                 <small>@image.Width × @image.Height @(image.Animated ? "· Animated" : "")</small>
                 <div class="card-actions">
                     <div class="sticker-actions">
-                    <button class="button icon-button" type="button" @onclick="() => imageToAdd = image"
-                            disabled="@busy" title="Add to pack" aria-label="Add @image.Name to pack">
-                        <Icon Name="folder-plus" />
-                    </button>
-                    <button class="button icon-button" @onclick="() => Edit(image)" title="Edit image" aria-label="Edit @image.Name">
-                        <Icon Name="edit" />
-                    </button>
-                    <button class="button icon-button danger" @onclick="() => pendingRemoval = image" title="Remove image" aria-label="Remove @image.Name">
-                        <Icon Name="trash" />
-                    </button>
+                        <button class="button icon-button" type="button" @onclick="() => imageToAdd = image"
+                                disabled="@busy" title="Add to pack" aria-label="Add @image.Name to pack">
+                            <Icon Name="folder-plus" />
+                        </button>
+                        <button class="button icon-button" @onclick="() => Edit(image)" title="Edit image" aria-label="Edit @image.Name">
+                            <Icon Name="edit" />
+                        </button>
+                        <button class="button icon-button danger" @onclick="() => pendingRemoval = image" title="Remove image" aria-label="Remove @image.Name">
+                            <Icon Name="trash" />
+                        </button>
                     </div>
-                    @if (CurrentPack is not null)
-                    {
-                        <div class="reorder-actions">
-                        <button class="button icon-button" title="Move earlier" aria-label="Move @image.Name earlier" @onclick="() => Reorder(image.Id, -1)">
-                            <Icon Name="left" />
-                        </button>
-                        <button class="button icon-button" title="Move later" aria-label="Move @image.Name later" @onclick="() => Reorder(image.Id, 1)">
-                            <Icon Name="right" />
-                        </button>
-                        </div>
-                    }
                 </div>
             </article>
         }

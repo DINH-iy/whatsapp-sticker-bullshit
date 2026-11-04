@@ -19,6 +19,7 @@ public sealed class Sticker
 
 public sealed class StickerPack
 {
+    public string Publisher { get; set; } = "Sticker Studio";
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Name { get; set; } = "";
     public bool Animated { get; set; }

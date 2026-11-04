@@ -17,8 +17,8 @@
     }
     else
     {
-        <div class="quick-pack-list" aria-label="Compatible packs">
-            @foreach (var pack in compatiblePacks)
+        <div class="quick-pack-list" aria-label="Your packs">
+            @foreach (var pack in availablePacks)
             {
                 var alreadyAdded = pack.StickerIds.Contains(Image.Id);
                 var isFull = pack.StickerIds.Count >= 30;
@@ -30,13 +30,13 @@
                 </button>
             }
         </div>
-        @if (compatiblePacks.Count == 0)
+        @if (availablePacks.Count == 0)
         {
-            <p class="helper">No @(Image.Animated ? "animated" : "static") packs yet. Create one below.</p>
+            <p class="helper">No packs yet. Create one below.</p>
         }
 
         <form class="new-folder-form" @onsubmit="CreatePackAndAdd" @onsubmit:preventDefault>
-            <label for="quick-pack-name">Or create a new @(Image.Animated ? "animated" : "static") pack</label>
+            <label for="quick-pack-name">Or create a new pack</label>
             <div class="folder-input-row">
                 <input id="quick-pack-name" @bind="newPackName" @bind:event="oninput" maxlength="128"
                        placeholder="Pack name" disabled="@isSaving" />

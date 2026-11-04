@@ -8,7 +8,7 @@ namespace StickerApp.Shared.Pages;
 public partial class Home
 {
     private StickerLibrary library = new();
-    private readonly Dictionary<Guid, string> previews = [];
+    private Dictionary<Guid, string> previews = [];
     private readonly HashSet<Guid> selected = [];
     [Parameter] public Guid? PackId { get; set; }
     private Guid? activePack;
@@ -62,6 +62,7 @@ public partial class Home
             .OfType<Sticker>()
             .ToList()
         : [];
+    private IReadOnlyList<PackRules.Issue> Issues => CurrentPack is { } p ? PackRules.Inspect(p, PackImages) : [];
     private IReadOnlyList<string> Validation => CurrentPack is { } p ? PackRules.Validate(p, PackImages) : [];
     private IEnumerable<Sticker> Visible => (activePack is null
         ? library.Stickers.AsEnumerable().Reverse()
@@ -78,10 +79,14 @@ public partial class Home
 
     private async Task Reload()
     {
-        library = await Store.ReadAsync();
-        previews.Clear();
-        foreach (var image in library.Stickers)
-            previews[image.Id] = await Store.PreviewAsync(image);
+        var updatedLibrary = await Store.ReadAsync();
+        var updatedPreviews = new Dictionary<Guid, string>();
+        foreach (var image in updatedLibrary.Stickers)
+            updatedPreviews[image.Id] = await Store.PreviewAsync(image);
+
+        // Publish a complete snapshot so navigation cannot render images without previews.
+        library = updatedLibrary;
+        previews = updatedPreviews;
         selected.IntersectWith(library.Stickers.Select(s => s.Id));
     }
 
@@ -97,9 +102,9 @@ public partial class Home
             await action();
             await Reload();
         }
-        catch (Exception e) when (e is IOException or InvalidDataException or InvalidOperationException or NotSupportedException or UnauthorizedAccessException or System.Text.Json.JsonException)
+        catch (Exception e) when (e is IOException or InvalidDataException or InvalidOperationException or NotSupportedException or JSException or UnauthorizedAccessException or System.Text.Json.JsonException)
         {
-            notice = e.Message;
+            notice = e is JSException ? e.Message.Split('\n')[0] : e.Message;
             noticeIsError = true;
         }
         finally
@@ -193,10 +198,9 @@ public partial class Home
         selected.Clear();
     });
 
-    private Task Reorder(Guid id, int direction) => Run(() => Store.ReorderAsync(activePack!.Value, id, direction));
-
     private async Task Edit(Sticker image)
     {
+        if (busy) return;
         editing = image;
         editName = image.Name;
         editSource = editPreview = previews[image.Id];
@@ -422,6 +426,30 @@ public partial class Home
             await Store.DeleteStickersAsync([pendingRemoval.Id]);
         CancelRemoval();
     });
+
+    private async Task FixIssue(PackRules.Issue issue)
+    {
+        var image = library.Stickers.FirstOrDefault(image => image.Id == issue.StickerId);
+        if (image is null) return;
+        if (issue.Action != "Prepare sticker") { await Edit(image); return; }
+        await Run(async () =>
+        {
+            busyText = "Preparing sticker…";
+            try
+            {
+                await using var converter = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/sticker-converter.js");
+                var result = await converter.InvokeAsync<string>("prepare", previews[image.Id], image.Animated);
+                var bytes = Convert.FromBase64String(result[(result.IndexOf(',') + 1)..]);
+                var info = MediaInspector.Inspect(bytes);
+                if (info.MimeType != "image/webp" || info.Width != 512 || info.Height != 512 ||
+                    info.Animated != image.Animated || bytes.Length > (image.Animated ? 500 : 100) * 1024)
+                    throw new InvalidOperationException("The prepared image did not meet the sticker requirements. Your image was kept unchanged.");
+                await Store.ReplaceImageAsync(image.Id, bytes);
+                notice = $"Prepared “{image.Name}”: 512 × 512 WebP, {Math.Ceiling(bytes.Length / 1024d):0} KB. Original file kept.";
+            }
+            finally { busyText = "Processing…"; }
+        });
+    }
 
     private Task Export() => Run(async () => { if (CurrentPack is { } p) await Exporter.ExportAsync(p, PackImages); });
     public async ValueTask DisposeAsync()

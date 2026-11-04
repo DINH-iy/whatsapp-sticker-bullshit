@@ -15,6 +15,7 @@ public partial class SharePackDialog
     private IJSObjectReference? dialogHelper;
     private IJSObjectReference? sharingClient;
     private PackSharingService.ShareResult? result;
+    private string format = "wastickers";
     private bool isReady;
     private bool isWorking;
     private bool canPublish;
@@ -53,7 +54,7 @@ public partial class SharePackDialog
         progress = publish ? "Preparing and uploading pack…" : "Preparing pack file…";
         try
         {
-            result = publish ? await Sharing.PublishAsync(Pack.Id) : await Sharing.SaveFileAsync(Pack.Id);
+            result = publish ? await Sharing.PublishAsync(Pack.Id, format == "wastickers") : await Sharing.SaveFileAsync(Pack.Id, format == "wastickers");
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidOperationException or JSException or OperationCanceledException)
         {

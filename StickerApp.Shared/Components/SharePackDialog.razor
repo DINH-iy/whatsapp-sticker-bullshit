@@ -11,6 +11,13 @@
         </button>
     </div>
     <p class="helper">@Pack.Name · @Pack.StickerIds.Count @(Pack.StickerIds.Count == 1 ? "image" : "images")</p>
+    <label>File format
+        <select @bind="format" disabled="@isWorking">
+            <option value="wastickers">Sticker pack (.wastickers)</option>
+            <option value="zip">Editable backup (.zip)</option>
+        </select>
+    </label>
+    <p class="helper">.wastickers contains WebP stickers, a cover, and the pack name. Prepare stickers first. Editable backup keeps GIFs and other original formats, names, and tags.</p>
     <div class="settings-actions">
         <button class="button primary" type="button" @onclick="SaveFile" disabled="@(!isReady || isWorking)">
             <Icon Name="download" /> @Sharing.FileActionLabel

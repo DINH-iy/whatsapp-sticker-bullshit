@@ -7,9 +7,9 @@
     <h1>Packs</h1>
     <div class="header-actions">
         <a class="button" href="library"><Icon Name="image" /> All images</a>
-        <label class="button file-button" title="Open a shared sticker pack ZIP file">
-            <Icon Name="folder-import" /> Import pack (.zip)
-            <InputFile OnChange="ImportPack" accept=".zip" disabled="@busy" aria-label="Import pack ZIP file" />
+        <label class="button file-button" title="Open a .wastickers pack or an editable ZIP backup">
+            <Icon Name="folder-import" /> Import pack
+            <InputFile OnChange="ImportPack" accept=".zip,.wastickers" disabled="@busy" aria-label="Import pack file" />
         </label>
     </div>
 </header>
@@ -23,9 +23,6 @@
         <h2 id="new-pack-title">New pack</h2>
         <form class="new-pack-form" @onsubmit="CreatePack" @onsubmit:preventDefault>
             <label>Pack name <input @bind="name" @bind:event="oninput" maxlength="128" required disabled="@busy" /></label>
-            <label>Sticker type
-                <select @bind="type" disabled="@busy"><option value="animated">Animated</option><option value="static">Static</option></select>
-            </label>
             <div class="settings-actions">
                 <button class="button primary" type="submit" disabled="@(busy || string.IsNullOrWhiteSpace(name))">Create pack</button>
                 <button class="button" type="button" @onclick="() => showCreate = false" disabled="@busy">Cancel</button>
@@ -50,7 +47,7 @@
                     }
                 </div>
                 <strong>@pack.Name</strong>
-                <small>@pack.StickerIds.Count @(pack.StickerIds.Count == 1 ? "sticker" : "stickers") · @(pack.Animated ? "Animated" : "Static")</small>
+                <small>@pack.StickerIds.Count @(pack.StickerIds.Count == 1 ? "sticker" : "stickers")</small>
             </a>
             <PackCoverPicker Pack="@pack" OnChanged="Reload" AllowRemove="false" />
         </article>

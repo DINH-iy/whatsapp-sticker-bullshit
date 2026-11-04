@@ -8,7 +8,6 @@ public partial class Packs
     private StickerLibrary library = new();
     private readonly Dictionary<Guid, string> covers = [];
     private string name = "";
-    private string type = "animated";
     private string? error;
     private bool busy;
     private bool showCreate;
@@ -30,7 +29,7 @@ public partial class Packs
 
     private Task CreatePack() => Run(async () =>
     {
-        var id = await Store.CreatePackAsync(name, type == "animated");
+        var id = await Store.CreatePackAsync(name);
         Navigation.NavigateTo($"packs/{id}");
     });
 

@@ -13,7 +13,7 @@ public partial class AddToPackDialog
 
     private ElementReference dialog;
     private IJSObjectReference? dialogHelper;
-    private List<StickerPack> compatiblePacks = [];
+    private List<StickerPack> availablePacks = [];
     private string newPackName = "";
     private string? error;
     private bool isLoading = true;
@@ -24,7 +24,7 @@ public partial class AddToPackDialog
         try
         {
             var library = await Store.ReadAsync();
-            compatiblePacks = library.Packs.Where(pack => pack.Animated == Image.Animated).ToList();
+            availablePacks = library.Packs.ToList();
         }
         catch (Exception exception) when (IsStorageError(exception))
         {

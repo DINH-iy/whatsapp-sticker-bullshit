@@ -1,0 +1,86 @@
+// Fit, rather than stretch or crop, so preparing a sticker preserves its artwork.
+export function fit(context, image, width, height) {
+    const scale = 512 / Math.max(width, height);
+    const w = Math.round(width * scale), h = Math.round(height * scale);
+    context.clearRect(0, 0, 512, 512);
+    context.drawImage(image, (512 - w) / 2, (512 - h) / 2, w, h);
+}
+
+// One bundled encoder on every platform, including Safari's iPhone WebView.
+export async function encode(canvas, quality) {
+    const software = await import('./webp-encoder.js');
+    const pixels = canvas.getContext('2d').getImageData(0, 0, 512, 512);
+    return software.encode(pixels, quality);
+}
+
+export function dataUrl(bytes) {
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 32768)
+        binary += String.fromCharCode(...bytes.subarray(i, i + 32768));
+    return 'data:image/webp;base64,' + btoa(binary);
+}
+
+// WebP animation container, following Google's RIFF specification. Each frame is
+// a complete canvas with no blending; transparent padding never leaves trails.
+function join(parts) {
+    const output = new Uint8Array(parts.reduce((size, part) => size + part.length, 0));
+    let offset = 0;
+    for (const part of parts) { output.set(part, offset); offset += part.length; }
+    return output;
+}
+function write24(bytes, offset, value) {
+    bytes[offset] = value; bytes[offset + 1] = value >> 8; bytes[offset + 2] = value >> 16;
+}
+function chunk(name, body) {
+    const result = new Uint8Array(8 + body.length + (body.length & 1));
+    result.set(new TextEncoder().encode(name));
+    new DataView(result.buffer).setUint32(4, body.length, true);
+    result.set(body, 8);
+    return result;
+}
+export function animation(frames) {
+    const header = new Uint8Array(10);
+    header[0] = 0x12; // Alpha and animation flags.
+    write24(header, 4, 511); write24(header, 7, 511);
+    const parts = [chunk('VP8X', header), chunk('ANIM', new Uint8Array(6))];
+    for (const { bytes, duration } of frames) {
+        const imageChunks = [];
+        for (let offset = 12; offset + 8 <= bytes.length;) {
+            const length = new DataView(bytes.buffer, bytes.byteOffset).getUint32(offset + 4, true);
+            const name = String.fromCharCode(...bytes.subarray(offset, offset + 4));
+            const end = offset + 8 + length + (length & 1);
+            if (['ALPH', 'VP8 ', 'VP8L'].includes(name)) imageChunks.push(bytes.subarray(offset, end));
+            offset = end;
+        }
+        if (!imageChunks.length) throw new Error('Could not encode an animation frame.');
+        const frameHeader = new Uint8Array(16);
+        write24(frameHeader, 6, 511); write24(frameHeader, 9, 511);
+        write24(frameHeader, 12, duration);
+        frameHeader[15] = 2; // Replace the previous canvas, without blending.
+        parts.push(chunk('ANMF', join([frameHeader, ...imageChunks])));
+    }
+    return chunk('RIFF', join([new TextEncoder().encode('WEBP'), ...parts]));
+}
+
+export async function prepare(source, animated) {
+    if (animated) {
+        if (!source.startsWith('data:image/gif;'))
+            throw new Error('To resize or compress this animated WebP, open Edit and replace it with its original GIF, then choose Prepare sticker. Animation will not be flattened.');
+        const editor = await import('./gif-editor.js');
+        try { return await editor.prepare(source); }
+        finally { editor.dispose(); }
+    }
+    const image = new Image();
+    image.src = source;
+    await image.decode();
+    if (image.naturalWidth * image.naturalHeight > 32_000_000)
+        throw new Error('This image is too large to prepare. Replace it with a smaller original.');
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 512;
+    fit(canvas.getContext('2d'), image, image.naturalWidth, image.naturalHeight);
+    for (const quality of [0.9, 0.75, 0.55, 0.35, 0.15]) {
+        const bytes = await encode(canvas, quality);
+        if (bytes.length <= 100 * 1024) return dataUrl(bytes);
+    }
+    throw new Error('This image still exceeds 100 KB. Crop unnecessary detail in Edit, then prepare it again. Your image is unchanged.');
+}

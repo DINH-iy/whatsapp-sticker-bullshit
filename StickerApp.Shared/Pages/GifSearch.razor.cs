@@ -13,6 +13,7 @@ public partial class GifSearch
     private GifResult? selectedGif;
     private int currentPage;
     private bool isReady;
+    private bool hasSearched;
     private bool isConfigured;
     private bool isLoading;
     private bool isCopying;
@@ -44,8 +45,6 @@ public partial class GifSearch
             client = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/klipy-client.js");
             isConfigured = await client.InvokeAsync<bool>("hasApiKey");
             isReady = true;
-            if (isConfigured)
-                await StartSearch();
         }
         catch (JSException)
         {
@@ -59,22 +58,17 @@ public partial class GifSearch
 
     private async Task StartSearch()
     {
-        if (isLoading)
+        if (isLoading || string.IsNullOrWhiteSpace(query))
             return;
 
-        activeQuery = query;
+        hasSearched = true;
+        activeQuery = query.Trim();
         currentPage = 0;
         results.Clear();
         selectedGif = null;
         shareNotice = null;
         hasNextPage = false;
         await FetchPage(1);
-    }
-
-    private Task ShowTrending()
-    {
-        query = "";
-        return StartSearch();
     }
 
     private Task LoadMore() => FetchPage(currentPage + 1);

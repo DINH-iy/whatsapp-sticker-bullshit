@@ -146,6 +146,8 @@ public sealed class LibraryStore
     {
         var state = await ReadInternalAsync();
         action(state);
+        foreach (var pack in state.Packs)
+            pack.Animated = state.Stickers.Any(image => image.Animated && pack.StickerIds.Contains(image.Id));
         var temp = Index + ".tmp";
         await File.WriteAllTextAsync(temp, JsonSerializer.Serialize(state, Json));
         File.Move(temp, Index, true);
@@ -185,8 +187,6 @@ public sealed class LibraryStore
                             ?? throw new InvalidOperationException("This pack no longer exists.");
                         if (pack.StickerIds.Count >= 30)
                             throw new InvalidOperationException("A pack can contain at most 30 stickers.");
-                        if (pack.Animated != s.Animated)
-                            throw new InvalidOperationException($"Choose {(pack.Animated ? "animated images" : "still images")} for this pack.");
                         pack.StickerIds.Add(s.Id);
                         Touch(pack);
                     }
@@ -205,9 +205,9 @@ public sealed class LibraryStore
         }
     }
 
-    public async Task<Guid> CreatePackAsync(string name, bool animated)
+    public async Task<Guid> CreatePackAsync(string name)
     {
-        var pack = new StickerPack { Name = CleanName(name), Animated = animated };
+        var pack = new StickerPack { Name = CleanName(name) };
         await MutateAsync(l =>
         {
             if (l.Packs.Count >= 10)
@@ -274,8 +274,6 @@ public sealed class LibraryStore
                 await MutateInternalAsync(l =>
                 {
                     var sticker = l.Stickers.Single(s => s.Id == id);
-                    if (l.Packs.Any(p => p.StickerIds.Contains(id) && p.Animated != info.Animated))
-                        throw new InvalidOperationException("Remove the image from its pack before changing between static and animated.");
                     sticker.OriginalFileName ??= sticker.FileName;
                     sticker.FileName = fileName;
                     sticker.MimeType = info.MimeType;
@@ -308,8 +306,8 @@ public sealed class LibraryStore
         if (p.StickerIds.Count + additions.Count > 30)
             throw new InvalidOperationException("A pack can contain at most 30 stickers.");
         foreach (var id in additions)
-            if (l.Stickers.Single(s => s.Id == id).Animated != p.Animated)
-                throw new InvalidOperationException("Use separate packs for static and animated stickers.");
+            if (!l.Stickers.Any(s => s.Id == id))
+                throw new InvalidOperationException("This image is no longer in the library.");
         p.StickerIds.AddRange(additions);
         Touch(p);
     });
@@ -360,7 +358,7 @@ public sealed class LibraryStore
         }
     }
 
-    public async Task<PackArchive.ExportInfo> ExportPackAsync(Guid packId, Stream destination)
+    public async Task<PackArchive.ExportInfo> ExportPackAsync(Guid packId, Stream destination, byte[]? whatsAppCover = null)
     {
         await gate.WaitAsync();
         try
@@ -370,7 +368,9 @@ public sealed class LibraryStore
                 ?? throw new InvalidOperationException("This pack no longer exists.");
             var images = pack.StickerIds.Select(id => library.Stickers.FirstOrDefault(image => image.Id == id)
                 ?? throw new InvalidDataException("A pack image is missing from the library.")).ToList();
-            return await PackArchive.WriteAsync(destination, pack, images, image => File.OpenRead(MediaPath(image.FileName)));
+            return whatsAppCover is null
+                ? await PackArchive.WriteAsync(destination, pack, images, image => File.OpenRead(MediaPath(image.FileName)))
+                : await WhatsAppArchive.WriteAsync(destination, pack, images, image => File.OpenRead(MediaPath(image.FileName)), whatsAppCover);
         }
         finally
         {
@@ -390,7 +390,7 @@ public sealed class LibraryStore
             if (library.Packs.Count >= 10)
                 throw new InvalidOperationException("This build supports up to 10 packs.");
 
-            var pack = new StickerPack { Name = imported.Name, Animated = imported.Animated, CoverImage = imported.CoverImage };
+            var pack = new StickerPack { Name = imported.Name, Animated = imported.Animated, CoverImage = imported.CoverImage, Publisher = imported.Publisher };
             var images = new List<Sticker>();
             foreach (var image in imported.Images)
             {

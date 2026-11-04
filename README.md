@@ -9,7 +9,7 @@ Requires .NET 10. Android additionally requires the MAUI Android workload, SDK p
 
 Features: import JPEG/PNG/GIF/WebP, rename, replace, rotate and square-crop still images, trim GIFs by start/end time, remove images, manage packs, export compliant WebP packs through Android or iOS.
 
-GIF trimming runs locally in a background worker. Animated WebP editing and GIF/video-to-WebP conversion are not implemented yet. Each browser or installed mobile app has its own local library; use pack import/export to transfer packs between devices. Data is local (JSON index and media files).
+GIF trimming runs locally in a background worker. Prepare sticker converts still images and GIFs to 512 × 512 WebP locally, with transparent padding and compression. Animated WebP re-encoding requires the original GIF; video conversion is not implemented. Each browser or installed mobile app has its own local library; use pack import/export to transfer packs between devices. Data is local (JSON index and media files).
 
 WhatsApp export still needs verification on a real phone. This is a local development app, without authentication or direct cloud account integration.
 
@@ -24,7 +24,7 @@ For the browser development host, you can use an empty subfolder inside a locall
 
 ## GIF search
 
-Open **GIF search** in the navigation, or **Find GIFs** on the library screen. Add your own KLIPY API key in **Settings → GIF search** first. Create a key through the [KLIPY Partner Panel](https://partner.klipy.com/) and configure its allowed app origins/platforms there. A saved key is not validated until you request results. The app supports trending GIFs, keyword searches, loading more results, and copying GIF links.
+Open **GIF search** in the navigation, or **Find GIFs** on the library screen. Add your own KLIPY API key in **Settings → GIF search** first. Create a key through the [KLIPY Partner Panel](https://partner.klipy.com/) and configure its allowed app origins/platforms there. A saved key is not validated until you request results. The app supports keyword searches, loading more results, and copying GIF links. It does not load trending GIFs automatically. The search field retains KLIPY’s required provider placeholder; the optional Powered by KLIPY heading is omitted.
 
 The key stays in local storage on the current browser/device. It is not encrypted and is not placed in the sticker library or sent to the Blazor host. Requests go directly from the device to KLIPY. API responses and GIF files are not stored by the app. Results retain the provider's order and media URLs; the API's medium content filter is used. Copying a link sends a share event to KLIPY without a customer identifier.
 
@@ -55,17 +55,19 @@ Dark themes share neutral charcoal backgrounds across all five accents. Primary 
 
 Every GIF search result has a download-shaped **Open original GIF to save** link. It opens the provider's original URL in a new tab. This is not an automatic download: use the browser's Save Image option, then import the saved file through **Add images**. Cross-origin links cannot reliably force a file download, and the app does not fetch or re-host provider media.
 
-Once an image is in the local library, its folder-plus **Add to pack** action opens a picker of matching animated/static packs. Choose an existing pack, or enter a name and use **Create & add**. Creating a pack and adding the image happen in a single atomic write. Already-added images and full packs are disabled in the picker. This works for imported GIFs and still images; WhatsApp export still requires compliant WebP files.
+Once an image is in the local library, its folder-plus **Add to pack** action opens a picker of all packs. Choose an existing pack, or enter a name and use **Create & add**. Creating a pack and adding the image happen in a single atomic write. Already-added images and full packs are disabled in the picker. This works for imported GIFs and still images; WhatsApp export still requires compliant WebP files.
 
 The picker lives in `Components/AddToPackDialog.razor` and its code-behind. Both folder browsing and pack picking use `wwwroot/dialog.js` to open an accessible native dialog with browser focus management.
 
 ## Pack import, export, and sharing links
 
-Select a pack and use the share icon to open **Share pack**. **Export pack file** downloads a `.stickerpack.zip` in the browser; **Share pack file** opens the Android or iOS share sheet (including Save to Files on iPhone). The file contains the pack name, type, image order, names, tags, and current image bytes. Original pre-edit backups, theme settings, save paths, and API tokens are excluded. You can share packs before they meet WhatsApp's stricter WebP export rules.
+Select a pack and use the share icon to open **Share pack**. The default `.wastickers` export uses root-level WebP images, a 96 × 96 PNG cover, `title.txt`, and `author.txt`, matching the supplied sticker-maker sample. Use **Prepare sticker** for GIF/PNG/JPEG sources first. `.wastickers` import accepts the sample's leading slashes without extracting archive paths. Other apps may vary in their import behavior; physical-device interoperability still needs checking.
 
-The header's **Import pack (.zip)** control opens a shared pack archive. Select a pack ZIP to create a new pack with new image IDs. Existing images and packs are never overwritten. Import validates the manifest, image formats, and SHA-256 checksums before committing the images and pack together. Limits are 30 images, 10 MB per image, and 100 MB per archive/unpacked contents. The existing limit of 10 packs also applies to imports.
+Choose **Editable backup (.zip)** to preserve image order, names, tags, cover, and current image bytes in this app's manifest format. Original pre-edit backups, settings, paths, and API tokens are excluded. Both formats can be published to the sharing server, which retains their proper download extension.
 
-The archive is a normal ZIP with a versioned `manifest.json` and ordered `media/00.gif`, `media/01.webp`, etc. Each manifest image has a SHA-256 checksum. The whole ZIP's SHA-256 appears in the sharing dialog. Exports use fixed timestamps, so unchanged pack contents produce the same fingerprint. A hash identifies bytes; it does not contain the images, encrypt them, or authenticate their creator.
+The header's **Import pack** control opens a shared pack archive. Select a .wastickers pack or ZIP backup to create a new pack with new image IDs. Existing images and packs are never overwritten. Import validates image formats and archive bounds; editable ZIP imports also verify the manifest and SHA-256 checksums before committing the images and pack together. Limits are 30 images, 10 MB per image, and 100 MB per archive/unpacked contents. The existing limit of 10 packs also applies to imports.
+
+The editable backup is a normal ZIP with a versioned `manifest.json` and ordered `media/00.gif`, `media/01.webp`, etc. Each manifest image has a SHA-256 checksum. The whole ZIP's SHA-256 appears in the sharing dialog. Exports use fixed timestamps, so unchanged pack contents produce the same fingerprint. A hash identifies bytes; it does not contain the images, encrypt them, or authenticate their creator.
 
 For links, configure your own server in **Settings → Pack sharing**, then use **Create share link** in the pack's sharing dialog. This uploads only the selected pack. Anyone with the generated link can open a download page, save the pack, and import it. Links are immutable snapshots; later edits produce a new link. File sharing works without a server.
 
@@ -90,13 +92,13 @@ Start an iPhone simulator in Xcode's Device Hub. Install the simulator `.app` fr
 
 For a real iPhone, add your Apple account/development team in Xcode, connect and trust the phone, and enable Developer Mode. Build for `ios-arm64` using an Apple Development signing identity and a development provisioning profile covering `com.stickerstudio.app` (or change ApplicationId to an identifier registered to your team). No team ID, certificate, or provisioning profile is committed here. The Mac currently has no valid code-signing identities. Simulator builds do not require an Apple team.
 
-The shared UI, local library, appearance preferences, file import, editor, GIF search, and portable pack sharing are used on both mobile platforms. iOS has a scene delegate and generated icon/splash assets, safe-area spacing, photo/camera purpose strings, and a WhatsApp URL query declaration. `Platforms/iOS/IosWhatsAppExporter.cs` sends a compliant WebP pack via WhatsApp's documented expiring, device-local pasteboard payload and URL scheme. A real iPhone with WhatsApp is required to verify that final handoff; WhatsApp is not available in the simulator. Automatic GIF-to-WebP conversion remains unimplemented.
+The shared UI, local library, appearance preferences, file import, editor, GIF search, and portable pack sharing are used on both mobile platforms. iOS has a scene delegate and generated icon/splash assets, safe-area spacing, photo/camera purpose strings, and a WhatsApp URL query declaration. `Platforms/iOS/IosWhatsAppExporter.cs` sends a compliant WebP pack via WhatsApp's documented expiring, device-local pasteboard payload and URL scheme. A real iPhone with WhatsApp is required to verify that final handoff; WhatsApp is not available in the simulator. Prepare sticker uses the same bundled WebAssembly encoder on iPhone and other platforms.
 
 On iOS, keep the library inside the app sandbox. You can import pack ZIPs through the file picker and share exports to Files, AirDrop, or a cloud drive through the system share sheet. The live library is not automatically synced to iCloud, OneDrive, Google Drive, or another phone. Uninstalling the app removes local data unless you exported it first.
 
 Android builds must select their target explicitly: `dotnet build StickerApp/StickerApp.csproj -f net10.0-android`. They also need the Android SDK and JDK, which are not currently installed on this Mac. `dev.ps1 android` now selects that target; `dev.ps1 ios` builds the Apple Silicon simulator target.
 
-When viewing a pack, the first grid cell is always **Add sticker**, even when the pack is empty or a search has no matches. Click it to choose images or GIFs from the device; compatible files are imported directly into that pack in the same index write. Full packs disable the tile, and incompatible files report an error without leaving unused images in the library. **Add images** in the all-images view imports into the library. **Import pack (.zip)** creates a separate pack from an exported archive.
+When viewing a pack, the first grid cell is always **Add sticker**, even when the pack is empty or a search has no matches. Click it to choose images or GIFs from the device; files are imported directly into that pack in the same index write. Full packs disable the tile, and invalid files report an error without leaving unused images in the library. **Add images** in the all-images view imports into the library. **Import pack** creates a separate pack from an exported archive.
 
 ## Pack overview and covers
 
@@ -111,3 +113,6 @@ WhatsApp problems appear in red only for packs with validation errors. The full 
 The shared navigation has browser-history Back/Forward buttons. Pack, library, GIF search, and Settings routes use that same history. Visited links retain the selected theme colors. The pack toolbar uses equal gaps and a proper WhatsApp brand silhouette from [Simple Icons (CC0)](https://github.com/simple-icons/simple-icons).
 
 GIF editing is labeled **Edit GIF**. Timeline handles and start/end number fields use invariant decimal formatting, so a decimal duration such as 4.7 seconds is not silently replaced by the browser's midpoint under another locale. Start/end fields, timeline masks, selected duration, and saved trim use the same values. **Preview trim** regenerates the animation before saving; Reset trim restores the original range.
+
+
+Pack creation needs only a name; still and animated images can share a pack. Animation metadata is inferred from its contents. All pack tools sit in the heading, with Add to WhatsApp fixed at the bottom right. Validation lists only current problems, includes actual dimensions and size limits, and offers Prepare sticker or Edit / trim. Preparation preserves the first imported original, never crops or stretches the image, and never silently trims animation. Very detailed GIFs may need a shorter selection to fit 500 KB. The readable encoder wrapper and GIF worker source live in `StickerApp.Shared/Media`; rebuild their generated assets with `npm run build` in `tools/gif`. WebP encoding uses Apache-2.0 jSquash/libwebp, with its license included beside the bundled assets.

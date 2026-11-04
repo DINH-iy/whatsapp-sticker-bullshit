@@ -29,3 +29,5 @@ function request(action, source, start, end) {
 export function inspect(source) { return request('inspect', source); }
 export function trim(source, start, end) { return request('trim', source, start, end); }
 export function dispose() { reset('GIF editor closed.'); }
+
+export function prepare(source) { return request('prepare', source); }

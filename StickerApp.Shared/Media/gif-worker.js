@@ -1,3 +1,4 @@
+import { fit, encode, animation, dataUrl } from '../wwwroot/sticker-converter.js';
 import { parseGIF, decompressFrame } from 'gifuct-js';
 import { GIFEncoder, quantize, applyPalette } from 'gifenc';
 
@@ -22,7 +23,7 @@ function load(source) {
     return cached;
 }
 
-function trim(source, startSeconds, endSeconds, thumbnail = false) {
+async function trim(source, startSeconds, endSeconds, thumbnail = false, onFrame = null) {
     const { gif, frames, width, height, duration } = load(source);
     const start = Math.round(startSeconds * 1000 / 10) * 10;
     const end = Math.round(endSeconds * 1000 / 10) * 10;
@@ -79,6 +80,13 @@ function trim(source, startSeconds, endSeconds, thumbnail = false) {
                     pixels.set(screen.subarray(from, from + 4), (y * outputWidth + x) * 4);
                 }
             }
+            if (onFrame) {
+                await onFrame(screen, width, height, retained);
+                written++;
+                previous = frame;
+                clock = next;
+                continue;
+            }
             const colors = quantize(pixels, 255, { format: 'rgba4444', oneBitAlpha: true });
             const palette = [[0, 0, 0, 0], ...colors.filter(color => color[3] !== 0)];
             const index = applyPalette(pixels, palette, 'rgba4444');
@@ -90,6 +98,7 @@ function trim(source, startSeconds, endSeconds, thumbnail = false) {
         clock = next;
     }
     if (!written) throw new Error('No frames in this range.');
+    if (onFrame) return;
     encoder.finish();
     const output = encoder.bytes();
     if (output.length > 10 * 1024 * 1024) throw new Error('Result exceeds 10 MB. Shorten the selection.');
@@ -98,18 +107,46 @@ function trim(source, startSeconds, endSeconds, thumbnail = false) {
     return 'data:image/gif;base64,' + btoa(binary);
 }
 
-self.onmessage = ({ data }) => {
+async function prepare(source) {
+    const { duration } = load(source);
+    if (duration > 10000)
+        throw new Error('This GIF is longer than 10 seconds. Open Edit GIF, choose a section of at most 10 seconds, save, then prepare again.');
+    const sourceCanvas = new OffscreenCanvas(1, 1);
+    const canvas = new OffscreenCanvas(512, 512);
+    for (const quality of [0.8, 0.55, 0.3, 0.1]) {
+        const frames = [];
+        let total = 0;
+        try {
+            await trim(source, 0, duration / 1000, false, async (pixels, width, height, delay) => {
+                if (sourceCanvas.width !== width || sourceCanvas.height !== height) {
+                    sourceCanvas.width = width; sourceCanvas.height = height;
+                }
+                sourceCanvas.getContext('2d').putImageData(new ImageData(pixels, width, height), 0, 0);
+                fit(canvas.getContext('2d'), sourceCanvas, width, height);
+                const bytes = await encode(canvas, quality);
+                total += bytes.length + 24;
+                if (total > 500 * 1024) throw new Error('size');
+                frames.push({ bytes, duration: delay });
+            });
+            const bytes = animation(frames);
+            if (bytes.length <= 500 * 1024) return dataUrl(bytes);
+        } catch (error) { if (error.message !== 'size') throw error; }
+    }
+    throw new Error('This animation still exceeds 500 KB. Open Edit GIF and trim a shorter section, then prepare again. Your GIF is unchanged.');
+}
+
+self.onmessage = async ({ data }) => {
     try {
-        const value = data.action === 'inspect'
-            ? (() => {
+        const value = data.action === 'prepare' ? await prepare(data.source) : data.action === 'inspect'
+            ? await (async () => {
                 const gif = load(data.source);
-                const thumbnails = Array.from({ length: 6 }, (_, i) => {
+                const thumbnails = await Promise.all(Array.from({ length: 6 }, (_, i) => {
                     const start = Math.floor((gif.duration - 10) * i / 5 / 10) * 10;
                     return trim(data.source, start / 1000, (start + 10) / 1000, true);
-                });
+                }));
                 return { duration: gif.duration / 1000, frameCount: gif.frames.length, thumbnails };
             })()
-            : trim(data.source, data.start, data.end);
+            : await trim(data.source, data.start, data.end);
         self.postMessage({ id: data.id, value });
     } catch (error) { self.postMessage({ id: data.id, error: error.message || 'Could not edit this GIF.' }); }
 };

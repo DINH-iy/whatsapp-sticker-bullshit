@@ -24,3 +24,15 @@ export async function prepare(input) {
         URL.revokeObjectURL(url);
     }
 }
+
+export async function trayIcon(source) {
+    const image = new Image();
+    image.src = source;
+    await image.decode();
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 96;
+    const scale = 96 / Math.max(image.naturalWidth, image.naturalHeight);
+    const width = image.naturalWidth * scale, height = image.naturalHeight * scale;
+    canvas.getContext('2d').drawImage(image, (96 - width) / 2, (96 - height) / 2, width, height);
+    return canvas.toDataURL('image/png').split(',')[1];
+}

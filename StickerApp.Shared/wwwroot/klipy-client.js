@@ -6,7 +6,7 @@ let activeSearch = null;
 
 function readApiKey() {
     try {
-        return localStorage.getItem(apiKeyStorageKey) || '';
+        return localStorage.getItem(apiKeyStorageKey) || 'Nk1FvUis53iqxpM8QMj3dLlyTFJNX1aM7JQ3aU0urtqpByB02fCQuin7QDxQsjap';
     } catch {
         throw new Error('Device storage is unavailable. Enable local storage to configure GIF search.');
     }
@@ -74,13 +74,13 @@ export async function search(query, page = 1) {
     const controller = new AbortController();
     activeSearch = controller;
     const timeout = setTimeout(() => controller.abort(), 15000);
-    const endpoint = query.trim() ? 'search' : 'trending';
-    const url = new URL(`${apiBaseUrl}${encodeURIComponent(apiKey)}/gifs/${endpoint}`);
+    if (!query.trim()) throw new Error('Enter a search term.');
+    const url = new URL(`${apiBaseUrl}${encodeURIComponent(apiKey)}/gifs/search`);
     url.searchParams.set('page', String(page));
     url.searchParams.set('per_page', '24');
     url.searchParams.set('content_filter', 'medium');
     url.searchParams.set('format_filter', 'gif');
-    if (endpoint === 'search') url.searchParams.set('q', query);
+    url.searchParams.set('q', query.trim());
 
     try {
         const response = await fetch(url, {

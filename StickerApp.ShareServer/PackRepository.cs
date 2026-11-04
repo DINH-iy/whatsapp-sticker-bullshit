@@ -11,9 +11,9 @@ public sealed class PackRepository
     private readonly long maximumStorageBytes;
     private readonly SemaphoreSlim commitGate = new(1, 1);
 
-    public sealed record PackDetails(string Name, int ImageCount, bool Animated, long Bytes, string Sha256)
+    public sealed record PackDetails(string Name, int ImageCount, bool Animated, long Bytes, string Sha256, bool IsWhatsAppFormat = false)
     {
-        public string FileName => PackArchive.FileNameFor(Name);
+        public string FileName => PackArchive.FileNameFor(Name, IsWhatsAppFormat);
     }
 
     public PackRepository(IConfiguration configuration)
@@ -64,7 +64,7 @@ public sealed class PackRepository
                 var imported = await PackArchive.ReadAsync(input);
                 input.Position = 0;
                 var hash = Convert.ToHexString(await SHA256.HashDataAsync(input, cancellationToken)).ToLowerInvariant();
-                details = new PackDetails(imported.Name, imported.Images.Count, imported.Animated, input.Length, hash);
+                details = new PackDetails(imported.Name, imported.Images.Count, imported.Animated, input.Length, hash, imported.IsWhatsAppFormat);
             }
 
             await commitGate.WaitAsync(cancellationToken);

@@ -5,7 +5,6 @@
 <PageTitle>GIF search · Stickers</PageTitle>
 <header class="page-header">
     <h1>GIF search</h1>
-    <a class="provider-attribution" href="https://klipy.com/" target="_blank" rel="noopener noreferrer">Powered by KLIPY</a>
 </header>
 
 @if (!isReady)
@@ -16,7 +15,7 @@ else if (!isConfigured)
 {
     <section class="settings-card gif-setup">
         <h2>Connect KLIPY</h2>
-        <p>Add your KLIPY API key in Settings to search for GIFs and browse trending reactions.</p>
+        <p>Add your KLIPY API key in Settings to search for GIFs.</p>
         <a class="button primary" href="settings">Set up GIF search</a>
     </section>
 }
@@ -25,13 +24,15 @@ else
     <form class="gif-search-form" @onsubmit="StartSearch" @onsubmit:preventDefault>
         <label class="visually-hidden" for="gif-query">Search KLIPY GIFs</label>
         <input id="gif-query" class="search" @bind="query" @bind:event="oninput"
-               placeholder="Search for a reaction…" maxlength="200" disabled="@isLoading" />
-        <button class="button primary" type="submit" disabled="@isLoading">Search</button>
-        <button class="button" type="button" @onclick="ShowTrending" disabled="@isLoading">Trending</button>
+               placeholder="Search KLIPY" maxlength="200" disabled="@isLoading" />
+        <button class="button primary" type="submit" disabled="@(isLoading || string.IsNullOrWhiteSpace(query))">Search</button>
     </form>
 
     <p class="helper">Preview GIFs, copy a share link, or open the original with the download icon. To save it manually, use your browser’s Save Image option, then import the file with Add images → Downloads.</p>
-    <h2 class="gif-results-heading">@(string.IsNullOrWhiteSpace(activeQuery) ? "Trending GIFs" : $"Results for “{activeQuery}”")</h2>
+    @if (hasSearched)
+    {
+        <h2 class="gif-results-heading">Results for “@activeQuery”</h2>
+    }
 
     @if (selectedGif is not null)
     {
@@ -81,7 +82,7 @@ else
     }
     else if (results.Count == 0 && error is null)
     {
-        <p class="empty-state">No GIFs found. Try another search.</p>
+        <p class="empty-state">@(hasSearched ? "No GIFs found. Try another search." : "Search for a reaction to get started.")</p>
     }
 
     @if (hasNextPage)
@@ -94,7 +95,7 @@ else
 
 @if (error is not null)
 {
-    <div class="notice" role="alert">
+    <div class="notice notice-error" role="alert">
         <span>@error</span>
         @if (isConfigured)
         {

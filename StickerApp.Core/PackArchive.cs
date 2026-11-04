@@ -21,6 +21,7 @@ public static class PackArchive
         public bool Animated { get; set; }
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
         public string? CoverImage { get; set; }
+        public string Publisher { get; set; } = "Sticker Studio";
         public List<ManifestImage> Images { get; set; } = [];
     }
 
@@ -33,7 +34,7 @@ public static class PackArchive
     }
 
     public sealed record ImportedImage(string Name, string Tags, byte[] Bytes, MediaInfo Info);
-    public sealed record ImportedPack(string Name, bool Animated, IReadOnlyList<ImportedImage> Images, string? CoverImage = null);
+    public sealed record ImportedPack(string Name, bool Animated, IReadOnlyList<ImportedImage> Images, string? CoverImage = null, string Publisher = "Sticker Studio", bool IsWhatsAppFormat = false);
     public sealed record ExportInfo(string FileName, string Sha256);
 
     public static async Task<ExportInfo> WriteAsync(
@@ -45,7 +46,7 @@ public static class PackArchive
             throw new InvalidDataException("The pack contains too many images or references a missing image.");
 
         if (pack.CoverImage is not null) PackCover.ReadBytes(pack.CoverImage);
-        var manifest = new Manifest { Name = pack.Name, Animated = pack.Animated, CoverImage = pack.CoverImage };
+        var manifest = new Manifest { Name = pack.Name, Animated = pack.Animated, CoverImage = pack.CoverImage, Publisher = pack.Publisher };
         long totalBytes = 0;
 
         using (var archive = new ZipArchive(destination, ZipArchiveMode.Create, leaveOpen: true))
@@ -56,8 +57,6 @@ public static class PackArchive
                 await using var source = openImage(image);
                 var bytes = await ReadBoundedAsync(source, LibraryStore.MaxImportBytes);
                 var info = MediaInspector.Inspect(bytes);
-                if (info.Animated != pack.Animated)
-                    throw new InvalidDataException("The pack mixes static and animated images.");
 
                 totalBytes += bytes.Length;
                 if (totalBytes > MaxArchiveBytes)
@@ -99,12 +98,12 @@ public static class PackArchive
         temporary.Position = 0;
 
         using var archive = new ZipArchive(temporary, ZipArchiveMode.Read, leaveOpen: true);
-        if (archive.Entries.Count is < 1 or > 31 ||
+        if (archive.Entries.Count is < 1 or > 34 ||
             archive.Entries.Select(entry => entry.FullName).Distinct(StringComparer.Ordinal).Count() != archive.Entries.Count)
             throw new InvalidDataException("The pack archive contains unexpected or repeated files.");
 
-        var manifestEntry = archive.GetEntry("manifest.json")
-            ?? throw new InvalidDataException("This ZIP is not a sticker pack: manifest.json is missing.");
+        var manifestEntry = archive.GetEntry("manifest.json");
+        if (manifestEntry is null) return await WhatsAppArchive.ReadAsync(archive);
         if (manifestEntry.Length > MaxManifestBytes)
             throw new InvalidDataException("The pack metadata is too large.");
 
@@ -139,19 +138,19 @@ public static class PackArchive
                 throw new InvalidDataException($"The image “{image.Name}” failed its checksum. Download the pack again.");
 
             var info = MediaInspector.Inspect(bytes);
-            if (info.Animated != manifest.Animated || image.File != $"media/{index:D2}{info.Extension}")
+            if (image.File != $"media/{index:D2}{info.Extension}")
                 throw new InvalidDataException("An image does not match the pack format.");
 
             images.Add(new ImportedImage(image.Name.Trim(), image.Tags.Trim(), bytes, info));
         }
 
-        return new ImportedPack(manifest.Name.Trim(), manifest.Animated, images, manifest.CoverImage);
+        return new ImportedPack(manifest.Name.Trim(), images.Any(image => image.Info.Animated), images, manifest.CoverImage, manifest.Publisher);
     }
 
-    public static string FileNameFor(string name)
+    public static string FileNameFor(string name, bool whatsAppFormat = false)
     {
         var clean = string.Concat(name.Where(character => char.IsLetterOrDigit(character) || character is ' ' or '-' or '_')).Trim();
-        return $"{(clean.Length == 0 ? "stickers" : clean)}.stickerpack.zip";
+        return $"{(clean.Length == 0 ? "stickers" : clean)}{(whatsAppFormat ? ".wastickers" : ".stickerpack.zip")}";
     }
 
     private static void ValidateManifest(Manifest manifest)
@@ -159,7 +158,8 @@ public static class PackArchive
         if (manifest.Format != FormatName || manifest.Version != 1)
             throw new InvalidDataException("This is not a supported sticker pack version.");
         if (string.IsNullOrWhiteSpace(manifest.Name) || manifest.Name.Trim().Length > 128 ||
-            manifest.Images is null || manifest.Images.Count > 30)
+            manifest.Images is null || manifest.Images.Count > 30 ||
+            string.IsNullOrWhiteSpace(manifest.Publisher) || manifest.Publisher.Length > 128)
             throw new InvalidDataException("The pack name or image list is invalid.");
 
         if (manifest.CoverImage is not null) PackCover.ReadBytes(manifest.CoverImage);
@@ -174,7 +174,7 @@ public static class PackArchive
         }
     }
 
-    private static async Task WriteEntryAsync(ZipArchive archive, string path, byte[] bytes)
+    internal static async Task WriteEntryAsync(ZipArchive archive, string path, byte[] bytes)
     {
         var entry = archive.CreateEntry(path, CompressionLevel.NoCompression);
         // Fixed timestamps make repeat exports of unchanged content have the same hash.
@@ -183,7 +183,7 @@ public static class PackArchive
         await output.WriteAsync(bytes);
     }
 
-    private static async Task<byte[]> ReadBoundedAsync(Stream source, long maximumBytes)
+    internal static async Task<byte[]> ReadBoundedAsync(Stream source, long maximumBytes)
     {
         using var buffer = new MemoryStream();
         await CopyBoundedAsync(source, buffer, maximumBytes);
