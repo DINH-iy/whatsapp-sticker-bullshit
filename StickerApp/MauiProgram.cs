@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using StickerApp.Shared.Services;
 using StickerApp.Services;
 using StickerApp.Core;
@@ -20,7 +20,13 @@ public static class MauiProgram
         // Add device-specific services used by the StickerApp.Shared project
         builder.Services.AddSingleton<IFormFactor, FormFactor>();
         builder.Services.AddSingleton(new LibraryStore(Path.Combine(FileSystem.AppDataDirectory, "library")));
+#if ANDROID
         builder.Services.AddSingleton<IWhatsAppExporter, AndroidWhatsAppExporter>();
+#elif IOS
+        builder.Services.AddSingleton<IWhatsAppExporter, IosWhatsAppExporter>();
+#endif
+        builder.Services.AddScoped<IPackFileSaver, NativePackFileSaver>();
+        builder.Services.AddScoped<PackSharingService>();
 
         builder.Services.AddMauiBlazorWebView();
 

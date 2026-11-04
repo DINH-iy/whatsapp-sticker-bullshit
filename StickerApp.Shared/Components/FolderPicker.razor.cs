@@ -25,7 +25,7 @@ public partial class FolderPicker
     {
         if (!firstRender)
             return;
-        module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/folder-picker.js");
+        module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/dialog.js");
         await module.InvokeVoidAsync("open", dialog);
     }
 

@@ -1,0 +1,31 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<section class="settings-card" aria-labelledby="pack-sharing-settings-title">
+    <h2 id="pack-sharing-settings-title">Pack sharing</h2>
+    <p class="helper">File import/export works without a server. To create download links, connect your own sharing server.</p>
+    <form @onsubmit="SaveSettings" @onsubmit:preventDefault>
+        <label for="sharing-server">Sharing server URL</label>
+        <input id="sharing-server" type="url" class="folder-input" @ref="serverInput" value="@serverUrl"
+               placeholder="https://stickers.example.com" disabled="@(!isReady)" autocomplete="off" />
+        <label for="sharing-token" class="settings-field-label">Publishing token</label>
+        <input id="sharing-token" type="password" class="folder-input" @ref="tokenInput" autocomplete="off"
+               placeholder="@(hasToken ? "Leave blank to keep the saved token" : "Token configured on your server")" disabled="@(!isReady)" />
+        <p class="helper">The token is saved in this device’s local storage, outside pack files. It is not encrypted. Anyone with a generated pack link can download that pack.</p>
+        <div class="settings-actions">
+            <button class="button primary" type="submit" disabled="@(!isReady)">Save sharing settings</button>
+            @if (hasToken)
+            {
+                <button class="button" type="button" @onclick="Disconnect">Disconnect</button>
+            }
+        </div>
+    </form>
+    @if (notice is not null)
+    {
+        <p class="settings-success" role="status">@notice</p>
+    }
+    @if (error is not null)
+    {
+        <p class="error" role="alert">@error</p>
+    }
+</section>

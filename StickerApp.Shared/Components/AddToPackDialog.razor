@@ -1,0 +1,61 @@
+@implements IAsyncDisposable
+@inject LibraryStore Store
+@inject IJSRuntime JS
+
+<dialog @ref="dialog" class="folder-dialog" aria-labelledby="add-to-pack-title" @onkeydown="HandleKey">
+    <div class="folder-dialog-heading">
+        <h2 id="add-to-pack-title">Add to pack</h2>
+        <button class="button icon-button" type="button" title="Close" aria-label="Close pack picker" @onclick="Cancel">
+            <Icon Name="close" />
+        </button>
+    </div>
+    <p class="helper">@Image.Name · @(Image.Animated ? "Animated image" : "Still image")</p>
+
+    @if (isLoading)
+    {
+        <p role="status">Loading your packs…</p>
+    }
+    else
+    {
+        <div class="quick-pack-list" aria-label="Compatible packs">
+            @foreach (var pack in compatiblePacks)
+            {
+                var alreadyAdded = pack.StickerIds.Contains(Image.Id);
+                var isFull = pack.StickerIds.Count >= 30;
+                <button class="quick-pack-option" type="button" @onclick="() => AddToExistingPack(pack)"
+                        disabled="@(isSaving || alreadyAdded || isFull)">
+                    <Icon Name="@(alreadyAdded ? "check" : "folder-plus")" />
+                    <span>@pack.Name</span>
+                    <small>@(alreadyAdded ? "Already added" : isFull ? "Full" : $"{pack.StickerIds.Count}/30")</small>
+                </button>
+            }
+        </div>
+        @if (compatiblePacks.Count == 0)
+        {
+            <p class="helper">No @(Image.Animated ? "animated" : "static") packs yet. Create one below.</p>
+        }
+
+        <form class="new-folder-form" @onsubmit="CreatePackAndAdd" @onsubmit:preventDefault>
+            <label for="quick-pack-name">Or create a new @(Image.Animated ? "animated" : "static") pack</label>
+            <div class="folder-input-row">
+                <input id="quick-pack-name" @bind="newPackName" @bind:event="oninput" maxlength="128"
+                       placeholder="Pack name" disabled="@isSaving" />
+                <button class="button primary" type="submit" disabled="@(isSaving || string.IsNullOrWhiteSpace(newPackName))">
+                    Create &amp; add
+                </button>
+            </div>
+        </form>
+    }
+
+    @if (error is not null)
+    {
+        <p class="error" role="alert">@error</p>
+    }
+    @if (isSaving)
+    {
+        <p class="helper" role="status">Adding to pack…</p>
+    }
+    <div class="dialog-actions">
+        <button class="button" type="button" @onclick="Cancel" disabled="@isSaving">Cancel</button>
+    </div>
+</dialog>

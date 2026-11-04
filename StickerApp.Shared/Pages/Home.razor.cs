@@ -33,6 +33,8 @@ public partial class Home
     private string? editError;
     private Sticker? editing;
     private Sticker? pendingRemoval;
+    private Sticker? imageToAdd;
+    private StickerPack? packToShare;
     private byte[]? replacement;
     private IJSObjectReference? editor;
     private IJSObjectReference? gifEditor;
@@ -88,7 +90,7 @@ public partial class Home
             await action();
             await Reload();
         }
-        catch (Exception e) when (e is IOException or InvalidDataException or InvalidOperationException or NotSupportedException or System.Text.Json.JsonException)
+        catch (Exception e) when (e is IOException or InvalidDataException or InvalidOperationException or NotSupportedException or UnauthorizedAccessException or System.Text.Json.JsonException)
         {
             notice = e.Message;
         }
@@ -120,6 +122,24 @@ public partial class Home
             notice = string.Join(" ", errors);
     });
 
+    private Task ImportPack(InputFileChangeEventArgs args) => Run(async () =>
+    {
+        busyText = "Importing pack…";
+        try
+        {
+            await using var input = args.File.OpenReadStream(PackArchive.MaxArchiveBytes);
+            activePack = await Store.ImportPackAsync(input);
+            var updatedLibrary = await Store.ReadAsync();
+            packName = updatedLibrary.Packs.Single(pack => pack.Id == activePack).Name;
+            selected.Clear();
+            notice = $"Imported “{packName}” as a new pack.";
+        }
+        finally
+        {
+            busyText = "Processing…";
+        }
+    });
+
     private void SelectPack(ChangeEventArgs e)
     {
         activePack = Guid.TryParse(e.Value?.ToString(), out var id) ? id : null;
@@ -133,6 +153,16 @@ public partial class Home
         showNewPack = false;
         newPackName = "";
     });
+
+    private async Task FinishQuickAdd(string message)
+    {
+        imageToAdd = null;
+        await Run(() =>
+        {
+            notice = message;
+            return Task.CompletedTask;
+        });
+    }
 
     private Task RenamePack() => Run(() => Store.RenamePackAsync(activePack!.Value, packName));
 

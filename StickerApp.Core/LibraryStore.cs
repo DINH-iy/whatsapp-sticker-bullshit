@@ -200,6 +200,23 @@ public sealed class LibraryStore
         });
     });
 
+    // Creating the pack and adding its first image share one atomic write.
+    public Task CreatePackWithStickerAsync(string name, Guid stickerId) => MutateAsync(library =>
+    {
+        if (library.Packs.Count >= 10)
+            throw new InvalidOperationException("This build supports up to 10 packs.");
+
+        var sticker = library.Stickers.FirstOrDefault(image => image.Id == stickerId)
+            ?? throw new InvalidOperationException("This image is no longer in the library.");
+
+        library.Packs.Add(new StickerPack
+        {
+            Name = CleanName(name),
+            Animated = sticker.Animated,
+            StickerIds = [sticker.Id]
+        });
+    });
+
     public Task RenamePackAsync(Guid id, string name) => MutateAsync(l => { var p = l.Packs.Single(p => p.Id == id); p.Name = CleanName(name); Touch(p); });
     public Task DeletePackAsync(Guid id) => MutateAsync(l => l.Packs.RemoveAll(p => p.Id == id));
     public Task FavoriteAsync(Guid id) => MutateAsync(l => { var s = l.Stickers.Single(s => s.Id == id); s.Favorite = !s.Favorite; });
@@ -307,6 +324,86 @@ public sealed class LibraryStore
             });
             foreach (var file in files)
                 File.Delete(MediaPath(file));
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    public async Task<PackArchive.ExportInfo> ExportPackAsync(Guid packId, Stream destination)
+    {
+        await gate.WaitAsync();
+        try
+        {
+            var library = await ReadInternalAsync();
+            var pack = library.Packs.FirstOrDefault(candidate => candidate.Id == packId)
+                ?? throw new InvalidOperationException("This pack no longer exists.");
+            var images = pack.StickerIds.Select(id => library.Stickers.FirstOrDefault(image => image.Id == id)
+                ?? throw new InvalidDataException("A pack image is missing from the library.")).ToList();
+            return await PackArchive.WriteAsync(destination, pack, images, image => File.OpenRead(MediaPath(image.FileName)));
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    public async Task<Guid> ImportPackAsync(Stream source)
+    {
+        // Validate everything before touching the library. No archive entry is extracted by its supplied path.
+        var imported = await PackArchive.ReadAsync(source);
+        await gate.WaitAsync();
+        var createdFiles = new List<string>();
+        try
+        {
+            var library = await ReadInternalAsync();
+            if (library.Packs.Count >= 10)
+                throw new InvalidOperationException("This build supports up to 10 packs.");
+
+            var pack = new StickerPack { Name = imported.Name, Animated = imported.Animated };
+            var images = new List<Sticker>();
+            foreach (var image in imported.Images)
+            {
+                var sticker = new Sticker
+                {
+                    Name = image.Name,
+                    Tags = image.Tags,
+                    MimeType = image.Info.MimeType,
+                    Width = image.Info.Width,
+                    Height = image.Info.Height,
+                    Animated = image.Info.Animated,
+                    Bytes = image.Bytes.Length,
+                    DurationMs = image.Info.DurationMs,
+                    MinimumFrameMs = image.Info.MinimumFrameMs
+                };
+                sticker.FileName = $"{sticker.Id:N}{image.Info.Extension}";
+                var path = MediaPath(sticker.FileName);
+                await using (var output = new FileStream(path, FileMode.CreateNew, FileAccess.Write))
+                {
+                    createdFiles.Add(path);
+                    await output.WriteAsync(image.Bytes);
+                }
+                images.Add(sticker);
+                pack.StickerIds.Add(sticker.Id);
+            }
+
+            await MutateInternalAsync(state =>
+            {
+                state.Stickers.AddRange(images);
+                state.Packs.Add(pack);
+            });
+            return pack.Id;
+        }
+        catch
+        {
+            foreach (var file in createdFiles)
+            {
+                try { File.Delete(file); }
+                catch (IOException) { }
+                catch (UnauthorizedAccessException) { }
+            }
+            throw;
         }
         finally
         {

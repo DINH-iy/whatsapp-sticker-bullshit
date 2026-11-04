@@ -1,15 +1,15 @@
 # Stickers
 
-C# / Blazor Hybrid Android app with a browser development host.
+C# / Blazor Hybrid app for Android and iPhone/iPad, with a browser development host.
 
 Run the browser version: `.\dev.ps1 web`
-Build Android: `.\dev.ps1 android`
+Build Android: `./dev.sh android` (macOS/Linux) or `.\dev.ps1 android` (PowerShell). Build the iPhone simulator app with `./dev.sh ios`.
 
 Requires .NET 10. Android additionally requires the MAUI Android workload, SDK platform 36, and a compatible JDK.
 
-Features: import JPEG/PNG/GIF/WebP, rename, replace, rotate and square-crop still images, trim GIFs by start/end time, remove images, manage packs, export compliant WebP packs through Android.
+Features: import JPEG/PNG/GIF/WebP, rename, replace, rotate and square-crop still images, trim GIFs by start/end time, remove images, manage packs, export compliant WebP packs through Android or iOS.
 
-GIF trimming runs locally in a background worker. Animated WebP editing and GIF/video-to-WebP conversion are not implemented yet. The browser and Android libraries are stored separately. Data is local (JSON index and media files).
+GIF trimming runs locally in a background worker. Animated WebP editing and GIF/video-to-WebP conversion are not implemented yet. Each browser or installed mobile app has its own local library; use pack import/export to transfer packs between devices. Data is local (JSON index and media files).
 
 WhatsApp export still needs verification on a real phone. This is a local development app, without authentication or direct cloud account integration.
 
@@ -39,14 +39,59 @@ KLIPY search results are separate from the local sticker library. Standard KLIPY
 - `StickerApp.Shared/wwwroot/klipy-client.js` handles direct KLIPY requests, provider responses, and the device-local key. It contains no server proxy or media download code.
 - `StickerApp.Shared/wwwroot/theme.js` loads and saves appearance preferences. `themes.css` defines shared color tokens and palettes; `app.css` contains the screen styles.
 - `StickerApp.Core/LibraryStore.cs` handles file persistence and copying the library to a new save folder.
-- `StickerApp.Web/Program.cs` and `StickerApp/MauiProgram.cs` wire up the browser host and Android app respectively.
+- `StickerApp.Web/Program.cs` and `StickerApp/MauiProgram.cs` wire up the browser host and native Android/iOS app respectively.
 
 App source uses four-space indentation and named methods. Screen markup and C# behavior live in adjacent files; `.editorconfig` records the formatting conventions. Bundled vendor files and the generated GIF worker are intentionally left as supplied.
 
 ## Location surprises and controls
 
-**Settings → Easter eggs** contains an optional **Location surprises** toggle, off by default. When enabled, the device asks [country.is](https://country.is/) for the country of its public IP. Romania (`RO`) triggers a dismissible Count Stickula message and a brief bat animation once per session. The setting persists in local storage; only the country code and lookup time are cached in session storage for up to 30 minutes. No IP address or GPS location is saved by the app. A VPN can affect the country; failed lookups silently skip the surprise. The **Preview Romania surprise** button works anywhere without making a location request.
+**Settings → Easter eggs** contains an optional **Location surprises** toggle, off by default. When enabled, the device asks [country.is](https://country.is/) for the country of its public IP. Romania (`RO`) triggers a dismissible Romania roast and a brief bat animation once per session. The setting persists in local storage; only the country code and lookup time are cached in session storage for up to 30 minutes. No IP address or GPS location is saved by the app. A VPN can affect the country; failed lookups silently skip the surprise. The **Preview Romania surprise** button works anywhere without making a location request.
 
 `Components/LocationSurprise.razor` and its code-behind render the surprise. `Components/SurpriseSettings.razor` and its code-behind handle the toggle and preview. `wwwroot/location-surprises.js` owns device-local preferences, session checks, and direct IP-country lookup. Add more country effects there and expose a corresponding named callback on the component.
 
 Dark themes share neutral charcoal backgrounds across all five accents. Primary buttons and highlights carry the selected accent. Shared controls use a 44px height and 8px corner radius; preview canvases, checkboxes, and sliders retain dimensions appropriate to their purpose. Compact library actions use local SVG icons from `Components/Icon.razor`, with accessible labels and hover titles.
+
+## Quickly saving GIFs and adding images to packs
+
+Every GIF search result has a download-shaped **Open original GIF to save** link. It opens the provider's original URL in a new tab. This is not an automatic download: use the browser's Save Image option, then import the saved file through **Add images**. Cross-origin links cannot reliably force a file download, and the app does not fetch or re-host provider media.
+
+Once an image is in the local library, its folder-plus **Add to pack** action opens a picker of matching animated/static packs. Choose an existing pack, or enter a name and use **Create & add**. Creating a pack and adding the image happen in a single atomic write. Already-added images and full packs are disabled in the picker. This works for imported GIFs and still images; WhatsApp export still requires compliant WebP files.
+
+The picker lives in `Components/AddToPackDialog.razor` and its code-behind. Both folder browsing and pack picking use `wwwroot/dialog.js` to open an accessible native dialog with browser focus management.
+
+## Pack import, export, and sharing links
+
+Select a pack and use the share icon to open **Share pack**. **Export pack file** downloads a `.stickerpack.zip` in the browser; **Share pack file** opens the Android or iOS share sheet (including Save to Files on iPhone). The file contains the pack name, type, image order, names, tags, and current image bytes. Original pre-edit backups, theme settings, save paths, and API tokens are excluded. You can share packs before they meet WhatsApp's stricter WebP export rules.
+
+The header's upload icon is **Import pack**. Select a pack ZIP to create a new pack with new image IDs. Existing images and packs are never overwritten. Import validates the manifest, image formats, and SHA-256 checksums before committing the images and pack together. Limits are 30 images, 10 MB per image, and 100 MB per archive/unpacked contents. The existing limit of 10 packs also applies to imports.
+
+The archive is a normal ZIP with a versioned `manifest.json` and ordered `media/00.gif`, `media/01.webp`, etc. Each manifest image has a SHA-256 checksum. The whole ZIP's SHA-256 appears in the sharing dialog. Exports use fixed timestamps, so unchanged pack contents produce the same fingerprint. A hash identifies bytes; it does not contain the images, encrypt them, or authenticate their creator.
+
+For links, configure your own server in **Settings → Pack sharing**, then use **Create share link** in the pack's sharing dialog. This uploads only the selected pack. Anyone with the generated link can open a download page, save the pack, and import it. Links are immutable snapshots; later edits produce a new link. File sharing works without a server.
+
+`StickerApp.ShareServer` is a separate self-hosted service with authenticated uploads/deletion and public, hash-addressed download links. The server defaults to a 2 GiB archive quota and two concurrent uploads. [Raspberry Pi and domain setup instructions](deploy/pi/README.md) include Docker Compose, Caddy HTTPS, persistent volumes, token setup, and link removal. It can also run on any host with the .NET 10 ASP.NET runtime. The browser development host is not the public sharing server.
+
+`PackArchive.cs` defines the portable format. `LibraryStore.cs` performs atomic library import/export. `PackSharingService.cs` prepares temporary archives and calls the host-specific file saver or device-side publishing client. `SharePackDialog` and `PackSharingSettings` provide the UI. Android restricts its file provider to the dedicated `sharing-root` cache directory.
+
+## iPhone and iPad
+
+The native project targets `net10.0-android` and `net10.0-ios`. Xcode supplies Apple's compiler and SDK; this is a MAUI project, so build the `.csproj` with .NET rather than looking for an `.xcodeproj`.
+
+Use .NET SDK 10.0.402 and the pinned workload set:
+
+```sh
+dotnet workload install maui-ios maui-android --version 10.0.402.1
+dotnet build StickerApp/StickerApp.csproj -f net10.0-ios -p:RuntimeIdentifier=iossimulator-arm64
+```
+
+This workload requires **Xcode 27.1**. On this Mac, Xcode 27.2 is installed, and a normal build stops at the SDK compatibility check. Install Xcode 27.1 alongside it from Apple Developer Downloads, then select that copy for the build, for example `DEVELOPER_DIR=/Applications/Xcode_27.1.app/Contents/Developer dotnet build ...`. Do not permanently disable the version check. A one-time diagnostic build with `ValidateXcodeVersion=false` produced a signed simulator app with zero compiler warnings. It installed and launched in an iPhone 18 Pro simulator on iOS 27.2; the library, settings, and dark appearance rendered successfully. An unsigned ARM64 device build also completed; installing it still requires your Apple signing identity. That does not make Xcode 27.2 an officially supported toolchain.
+
+Start an iPhone simulator in Xcode's Device Hub. Install the simulator `.app` from `StickerApp/bin/Debug/net10.0-ios/iossimulator-arm64/StickerApp.app` using Device Hub's Info → Apps → Add, or `xcrun simctl install booted <app-path>`. Launch **Stickers** on the simulator. Intel Macs should use `iossimulator-x64` instead.
+
+For a real iPhone, add your Apple account/development team in Xcode, connect and trust the phone, and enable Developer Mode. Build for `ios-arm64` using an Apple Development signing identity and a development provisioning profile covering `com.stickerstudio.app` (or change ApplicationId to an identifier registered to your team). No team ID, certificate, or provisioning profile is committed here. The Mac currently has no valid code-signing identities. Simulator builds do not require an Apple team.
+
+The shared UI, local library, appearance preferences, file import, editor, GIF search, and portable pack sharing are used on both mobile platforms. iOS has a scene delegate and generated icon/splash assets, safe-area spacing, photo/camera purpose strings, and a WhatsApp URL query declaration. `Platforms/iOS/IosWhatsAppExporter.cs` sends a compliant WebP pack via WhatsApp's documented expiring, device-local pasteboard payload and URL scheme. A real iPhone with WhatsApp is required to verify that final handoff; WhatsApp is not available in the simulator. Automatic GIF-to-WebP conversion remains unimplemented.
+
+On iOS, keep the library inside the app sandbox. You can import pack ZIPs through the file picker and share exports to Files, AirDrop, or a cloud drive through the system share sheet. The live library is not automatically synced to iCloud, OneDrive, Google Drive, or another phone. Uninstalling the app removes local data unless you exported it first.
+
+Android builds must select their target explicitly: `dotnet build StickerApp/StickerApp.csproj -f net10.0-android`. They also need the Android SDK and JDK, which are not currently installed on this Mac. `dev.ps1 android` now selects that target; `dev.ps1 ios` builds the Apple Silicon simulator target.

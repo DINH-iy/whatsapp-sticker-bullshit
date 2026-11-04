@@ -12,6 +12,10 @@
         <a class="button icon-button" href="gifs" title="Find GIFs" aria-label="Find GIFs">
             <Icon Name="search" />
         </a>
+        <label class="button file-button icon-button" title="Import pack">
+            <Icon Name="upload" />
+            <InputFile OnChange="ImportPack" accept=".zip" disabled="@busy" aria-label="Import pack" />
+        </label>
         <label class="button primary file-button icon-button" title="Add images">
             <Icon Name="image" />
             <InputFile OnChange="Import" accept=".jpg,.jpeg,.png,.gif,.webp" multiple disabled="@busy" aria-label="Add images" />
@@ -63,6 +67,10 @@
 @if (CurrentPack is not null)
 {
     <div class="pack-tools">
+        <button class="button icon-button" type="button" @onclick="() => packToShare = CurrentPack"
+                title="Share or export pack" aria-label="Share or export pack" disabled="@busy">
+            <Icon Name="share" />
+        </button>
         <input aria-label="Pack name" @bind="packName" @bind:event="oninput" maxlength="128" />
         <button class="button icon-button" @onclick="RenamePack" disabled="@busy" title="Rename" aria-label="Rename">
             <Icon Name="edit" />
@@ -76,7 +84,7 @@
     </div>
     @if (!Exporter.IsAvailable)
     {
-        <p class="helper">WhatsApp export requires the Android app.</p>
+        <p class="helper">WhatsApp export requires the Android or iPhone app.</p>
     }
     @if (Validation.Count > 0)
     {
@@ -136,6 +144,10 @@ else
                 <strong>@image.Name</strong>
                 <small>@image.Width × @image.Height @(image.Animated ? "· Animated" : "")</small>
                 <div class="card-actions">
+                    <button class="button icon-button" type="button" @onclick="() => imageToAdd = image"
+                            disabled="@busy" title="Add to pack" aria-label="Add @image.Name to pack">
+                        <Icon Name="folder-plus" />
+                    </button>
                     <button class="button icon-button" @onclick="() => Edit(image)" title="Edit image" aria-label="Edit @image.Name">
                         <Icon Name="edit" />
                     </button>
@@ -243,4 +255,14 @@ else
             </div>
         </section>
     </div>
+}
+
+@if (imageToAdd is not null)
+{
+    <AddToPackDialog Image="@imageToAdd" OnAdded="FinishQuickAdd" OnCancel="() => imageToAdd = null" />
+}
+
+@if (packToShare is not null)
+{
+    <SharePackDialog Pack="@packToShare" OnClose="() => packToShare = null" />
 }

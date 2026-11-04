@@ -43,6 +43,6 @@ public sealed class BrowserWhatsAppExporter : IWhatsAppExporter
 {
     public bool IsAvailable => false;
     public Task ExportAsync(StickerPack pack, IReadOnlyList<Sticker> stickers) =>
-        throw new NotSupportedException("Open the Android app to add packs to WhatsApp.");
+        throw new NotSupportedException("Open the Android or iPhone app to add packs to WhatsApp.");
 }
 

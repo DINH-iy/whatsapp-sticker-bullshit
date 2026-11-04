@@ -30,7 +30,7 @@ else
         <button class="button" type="button" @onclick="ShowTrending" disabled="@isLoading">Trending</button>
     </form>
 
-    <p class="helper">Preview GIFs and copy a link to share. KLIPY results stay online and are separate from your local sticker library.</p>
+    <p class="helper">Preview GIFs, copy a share link, or open the original with the download icon. To save it manually, use your browser’s Save Image option, then import the file with Add images → Downloads.</p>
     <h2 class="gif-results-heading">@(string.IsNullOrWhiteSpace(activeQuery) ? "Trending GIFs" : $"Results for “{activeQuery}”")</h2>
 
     @if (selectedGif is not null)
@@ -56,8 +56,20 @@ else
                 }
                 <div class="gif-card-footer">
                     <span title="@gif.Title">@gif.Title</span>
-                    <button class="text-button" type="button" @onclick="() => CopyLink(gif)"
-                            disabled="@(isCopying || string.IsNullOrEmpty(gif.ShareUrl))" aria-label="Copy link for @gif.Title">Copy link</button>
+                    <div class="gif-card-actions">
+                        <button class="button icon-button" type="button" @onclick="() => CopyLink(gif)"
+                                disabled="@(isCopying || string.IsNullOrEmpty(gif.ShareUrl))"
+                                title="Copy link" aria-label="Copy link for @gif.Title">
+                            <Icon Name="copy" />
+                        </button>
+                        @if (!string.IsNullOrEmpty(gif.ShareUrl))
+                        {
+                            <a class="button icon-button" href="@gif.ShareUrl" target="_blank" rel="noopener noreferrer"
+                               title="Open original GIF to save" aria-label="Open @gif.Title to save">
+                                <Icon Name="download" />
+                            </a>
+                        }
+                    </div>
                 </div>
             </article>
         }

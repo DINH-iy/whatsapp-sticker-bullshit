@@ -1,0 +1,34 @@
+services:
+  share-server:
+    build:
+      context: ../..
+      dockerfile: StickerApp.ShareServer/Dockerfile
+    restart: unless-stopped
+    environment:
+      Sharing__PublishToken: ${PACK_PUBLISH_TOKEN:?Set PACK_PUBLISH_TOKEN in .env}
+      Sharing__MaxStorageBytes: ${PACK_STORAGE_LIMIT_BYTES:-2147483648}
+    volumes:
+      - pack-data:/data
+    expose:
+      - "8080"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - share-server
+    environment:
+      PACK_DOMAIN: ${PACK_DOMAIN:?Set PACK_DOMAIN in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  pack-data:
+  caddy-data:
+  caddy-config:
