@@ -5,10 +5,15 @@
 
 <PageTitle>Settings · Stickers</PageTitle>
 <header class="page-header">
-    <h1><button class="text-button developer-trigger" type="button"
-                aria-label="Settings. Tap five times for developer settings."
-                title="Settings" @onclick="TapDeveloperUnlock">Settings</button></h1>
+    <h1 role="button" tabindex="0"
+        aria-label="Settings" title="Settings"
+        @onclick="TapDeveloperUnlock"
+        @onkeydown="HandleDeveloperKey">Settings</h1>
 </header>
+@if (developerNotice is not null)
+{
+    <div class="developer-toast" role="status">@developerNotice</div>
+}
 <div class="settings-stack">
     <section class="settings-card" aria-labelledby="appearance-title">
         <h2 id="appearance-title">Appearance</h2>
@@ -43,7 +48,7 @@
             <ul>
                 <li>A name of 1–128 characters and 3–30 different stickers.</li>
                 <li>Each sticker must be a 512 × 512 pixel WebP image.</li>
-                <li>You can keep still images and animated stickers together in a pack.</li>
+                <li>You can keep still images and animated stickers together in the library. When exporting a mixed pack to WhatsApp, still WebPs are wrapped as one-frame animated WebPs so the WhatsApp pack remains consistently animated.</li>
                 <li>Still stickers: up to 100 KB each. Animated stickers: up to 500 KB each.</li>
                 <li>Animations: at most 10 seconds, with frames lasting at least 8 milliseconds.</li>
             </ul>
@@ -64,42 +69,42 @@
             <p>Each device keeps its own library and appearance settings. Use pack files or sharing links to move packs between devices. Direct OneDrive, Google Drive, and iCloud library sync is not available.</p>
         </details>
     </section>
-    <SurpriseSettings />
     @if (developerUnlocked)
     {
         <section class="settings-card" aria-labelledby="developer-settings-title">
             <h2 id="developer-settings-title">Developer settings</h2>
             <p class="helper">Advanced integrations and credentials are stored only on this device.</p>
         </section>
+        <SurpriseSettings />
         <GifSearchSettings />
         <PackSharingSettings />
+        <section class="settings-card" aria-labelledby="storage-title">
+            <h2 id="storage-title">Sticker storage</h2>
+            <p class="helper">Your sticker images, edits, and packs are saved together.</p>
+            <dl class="storage-location">
+                <dt>Current folder</dt>
+                <dd>@Store.Root</dd>
+            </dl>
+            <form @onsubmit="SaveFolder" @onsubmit:preventDefault>
+                <label for="folder">New save folder</label>
+                <div class="folder-input-row">
+                    <input id="folder" class="folder-input" @bind="folder" @bind:event="oninput"
+                           placeholder="Full path to an empty folder" required disabled="@saving" aria-describedby="folder-help" />
+                    <button class="button" type="button" @onclick="() => showFolderPicker = true" disabled="@saving">Browse…</button>
+                </div>
+                <p id="folder-help" class="helper">Browse for a folder or type its full path. Choose a new or empty folder that the app can write to. Saving copies your library there and uses it for future changes. The old copy stays in place as a backup.</p>
+                <button class="button primary" type="submit" disabled="@(saving || string.IsNullOrWhiteSpace(folder))">@(saving ? "Copying library…" : "Save folder")</button>
+            </form>
+            @if (storageError is not null)
+            {
+                <p class="error" role="alert">@storageError</p>
+            }
+            @if (notice is not null)
+            {
+                <p class="settings-success" role="status">@notice</p>
+            }
+        </section>
     }
-    <section class="settings-card" aria-labelledby="storage-title">
-        <h2 id="storage-title">Sticker storage</h2>
-        <p class="helper">Your sticker images, edits, and packs are saved together.</p>
-        <dl class="storage-location">
-            <dt>Current folder</dt>
-            <dd>@Store.Root</dd>
-        </dl>
-        <form @onsubmit="SaveFolder" @onsubmit:preventDefault>
-            <label for="folder">New save folder</label>
-            <div class="folder-input-row">
-                <input id="folder" class="folder-input" @bind="folder" @bind:event="oninput"
-                       placeholder="Full path to an empty folder" required disabled="@saving" aria-describedby="folder-help" />
-                <button class="button" type="button" @onclick="() => showFolderPicker = true" disabled="@saving">Browse…</button>
-            </div>
-            <p id="folder-help" class="helper">Browse for a folder or type its full path. Choose a new or empty folder that the app can write to. Saving copies your library there and uses it for future changes. The old copy stays in place as a backup.</p>
-            <button class="button primary" type="submit" disabled="@(saving || string.IsNullOrWhiteSpace(folder))">@(saving ? "Copying library…" : "Save folder")</button>
-        </form>
-        @if (storageError is not null)
-        {
-            <p class="error" role="alert">@storageError</p>
-        }
-        @if (notice is not null)
-        {
-            <p class="settings-success" role="status">@notice</p>
-        }
-    </section>
     <section class="settings-card" aria-labelledby="cloud-title">
         <h2 id="cloud-title">OneDrive &amp; Google Drive</h2>
         @if (FormFactor.GetFormFactor() == "Web")

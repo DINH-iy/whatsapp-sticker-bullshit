@@ -7,6 +7,51 @@ public sealed record MediaInfo(string MimeType, string Extension, int Width, int
 
 public static class MediaInspector
 {
+    public static byte[] AsSingleFrameAnimation(ReadOnlySpan<byte> data, int durationMs = 1000)
+    {
+        var info = Inspect(data);
+        if (info.MimeType != "image/webp" || info.Animated)
+            return data.ToArray();
+        if (durationMs < 8 || durationMs > 10_000)
+            throw new ArgumentOutOfRangeException(nameof(durationMs));
+
+        List<byte[]> frameChunks = [];
+        for (var offset = 12; offset + 8 <= data.Length;)
+        {
+            var length = BinaryPrimitives.ReadUInt32LittleEndian(data[(offset + 4)..]);
+            if (length > int.MaxValue || offset + 8L + length > data.Length)
+                throw new InvalidDataException("Invalid WebP chunk.");
+            var type = Encoding.ASCII.GetString(data.Slice(offset, 4));
+            if (type is "ALPH" or "VP8 " or "VP8L")
+            {
+                var chunkLength = checked(8 + (int)length + ((int)length & 1));
+                frameChunks.Add(data.Slice(offset, chunkLength).ToArray());
+            }
+            offset = checked(offset + 8 + (int)length + ((int)length & 1));
+        }
+        if (frameChunks.Count == 0)
+            throw new InvalidDataException("The WebP contains no image frame.");
+
+        var vp8x = new byte[10];
+        vp8x[0] = 0x12;
+        Write24(vp8x, 4, info.Width - 1);
+        Write24(vp8x, 7, info.Height - 1);
+        var frameHeader = new byte[16];
+        Write24(frameHeader, 6, info.Width - 1);
+        Write24(frameHeader, 9, info.Height - 1);
+        Write24(frameHeader, 12, durationMs);
+        frameHeader[15] = 2;
+
+        var body = Join(Chunk("VP8X", vp8x), Chunk("ANIM", new byte[6]),
+            Chunk("ANMF", Join(frameHeader, Join(frameChunks.ToArray()))));
+        using var output = new MemoryStream(8 + body.Length);
+        output.Write("RIFF"u8);
+        WriteUInt32(output, checked((uint)(body.Length + 4)));
+        output.Write("WEBP"u8);
+        output.Write(body);
+        return output.ToArray();
+    }
+
     // Inspect the bytes, not a browser-supplied MIME type or file extension.
     public static MediaInfo Inspect(ReadOnlySpan<byte> data)
     {
@@ -78,6 +123,41 @@ public static class MediaInspector
     }
 
     private static int Read24(ReadOnlySpan<byte> b) => b[0] | b[1] << 8 | b[2] << 16;
+    private static void Write24(byte[] bytes, int offset, int value)
+    {
+        bytes[offset] = (byte)value;
+        bytes[offset + 1] = (byte)(value >> 8);
+        bytes[offset + 2] = (byte)(value >> 16);
+    }
+
+    private static byte[] Chunk(string name, ReadOnlySpan<byte> body)
+    {
+        var output = new byte[8 + body.Length + (body.Length & 1)];
+        Encoding.ASCII.GetBytes(name, output);
+        BinaryPrimitives.WriteUInt32LittleEndian(output.AsSpan(4), (uint)body.Length);
+        body.CopyTo(output.AsSpan(8));
+        return output;
+    }
+
+    private static byte[] Join(params byte[][] parts)
+    {
+        var output = new byte[parts.Sum(part => part.Length)];
+        var offset = 0;
+        foreach (var part in parts)
+        {
+            part.CopyTo(output, offset);
+            offset += part.Length;
+        }
+        return output;
+    }
+
+    private static void WriteUInt32(Stream output, uint value)
+    {
+        Span<byte> bytes = stackalloc byte[4];
+        BinaryPrimitives.WriteUInt32LittleEndian(bytes, value);
+        output.Write(bytes);
+    }
+
     private static MediaInfo Check(MediaInfo info) => info.Width is > 0 and <= 16384 && info.Height is > 0 and <= 16384
         ? info : throw new InvalidDataException("Image dimensions are invalid or too large.");
 }

@@ -15,7 +15,6 @@ WhatsApp export still needs verification on a real phone. This is a local develo
 
 Rebuild the bundled GIF worker only when changing its source: run npm ci --ignore-scripts, then npm run build in tools/gif. Normal app builds use the included bundle.
 
-
 Settings: open **Settings** in the app navigation to choose Light, Dark, or the system theme. Choose Green, Blue, Purple, Rose, or Amber as the color theme. Appearance and color are remembered independently on the current device/browser and applied before the first paint when the app reopens.
 
 Sticker storage: use **Browse…** to navigate folders in a popup (and optionally create an empty folder), or type a full path in Settings. Either method fills the same field; **Save folder** applies the choice. In the browser host, the popup browses folders on the host computer. The app copies the JSON index and all media before saving the new location; the old library stays intact as a backup. The folder preference is kept in `storage-settings.json` inside the original data directory. If a custom folder is unavailable at startup, reconnect it before launching the app.
@@ -114,5 +113,6 @@ The shared navigation has browser-history Back/Forward buttons. Pack, library, G
 
 GIF editing is labeled **Edit GIF**. Timeline handles and start/end number fields use invariant decimal formatting, so a decimal duration such as 4.7 seconds is not silently replaced by the browser's midpoint under another locale. Start/end fields, timeline masks, selected duration, and saved trim use the same values. **Preview trim** regenerates the animation before saving; Reset trim restores the original range.
 
-
 Pack creation needs only a name; still and animated images can share a pack. Animation metadata is inferred from its contents. All pack tools sit in the heading, with Add to WhatsApp fixed at the bottom right. Validation lists only current problems, includes actual dimensions and size limits, and offers Prepare sticker or Edit / trim. Preparation preserves the first imported original, never crops or stretches the image, and never silently trims animation. Very detailed GIFs may need a shorter selection to fit 500 KB. The readable encoder wrapper and GIF worker source live in `StickerApp.Shared/Media`; rebuild their generated assets with `npm run build` in `tools/gif`. WebP encoding uses Apache-2.0 jSquash/libwebp, with its license included beside the bundled assets.
+
+dotnet build .\StickerApp\StickerApp.csproj -f net10.0-android -c Release -p:AndroidSdkDirectory="$env:LOCALAPPDATA\Android\Sdk"

@@ -451,7 +451,16 @@ public partial class Home
         });
     }
 
-    private Task Export() => Run(async () => { if (CurrentPack is { } p) await Exporter.ExportAsync(p, PackImages); });
+    private Task Export() => Run(async () =>
+    {
+        if (CurrentPack is { } p)
+        {
+            await Exporter.ExportAsync(p, PackImages);
+            notice = Exporter.IsAvailable
+                ? "Pack updated. Open WhatsApp’s sticker picker to use it."
+                : "Pack export is ready. Open the Android or iPhone app to add it to WhatsApp.";
+        }
+    });
     public async ValueTask DisposeAsync()
     {
         try

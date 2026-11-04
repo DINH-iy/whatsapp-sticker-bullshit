@@ -9,7 +9,13 @@
 <PageTitle>@(CurrentPack?.Name ?? "Packs") · Stickers</PageTitle>
 
 <header class="page-header">
-    <h1>@(CurrentPack?.Name ?? "All images")</h1>
+    <div class="page-title">
+        @if (CurrentPack?.CoverImage is { } cover)
+        {
+            <img class="pack-title-cover" src="@cover" alt="" />
+        }
+        <h1>@(CurrentPack?.Name ?? "All images")</h1>
+    </div>
     <div class="header-actions">
         <a class="button icon-button" href="gifs" title="Find GIFs" aria-label="Find GIFs">
             <Icon Name="search" />

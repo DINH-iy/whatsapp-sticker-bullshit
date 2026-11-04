@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.JSInterop;
 
 namespace StickerApp.Shared.Pages;
@@ -25,6 +26,7 @@ public partial class Settings
     private int developerTapCount;
     private int developerTapGeneration;
     private bool developerUnlocked;
+    private string? developerNotice;
 
     protected override void OnInitialized() => folder = Store.Root;
 
@@ -39,12 +41,24 @@ public partial class Settings
         {
             developerUnlocked = true;
             developerTapCount = 0;
+            developerNotice = "Developer settings unlocked";
+            _ = HideDeveloperNotice();
             return;
         }
 
         await Task.Delay(TimeSpan.FromSeconds(2));
         if (generation == developerTapGeneration)
             developerTapCount = 0;
+    }
+
+    private Task HandleDeveloperKey(KeyboardEventArgs args) =>
+        args.Key is "Enter" or " " ? TapDeveloperUnlock() : Task.CompletedTask;
+
+    private async Task HideDeveloperNotice()
+    {
+        await Task.Delay(TimeSpan.FromSeconds(3));
+        developerNotice = null;
+        await InvokeAsync(StateHasChanged);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
