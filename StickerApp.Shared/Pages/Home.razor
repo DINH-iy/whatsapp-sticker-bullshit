@@ -3,6 +3,7 @@
 @implements IAsyncDisposable
 @inject LibraryStore Store
 @inject IWhatsAppExporter Exporter
+@inject StickerApp.Shared.Services.IBulkImageImporter BulkImporter
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
 
@@ -25,6 +26,12 @@
             <span>Import pack</span>
             <InputFile OnChange="ImportPack" accept=".zip,.wastickers" disabled="@busy" aria-label="Import pack file" />
         </label>
+        @if (BulkImporter.IsAvailable)
+        {
+            <button class="button" type="button" @onclick="ImportFolder" disabled="@busy" title="@BulkImporter.ActionLabel">
+                <Icon Name="folder-import" /> @BulkImporter.ActionLabel
+            </button>
+        }
         @if (CurrentPack is not null)
         {
             @if (renamingPack)

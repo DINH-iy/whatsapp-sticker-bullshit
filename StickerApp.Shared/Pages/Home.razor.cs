@@ -140,6 +140,36 @@ public partial class Home
         }
     });
 
+    private Task ImportFolder() => Run(async () =>
+    {
+        var files = await BulkImporter.PickFolderAsync();
+        var packId = activePack;
+        var imported = 0;
+        var errors = new List<string>();
+        foreach (var file in files.Take(30))
+        {
+            try
+            {
+                await Store.ImportAsync(file.Name, file.Bytes, packId);
+                imported++;
+            }
+            catch (Exception ex) when (ex is IOException or InvalidDataException or InvalidOperationException)
+            {
+                errors.Add($"{file.Name}: {ex.Message}");
+            }
+        }
+
+        if (files.Count > 30)
+            errors.Insert(0, $"Only the first 30 supported images were imported; {files.Count - 30} were skipped.");
+        if (imported > 0)
+            notice = $"Imported {imported} image{(imported == 1 ? "" : "s")} from the folder.";
+        if (errors.Count > 0)
+        {
+            notice = notice is null ? string.Join(" ", errors) : $"{notice} {string.Join(" ", errors)}";
+            noticeIsError = true;
+        }
+    });
+
     private Task ImportPack(InputFileChangeEventArgs args) => Run(async () =>
     {
         busyText = "Importing pack…";

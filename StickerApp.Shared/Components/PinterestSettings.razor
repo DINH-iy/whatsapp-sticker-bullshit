@@ -1,0 +1,26 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<section class="settings-card" aria-labelledby="pinterest-settings-title">
+    <h2 id="pinterest-settings-title">Pinterest bulk import</h2>
+    <p class="helper">Connect a Pinterest OAuth backend to browse a board and import its images in bulk.</p>
+    <label for="pinterest-backend">Pinterest backend URL</label>
+    <input id="pinterest-backend" class="folder-input" @bind="backendUrl" @bind:event="oninput"
+           placeholder="https://your-domain.example.com" autocomplete="url" />
+    <p class="helper">The backend keeps the Pinterest client secret off the phone. The configured redirect is a placeholder until you have a public HTTPS domain.</p>
+    <div class="settings-actions">
+        <button class="button primary" type="button" @onclick="Save" disabled="@(!ready || string.IsNullOrWhiteSpace(backendUrl))">Save backend</button>
+        @if (ready && !string.IsNullOrWhiteSpace(backendUrl))
+        {
+            <a class="button" href="@($"{backendUrl.TrimEnd('/')}/api/pinterest/login")" target="_blank" rel="noopener noreferrer">Connect Pinterest</a>
+        }
+    </div>
+    @if (notice is not null)
+    {
+        <p class="settings-success" role="status">@notice</p>
+    }
+    @if (error is not null)
+    {
+        <p class="error" role="alert">@error</p>
+    }
+</section>

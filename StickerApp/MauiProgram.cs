@@ -21,8 +21,10 @@ public static class MauiProgram
         builder.Services.AddSingleton<IFormFactor, FormFactor>();
         builder.Services.AddSingleton(new LibraryStore(Path.Combine(FileSystem.AppDataDirectory, "library")));
 #if ANDROID
+        builder.Services.AddSingleton<IBulkImageImporter, AndroidBulkImageImporter>();
         builder.Services.AddSingleton<IWhatsAppExporter, AndroidWhatsAppExporter>();
 #elif IOS
+        builder.Services.AddSingleton<IBulkImageImporter, IosBulkImageImporter>();
         builder.Services.AddSingleton<IWhatsAppExporter, IosWhatsAppExporter>();
 #endif
         builder.Services.AddScoped<IPackFileSaver, NativePackFileSaver>();

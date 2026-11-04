@@ -19,6 +19,7 @@ builder.Services.AddRazorComponents()
 builder.Services.AddSingleton<IFormFactor, FormFactor>();
 builder.Services.AddSingleton(new LibraryStore(Path.Combine(builder.Environment.ContentRootPath, ".data")));
 builder.Services.AddSingleton<IWhatsAppExporter, BrowserWhatsAppExporter>();
+builder.Services.AddSingleton<IBulkImageImporter, BrowserBulkImageImporter>();
 builder.Services.AddScoped<IPackFileSaver, BrowserPackFileSaver>();
 builder.Services.AddScoped<PackSharingService>();
 

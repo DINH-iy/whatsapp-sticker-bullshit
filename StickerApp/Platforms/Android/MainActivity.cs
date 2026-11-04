@@ -10,8 +10,10 @@ namespace StickerApp;
 public class MainActivity : MauiAppCompatActivity
 {
     private const int AddStickerPackRequestCode = 200;
+    private const int PickFolderRequestCode = 201;
     private static MainActivity? current;
     private static TaskCompletionSource<bool>? addStickerPackResult;
+    private static TaskCompletionSource<Android.Net.Uri>? pickFolderResult;
 
     protected override void OnCreate(Bundle? savedInstanceState)
     {
@@ -44,11 +46,48 @@ public class MainActivity : MauiAppCompatActivity
         return result.Task;
     }
 
+    internal static Task<Android.Net.Uri> PickFolderAsync()
+    {
+        if (current is null)
+            throw new InvalidOperationException("The Android activity is not available.");
+        if (pickFolderResult is not null)
+            throw new InvalidOperationException("Another folder request is already in progress.");
+
+        var result = new TaskCompletionSource<Android.Net.Uri>(TaskCreationOptions.RunContinuationsAsynchronously);
+        pickFolderResult = result;
+        var intent = new Intent(Intent.ActionOpenDocumentTree);
+        intent.AddFlags(ActivityFlags.GrantReadUriPermission | ActivityFlags.GrantPersistableUriPermission);
+        try
+        {
+            current.StartActivityForResult(intent, PickFolderRequestCode);
+        }
+        catch (ActivityNotFoundException)
+        {
+            pickFolderResult = null;
+            throw new InvalidOperationException("This device cannot open a folder picker.");
+        }
+        return result.Task;
+    }
+
     protected override void OnActivityResult(int requestCode, Result resultCode, Intent? data)
     {
         base.OnActivityResult(requestCode, resultCode, data);
         if (requestCode != AddStickerPackRequestCode)
+        {
+            if (requestCode != PickFolderRequestCode)
+                return;
+            var folderResult = pickFolderResult;
+            pickFolderResult = null;
+            if (resultCode != Result.Ok || data?.Data is null)
+                folderResult?.TrySetException(new OperationCanceledException("Folder selection was cancelled."));
+            else
+            {
+                var uri = data.Data;
+                ContentResolver?.TakePersistableUriPermission(uri, ActivityFlags.GrantReadUriPermission);
+                folderResult?.TrySetResult(uri);
+            }
             return;
+        }
 
         var result = addStickerPackResult;
         addStickerPackResult = null;
