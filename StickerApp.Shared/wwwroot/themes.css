@@ -1,0 +1,123 @@
+/* Shared palette tokens. theme.js chooses data-theme and data-color before first paint. */
+
+:root {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    color-scheme: light;
+    color: var(--text);
+    background: var(--background);
+    --text: #243b32;
+    --background: #f8f9f5;
+    --surface: #fff;
+    --soft: #edf2e8;
+    --accent: #155e49;
+    --button-background: #155e49;
+    --line: #e1e6df;
+    --muted: #627068;
+    --danger: #a33e46;
+    --notice: #eaf1e4;
+    --notice-line: #cfdec3;
+    --warning: #faf5e8;
+    --warning-line: #e7d7b0;
+    --checker: #f3f4ee;
+}
+
+
+:root[data-color="blue"] {
+    --accent: #2458a8;
+    --button-background: #2458a8;
+    --text: #26374e;
+    --background: #f6f8fc;
+    --surface: #fff;
+    --soft: #eaf0fa;
+    --line: #dce3f0;
+    --muted: #5e6f87;
+    --notice: #e8effb;
+    --notice-line: #c4d5f0;
+    --checker: #edf1f8;
+}
+
+
+:root[data-color="purple"] {
+    --accent: #7043a4;
+    --button-background: #7043a4;
+    --text: #3c2c4e;
+    --background: #faf7fc;
+    --surface: #fff;
+    --soft: #f0eafa;
+    --line: #e5ddef;
+    --muted: #796786;
+    --notice: #efe8f8;
+    --notice-line: #d9c8ed;
+    --checker: #f2edf7;
+}
+
+
+:root[data-color="rose"] {
+    --accent: #a13362;
+    --button-background: #a13362;
+    --text: #4c2e3b;
+    --background: #fcf7f9;
+    --surface: #fff;
+    --soft: #f8e9ef;
+    --line: #eedce4;
+    --muted: #856674;
+    --notice: #f9e7ee;
+    --notice-line: #e9c4d3;
+    --checker: #f6edf1;
+}
+
+
+:root[data-color="amber"] {
+    --accent: #875100;
+    --button-background: #875100;
+    --text: #493a23;
+    --background: #fcf9f3;
+    --surface: #fff;
+    --soft: #f6edda;
+    --line: #eadfca;
+    --muted: #7c6c50;
+    --notice: #f6edda;
+    --notice-line: #e7d3ab;
+    --checker: #f5f0e5;
+}
+
+
+
+/* Dark surfaces stay neutral for every accent, just as light surfaces stay understated. */
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --text: #e7e9ee;
+    --background: #101114;
+    --surface: #191b20;
+    --soft: #24272e;
+    --line: #383c46;
+    --muted: #a8aebc;
+    --danger: #ff9ea5;
+    --notice: #24272e;
+    --notice-line: #444a56;
+    --warning: #302b20;
+    --warning-line: #736239;
+    --checker: #292d35;
+    --accent: #80d6af;
+    --button-background: #226448;
+}
+
+:root[data-theme="dark"][data-color="blue"] {
+    --accent: #91bcff;
+    --button-background: #2c5896;
+}
+
+:root[data-theme="dark"][data-color="purple"] {
+    --accent: #cfabff;
+    --button-background: #70449e;
+}
+
+:root[data-theme="dark"][data-color="rose"] {
+    --accent: #ffa2c4;
+    --button-background: #943659;
+}
+
+:root[data-theme="dark"][data-color="amber"] {
+    --accent: #f4c56b;
+    --button-background: #805411;
+}

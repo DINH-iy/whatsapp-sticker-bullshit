@@ -1,0 +1,19 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+@if (isVisible)
+{
+    <aside class="location-surprise" aria-labelledby="surprise-title">
+        <div class="surprise-bats" aria-hidden="true"><span>🦇</span><span>🦇</span><span>🦇</span></div>
+        <div class="surprise-content" role="status">
+            <span class="surprise-vampire" aria-hidden="true">🧛</span>
+            <div>
+                <p class="surprise-eyebrow">Romania unlocked</p>
+                <h2 id="surprise-title">Count Stickula approves.</h2>
+                <p>Your stickers have passed the Transylvania vibe check. Garlic stickers remain suspicious.</p>
+            </div>
+        </div>
+        <button class="button icon-button surprise-close" type="button" title="Dismiss surprise"
+                aria-label="Dismiss surprise" @onclick="HideSurprise"><Icon Name="close" /></button>
+    </aside>
+}

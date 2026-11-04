@@ -1,0 +1,84 @@
+@page "/settings"
+@inject LibraryStore Store
+@inject IJSRuntime JS
+@inject StickerApp.Shared.Services.IFormFactor FormFactor
+
+<PageTitle>Settings · Stickers</PageTitle>
+<header class="page-header">
+    <h1>Settings</h1>
+</header>
+<div class="settings-stack">
+    <section class="settings-card" aria-labelledby="appearance-title">
+        <h2 id="appearance-title">Appearance</h2>
+        <label for="theme">Theme</label>
+        <select id="theme" value="@theme" @onchange="ChangeTheme" disabled="@(!ready)">
+            <option value="system">Use system setting</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+        </select>
+        <p class="helper">Choose a theme, or follow your device. Your choice is saved on this device.</p>
+        <h3 class="settings-subheading">Color theme</h3>
+        <div class="color-options" role="group" aria-label="Color theme">
+            @foreach (var option in ColorOptions)
+            {
+                <button class="color-option" type="button" aria-pressed="@(color == option.Id ? "true" : "false")"
+                        disabled="@(!ready)" @onclick="() => ChangeColor(option.Id)">
+                    <span class="color-swatch" style="--swatch: @option.Swatch" aria-hidden="true"></span>
+                    @option.Label
+                </button>
+            }
+        </div>
+        <p class="helper">Your color theme is remembered when you close and reopen the app.</p>
+        @if (themeError is not null)
+        {
+            <p class="error" role="alert">@themeError</p>
+        }
+    </section>
+    <SurpriseSettings />
+    <GifSearchSettings />
+    <section class="settings-card" aria-labelledby="storage-title">
+        <h2 id="storage-title">Sticker storage</h2>
+        <p class="helper">Your sticker images, edits, and packs are saved together.</p>
+        <dl class="storage-location">
+            <dt>Current folder</dt>
+            <dd>@Store.Root</dd>
+        </dl>
+        <form @onsubmit="SaveFolder" @onsubmit:preventDefault>
+            <label for="folder">New save folder</label>
+            <div class="folder-input-row">
+                <input id="folder" class="folder-input" @bind="folder" @bind:event="oninput"
+                       placeholder="Full path to an empty folder" required disabled="@saving" aria-describedby="folder-help" />
+                <button class="button" type="button" @onclick="() => showFolderPicker = true" disabled="@saving">Browse…</button>
+            </div>
+            <p id="folder-help" class="helper">Browse for a folder or type its full path. Choose a new or empty folder that the app can write to. Saving copies your library there and uses it for future changes. The old copy stays in place as a backup.</p>
+            <button class="button primary" type="submit" disabled="@(saving || string.IsNullOrWhiteSpace(folder))">@(saving ? "Copying library…" : "Save folder")</button>
+        </form>
+        @if (storageError is not null)
+        {
+            <p class="error" role="alert">@storageError</p>
+        }
+        @if (notice is not null)
+        {
+            <p class="settings-success" role="status">@notice</p>
+        }
+    </section>
+    <section class="settings-card" aria-labelledby="cloud-title">
+        <h2 id="cloud-title">OneDrive &amp; Google Drive</h2>
+        @if (FormFactor.GetFormFactor() == "Web")
+        {
+            <p>To keep a cloud copy, choose an empty folder inside your locally synced OneDrive or Google Drive folder above.</p>
+            <p class="helper">The path is on the computer running this app, which may differ from the device with this browser. Your installed cloud app handles uploads. Keep the folder available offline, and edit the library on one computer at a time to avoid sync conflicts.</p>
+        }
+        else
+        {
+            <p>Choose a folder this app has permission to write to.</p>
+            <p class="helper">Android cloud folders cannot be selected by a file path. Connecting directly to OneDrive or Google Drive is not available yet.</p>
+        }
+        <p class="helper">This app does not sign in to cloud accounts or monitor sync status.</p>
+    </section>
+</div>
+
+@if (showFolderPicker)
+{
+    <StickerApp.Shared.Components.FolderPicker InitialFolder="@Store.Root" OnSelected="FolderSelected" OnCancel="() => showFolderPicker = false" />
+}

@@ -1,0 +1,29 @@
+<svg class="app-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+    <path d="@PathData" />
+</svg>
+
+@code {
+    [Parameter, EditorRequired] public string Name { get; set; } = "";
+
+    // Small, local SVG paths keep icons consistent without an external font or library.
+    private string PathData => Name switch
+    {
+        "folder-plus" => "M3 7V5a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7 M12 10v7 M8.5 13.5h7",
+        "image" => "M4 3h16a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1 M3 16l5-5 4 4 3-3 6 6 M8 7h.01",
+        "search" => "M21 21l-5-5 M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0",
+        "edit" => "M14 5l5 5 M3 21l5-1L21 7a2 2 0 0 0-5-5L3 15v6",
+        "trash" => "M3 6h18 M9 6V3h6v3 M5 6l1 15h12l1-15 M10 10v7 M14 10v7",
+        "copy" => "M9 9h12v12H9V9 M15 5V3H3v12h2",
+        "remove" => "M5 12h14",
+        "close" => "M6 6l12 12 M6 18L18 6",
+        "left" => "M15 5l-7 7 7 7",
+        "right" => "M9 5l7 7-7 7",
+        "rotate" => "M4 9a8 8 0 1 1 0 6 M4 3v6h6",
+        "crop" => "M6 3v15h15 M3 6h15v15",
+        "reset" => "M3 10a9 9 0 1 1 2 9 M3 4v6h6 M12 7v5l3 2",
+        "send" => "M22 2L9 15 M22 2l-8 20-5-7-7-5L22 2",
+        "check" => "M5 12l4 4L20 5",
+        _ => "M12 5v14 M5 12h14"
+    };
+}

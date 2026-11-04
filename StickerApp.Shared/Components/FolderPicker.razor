@@ -1,0 +1,45 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<dialog @ref="dialog" class="folder-dialog" aria-labelledby="folder-picker-title" @onkeydown="HandleKey">
+    <div class="folder-dialog-heading">
+        <h2 id="folder-picker-title">Choose a save folder</h2>
+        <button class="text-button" type="button" @onclick="Cancel" aria-label="Close folder picker">×</button>
+    </div>
+    <p class="helper">Browse to an empty folder, or create a new one. Your save location changes only after you click Save folder.</p>
+    <div class="folder-shortcuts">
+        <button class="button" type="button" @onclick="() => Navigate(Home)">Home</button>
+        <button class="button" type="button" @onclick="() => Navigate(InitialFolder)">Current save folder</button>
+        <button class="button" type="button" @onclick="GoUp" disabled="@(Parent is null)">Up one level</button>
+    </div>
+    <p class="folder-current" aria-live="polite">@current</p>
+    <div class="folder-list" aria-label="Folders">
+        @foreach (var entry in directories)
+        {
+            <button class="folder-entry" type="button" @onclick="() => Navigate(entry)">
+                <span aria-hidden="true">📁</span>
+                @Path.GetFileName(entry)
+                <span class="folder-chevron" aria-hidden="true">›</span>
+            </button>
+        }
+        @if (directories.Count == 0)
+        {
+            <p class="helper">No subfolders here.</p>
+        }
+    </div>
+    <form class="new-folder-form" @onsubmit="CreateFolder" @onsubmit:preventDefault>
+        <label for="new-folder-name">New folder name</label>
+        <div class="folder-input-row">
+            <input id="new-folder-name" @bind="newName" @bind:event="oninput" placeholder="e.g. Stickers" />
+            <button class="button" type="submit" disabled="@string.IsNullOrWhiteSpace(newName)">Create folder</button>
+        </div>
+    </form>
+    @if (error is not null)
+    {
+        <p class="error" role="alert">@error</p>
+    }
+    <div class="dialog-actions">
+        <button class="button" type="button" @onclick="Cancel">Cancel</button>
+        <button class="button primary" type="button" @onclick="Choose" disabled="@string.IsNullOrEmpty(current)">Use this folder</button>
+    </div>
+</dialog>

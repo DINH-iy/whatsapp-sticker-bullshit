@@ -1,0 +1,92 @@
+@page "/gifs"
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<PageTitle>GIF search · Stickers</PageTitle>
+<header class="page-header">
+    <h1>GIF search</h1>
+    <a class="provider-attribution" href="https://klipy.com/" target="_blank" rel="noopener noreferrer">Powered by KLIPY</a>
+</header>
+
+@if (!isReady)
+{
+    <p class="helper" role="status">Loading GIF search…</p>
+}
+else if (!isConfigured)
+{
+    <section class="settings-card gif-setup">
+        <h2>Connect KLIPY</h2>
+        <p>Add your KLIPY API key in Settings to search for GIFs and browse trending reactions.</p>
+        <a class="button primary" href="settings">Set up GIF search</a>
+    </section>
+}
+else
+{
+    <form class="gif-search-form" @onsubmit="StartSearch" @onsubmit:preventDefault>
+        <label class="visually-hidden" for="gif-query">Search KLIPY GIFs</label>
+        <input id="gif-query" class="search" @bind="query" @bind:event="oninput"
+               placeholder="Search for a reaction…" maxlength="200" disabled="@isLoading" />
+        <button class="button primary" type="submit" disabled="@isLoading">Search</button>
+        <button class="button" type="button" @onclick="ShowTrending" disabled="@isLoading">Trending</button>
+    </form>
+
+    <p class="helper">Preview GIFs and copy a link to share. KLIPY results stay online and are separate from your local sticker library.</p>
+    <h2 class="gif-results-heading">@(string.IsNullOrWhiteSpace(activeQuery) ? "Trending GIFs" : $"Results for “{activeQuery}”")</h2>
+
+    @if (selectedGif is not null)
+    {
+        <div class="gif-share-panel">
+            <label for="selected-gif-link">Share link · @selectedGif.Title</label>
+            <input id="selected-gif-link" class="folder-input" value="@selectedGif.ShareUrl" readonly />
+            <p class="helper" role="status">@shareNotice</p>
+        </div>
+    }
+
+    <div class="gif-grid" aria-label="KLIPY GIF results" aria-busy="@(isLoading ? "true" : "false")">
+        @foreach (var gif in results)
+        {
+            <article class="gif-card">
+                @if (!string.IsNullOrEmpty(gif.PreviewUrl))
+                {
+                    <img src="@gif.PreviewUrl" alt="@gif.Title" loading="lazy" />
+                }
+                else
+                {
+                    <div class="gif-unavailable">Preview unavailable</div>
+                }
+                <div class="gif-card-footer">
+                    <span title="@gif.Title">@gif.Title</span>
+                    <button class="text-button" type="button" @onclick="() => CopyLink(gif)"
+                            disabled="@(isCopying || string.IsNullOrEmpty(gif.ShareUrl))" aria-label="Copy link for @gif.Title">Copy link</button>
+                </div>
+            </article>
+        }
+    </div>
+
+    @if (isLoading)
+    {
+        <p class="helper" role="status">Finding GIFs…</p>
+    }
+    else if (results.Count == 0 && error is null)
+    {
+        <p class="empty-state">No GIFs found. Try another search.</p>
+    }
+
+    @if (hasNextPage)
+    {
+        <div class="gif-load-more">
+            <button class="button" type="button" @onclick="LoadMore" disabled="@isLoading">Load more GIFs</button>
+        </div>
+    }
+}
+
+@if (error is not null)
+{
+    <div class="notice" role="alert">
+        <span>@error</span>
+        @if (isConfigured)
+        {
+            <button class="button" type="button" @onclick="RetrySearch" disabled="@isLoading">Try again</button>
+        }
+    </div>
+}

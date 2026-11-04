@@ -1,0 +1,36 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<section class="settings-card" aria-labelledby="gif-settings-title">
+    <h2 id="gif-settings-title">GIF search</h2>
+    <p class="helper">Connect KLIPY to browse trending GIFs and search for reactions.</p>
+    <p class="connection-status" role="status">
+        @(isConfigured ? "KLIPY key saved on this device" : "No KLIPY key configured")
+    </p>
+
+    <form @onsubmit="SaveKey" @onsubmit:preventDefault>
+        <label for="klipy-api-key">@(isConfigured ? "Replace KLIPY API key" : "KLIPY API key")</label>
+        <input id="klipy-api-key" type="password" class="folder-input" @ref="apiKeyInput"
+               autocomplete="off" spellcheck="false" placeholder="Paste your API key" disabled="@(!isReady)" />
+        <p class="helper">
+            Get a key from the <a href="https://partner.klipy.com/" target="_blank" rel="noopener noreferrer">KLIPY Partner Panel</a>.
+            The key is saved in this device’s local storage, outside your sticker library. It is not encrypted.
+        </p>
+        <div class="settings-actions">
+            <button class="button primary" type="submit" disabled="@(!isReady)">Save API key</button>
+            @if (isConfigured)
+            {
+                <button class="button" type="button" @onclick="RemoveKey">Remove key</button>
+            }
+        </div>
+    </form>
+
+    @if (error is not null)
+    {
+        <p class="error" role="alert">@error</p>
+    }
+    @if (notice is not null)
+    {
+        <p class="settings-success" role="status">@notice</p>
+    }
+</section>
