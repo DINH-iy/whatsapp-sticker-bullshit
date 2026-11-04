@@ -6,7 +6,7 @@ let activeSearch = null;
 
 function readApiKey() {
     try {
-        return localStorage.getItem(apiKeyStorageKey) || 'Nk1FvUis53iqxpM8QMj3dLlyTFJNX1aM7JQ3aU0urtqpByB02fCQuin7QDxQsjap';
+        return localStorage.getItem(apiKeyStorageKey) || '';
     } catch {
         throw new Error('Device storage is unavailable. Enable local storage to configure GIF search.');
     }
