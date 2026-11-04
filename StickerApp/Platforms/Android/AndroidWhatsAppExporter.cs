@@ -28,7 +28,10 @@ public sealed class AndroidWhatsAppExporter(LibraryStore store) : IWhatsAppExpor
             if (info.MimeType != "image/webp") throw new InvalidOperationException("Convert all stickers to WebP first.");
             await File.WriteAllBytesAsync(Path.Combine(folder, s.FileName), bytes);
         }
-        using var image = await BitmapFactory.DecodeFileAsync(store.MediaPath(stickers[0].FileName))
+        var coverBytes = pack.CoverImage is null ? null : PackCover.ReadBytes(pack.CoverImage);
+        using var image = (coverBytes is null
+            ? await BitmapFactory.DecodeFileAsync(store.MediaPath(stickers[0].FileName))
+            : await BitmapFactory.DecodeByteArrayAsync(coverBytes, 0, coverBytes.Length))
             ?? throw new InvalidOperationException("Android could not decode the first sticker for the pack icon.");
         using var icon = Bitmap.CreateScaledBitmap(image, 96, 96, true);
         using var output = new MemoryStream();

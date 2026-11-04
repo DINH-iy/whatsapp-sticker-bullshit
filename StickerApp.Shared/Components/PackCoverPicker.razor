@@ -1,0 +1,57 @@
+@inject LibraryStore Store
+@inject IJSRuntime JS
+
+<div class="pack-cover-picker">
+    <label class="button file-button">
+        <Icon Name="image-plus" />
+        <span>@(Pack.CoverImage is null ? "Set cover" : "Change cover")</span>
+        <input type="file" accept=".jpg,.jpeg,.png,.webp" @ref="input" @onchange="Upload"
+               disabled="@working" aria-label="@($"Choose cover for {Pack.Name}")" />
+    </label>
+    @if (AllowRemove && Pack.CoverImage is not null)
+    {
+        <button class="button icon-button" type="button" @onclick="Remove" disabled="@working" title="Remove cover" aria-label="Remove cover">
+            <Icon Name="close" />
+        </button>
+    }
+</div>
+@if (error is not null)
+{
+    <p class="error" role="alert">@error</p>
+}
+
+@code {
+    [Parameter, EditorRequired] public StickerPack Pack { get; set; } = default!;
+    [Parameter] public bool AllowRemove { get; set; } = true;
+    [Parameter] public EventCallback OnChanged { get; set; }
+    private ElementReference input;
+    private bool working;
+    private string? error;
+
+    private Task Upload() => Save(async () =>
+    {
+        await using var module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/pack-cover.js");
+        var base64 = await module.InvokeAsync<string?>("prepare", input);
+        if (base64 is not null)
+            await Store.SetPackCoverAsync(Pack.Id, Convert.FromBase64String(base64));
+    });
+
+    private Task Remove() => Save(() => Store.SetPackCoverAsync(Pack.Id, null));
+
+    private async Task Save(Func<Task> action)
+    {
+        if (working) return;
+        working = true;
+        error = null;
+        try
+        {
+            await action();
+            await OnChanged.InvokeAsync();
+        }
+        catch (Exception exception) when (exception is IOException or InvalidOperationException or UnauthorizedAccessException or JSException)
+        {
+            error = exception is JSException ? "Could not read that cover. Choose a JPEG, PNG, or WebP image under 10 MB." : exception.Message;
+        }
+        finally { working = false; }
+    }
+}

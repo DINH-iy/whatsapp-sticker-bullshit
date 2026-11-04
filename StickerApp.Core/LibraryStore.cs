@@ -151,7 +151,7 @@ public sealed class LibraryStore
         File.Move(temp, Index, true);
     }
 
-    public async Task ImportAsync(string name, byte[] bytes)
+    public async Task ImportAsync(string name, byte[] bytes, Guid? packId = null)
     {
         await gate.WaitAsync();
         try
@@ -175,7 +175,23 @@ public sealed class LibraryStore
             await File.WriteAllBytesAsync(path, bytes);
             try
             {
-                await MutateInternalAsync(l => l.Stickers.Add(s));
+                // Add the image and its pack membership in the same index write.
+                // Rejected images are removed from disk by the catch below.
+                await MutateInternalAsync(l =>
+                {
+                    if (packId is { } destinationId)
+                    {
+                        var pack = l.Packs.FirstOrDefault(p => p.Id == destinationId)
+                            ?? throw new InvalidOperationException("This pack no longer exists.");
+                        if (pack.StickerIds.Count >= 30)
+                            throw new InvalidOperationException("A pack can contain at most 30 stickers.");
+                        if (pack.Animated != s.Animated)
+                            throw new InvalidOperationException($"Choose {(pack.Animated ? "animated images" : "still images")} for this pack.");
+                        pack.StickerIds.Add(s.Id);
+                        Touch(pack);
+                    }
+                    l.Stickers.Add(s);
+                });
             }
             catch
             {
@@ -189,16 +205,29 @@ public sealed class LibraryStore
         }
     }
 
-    public Task CreatePackAsync(string name, bool animated) => MutateAsync(l =>
+    public async Task<Guid> CreatePackAsync(string name, bool animated)
     {
-        if (l.Packs.Count >= 10)
-            throw new InvalidOperationException("This build supports up to 10 packs.");
-        l.Packs.Add(new()
+        var pack = new StickerPack { Name = CleanName(name), Animated = animated };
+        await MutateAsync(l =>
         {
-            Name = CleanName(name),
-            Animated = animated
+            if (l.Packs.Count >= 10)
+                throw new InvalidOperationException("This build supports up to 10 packs.");
+            l.Packs.Add(pack);
         });
-    });
+        return pack.Id;
+    }
+
+    public Task SetPackCoverAsync(Guid id, byte[]? bytes)
+    {
+        var cover = bytes is null ? null : PackCover.FromBytes(bytes);
+        return MutateAsync(library =>
+        {
+            var pack = library.Packs.FirstOrDefault(p => p.Id == id)
+                ?? throw new InvalidOperationException("This pack no longer exists.");
+            pack.CoverImage = cover;
+            Touch(pack);
+        });
+    }
 
     // Creating the pack and adding its first image share one atomic write.
     public Task CreatePackWithStickerAsync(string name, Guid stickerId) => MutateAsync(library =>
@@ -361,7 +390,7 @@ public sealed class LibraryStore
             if (library.Packs.Count >= 10)
                 throw new InvalidOperationException("This build supports up to 10 packs.");
 
-            var pack = new StickerPack { Name = imported.Name, Animated = imported.Animated };
+            var pack = new StickerPack { Name = imported.Name, Animated = imported.Animated, CoverImage = imported.CoverImage };
             var images = new List<Sticker>();
             foreach (var image in imported.Images)
             {

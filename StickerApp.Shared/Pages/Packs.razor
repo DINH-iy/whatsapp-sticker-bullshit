@@ -1,0 +1,62 @@
+@page "/"
+@inject LibraryStore Store
+@inject NavigationManager Navigation
+
+<PageTitle>Packs · Stickers</PageTitle>
+<header class="page-header">
+    <h1>Packs</h1>
+    <div class="header-actions">
+        <a class="button" href="library"><Icon Name="image" /> All images</a>
+        <label class="button file-button" title="Open a shared sticker pack ZIP file">
+            <Icon Name="folder-import" /> Import pack (.zip)
+            <InputFile OnChange="ImportPack" accept=".zip" disabled="@busy" aria-label="Import pack ZIP file" />
+        </label>
+    </div>
+</header>
+@if (error is not null)
+{
+    <p class="error" role="alert">@error</p>
+}
+@if (showCreate)
+{
+    <section class="settings-card new-pack-panel" aria-labelledby="new-pack-title">
+        <h2 id="new-pack-title">New pack</h2>
+        <form class="new-pack-form" @onsubmit="CreatePack" @onsubmit:preventDefault>
+            <label>Pack name <input @bind="name" @bind:event="oninput" maxlength="128" required disabled="@busy" /></label>
+            <label>Sticker type
+                <select @bind="type" disabled="@busy"><option value="animated">Animated</option><option value="static">Static</option></select>
+            </label>
+            <div class="settings-actions">
+                <button class="button primary" type="submit" disabled="@(busy || string.IsNullOrWhiteSpace(name))">Create pack</button>
+                <button class="button" type="button" @onclick="() => showCreate = false" disabled="@busy">Cancel</button>
+            </div>
+        </form>
+    </section>
+}
+<div class="image-grid pack-grid">
+    <AddTile Title="New pack" Hint="Start a sticker collection" Disabled="@(busy || library.Packs.Count >= 10)" OnClick="() => showCreate = true" />
+    @foreach (var pack in library.Packs)
+    {
+        <article class="image-card pack-card" @key="pack.Id">
+            <a class="pack-card-link" href="@($"packs/{pack.Id}")" aria-label="@($"Open {pack.Name}")">
+                <div class="pack-cover">
+                    @if (covers.TryGetValue(pack.Id, out var cover))
+                    {
+                        <img src="@cover" alt="" loading="lazy" />
+                    }
+                    else
+                    {
+                        <Icon Name="image" />
+                    }
+                </div>
+                <strong>@pack.Name</strong>
+                <small>@pack.StickerIds.Count @(pack.StickerIds.Count == 1 ? "sticker" : "stickers") · @(pack.Animated ? "Animated" : "Static")</small>
+            </a>
+            <PackCoverPicker Pack="@pack" OnChanged="Reload" AllowRemove="false" />
+        </article>
+    }
+</div>
+@if (library.Packs.Count >= 10)
+{
+    <p class="helper">This build supports up to 10 packs.</p>
+}

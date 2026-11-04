@@ -8,7 +8,7 @@ namespace StickerApp.Core;
 public static class PackArchive
 {
     public const long MaxArchiveBytes = 100L * 1024 * 1024;
-    private const int MaxManifestBytes = 64 * 1024;
+    private const int MaxManifestBytes = 192 * 1024;
     private const string FormatName = "sticker-studio-pack";
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true };
     private static readonly DateTimeOffset FixedTimestamp = new(1980, 1, 1, 0, 0, 0, TimeSpan.Zero);
@@ -19,6 +19,8 @@ public static class PackArchive
         public int Version { get; set; } = 1;
         public string Name { get; set; } = "";
         public bool Animated { get; set; }
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+        public string? CoverImage { get; set; }
         public List<ManifestImage> Images { get; set; } = [];
     }
 
@@ -31,7 +33,7 @@ public static class PackArchive
     }
 
     public sealed record ImportedImage(string Name, string Tags, byte[] Bytes, MediaInfo Info);
-    public sealed record ImportedPack(string Name, bool Animated, IReadOnlyList<ImportedImage> Images);
+    public sealed record ImportedPack(string Name, bool Animated, IReadOnlyList<ImportedImage> Images, string? CoverImage = null);
     public sealed record ExportInfo(string FileName, string Sha256);
 
     public static async Task<ExportInfo> WriteAsync(
@@ -42,7 +44,8 @@ public static class PackArchive
         if (images.Count > 30 || images.Count != pack.StickerIds.Count)
             throw new InvalidDataException("The pack contains too many images or references a missing image.");
 
-        var manifest = new Manifest { Name = pack.Name, Animated = pack.Animated };
+        if (pack.CoverImage is not null) PackCover.ReadBytes(pack.CoverImage);
+        var manifest = new Manifest { Name = pack.Name, Animated = pack.Animated, CoverImage = pack.CoverImage };
         long totalBytes = 0;
 
         using (var archive = new ZipArchive(destination, ZipArchiveMode.Create, leaveOpen: true))
@@ -142,7 +145,7 @@ public static class PackArchive
             images.Add(new ImportedImage(image.Name.Trim(), image.Tags.Trim(), bytes, info));
         }
 
-        return new ImportedPack(manifest.Name.Trim(), manifest.Animated, images);
+        return new ImportedPack(manifest.Name.Trim(), manifest.Animated, images, manifest.CoverImage);
     }
 
     public static string FileNameFor(string name)
@@ -159,6 +162,7 @@ public static class PackArchive
             manifest.Images is null || manifest.Images.Count > 30)
             throw new InvalidDataException("The pack name or image list is invalid.");
 
+        if (manifest.CoverImage is not null) PackCover.ReadBytes(manifest.CoverImage);
         var paths = new HashSet<string>(StringComparer.Ordinal);
         foreach (var image in manifest.Images)
         {

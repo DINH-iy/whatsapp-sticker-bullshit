@@ -121,3 +121,28 @@
     --accent: #f4c56b;
     --button-background: #805411;
 }
+
+/* Status colors describe outcomes and stay independent of the chosen accent. */
+:root {
+    --success-text: #17603c;
+    --success-background: #eaf7ef;
+    --success-border: #80bd98;
+    --error-text: #9e2937;
+    --error-background: #fff0f1;
+    --error-border: #d99099;
+    --info-text: #215a98;
+    --info-background: #edf5ff;
+    --info-border: #9abce2;
+}
+
+:root[data-theme="dark"] {
+    --success-text: #9ce5b8;
+    --success-background: #172d23;
+    --success-border: #3b7855;
+    --error-text: #ffb0b8;
+    --error-background: #351e25;
+    --error-border: #a95866;
+    --info-text: #a9ceff;
+    --info-background: #1b2a40;
+    --info-border: #486c9c;
+}

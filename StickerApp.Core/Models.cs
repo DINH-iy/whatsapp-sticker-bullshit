@@ -24,6 +24,7 @@ public sealed class StickerPack
     public bool Animated { get; set; }
     public string Version { get; set; } = Guid.NewGuid().ToString("N");
     public List<Guid> StickerIds { get; set; } = [];
+    public string? CoverImage { get; set; }
 }
 
 public sealed class StickerLibrary

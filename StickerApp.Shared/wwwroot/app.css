@@ -98,6 +98,7 @@ h2 {
 }
 
 .file-button {
+    flex-direction: row;
     position: relative;
     overflow: hidden;
     cursor: pointer;
@@ -183,8 +184,9 @@ h2 {
 
 .validation {
     font-size: 12px;
-    border: 1px solid var(--warning-line);
-    background: var(--warning);
+    border: 1px solid var(--danger);
+    background: color-mix(in srgb, var(--danger) 8%, var(--surface));
+    color: var(--danger);
     border-radius: 8px;
     padding: 12px 16px;
     line-height: 1.7;
@@ -393,7 +395,7 @@ h2 {
     display: flex;
     overflow: hidden;
     border-radius: 5px;
-    background: #dce4d8;
+    background: var(--soft);
 }
 
 .timeline-frames img {
@@ -407,7 +409,7 @@ h2 {
     position: absolute;
     top: 4px;
     bottom: 4px;
-    background: #14231dc0;
+    background: color-mix(in srgb, var(--background) 75%, transparent);
     pointer-events: none;
 }
 
@@ -458,7 +460,7 @@ h2 {
     border-radius: 4px;
     cursor: ew-resize;
     pointer-events: auto;
-    box-shadow: 0 0 2px #16372a;
+    box-shadow: 0 0 2px var(--background);
 }
 
 .trim-handle::-moz-range-track {
@@ -1084,3 +1086,200 @@ select, input:not([type="checkbox"]):not([type="range"]):not([type="file"]) {
 .pack-fingerprint { margin-top: 18px; font-size: 13px; }
 .pack-fingerprint summary { cursor: pointer; margin-bottom: 12px; }
 .pack-fingerprint code { display: block; overflow-wrap: anywhere; padding: 12px; border-radius: 8px; background: var(--soft); font-size: 12px; }
+
+/* Keep the pack's add action in the first grid cell, including empty and filtered packs. */
+.add-sticker-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 290px;
+    padding: 24px 16px;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    border: 1px dashed var(--accent);
+    border-radius: 12px;
+    background: var(--surface);
+    color: var(--accent);
+    gap: 12px;
+}
+
+.add-sticker-symbol {
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    border-radius: var(--control-radius);
+    background: var(--soft);
+}
+
+.add-sticker-symbol .app-icon {
+    width: 28px;
+    height: 28px;
+}
+
+.add-sticker-card strong {
+    font-size: 15px;
+}
+
+.add-sticker-hint {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.add-sticker-card:hover:not(:has(input:disabled)) {
+    background: var(--soft);
+}
+
+.file-button:focus-within {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+}
+
+.file-button:has(input:disabled) {
+    opacity: .55;
+    cursor: default;
+}
+
+@media (max-width: 600px) {
+    .page-header {
+        flex-wrap: wrap;
+    }
+
+    .header-actions {
+        flex-wrap: wrap;
+        justify-content: flex-start;
+    }
+}
+
+/* Pack controls keep their name and actions together instead of wrapping each control separately. */
+.pack-tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.pack-name-row {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    margin: 0;
+}
+
+.pack-name-row input {
+    min-width: 0;
+    width: 100%;
+    flex: 1 1 0;
+}
+
+.pack-title {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.pack-actions, .sticker-actions, .reorder-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sticker-actions, .reorder-actions { gap: 6px; }
+.reorder-actions { margin-left: auto; }
+.card-actions { gap: 12px; margin-top: 14px; }
+
+.validation ul { margin: 8px 0; }
+.validation a { color: inherit; text-underline-offset: 3px; }
+.faq { scroll-margin-top: 24px; }
+.faq details + details { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 12px; }
+.faq summary { cursor: pointer; font-weight: 600; line-height: 1.5; padding: 6px 0; }
+.faq p, .faq li { font-size: 13px; line-height: 1.7; }
+.faq ul { padding-left: 20px; }
+
+.pack-actions { margin-left: auto; }
+.pack-tools:has(form) .pack-name-row { flex-basis: 100%; }
+
+@media (max-width: 600px) {
+    .pack-tools { gap: 8px; }
+    .pack-name-row { flex: 0 0 auto; }
+    .pack-tools > .pack-cover-picker { margin-left: auto; }
+    .pack-actions { flex-basis: 100%; }
+    .pack-actions .primary { margin-left: auto; }
+}
+
+@media (max-width: 380px) {
+    .image-grid { grid-template-columns: minmax(0, 1fr); }
+    .pack-actions { flex-wrap: wrap; }
+    .pack-name-row { flex-wrap: wrap; }
+    .pack-name-row input { flex-basis: 100%; }
+}
+
+.notice-message { flex: 1; line-height: 1.6; }
+.notice-success, .settings-success {
+    background: var(--success-background);
+    color: var(--success-text);
+    border: 1px solid var(--success-border);
+}
+.notice-error, .error, .validation {
+    background: var(--error-background);
+    color: var(--error-text);
+    border: 1px solid var(--error-border);
+}
+.error, .status-info { padding: 12px 16px; border-radius: var(--control-radius); line-height: 1.6; }
+.status-info { background: var(--info-background); color: var(--info-text); border: 1px solid var(--info-border); }
+.page-header h1 { min-width: 0; overflow-wrap: anywhere; }
+
+.add-tile-content { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+button.add-sticker-card { width: 100%; font: inherit; cursor: pointer; }
+button.add-sticker-card:disabled { opacity: .55; cursor: default; }
+.pack-grid { align-items: stretch; }
+.pack-card { display: flex; flex-direction: column; gap: 16px; }
+.pack-card-link { display: block; color: inherit; text-decoration: none; }
+.pack-card-link:hover strong { color: var(--accent); }
+.pack-card-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 8px; }
+.pack-cover { height: 165px; display: grid; place-items: center; background: var(--soft); border-radius: 8px; overflow: hidden; margin-bottom: 14px; }
+.pack-cover img { width: 100%; height: 100%; object-fit: cover; }
+.pack-cover > .app-icon { width: 44px; height: 44px; color: var(--muted); }
+.pack-cover-picker { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.pack-card .pack-cover-picker { margin-top: auto; }
+.new-pack-panel { margin-bottom: 20px; }
+.new-pack-form { display: flex; flex-wrap: wrap; gap: 16px; align-items: end; }
+.new-pack-form > label { flex: 1; min-width: 160px; }
+.new-pack-form .settings-actions { margin: 0; }
+
+/* Links must not fall back to the browser's blue/purple visited colors. */
+a, a:visited { color: var(--accent); }
+a.button, a.button:visited { color: var(--text); text-decoration: none; }
+a.button.primary, a.button.primary:visited { color: white; }
+.app-nav a, .app-nav a:visited { color: var(--muted); }
+.app-nav a.active, .app-nav a.active:visited { color: var(--accent); }
+
+.app-navigation {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding-bottom: 16px;
+    margin-bottom: 28px;
+    border-bottom: 1px solid var(--line);
+}
+.app-navigation .app-nav { flex: 1; margin: 0; padding: 0; border: 0; }
+.history-controls { display: flex; gap: 6px; }
+
+/* Equal gaps between toolbar controls, without auto margins creating empty stretches. */
+.pack-tools { justify-content: flex-start; gap: 8px; }
+.pack-tools .pack-name-row { flex: 0 1 auto; }
+.pack-tools > .pack-cover-picker, .pack-tools .pack-actions { margin-left: 0; }
+.pack-actions { gap: 8px; }
+.trim-fields { margin-top: 12px; }
+.trim-timeline { isolation: isolate; }
+.timeline-mask, .timeline-selection { z-index: 1; }
+.trim-handle { z-index: 2; }
+.trim-handle:focus { z-index: 3; }
+
+@media(max-width: 600px) {
+    .pack-tools .pack-actions { flex-basis: auto; }
+    .pack-tools .pack-actions .primary { margin-left: 0; }
+}

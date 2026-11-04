@@ -10,12 +10,11 @@ public partial class Home
     private StickerLibrary library = new();
     private readonly Dictionary<Guid, string> previews = [];
     private readonly HashSet<Guid> selected = [];
+    [Parameter] public Guid? PackId { get; set; }
     private Guid? activePack;
     // Library filters and pack creation.
     private string search = "";
     private string destination = "";
-    private string newPackName = "";
-    private string newPackType = "animated";
     private string packName = "";
 
     // The editor keeps the source separate from its preview so Reset can restore it.
@@ -23,13 +22,14 @@ public partial class Home
     private string editPreview = "";
     private string editSource = "";
     private bool busy;
-    private bool showNewPack;
+    private bool renamingPack;
     private bool deletePack;
     private bool square;
     private bool replacementAnimated;
     private bool transformed;
     private int rotation;
     private string? notice;
+    private bool noticeIsError;
     private string? editError;
     private Sticker? editing;
     private Sticker? pendingRemoval;
@@ -68,7 +68,13 @@ public partial class Home
         : PackImages)
         .Where(sticker => sticker.Name.Contains(search, StringComparison.OrdinalIgnoreCase));
 
-    protected override Task OnInitializedAsync() => Run(() => Task.CompletedTask);
+    protected override Task OnParametersSetAsync() => Run(() =>
+    {
+        activePack = PackId;
+        selected.Clear();
+        renamingPack = false;
+        return Task.CompletedTask;
+    });
 
     private async Task Reload()
     {
@@ -85,6 +91,7 @@ public partial class Home
             return;
         busy = true;
         notice = null;
+        noticeIsError = false;
         try
         {
             await action();
@@ -93,6 +100,7 @@ public partial class Home
         catch (Exception e) when (e is IOException or InvalidDataException or InvalidOperationException or NotSupportedException or UnauthorizedAccessException or System.Text.Json.JsonException)
         {
             notice = e.Message;
+            noticeIsError = true;
         }
         finally
         {
@@ -109,17 +117,22 @@ public partial class Home
 
     private Task Import(InputFileChangeEventArgs e) => Run(async () =>
     {
+        // Capture the destination before reading files so navigation cannot change it mid-import.
+        var packId = activePack;
         List<string> errors = [];
         foreach (var file in e.GetMultipleFiles(30))
         {
             try
             {
-                await Store.ImportAsync(file.Name, await ReadFile(file));
+                await Store.ImportAsync(file.Name, await ReadFile(file), packId);
             }
             catch (Exception ex) when (ex is IOException or InvalidDataException or InvalidOperationException) { errors.Add($"{file.Name}: {ex.Message}"); }
         }
         if (errors.Count > 0)
+        {
             notice = string.Join(" ", errors);
+            noticeIsError = true;
+        }
     });
 
     private Task ImportPack(InputFileChangeEventArgs args) => Run(async () =>
@@ -132,26 +145,12 @@ public partial class Home
             var updatedLibrary = await Store.ReadAsync();
             packName = updatedLibrary.Packs.Single(pack => pack.Id == activePack).Name;
             selected.Clear();
-            notice = $"Imported “{packName}” as a new pack.";
+            Navigation.NavigateTo($"packs/{activePack}");
         }
         finally
         {
             busyText = "Processing…";
         }
-    });
-
-    private void SelectPack(ChangeEventArgs e)
-    {
-        activePack = Guid.TryParse(e.Value?.ToString(), out var id) ? id : null;
-        selected.Clear();
-        packName = CurrentPack?.Name ?? "";
-    }
-
-    private Task CreatePack() => Run(async () =>
-    {
-        await Store.CreatePackAsync(newPackName, newPackType == "animated");
-        showNewPack = false;
-        newPackName = "";
     });
 
     private async Task FinishQuickAdd(string message)
@@ -164,7 +163,17 @@ public partial class Home
         });
     }
 
-    private Task RenamePack() => Run(() => Store.RenamePackAsync(activePack!.Value, packName));
+    private void BeginRenamePack()
+    {
+        packName = CurrentPack?.Name ?? "";
+        renamingPack = true;
+    }
+
+    private Task RenamePack() => Run(async () =>
+    {
+        await Store.RenamePackAsync(activePack!.Value, packName);
+        renamingPack = false;
+    });
 
     private void Toggle(Guid id)
     {
@@ -407,6 +416,7 @@ public partial class Home
         {
             await Store.DeletePackAsync(activePack!.Value);
             activePack = null;
+            Navigation.NavigateTo("/");
         }
         else if (pendingRemoval is not null)
             await Store.DeleteStickersAsync([pendingRemoval.Id]);

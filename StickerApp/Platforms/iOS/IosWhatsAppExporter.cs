@@ -39,7 +39,7 @@ public sealed class IosWhatsAppExporter(LibraryStore store) : IWhatsAppExporter
                 name = pack.Name,
                 publisher = "Sticker Studio",
                 animated_sticker_pack = pack.Animated,
-                tray_image = Convert.ToBase64String(CreateTrayIcon(images[0])),
+                tray_image = Convert.ToBase64String(CreateTrayIcon(pack.CoverImage is null ? images[0] : PackCover.ReadBytes(pack.CoverImage))),
                 stickers = images.Select(bytes => new
                 {
                     image_data = Convert.ToBase64String(bytes),

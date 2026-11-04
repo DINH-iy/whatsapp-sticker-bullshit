@@ -1,0 +1,10 @@
+<span class="add-tile-content">
+    <span class="add-sticker-symbol"><Icon Name="plus" /></span>
+    <strong>@Title</strong>
+    <span class="add-sticker-hint">@Hint</span>
+</span>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter] public string Hint { get; set; } = "";
+}

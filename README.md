@@ -63,7 +63,7 @@ The picker lives in `Components/AddToPackDialog.razor` and its code-behind. Both
 
 Select a pack and use the share icon to open **Share pack**. **Export pack file** downloads a `.stickerpack.zip` in the browser; **Share pack file** opens the Android or iOS share sheet (including Save to Files on iPhone). The file contains the pack name, type, image order, names, tags, and current image bytes. Original pre-edit backups, theme settings, save paths, and API tokens are excluded. You can share packs before they meet WhatsApp's stricter WebP export rules.
 
-The header's upload icon is **Import pack**. Select a pack ZIP to create a new pack with new image IDs. Existing images and packs are never overwritten. Import validates the manifest, image formats, and SHA-256 checksums before committing the images and pack together. Limits are 30 images, 10 MB per image, and 100 MB per archive/unpacked contents. The existing limit of 10 packs also applies to imports.
+The header's **Import pack (.zip)** control opens a shared pack archive. Select a pack ZIP to create a new pack with new image IDs. Existing images and packs are never overwritten. Import validates the manifest, image formats, and SHA-256 checksums before committing the images and pack together. Limits are 30 images, 10 MB per image, and 100 MB per archive/unpacked contents. The existing limit of 10 packs also applies to imports.
 
 The archive is a normal ZIP with a versioned `manifest.json` and ordered `media/00.gif`, `media/01.webp`, etc. Each manifest image has a SHA-256 checksum. The whole ZIP's SHA-256 appears in the sharing dialog. Exports use fixed timestamps, so unchanged pack contents produce the same fingerprint. A hash identifies bytes; it does not contain the images, encrypt them, or authenticate their creator.
 
@@ -95,3 +95,19 @@ The shared UI, local library, appearance preferences, file import, editor, GIF s
 On iOS, keep the library inside the app sandbox. You can import pack ZIPs through the file picker and share exports to Files, AirDrop, or a cloud drive through the system share sheet. The live library is not automatically synced to iCloud, OneDrive, Google Drive, or another phone. Uninstalling the app removes local data unless you exported it first.
 
 Android builds must select their target explicitly: `dotnet build StickerApp/StickerApp.csproj -f net10.0-android`. They also need the Android SDK and JDK, which are not currently installed on this Mac. `dev.ps1 android` now selects that target; `dev.ps1 ios` builds the Apple Silicon simulator target.
+
+When viewing a pack, the first grid cell is always **Add sticker**, even when the pack is empty or a search has no matches. Click it to choose images or GIFs from the device; compatible files are imported directly into that pack in the same index write. Full packs disable the tile, and incompatible files report an error without leaving unused images in the library. **Add images** in the all-images view imports into the library. **Import pack (.zip)** creates a separate pack from an exported archive.
+
+## Pack overview and covers
+
+**Packs** opens the overview at `/`. Its first tile creates a new pack; each remaining card opens `/packs/{id}`. **All images** opens the separate library at `/library`. Pack names appear as page headings. **Rename** opens a field with explicit Save/Cancel controls. The pack dropdown has been removed.
+
+Use **Set cover** on a pack card or inside the pack. Covers are cropped to a square and resized on the device before saving. The original is not added as a sticker; the cover does not count toward the 30-sticker limit. Covers persist in the library, travel with exported pack ZIPs and share links, and supply the native WhatsApp tray icon. Without a custom cover, the overview shows the first sticker. Remove a custom cover inside the pack to return to that fallback.
+
+`Components/AddTile.razor` reuses the add-tile appearance for New pack and Add sticker. `PackCoverPicker` and `wwwroot/pack-cover.js` handle device-side cover preparation. `PackCover.cs` checks the saved/imported cover format and size.
+
+WhatsApp problems appear in red only for packs with validation errors. The full rules and usage FAQ live in **Settings → Help & FAQ**. Success messages use green, errors use red, and informational status uses blue, independently of the chosen accent and light/dark appearance.
+
+The shared navigation has browser-history Back/Forward buttons. Pack, library, GIF search, and Settings routes use that same history. Visited links retain the selected theme colors. The pack toolbar uses equal gaps and a proper WhatsApp brand silhouette from [Simple Icons (CC0)](https://github.com/simple-icons/simple-icons).
+
+GIF editing is labeled **Edit GIF**. Timeline handles and start/end number fields use invariant decimal formatting, so a decimal duration such as 4.7 seconds is not silently replaced by the browser's midpoint under another locale. Start/end fields, timeline masks, selected duration, and saved trim use the same values. **Preview trim** regenerates the animation before saving; Reset trim restores the original range.

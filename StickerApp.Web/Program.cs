@@ -34,6 +34,7 @@ if (!app.Environment.IsDevelopment())
 
 // This first build is a local development tool; bind to localhost only.
 
+app.MapStaticAssets();
 app.UseStaticFiles();
 app.UseAntiforgery();
 
