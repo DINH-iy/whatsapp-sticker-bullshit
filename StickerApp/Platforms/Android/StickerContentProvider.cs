@@ -1,4 +1,4 @@
-﻿using Android.Content;
+using Android.Content;
 using Android.Content.Res;
 using Android.Database;
 using Android.OS;
@@ -37,7 +37,7 @@ public sealed class StickerContentProvider : ContentProvider
             {
                 var p = exported.Pack;
                 var row = cursor.NewRow() ?? throw new InvalidOperationException("Cannot create cursor row.");
-                foreach (var value in new[] { p.Id.ToString("N"), p.Name, "Stickers", "tray.png", "", "", "", "", "", "", p.Version }) row.Add(new Java.Lang.String(value));
+                foreach (var value in new[] { p.Id.ToString("N"), p.Name, p.Publisher, "tray.png", "", "", "", "", "", "", p.Version }) row.Add(new Java.Lang.String(value));
                 row.Add(Java.Lang.Integer.ValueOf(0)!); row.Add(Java.Lang.Integer.ValueOf(p.Animated ? 1 : 0)!);
             }
             return cursor;
@@ -48,7 +48,7 @@ public sealed class StickerContentProvider : ContentProvider
             foreach (var s in ReadPacks(segments[1]).SelectMany(p => p.Stickers))
             {
                 var row = cursor.NewRow() ?? throw new InvalidOperationException("Cannot create cursor row.");
-                row.Add(new Java.Lang.String(s.FileName)); row.Add(new Java.Lang.String("ðŸ™‚")); row.Add(new Java.Lang.String(s.Name));
+                row.Add(new Java.Lang.String(s.FileName)); row.Add(new Java.Lang.String("\U0001F642")); row.Add(new Java.Lang.String(s.Name));
             }
             return cursor;
         }
