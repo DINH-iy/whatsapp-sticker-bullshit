@@ -22,7 +22,7 @@ public sealed class PinterestService(IHttpClientFactory clients, IOptions<Pinter
         if (string.IsNullOrWhiteSpace(settings.ClientId) || string.IsNullOrWhiteSpace(settings.RedirectUri))
             throw new InvalidOperationException("Pinterest OAuth is not configured.");
         state = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
-        var query = new Dictionary<string, string>
+        var query = new Dictionary<string, string?>
         {
             ["response_type"] = "code",
             ["client_id"] = settings.ClientId,

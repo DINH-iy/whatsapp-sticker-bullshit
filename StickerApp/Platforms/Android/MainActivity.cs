@@ -79,7 +79,7 @@ public class MainActivity : MauiAppCompatActivity
             var folderResult = pickFolderResult;
             pickFolderResult = null;
             if (resultCode != Result.Ok || data?.Data is null)
-                folderResult?.TrySetException(new OperationCanceledException("Folder selection was cancelled."));
+                folderResult?.TrySetException(new global::System.OperationCanceledException("Folder selection was cancelled."));
             else
             {
                 var uri = data.Data;
