@@ -47,11 +47,19 @@ public sealed class AndroidWhatsAppExporter(LibraryStore store) : IWhatsAppExpor
             intent.PutExtra("sticker_pack_id", pack.Id.ToString("N"));
             intent.PutExtra("sticker_pack_authority", Authority);
             intent.PutExtra("sticker_pack_name", pack.Name);
-            intent.SetPackage("com.whatsapp");
             intent.AddFlags(ActivityFlags.NewTask);
-            try { global::Android.App.Application.Context.StartActivity(intent); }
+            var context = global::Android.App.Application.Context;
+            var packageManager = context.PackageManager;
+            var target = packageManager?.GetLaunchIntentForPackage("com.whatsapp") is not null
+                ? "com.whatsapp"
+                : packageManager?.GetLaunchIntentForPackage("com.whatsapp.w4b") is not null
+                    ? "com.whatsapp.w4b"
+                    : null;
+            if (target is null)
+                throw new InvalidOperationException("Install WhatsApp or WhatsApp Business to import sticker packs.");
+            intent.SetPackage(target);
+            try { context.StartActivity(intent); }
             catch (ActivityNotFoundException) { throw new InvalidOperationException("Install or update WhatsApp to import sticker packs."); }
         });
     }
 }
-

@@ -5,7 +5,7 @@
     <label class="button file-button">
         <Icon Name="image-plus" />
         <span>@(Pack.CoverImage is null ? "Set cover" : "Change cover")</span>
-        <input type="file" accept=".jpg,.jpeg,.png,.webp" @ref="input" @onchange="Upload"
+        <input type="file" accept="image/*" @ref="input" @onchange="Upload"
                disabled="@working" aria-label="@($"Choose cover for {Pack.Name}")" />
     </label>
     @if (AllowRemove && Pack.CoverImage is not null)

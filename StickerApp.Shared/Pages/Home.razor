@@ -53,7 +53,7 @@
             <label class="button primary file-button" title="Choose images or GIFs from your device">
                 <Icon Name="image-plus" />
                 <span>Add images</span>
-                <InputFile OnChange="Import" accept=".jpg,.jpeg,.png,.gif,.webp" multiple disabled="@busy" aria-label="Add images" />
+                <InputFile OnChange="Import" accept="image/*" multiple disabled="@busy" aria-label="Add images" />
             </label>
         }
     </div>
@@ -149,7 +149,7 @@ else
         @if (CurrentPack is { } currentPack)
         {
             <AddTile Title="Add sticker" Hint="@(currentPack.StickerIds.Count >= 30 ? "Pack full · 30/30 stickers" : "Choose images or GIFs")">
-                <InputFile OnChange="Import" accept=".jpg,.jpeg,.png,.gif,.webp" multiple
+                <InputFile OnChange="Import" accept="image/*" multiple
                            disabled="@(busy || currentPack.StickerIds.Count >= 30)" aria-label="@($"Add stickers to {currentPack.Name}")" />
             </AddTile>
         }
@@ -207,7 +207,7 @@ else
                 }
                 <label class="button file-button icon-button" title="Replace image">
                     <Icon Name="image" />
-                    <InputFile OnChange="Replace" accept=".jpg,.jpeg,.png,.gif,.webp" disabled="@busy" aria-label="Replace image" />
+                    <InputFile OnChange="Replace" accept="image/*" disabled="@busy" aria-label="Replace image" />
                 </label>
             </div>
 

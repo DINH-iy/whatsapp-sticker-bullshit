@@ -22,8 +22,30 @@ public partial class Settings
     private string? themeError;
     private string? storageError;
     private string? notice;
+    private int developerTapCount;
+    private int developerTapGeneration;
+    private bool developerUnlocked;
 
     protected override void OnInitialized() => folder = Store.Root;
+
+    private async Task TapDeveloperUnlock()
+    {
+        if (developerUnlocked)
+            return;
+
+        var generation = ++developerTapGeneration;
+        developerTapCount++;
+        if (developerTapCount == 5)
+        {
+            developerUnlocked = true;
+            developerTapCount = 0;
+            return;
+        }
+
+        await Task.Delay(TimeSpan.FromSeconds(2));
+        if (generation == developerTapGeneration)
+            developerTapCount = 0;
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

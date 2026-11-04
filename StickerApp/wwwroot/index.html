@@ -15,12 +15,20 @@
 
     <div class="status-bar-safe-area"></div>
 
-    <div id="app">Loading...</div>
+    <div id="app">
+        <div class="startup-screen" role="status" aria-label="Loading Sticker Studio">
+            <div class="startup-mark" aria-hidden="true">
+                <span></span>
+                <span></span>
+            </div>
+            <strong>Sticker Studio</strong>
+            <span class="startup-status">Getting things ready…</span>
+        </div>
+    </div>
 
     <script src="_framework/blazor.webview.js" autostart="false"></script>
 
 </body>
 
 </html>
-
 

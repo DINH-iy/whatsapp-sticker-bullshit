@@ -5,7 +5,9 @@
 
 <PageTitle>Settings · Stickers</PageTitle>
 <header class="page-header">
-    <h1>Settings</h1>
+    <h1><button class="text-button developer-trigger" type="button"
+                aria-label="Settings. Tap five times for developer settings."
+                title="Settings" @onclick="TapDeveloperUnlock">Settings</button></h1>
 </header>
 <div class="settings-stack">
     <section class="settings-card" aria-labelledby="appearance-title">
@@ -63,8 +65,15 @@
         </details>
     </section>
     <SurpriseSettings />
-    <GifSearchSettings />
-    <PackSharingSettings />
+    @if (developerUnlocked)
+    {
+        <section class="settings-card" aria-labelledby="developer-settings-title">
+            <h2 id="developer-settings-title">Developer settings</h2>
+            <p class="helper">Advanced integrations and credentials are stored only on this device.</p>
+        </section>
+        <GifSearchSettings />
+        <PackSharingSettings />
+    }
     <section class="settings-card" aria-labelledby="storage-title">
         <h2 id="storage-title">Sticker storage</h2>
         <p class="helper">Your sticker images, edits, and packs are saved together.</p>
