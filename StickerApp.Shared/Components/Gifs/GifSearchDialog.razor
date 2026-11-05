@@ -1,0 +1,30 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<dialog @ref="dialog" class="folder-dialog gif-search-dialog" aria-labelledby="gif-dialog-title" @onkeydown="HandleKey">
+    <div class="folder-dialog-heading">
+        <h2 id="gif-dialog-title">Find a GIF</h2>
+        <button class="button icon-button" type="button" aria-label="Close GIF search" @onclick="Close"><Icon Name="close" /></button>
+    </div>
+    <StickerApp.Shared.Pages.Gifs.GifSearch Embedded="true" />
+</dialog>
+
+@code {
+    [Parameter] public EventCallback OnClose { get; set; }
+    private ElementReference dialog;
+    private IJSObjectReference? helper;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        helper = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/dialog.js");
+        await helper.InvokeVoidAsync("open", dialog);
+    }
+    private Task Close() => OnClose.InvokeAsync();
+    private Task HandleKey(KeyboardEventArgs args) => args.Key == "Escape" ? Close() : Task.CompletedTask;
+    public async ValueTask DisposeAsync()
+    {
+        if (helper is null) return;
+        try { await helper.DisposeAsync(); }
+        catch (JSDisconnectedException) { }
+    }
+}

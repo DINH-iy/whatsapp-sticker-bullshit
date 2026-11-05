@@ -1,0 +1,61 @@
+@inject AppLog Log
+@inject LibraryStore Store
+@inject IJSRuntime JS
+
+<div class="pack-cover-picker @(MenuStyle ? "pack-cover-menu" : "")">
+    <label class="@(MenuStyle ? "toolbar-menu-option file-button" : "button file-button")">
+        <Icon Name="image-plus" />
+        <span>@(Pack.CoverImage is null ? "Set cover" : "Change cover")@if (MenuStyle) { <small>Choose the picture shown on this pack.</small> }</span>
+        <input type="file" accept="image/*" @ref="input" @onchange="Upload"
+               disabled="@working" aria-label="@($"Choose cover for {Pack.Name}")" />
+    </label>
+    @if (AllowRemove && Pack.CoverImage is not null)
+    {
+        <button class="@(MenuStyle ? "toolbar-menu-option" : "button icon-button")" type="button" @onclick="Remove" disabled="@working" title="Remove cover" aria-label="Remove cover">
+            <Icon Name="close" />
+            @if (MenuStyle) { <span>Remove cover<small>Use the first sticker as the cover.</small></span> }
+        </button>
+    }
+</div>
+@if (error is not null)
+{
+    <p class="error" role="alert">@error</p>
+}
+
+@code {
+    [Parameter, EditorRequired] public StickerPack Pack { get; set; } = default!;
+    [Parameter] public bool AllowRemove { get; set; } = true;
+    [Parameter] public bool MenuStyle { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+    private ElementReference input;
+    private bool working;
+    private string? error;
+
+    private Task Upload() => Save(async () =>
+    {
+        await using var module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/pack-cover.js");
+        var base64 = await module.InvokeAsync<string?>("prepare", input);
+        if (base64 is not null)
+            await Store.SetPackCoverAsync(Pack.Id, Convert.FromBase64String(base64));
+    });
+
+    private Task Remove() => Save(() => Store.SetPackCoverAsync(Pack.Id, null));
+
+    private async Task Save(Func<Task> action)
+    {
+        if (working) return;
+        working = true;
+        error = null;
+        try
+        {
+            await action();
+            await OnChanged.InvokeAsync();
+        }
+        catch (Exception exception) when (exception is IOException or InvalidOperationException or UnauthorizedAccessException or JSException)
+        {
+            Log.Error("Pack cover", exception);
+            error = exception is JSException ? "Could not read that cover. Choose a JPEG, PNG, or WebP image under 10 MB." : exception.Message;
+        }
+        finally { working = false; }
+    }
+}

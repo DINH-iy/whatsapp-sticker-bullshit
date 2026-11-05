@@ -2,7 +2,8 @@ const path = require('node:path');
 const fs = require('node:fs');
 const esbuild = require('esbuild');
 const media = path.join(__dirname, '../../StickerApp.Shared/Media');
-const output = path.join(__dirname, '../../StickerApp.Shared/wwwroot');
+const output = path.join(__dirname, '../../StickerApp.Shared/wwwroot/js/media');
+fs.mkdirSync(output, { recursive: true });
 const options = {
     nodePaths: [path.join(__dirname, 'node_modules')],
     bundle: true, format: 'esm', platform: 'browser', target: 'es2020',

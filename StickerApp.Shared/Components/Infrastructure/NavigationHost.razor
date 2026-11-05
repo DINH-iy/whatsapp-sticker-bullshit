@@ -1,0 +1,14 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@code {
+    private IJSObjectReference? module;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/navigation.js");
+    }
+    public async ValueTask DisposeAsync()
+    {
+        try { if (module is not null) await module.DisposeAsync(); }
+        catch (JSDisconnectedException) { }
+    }
+}

@@ -57,7 +57,7 @@ Configure `http://localhost:5142` and that token in the app. HTTP is accepted on
 
 ## Source and references
 
-The service is in `StickerApp.ShareServer`. `PackRepository.cs` validates and stores ZIP files; `PackLandingPage.cs` renders the download page; `Program.cs` defines the authenticated upload/delete API and public download routes. ZIP validation and the manifest format live in `StickerApp.Core/PackArchive.cs` and are shared with the app.
+The service is in `StickerApp.ShareServer`. `PackRepository.cs` validates and stores ZIP files; `PackLandingPage.cs` renders the download page; `Program.cs` defines the authenticated upload/delete API and public download routes. ZIP validation and the manifest format live in `StickerApp.Core/Packs/PackArchive.cs` and are shared with the app.
 
 - [.NET deployment on Raspberry Pi and ARM boards](https://learn.microsoft.com/en-us/dotnet/iot/deployment)
 - [Docker Engine installation](https://docs.docker.com/engine/install/)

@@ -1,0 +1,130 @@
+@page "/settings"
+@implements IDisposable
+@inject LibraryStore Store
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+@inject AppLog Log
+@inject StickerApp.Shared.Services.IFormFactor FormFactor
+
+<PageTitle>Settings · Stick it</PageTitle>
+<header class="page-header"><h1>Settings</h1></header>
+<div class="settings-tabs" role="tablist" aria-label="Settings categories" @onkeydown="HandleTabKey">
+    <button type="button" role="tab" id="general-settings-tab" aria-controls="general-settings-panel"
+            aria-selected="@(selectedTab == "general" ? "true" : "false")" tabindex="@(selectedTab == "general" ? 0 : -1)"
+            @ref="generalTab" @onclick='() => SelectTab("general")'>General</button>
+    <button type="button" role="tab" id="developer-settings-tab" aria-controls="developer-settings-panel"
+            aria-selected="@(selectedTab == "developer" ? "true" : "false")" tabindex="@(selectedTab == "developer" ? 0 : -1)"
+            @ref="developerTab" @onclick='() => SelectTab("developer")'>Developer</button>
+</div>
+<section role="tabpanel" id="general-settings-panel" aria-labelledby="general-settings-tab" hidden="@(selectedTab != "general")" tabindex="0">
+<div class="settings-stack">
+    @if (FormFactor.GetFormFactor() == "Web") { <WebAppSettings /> }
+    <section class="settings-card" aria-labelledby="appearance-title">
+        <h2 id="appearance-title">Appearance</h2>
+        <label for="theme">Theme</label>
+        <select id="theme" value="@theme" @onchange="ChangeTheme" disabled="@(!ready)">
+            <option value="system">Use system setting</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+        </select>
+        <p class="helper">Choose a theme, or follow your device. Your choice is saved on this device.</p>
+        <h3 class="settings-subheading">Color theme</h3>
+        <div class="color-options" role="group" aria-label="Color theme">
+            @foreach (var option in ColorOptions)
+            {
+                <button class="color-option" type="button" aria-pressed="@(color == option.Id ? "true" : "false")"
+                        disabled="@(!ready)" @onclick="() => ChangeColor(option.Id)">
+                    <span class="color-swatch" style="--swatch: @option.Swatch" aria-hidden="true"></span>
+                    @option.Label
+                </button>
+            }
+        </div>
+        <p class="helper">Your color theme is remembered when you close and reopen the app.</p>
+        @if (themeError is not null)
+        {
+            <p class="error" role="alert">@themeError</p>
+        }
+    </section>
+    <section class="settings-card faq" id="faq" aria-labelledby="faq-title">
+        <h2 id="faq-title">Help &amp; FAQ</h2>
+        <details>
+            <summary>What does a pack need for WhatsApp?</summary>
+            <ul>
+                <li>A name of 1–128 characters and 3–30 different stickers.</li>
+                <li>Each sticker must be a 512 × 512 pixel WebP image.</li>
+                <li>You can mix still images and GIFs in the same pack. Still pictures keep their appearance in the app. The .wastickers export stores every sticker as animated WebP; still pictures use two identical frames, so they stay visually still.</li>
+                <li>Still stickers: up to 100 KB each. Animated stickers: up to 500 KB each.</li>
+                <li>Animations: at most 10 seconds, with frames lasting at least 8 milliseconds.</li>
+            </ul>
+            <p>The pack view shows only the rules your pack currently breaks. Add to WhatsApp is available in the Android and iPhone apps; the browser preview cannot send packs to WhatsApp.</p>
+        </details>
+        <details>
+            <summary>Can I add GIFs and other images?</summary>
+            <p>Yes. Add images imports JPEG, PNG, GIF, and WebP files into your library. The Add sticker tile inside a pack imports images straight into that pack. Open Packs to see all your collections, create one with the New pack tile, or choose its cover. You can store and share these files before they meet WhatsApp's requirements.</p>
+            <p>Images and GIFs are prepared automatically in the background: converted to WebP, fitted into 512 × 512 pixels without stretching, and compressed. Originals are kept. Open a sticker’s info button to see its details and status. GIFs longer than 10 seconds or too large to compress need a shorter selection in Edit; preparation resumes after you save. Animated WebP resizing requires its original GIF.</p>
+        </details>
+        <details>
+            <summary>How do I import, export, or share a pack?</summary>
+            <p>Import pack opens .wastickers files or editable ZIP backups and creates a new pack. Use Share to export .wastickers for other sticker makers, or an editable ZIP to preserve original GIFs and metadata. Both formats support sharing links after configuring your server. On phones, exporting opens the system share sheet.</p>
+            <p>A pack ZIP includes its images. A fingerprint identifies the file; it does not store or encrypt it. Anyone with a sharing link can download that pack.</p>
+        </details>
+        <details>
+            <summary>Do my phones sync automatically?</summary>
+            <p>Each device keeps its own library and appearance settings. Use pack files or sharing links to move packs between devices. Direct OneDrive, Google Drive, and iCloud library sync is not available.</p>
+        </details>
+    </section>
+</div>
+</section>
+<section role="tabpanel" id="developer-settings-panel" aria-labelledby="developer-settings-tab" hidden="@(selectedTab != "developer")" tabindex="0">
+<div class="settings-stack">
+    <DiagnosticsSettings />
+    <GifSearchSettings />
+    <PackSharingSettings />
+        <section class="settings-card" id="storage" aria-labelledby="storage-title">
+            <h2 id="storage-title">Sticker storage</h2>
+            <p class="helper">Your sticker images, edits, and packs are saved together.</p>
+            <dl class="storage-location">
+                <dt>Current folder</dt>
+                <dd>@Store.Root</dd>
+            </dl>
+            <form @onsubmit="SaveFolder" @onsubmit:preventDefault>
+                <label for="folder">New save folder</label>
+                <div class="folder-input-row">
+                    <input id="folder" class="folder-input" @bind="folder" @bind:event="oninput"
+                           placeholder="Full path to an empty folder" required disabled="@saving" aria-describedby="folder-help" />
+                    <button class="button" type="button" @onclick="() => showFolderPicker = true" disabled="@saving">Browse…</button>
+                </div>
+                <p id="folder-help" class="helper">Browse for a folder or type its full path. Choose a new or empty folder that the app can write to. Saving copies your library there and uses it for future changes. The old copy stays in place as a backup.</p>
+                <button class="button primary" type="submit" disabled="@(saving || string.IsNullOrWhiteSpace(folder))">@(saving ? "Copying library…" : "Save folder")</button>
+            </form>
+            @if (storageError is not null)
+            {
+                <p class="error" role="alert">@storageError</p>
+            }
+            @if (notice is not null)
+            {
+                <p class="settings-success" role="status">@notice</p>
+            }
+        </section>
+    <section class="settings-card" id="cloud" aria-labelledby="cloud-title">
+        <h2 id="cloud-title">OneDrive &amp; Google Drive</h2>
+        @if (FormFactor.GetFormFactor() == "Web")
+        {
+            <p>To keep a cloud copy, choose an empty folder inside your locally synced OneDrive or Google Drive folder above.</p>
+            <p class="helper">The path is on the computer running this app, which may differ from the device with this browser. Your installed cloud app handles uploads. Keep the folder available offline, and edit the library on one computer at a time to avoid sync conflicts.</p>
+        }
+        else
+        {
+            <p>Choose a folder this app has permission to write to.</p>
+            <p class="helper">On phones, the library stays in folders the app can access. Cloud-provider folders cannot be selected by a file path. Connecting directly to OneDrive or Google Drive is not available yet.</p>
+        }
+        <p class="helper">This app does not sign in to cloud accounts or monitor sync status.</p>
+    </section>
+    <SurpriseSettings />
+</div>
+</section>
+
+@if (showFolderPicker)
+{
+    <StickerApp.Shared.Components.Settings.FolderPicker InitialFolder="@Store.Root" OnSelected="FolderSelected" OnCancel="() => showFolderPicker = false" />
+}
