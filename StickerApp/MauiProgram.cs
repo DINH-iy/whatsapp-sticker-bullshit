@@ -17,6 +17,15 @@ public static class MauiProgram
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
             });
 
+        var diagnostics = new AppLog(Path.Combine(FileSystem.AppDataDirectory, "logs"));
+        builder.Services.AddSingleton(diagnostics);
+        builder.Logging.AddProvider(new AppLogProvider(diagnostics));
+        diagnostics.Info("App startup", $"Stick it {AppInfo.Current.VersionString} ({AppInfo.Current.BuildString}); {DeviceInfo.Current.Platform}; OS {DeviceInfo.Current.VersionString}; .NET {Environment.Version}");
+        AppDomain.CurrentDomain.UnhandledException += (_, args) => {
+            if (args.ExceptionObject is Exception exception) diagnostics.Error("Unhandled application exception", exception);
+        };
+        TaskScheduler.UnobservedTaskException += (_, args) => diagnostics.Error("Unobserved background task exception", args.Exception);
+
         // Add device-specific services used by the StickerApp.Shared project
         builder.Services.AddSingleton<IFormFactor, FormFactor>();
         builder.Services.AddSingleton(new LibraryStore(Path.Combine(FileSystem.AppDataDirectory, "library")));
@@ -24,6 +33,8 @@ public static class MauiProgram
         builder.Services.AddSingleton<IBulkImageImporter, AndroidBulkImageImporter>();
         builder.Services.AddSingleton<IWhatsAppExporter, AndroidWhatsAppExporter>();
 #elif IOS
+        builder.ConfigureMauiHandlers(handlers => handlers.AddHandler<MainPage, ThemedPageHandler>());
+        builder.Services.AddSingleton<INativeAppearance, IosNativeAppearance>();
         builder.Services.AddSingleton<IBulkImageImporter, IosBulkImageImporter>();
         builder.Services.AddSingleton<IWhatsAppExporter, IosWhatsAppExporter>();
 #endif

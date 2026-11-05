@@ -6,7 +6,7 @@ public sealed class NativePackFileSaver : IPackFileSaver
 {
     public string ActionLabel => "Share pack file";
 
-    public async Task SaveAsync(string fileName, Stream content)
+    public async Task SaveAsync(string fileName, Stream content, string contentType = "application/zip")
     {
         var sharingRoot = Path.Combine(FileSystem.CacheDirectory, "sharing-root");
         Directory.CreateDirectory(sharingRoot);
@@ -30,8 +30,8 @@ public sealed class NativePackFileSaver : IPackFileSaver
 
         await MainThread.InvokeOnMainThreadAsync(() => Share.Default.RequestAsync(new ShareFileRequest
         {
-            Title = "Share sticker pack",
-            File = new ShareFile(file, "application/zip")
+            Title = contentType == "text/plain" ? "Share diagnostic log" : "Share sticker pack",
+            File = new ShareFile(file, contentType)
         }));
     }
 }

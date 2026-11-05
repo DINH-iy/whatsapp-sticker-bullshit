@@ -9,6 +9,8 @@ function reset(message) {
     pending.clear();
 }
 function request(action, source, start, end) {
+    if (typeof OffscreenCanvas === 'undefined')
+        return import('./gif-engine.js').then(engine => engine.process({ action, source, start, end }));
     if (!worker) {
         worker = new Worker(new URL('./gif-worker.js', import.meta.url), { type: 'module' });
         worker.onmessage = ({ data }) => {

@@ -43,9 +43,9 @@ export function clearSettings() {
     localStorage.removeItem(settingsKey);
 }
 
-export async function download(fileName, streamReference) {
+export async function download(fileName, streamReference, contentType = "application/zip") {
     const bytes = await streamReference.arrayBuffer();
-    const blob = new Blob([bytes], { type: 'application/zip' });
+    const blob = new Blob([bytes], { type: contentType });
     const objectUrl = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = objectUrl;

@@ -1,3 +1,4 @@
+@inject AppLog Log
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 
@@ -71,7 +72,7 @@
             var size = await controller.InvokeAsync<ImageSize>("open", Source);
             width = size.Width; height = size.Height; ratio = width / (double)height;
         }
-        catch (JSException) { error = "Could not open this image for editing."; }
+        catch (JSException exception) { Log.Error("Open image editor", exception); error = "Could not open this image for editing."; }
         finally { working = false; await OnBusyChanged.InvokeAsync(false); StateHasChanged(); }
     }
     private sealed class ImageSize { public int Width { get; set; } public int Height { get; set; } }
@@ -92,7 +93,7 @@
         working = true; error = null;
         await OnBusyChanged.InvokeAsync(true);
         try { await controller.InvokeVoidAsync(method, args); }
-        catch (JSException exception) { error = exception.Message.Split('\n')[0]; }
+        catch (JSException exception) { Log.Error("Image customization", exception); error = exception.Message.Split('\n')[0]; }
         finally { working = false; await OnBusyChanged.InvokeAsync(false); }
     }
     public async ValueTask DisposeAsync()

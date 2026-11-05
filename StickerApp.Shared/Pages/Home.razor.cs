@@ -71,6 +71,7 @@ public partial class Home
             .OfType<Sticker>()
             .ToList()
         : [];
+    private string? PackHeaderCover => CurrentPack?.CoverImage ?? (PackImages.FirstOrDefault() is { } first && previews.TryGetValue(first.Id, out var preview) ? preview : null);
     private IReadOnlyList<PackRules.Issue> Issues => CurrentPack is { } p ? PackRules.Inspect(p, PackImages) : [];
     private IReadOnlyList<string> Validation => CurrentPack is { } p ? PackRules.Validate(p, PackImages) : [];
     private IEnumerable<Sticker> Visible => (activePack is null
@@ -121,21 +122,24 @@ public partial class Home
         selected.IntersectWith(library.Stickers.Select(s => s.Id));
     }
 
-    private async Task Run(Func<Task> action)
+    private async Task Run(Func<Task> action, [System.Runtime.CompilerServices.CallerMemberName] string operation = "Sticker action")
     {
         if (busy)
             return;
         busy = true;
+        Log.Info(operation, "Started.");
         notice = null;
         noticeIsError = false;
         try
         {
             await action();
             await Reload();
+            Log.Info(operation, "Completed.");
         }
         catch (Exception e) when (e is IOException or InvalidDataException or InvalidOperationException or NotSupportedException or JSException or UnauthorizedAccessException or System.Text.Json.JsonException)
         {
-            notice = e is JSException ? e.Message.Split('\n')[0] : e.Message;
+            var reference = Log.Error(operation, e);
+            notice = (e is JSException ? e.Message.Split('\n')[0] : e.Message) + $" Reference: {reference}.";
             noticeIsError = true;
         }
         finally
@@ -167,7 +171,7 @@ public partial class Home
             {
                 await Store.ImportAsync(file.Name, await ReadFile(file), packId);
             }
-            catch (Exception ex) when (ex is IOException or InvalidDataException or InvalidOperationException) { errors.Add($"{file.Name}: {ex.Message}"); }
+            catch (Exception ex) when (ex is IOException or InvalidDataException or InvalidOperationException) { Log.Error("Image import", ex); errors.Add($"{file.Name}: {ex.Message}"); }
         }
         if (errors.Count > 0)
         {
@@ -191,6 +195,7 @@ public partial class Home
             }
             catch (Exception ex) when (ex is IOException or InvalidDataException or InvalidOperationException)
             {
+                Log.Error("Folder import", ex);
                 errors.Add($"{file.Name}: {ex.Message}");
             }
         }
@@ -307,8 +312,9 @@ public partial class Home
             {
                 await InspectGif();
             }
-            catch (JSException)
+            catch (JSException exception)
             {
+                Log.Error("GIF inspection", exception);
                 editError = "Could not read this GIF, or it is too large to edit.";
             }
             finally
@@ -340,6 +346,7 @@ public partial class Home
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or InvalidOperationException or JSException)
         {
+            Log.Error("Image editing", ex);
             editError = ex is JSException ? "Could not read this GIF, or it is too large to edit." : ex.Message;
         }
         finally
@@ -414,6 +421,7 @@ public partial class Home
         }
         catch (Exception ex) when (ex is JSException or InvalidOperationException)
         {
+            Log.Error("Image editing", ex);
             editError = ex is JSException ? "Could not trim this GIF. Try a shorter selection or a smaller GIF." : ex.Message;
         }
         finally
@@ -448,6 +456,7 @@ public partial class Home
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or InvalidOperationException or JSException)
         {
+            Log.Error("Image editing", ex);
             editError = ex is JSException ? "Could not trim this GIF. Try a shorter selection or a smaller GIF." : ex.Message;
         }
         finally

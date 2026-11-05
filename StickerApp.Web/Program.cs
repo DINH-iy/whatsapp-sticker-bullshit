@@ -7,6 +7,12 @@ using Microsoft.AspNetCore.DataProtection;
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
+var diagnostics = new AppLog(Path.Combine(builder.Environment.ContentRootPath, ".data", "logs"));
+builder.Services.AddSingleton(diagnostics);
+builder.Logging.AddProvider(new AppLogProvider(diagnostics));
+AppDomain.CurrentDomain.UnhandledException += (_, args) => { if (args.ExceptionObject is Exception exception) diagnostics.Error("Unhandled application exception", exception); };
+TaskScheduler.UnobservedTaskException += (_, args) => diagnostics.Error("Unobserved background task exception", args.Exception);
+diagnostics.Info("Web app startup", $"Stick it browser host; .NET {Environment.Version}");
 if (builder.Environment.IsDevelopment())
     builder.Services.AddDataProtection().UseEphemeralDataProtectionProvider();
 

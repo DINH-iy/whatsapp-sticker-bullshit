@@ -12,6 +12,8 @@ export function cancel() {
 export function prepare(source, animated) {
     if (animated && !source.startsWith('data:image/gif;'))
         return Promise.reject(new Error('This animated WebP needs its original GIF to resize or compress it. Open Edit and replace it with that GIF.'));
+    if (animated && typeof OffscreenCanvas === 'undefined')
+        return import('./gif-engine.js').then(engine => engine.process({ action: 'prepare', source }));
     if (!animated && (typeof OffscreenCanvas === 'undefined' || typeof createImageBitmap === 'undefined'))
         return prepareOnMain(source, false);
     return new Promise((resolve, reject) => {

@@ -1,3 +1,4 @@
+@inject AppLog Log
 @page "/library"
 @page "/packs/{PackId:guid}"
 @implements IAsyncDisposable
@@ -12,9 +13,13 @@
 
 <header class="page-header">
     <div class="page-title">
-        @if (CurrentPack?.CoverImage is { } cover)
+        @if (PackHeaderCover is { } cover)
         {
-            <img class="pack-title-cover" src="@cover" alt="" />
+            <img class="pack-title-cover" src="@cover" alt="Pack cover" />
+        }
+        else if (CurrentPack is not null)
+        {
+            <span class="pack-title-cover pack-title-placeholder"><Icon Name="image" /></span>
         }
         <h1>@(CurrentPack?.Name ?? "All images")</h1>
     </div>
@@ -94,10 +99,18 @@
 
 @if (CurrentPack is not null)
 {
-    <button class="button primary floating-whatsapp" title="@(Exporter.IsAvailable ? "Add this pack to WhatsApp" : "Open the Android or iPhone app to add packs to WhatsApp")"
-            @onclick="Export" disabled="@(busy || !Exporter.IsAvailable || Validation.Count > 0)">
-        <Icon Name="whatsapp" /> Add to WhatsApp
-    </button>
+    @if (Exporter.IsAvailable)
+    {
+        <button class="button primary floating-whatsapp" title="Add this pack to WhatsApp" @onclick="Export" disabled="@(busy || Validation.Count > 0)">
+            <Icon Name="whatsapp" /> Add to WhatsApp
+        </button>
+    }
+    else
+    {
+        <button class="button primary floating-whatsapp" title="Export a sticker pack file. Direct WhatsApp handoff needs a native app." @onclick="() => packToShare = CurrentPack" disabled="@busy">
+            <Icon Name="download" /> Export pack
+        </button>
+    }
     @if (Issues.Any(issue => issue.StickerId is null))
     {
         <details class="validation" open>

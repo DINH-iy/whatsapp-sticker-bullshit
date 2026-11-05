@@ -1,3 +1,4 @@
+@inject AppLog Log
 @implements IAsyncDisposable
 @inject StickerApp.Shared.Services.PackSharingService Sharing
 @inject IJSRuntime JS
@@ -38,7 +39,7 @@
     }
     else if (isReady)
     {
-        <p class="helper">To create links, add your sharing server in <a href="settings">Settings → Pack sharing</a>.</p>
+        <p class="helper">To create links, add your sharing server in <a href="settings?tab=developer#pack-sharing">Settings → Developer → Pack sharing</a>.</p>
     }
 
     @if (isWorking)

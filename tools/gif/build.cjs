@@ -17,6 +17,10 @@ fs.copyFileSync(path.join(__dirname, 'node_modules/@jsquash/webp/LICENSE'),
 fs.copyFileSync(path.join(__dirname, 'node_modules/@jsquash/webp/codec/enc/webp_enc.wasm'),
     path.join(output, 'webp_enc.wasm'));
 esbuild.buildSync({
+    ...options, entryPoints: [path.join(media, 'gif-engine.js')],
+    outfile: path.join(output, 'gif-engine.js'), external: ['./sticker-converter.js']
+});
+esbuild.buildSync({
     ...options, entryPoints: [path.join(media, 'gif-worker.js')],
-    outfile: path.join(output, 'gif-worker.js'), external: ['./webp-encoder.js']
+    outfile: path.join(output, 'gif-worker.js'), external: ['./gif-engine.js']
 });

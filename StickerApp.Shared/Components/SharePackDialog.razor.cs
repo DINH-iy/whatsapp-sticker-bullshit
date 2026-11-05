@@ -37,8 +37,9 @@ public partial class SharePackDialog
             canPublish = settings.HasToken;
             isReady = true;
         }
-        catch (JSException)
+        catch (JSException exception)
         {
+            Log.Error("Load pack sharing", exception);
             error = "Sharing could not be loaded. Reload the app to try again.";
         }
         StateHasChanged();
@@ -60,7 +61,9 @@ public partial class SharePackDialog
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidOperationException or JSException or OperationCanceledException)
         {
+            var reference = Log.Error("Pack share/export", exception);
             error = exception is OperationCanceledException ? "Sharing timed out. Please try again." : exception.Message.Split('\n')[0];
+            error += $" Reference: {reference}.";
         }
         finally
         {

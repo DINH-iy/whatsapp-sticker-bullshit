@@ -1,3 +1,4 @@
+@inject AppLog Log
 @inject LibraryStore Store
 @inject IJSRuntime JS
 
@@ -52,6 +53,7 @@
         }
         catch (Exception exception) when (exception is IOException or InvalidOperationException or UnauthorizedAccessException or JSException)
         {
+            Log.Error("Pack cover", exception);
             error = exception is JSException ? "Could not read that cover. Choose a JPEG, PNG, or WebP image under 10 MB." : exception.Message;
         }
         finally { working = false; }

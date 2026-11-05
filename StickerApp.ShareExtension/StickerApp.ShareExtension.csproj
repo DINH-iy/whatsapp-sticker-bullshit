@@ -5,9 +5,9 @@
     <IsAppExtension>true</IsAppExtension>
     <SupportedOSPlatformVersion>15.0</SupportedOSPlatformVersion>
     <ApplicationId>com.stickerstudio.app.pinterestshare</ApplicationId>
-    <ApplicationTitle>Stickers</ApplicationTitle>
-    <ApplicationDisplayVersion>0.1.0</ApplicationDisplayVersion>
-    <ApplicationVersion>1</ApplicationVersion>
+    <ApplicationTitle>Stick it</ApplicationTitle>
+    <ApplicationDisplayVersion>0.1.9</ApplicationDisplayVersion>
+    <ApplicationVersion>10</ApplicationVersion>
     <CodesignEntitlements>Entitlements.plist</CodesignEntitlements>
   </PropertyGroup>
   <ItemGroup>

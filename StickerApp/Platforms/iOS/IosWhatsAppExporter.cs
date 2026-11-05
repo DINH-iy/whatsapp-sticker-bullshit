@@ -22,9 +22,9 @@ public sealed class IosWhatsAppExporter(LibraryStore store) : IWhatsAppExporter
         foreach (var sticker in stickers)
         {
             var bytes = await File.ReadAllBytesAsync(store.MediaPath(sticker.FileName));
-            if (MediaInspector.Inspect(bytes).MimeType != "image/webp")
-                throw new InvalidOperationException("Convert all stickers to WebP first.");
-            images.Add(bytes);
+            // Match Android: wrap still artwork in identical animation frames so
+            // every sticker belongs to the same animated WhatsApp pack.
+            images.Add(WhatsAppSticker.PrepareForExport(bytes));
         }
 
         await MainThread.InvokeOnMainThreadAsync(async () =>
@@ -37,8 +37,8 @@ public sealed class IosWhatsAppExporter(LibraryStore store) : IWhatsAppExporter
             {
                 identifier = pack.Id.ToString("N"),
                 name = pack.Name,
-                publisher = "Sticker Studio",
-                animated_sticker_pack = pack.Animated,
+                publisher = pack.Publisher,
+                animated_sticker_pack = true,
                 tray_image = Convert.ToBase64String(CreateTrayIcon(pack.CoverImage is null ? images[0] : PackCover.ReadBytes(pack.CoverImage))),
                 stickers = images.Select(bytes => new
                 {

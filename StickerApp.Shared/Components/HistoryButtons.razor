@@ -6,6 +6,6 @@
 </div>
 
 @code {
-    private Task Back() => JS.InvokeVoidAsync("history.back").AsTask();
+    private Task Back() => JS.InvokeVoidAsync("stickerNavigation.back").AsTask();
     private Task Forward() => JS.InvokeVoidAsync("history.forward").AsTask();
 }

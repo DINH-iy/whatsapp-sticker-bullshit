@@ -23,43 +23,46 @@ public partial class Settings
     private string? themeError;
     private string? storageError;
     private string? notice;
-    private int developerTapCount;
-    private int developerTapGeneration;
-    private bool developerUnlocked;
-    private string? developerNotice;
+    private string selectedTab = "general";
+    private ElementReference generalTab, developerTab;
 
-    protected override void OnInitialized() => folder = Store.Root;
-
-    private async Task TapDeveloperUnlock()
+    protected override void OnInitialized()
     {
-        if (developerUnlocked)
-            return;
-
-        var generation = ++developerTapGeneration;
-        developerTapCount++;
-        if (developerTapCount == 5)
-        {
-            developerUnlocked = true;
-            developerTapCount = 0;
-            developerNotice = "Developer settings unlocked";
-            _ = HideDeveloperNotice();
-            return;
-        }
-
-        await Task.Delay(TimeSpan.FromSeconds(2));
-        if (generation == developerTapGeneration)
-            developerTapCount = 0;
+        folder = Store.Root;
+        Navigation.LocationChanged += SettingsLocationChanged;
     }
 
-    private Task HandleDeveloperKey(KeyboardEventArgs args) =>
-        args.Key is "Enter" or " " ? TapDeveloperUnlock() : Task.CompletedTask;
+    protected override void OnParametersSet() => ReadTab();
 
-    private async Task HideDeveloperNotice()
+    private void ReadTab()
     {
-        await Task.Delay(TimeSpan.FromSeconds(3));
-        developerNotice = null;
-        await InvokeAsync(StateHasChanged);
+        var uri = new Uri(Navigation.Uri);
+        var fragment = uri.Fragment;
+        var developer = uri.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries).Contains("tab=developer", StringComparer.Ordinal);
+        selectedTab = fragment == "#faq" ? "general" : developer || fragment is "#diagnostics" or "#gif-search" or "#pack-sharing" or "#storage" or "#cloud"
+            ? "developer" : "general";
     }
+
+    private void SettingsLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs args)
+    {
+        // Fragment-only navigation also needs to reveal the section's tab.
+        _ = InvokeAsync(() => { ReadTab(); StateHasChanged(); });
+    }
+
+    private void SelectTab(string value)
+    {
+        selectedTab = value;
+        Navigation.NavigateTo(value == "developer" ? "settings?tab=developer" : "settings", replace: true);
+    }
+
+    private async Task HandleTabKey(KeyboardEventArgs args)
+    {
+        if (args.Key is not ("ArrowLeft" or "ArrowRight")) return;
+        SelectTab(selectedTab == "general" ? "developer" : "general");
+        await (selectedTab == "general" ? generalTab : developerTab).FocusAsync();
+    }
+
+    public void Dispose() => Navigation.LocationChanged -= SettingsLocationChanged;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -70,9 +73,11 @@ public partial class Settings
             theme = await JS.InvokeAsync<string>("stickerTheme.get");
             color = await JS.InvokeAsync<string>("stickerTheme.getColor");
             ready = true;
+            ReadTab();
         }
-        catch (JSException)
+        catch (JSException exception)
         {
+            Log.Error("Appearance settings", exception);
             themeError = "Theme settings could not be loaded. Reload the app to try again.";
         }
         StateHasChanged();
@@ -89,8 +94,9 @@ public partial class Settings
             else
                 themeError = "Your device could not save this theme preference. Check that local storage is enabled.";
         }
-        catch (JSException)
+        catch (JSException exception)
         {
+            Log.Error("Appearance settings", exception);
             themeError = "Could not save the theme. Try reloading the app.";
         }
     }
@@ -109,8 +115,9 @@ public partial class Settings
                 themeError = "Your device could not save the color theme. Check that local storage is enabled.";
             }
         }
-        catch (JSException)
+        catch (JSException exception)
         {
+            Log.Error("Appearance settings", exception);
             themeError = "Could not save the color theme. Try reloading the app.";
         }
     }
@@ -135,12 +142,14 @@ public partial class Settings
             folder = Store.Root;
             notice = previous == Store.Root ? "This folder is already in use." : "Save folder updated. Your library was copied successfully; the original is still available as a backup.";
         }
-        catch (UnauthorizedAccessException)
+        catch (UnauthorizedAccessException exception)
         {
+            Log.Error("Storage settings", exception);
             storageError = "The app does not have permission to write to this folder. Choose another folder.";
         }
         catch (Exception e) when (e is IOException or InvalidOperationException or ArgumentException or NotSupportedException or System.Text.Json.JsonException)
         {
+            Log.Error("Storage settings", e);
             storageError = e.Message;
         }
         finally

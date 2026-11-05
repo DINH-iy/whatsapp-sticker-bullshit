@@ -146,8 +146,10 @@ public partial class PinterestImport
         }
         catch (Exception exception) when (exception is HttpRequestException or IOException or InvalidOperationException or UnauthorizedAccessException)
         {
+            var reference = Log.Error("Pinterest import", exception);
             error = exception is HttpRequestException { StatusCode: null }
                 ? "Could not connect to Pinterest or the importer. Check your connection and try again." : exception.Message;
+            error += $" Reference: {reference}.";
         }
         finally
         {

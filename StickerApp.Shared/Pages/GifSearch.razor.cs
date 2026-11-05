@@ -96,6 +96,7 @@ public partial class GifSearch
         }
         catch (JSException exception)
         {
+            Log.Error("GIF search", exception);
             // The JavaScript client supplies a safe message without request URLs or credentials.
             error = exception.Message.Split('\n')[0];
         }

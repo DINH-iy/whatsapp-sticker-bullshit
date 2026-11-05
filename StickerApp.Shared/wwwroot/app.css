@@ -239,18 +239,7 @@ h2 {
     color: var(--accent);
 }
 
-.developer-toast {
-    position: fixed;
-    top: 18px;
-    right: 18px;
-    z-index: 20;
-    padding: 10px 14px;
-    border-radius: 999px;
-    background: var(--text);
-    color: var(--background);
-    box-shadow: 0 6px 20px color-mix(in srgb, var(--text) 20%, transparent);
-    font-size: 13px;
-}
+
 
 .danger {
     color: var(--danger);
@@ -1489,3 +1478,32 @@ a.button.primary, a.button.primary:visited { color: white; }
 .customizer-resize { border-block: 1px solid var(--line); padding: 12px 0; margin-top: 12px; }
 .customizer-resize summary { cursor: pointer; }
 .image-edit-dialog .dialog-actions { position: sticky; bottom: -20px; background: var(--surface); padding: 12px 0; flex-wrap: wrap; }
+
+/* Use the visible area on iPhone when the keyboard changes only visualViewport. */
+.folder-dialog[open] {
+    position: fixed;
+    top: calc(var(--dialog-viewport-top, 0px) + var(--dialog-viewport-height, 100vh) / 2);
+    bottom: auto;
+    left: 50%; right: auto;
+    transform: translate(-50%, -50%);
+    margin: 0;
+    max-height: calc(var(--dialog-viewport-height, 100vh) - 32px);
+}
+.dialog-fallback-backdrop { position: fixed; inset: 0; z-index: 999; background: #0009; }
+.folder-dialog[data-fallback-modal][open] { z-index: 1000; }
+.customizer-canvas-wrap canvas { max-height: 38vh; max-height: 38dvh; }
+@supports not (container-type: inline-size) {
+    .sticker-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.diagnostic-log { max-height: 360px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--background); border: 1px solid var(--line); border-radius: 8px; padding: 12px; font-size: 11px; line-height: 1.6; }
+
+.page-title { min-width: 0; display: flex; align-items: center; gap: 12px; }
+.page-title h1 { overflow-wrap: anywhere; }
+.pack-title-cover { display: block; width: 42px; height: 42px; flex: 0 0 42px; border-radius: 9px; object-fit: contain; background: var(--soft); }
+.pack-title-placeholder { display: grid; place-items: center; color: var(--muted); }
+
+.settings-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; max-width: 640px; margin: 0 0 24px; padding: 5px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.settings-tabs button { min-width: 0; border: 0; border-radius: 8px; padding: 12px; background: transparent; color: var(--muted); font: inherit; font-weight: 600; cursor: pointer; }
+.settings-tabs button[aria-selected="true"] { background: var(--soft); color: var(--accent); }
+[role="tabpanel"][hidden] { display: none; }

@@ -5,7 +5,7 @@ using StickerApp.Core;
 namespace StickerApp.Shared.Services;
 
 /// <summary>One browser/device worker prepares images across page changes, preserving every original.</summary>
-public sealed class StickerPreparationService(LibraryStore store, IJSRuntime js) : IAsyncDisposable
+public sealed class StickerPreparationService(LibraryStore store, IJSRuntime js, AppLog log) : IAsyncDisposable
 {
     public sealed record Status(string FileName, bool Working, string? Error = null);
     private readonly Dictionary<Guid, Status> statuses = [];
@@ -53,6 +53,7 @@ public sealed class StickerPreparationService(LibraryStore store, IJSRuntime js)
                 {
                     token.ThrowIfCancellationRequested();
                     if (GetStatus(image) is not null) continue;
+                    log.Info("Automatic sticker preparation", $"Started image {image.Id}; {image.Width}x{image.Height}; {image.MimeType}; {image.Bytes} bytes.");
                     statuses[image.Id] = new(image.FileName, true);
                     Changed?.Invoke(false);
                     try
@@ -74,6 +75,7 @@ public sealed class StickerPreparationService(LibraryStore store, IJSRuntime js)
                             throw new InvalidDataException("This image could not be prepared safely. Open Edit to adjust or replace it. Your original is unchanged.");
                         var saved = await store.ReplaceImageAsync(image.Id, output, image.FileName, token);
                         statuses.Remove(image.Id);
+                        log.Info("Automatic sticker preparation", $"Image {image.Id}: {(saved ? "saved" : "changed during preparation; output discarded")}; {output.Length} bytes.");
                         // Another window or an edit may have replaced this image while encoding.
                         // Refresh the page from disk in either case.
                         Changed?.Invoke(true);
@@ -82,10 +84,11 @@ public sealed class StickerPreparationService(LibraryStore store, IJSRuntime js)
                     catch (JSDisconnectedException) { return; }
                     catch (Exception exception) when (exception is IOException or InvalidOperationException or JSException or UnauthorizedAccessException or FormatException)
                     {
+                        var reference = log.Error("Automatic sticker preparation", exception);
                         var message = exception is JSException ? exception.Message.Split('\n')[0] : exception.Message;
                         message = message.Replace("save, then prepare again", "save; preparation will resume automatically")
                             .Replace("then prepare again", "then save; preparation will resume automatically");
-                        statuses[image.Id] = new(image.FileName, false, message);
+                        statuses[image.Id] = new(image.FileName, false, message + $" Reference: {reference}.");
                         Changed?.Invoke(false);
                     }
                 }

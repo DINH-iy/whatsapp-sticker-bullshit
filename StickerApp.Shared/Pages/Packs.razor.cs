@@ -47,7 +47,8 @@ public partial class Packs
         try { await action(); }
         catch (Exception exception) when (exception is IOException or InvalidOperationException or UnauthorizedAccessException or System.Text.Json.JsonException)
         {
-            error = exception.Message;
+            var reference = Log.Error("Pack action", exception);
+            error = exception.Message + $" Reference: {reference}.";
         }
         finally { busy = false; }
     }

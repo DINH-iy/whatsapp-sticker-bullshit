@@ -1,0 +1,38 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject AppLog Log
+
+<section class="settings-card" aria-labelledby="web-app-title">
+    <h2 id="web-app-title">Home Screen app</h2>
+    @if (installed)
+    {
+        <p class="settings-success">Stick it is running as a Home Screen app.</p>
+    }
+    else
+    {
+        <p>On your iPhone, open this app’s address in Safari, tap Share, choose <strong>Add to Home Screen</strong>, enable <strong>Open as Web App</strong> if shown, and tap Add.</p>
+        <p class="helper">This installs a Home Screen icon without TestFlight, App Store registration, or an Apple Developer membership.</p>
+    }
+    <p class="helper">Keep the computer hosting Stick it running and connected. Library files and diagnostics are stored by the host computer. This version needs a connection and does not yet keep an offline sticker library on your phone.</p>
+    <p class="helper">You can edit stickers and export pack files here. Direct Add to WhatsApp is available only in the native app.</p>
+</section>
+
+@code {
+    private IJSObjectReference? module;
+    private bool installed;
+    private sealed class WebStatus { public bool Installed { get; set; } }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try {
+            module = await JS.InvokeAsync<IJSObjectReference>("import", "./web-app.js");
+            installed = (await module.InvokeAsync<WebStatus>("status")).Installed;
+            StateHasChanged();
+        } catch (JSException exception) { Log.Error("Home Screen app status", exception); }
+    }
+    public async ValueTask DisposeAsync()
+    {
+        try { if (module is not null) await module.DisposeAsync(); }
+        catch (JSDisconnectedException) { }
+    }
+}

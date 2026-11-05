@@ -1,0 +1,27 @@
+@implements IAsyncDisposable
+@inject IServiceProvider Services
+@inject IJSRuntime JS
+
+@code {
+    private StickerApp.Shared.Services.INativeAppearance? appearance;
+    private IJSObjectReference? module, subscription;
+    private DotNetObjectReference<NativeAppearanceHost>? reference;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        appearance = Services.GetService(typeof(StickerApp.Shared.Services.INativeAppearance)) as StickerApp.Shared.Services.INativeAppearance;
+        if (appearance is null) return;
+        reference = DotNetObjectReference.Create(this);
+        module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/native-appearance.js");
+        subscription = await module.InvokeAsync<IJSObjectReference>("watch", reference);
+    }
+    [JSInvokable] public Task ApplyAppearance(string background, bool dark) => appearance?.ApplyAsync(background, dark) ?? Task.CompletedTask;
+    public async ValueTask DisposeAsync()
+    {
+        try {
+            if (subscription is not null) { await subscription.InvokeVoidAsync("dispose"); await subscription.DisposeAsync(); }
+            if (module is not null) await module.DisposeAsync();
+        } catch (JSDisconnectedException) { }
+        reference?.Dispose();
+    }
+}
