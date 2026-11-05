@@ -1,0 +1,92 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject LibraryStore Store
+@inject AppLog Log
+@inject StickerApp.Shared.Services.IFormFactor FormFactor
+
+<dialog @ref="dialog" class="folder-dialog layer-editor-dialog" aria-labelledby="layers-title" @onkeydown="HandleKey" aria-busy="@(working ? "true" : "false")">
+    <div class="folder-dialog-heading">
+        <h2 id="layers-title">Layer editor</h2>
+        <button class="button icon-button" type="button" aria-label="Close layer editor" @onclick="Cancel" disabled="@working"><Icon Name="close" /></button>
+    </div>
+    <p class="helper">Combine images on a transparent 512 × 512 canvas. Drag a layer to move it, its corners or edges to resize, and the round arrow handle to rotate. GIF layers become a still frame.</p>
+    <label for="composition-name">Sticker name</label>
+    <input id="composition-name" class="layer-name" @bind="name" @bind:event="oninput" maxlength="128" disabled="@working" />
+    <div class="layer-add-tools">
+        <label class="button file-button"><Icon Name="plus" /> Add images
+            <InputFile OnChange="AddFiles" accept="image/png,image/jpeg,image/webp,image/gif" multiple disabled="@(working || state.Layers.Count >= 10)" aria-label="Add layer images from device" />
+        </label>
+        <select aria-label="Choose a library image for a layer" @bind="libraryImageId" disabled="@working">
+            <option value="">Choose from library…</option>
+            @foreach (var image in Images) { <option value="@image.Id">@image.Name@(image.Animated ? " (still frame)" : "")</option> }
+        </select>
+        <button class="button" type="button" @onclick="AddLibraryImage" disabled="@(working || libraryImageId == "" || state.Layers.Count >= 10)">Add layer</button>
+    </div>
+    @if (loading) { <p class="status-info" role="status"><span class="feedback-spinner" aria-hidden="true"></span> @progress</p> }
+    @if (error is not null) { <p class="error" role="alert">@error</p> }
+    <div class="layer-workspace">
+        <div class="layer-stage">
+            <div class="layer-canvas-wrap"><canvas @ref="canvas" aria-label="Layer canvas. Drag to move; resize and rotation handles surround the selected layer." /></div>
+            <p class="helper layer-handle-hint">Keep proportions preserves the shape; turn it off to stretch. Handles also support arrow keys (Shift for larger steps).</p>
+            <p class="helper">@state.Layers.Count / 10 layers · checkerboard = transparent</p>
+        </div>
+        <div class="layer-panel">
+            <h3>Layers <small>(top is front)</small></h3>
+            @if (state.Layers.Count == 0) { <p class="helper">Add an image to start your sticker.</p> }
+            <div class="layer-stack" role="group" aria-label="Layer stack">
+                @for (var index = state.Layers.Count - 1; index >= 0; index--)
+                {
+                    var layerIndex = index;
+                    var layer = state.Layers[index];
+                    <button @key="layer.Id" class="layer-stack-item @(state.Selected == index ? "selected-tool" : "")" type="button"
+                            aria-pressed="@(state.Selected == index ? "true" : "false")" @onclick="() => Select(layerIndex)" disabled="@working">
+                        <img class="layer-thumbnail" src="@layer.Thumbnail" alt="" />
+                        <span>@layer.Name</span><small>@Math.Round(layer.Opacity * 100)%</small>
+                    </button>
+                }
+            </div>
+            @if (Selected is { } current)
+            {
+                <div class="layer-selected-preview" aria-label="Selected layer preview">
+                    <img src="@current.Thumbnail" alt="Preview of @current.Name" />
+                    <div><small>Selected layer</small><strong>@current.Name</strong><small>Layer @(state.Selected + 1) · @Math.Round(current.Opacity * 100)% opacity</small></div>
+                </div>
+                <fieldset disabled="@working" class="layer-adjustments">
+                    <legend>Adjust @current.Name</legend>
+                    <div class="layer-pair">
+                        <label>X position<input aria-label="Layer X position" type="number" min="-2048" max="2560" step="1" value="@Number(current.X)" data-layer-property="x" /></label>
+                        <label>Y position<input aria-label="Layer Y position" type="number" min="-2048" max="2560" step="1" value="@Number(current.Y)" data-layer-property="y" /></label>
+                        <label>Width<input aria-label="Layer width" type="number" min="1" max="2048" value="@Number(current.Width)" data-layer-property="width" /></label>
+                        <label>Height<input aria-label="Layer height" type="number" min="1" max="2048" value="@Number(current.Height)" data-layer-property="height" /></label>
+                    </div>
+                    <label class="layer-check"><input type="checkbox" data-layer-ratio @bind="keepRatio" /> Keep proportions</label>
+                    <label><span>Rotation · <span data-layer-readout="rotation">@Number(current.Rotation)</span>°</span><input aria-label="Layer rotation" type="range" min="-180" max="180" step="1" value="@Number(current.Rotation)" data-layer-property="rotation" /></label>
+                    <label><span>Opacity · <span data-layer-readout="opacity">@Math.Round(current.Opacity * 100)</span>%</span><input aria-label="Layer opacity" type="range" min="0" max="100" step="1" value="@Number(current.Opacity * 100)" data-layer-property="opacity" /></label>
+                    <div class="layer-tint">
+                        <label class="layer-check"><input type="checkbox" checked="@(current.Tint is not null)" @onchange="ToggleTint" /> Color tint</label>
+                        <input aria-label="Layer tint color" type="color" value="@(current.Tint ?? "#80d4b0")" data-layer-property="tint" disabled="@(working || current.Tint is null)" />
+                    </div>
+
+                </fieldset>
+            }
+        </div>
+    </div>
+    <p class="helper">Save keeps the editable layers @(FormFactor.GetFormFactor() == "Web" ? "on the computer hosting Stick it" : "on this device") and adds the flattened sticker to @(PackId is null ? "your library" : "this pack"). Tap its pencil button to edit the layers again. Pack exports contain the flattened image; layers do not travel with exported packs yet.</p>
+    <div class="dialog-actions layer-footer">
+        <div class="layer-quick-tools" role="group" aria-label="Quick layer actions">
+            <button class="button" type="button" @onclick='() => Action("undo")' disabled="@(working || !state.CanUndo)" title="Undo last change"><Icon Name="undo" /><span>Undo</span></button>
+            <button class="button" type="button" @onclick='() => Action("redo")' disabled="@(working || !state.CanRedo)" title="Redo last change"><Icon Name="redo" /><span>Redo</span></button>
+            <button class="button" type="button" @onclick='() => Action("rotate")' disabled="@(working || Selected is null)" title="Rotate selected layer 90 degrees"><Icon Name="rotate" /><span>Rotate 90°</span></button>
+            <button class="button" type="button" @onclick='() => Action("flip")' disabled="@(working || Selected is null)" title="Flip selected layer"><Icon Name="flip" /><span>Flip</span></button>
+            <button class="button" type="button" @onclick='() => Action("duplicate")' disabled="@(working || Selected is null || state.Layers.Count >= 10)" title="Duplicate selected layer"><Icon Name="copy" /><span>Duplicate</span></button>
+            <button class="button" type="button" @onclick='() => Action("front")' disabled="@(working || Selected is null || state.Selected == state.Layers.Count - 1)" title="Bring selected layer forward"><Icon Name="up" /><span>Forward</span></button>
+            <button class="button" type="button" @onclick='() => Action("back")' disabled="@(working || Selected is null || state.Selected == 0)" title="Send selected layer backward"><Icon Name="down" /><span>Backward</span></button>
+            <button class="button" type="button" @onclick='() => Action("center")' disabled="@(working || Selected is null)" title="Center selected layer"><Icon Name="center" /><span>Center</span></button>
+            <button class="button danger" type="button" @onclick='() => Action("remove")' disabled="@(working || Selected is null)" title="Remove selected layer"><Icon Name="trash" /><span>Remove</span></button>
+        </div>
+        <div class="layer-save-actions">
+            <button class="button" type="button" @onclick="Cancel" disabled="@working">Cancel</button>
+            <button class="button primary" type="button" @onclick="Save" disabled="@(working || state.Layers.Count == 0 || string.IsNullOrWhiteSpace(name))">Save sticker</button>
+        </div>
+    </div>
+</dialog>

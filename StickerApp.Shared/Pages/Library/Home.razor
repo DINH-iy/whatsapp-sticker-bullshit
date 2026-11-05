@@ -31,6 +31,9 @@
                 <span>Images or GIFs from device<small>Choose saved files to add here.</small></span>
                 <InputFile OnChange="Import" accept="image/*" multiple disabled="@(busy || CurrentPack?.StickerIds.Count >= 30)" aria-label="Choose images or GIFs from device" />
             </label>
+            <button class="toolbar-menu-option" type="button" @onclick="NewComposition" disabled="@(busy || CurrentPack?.StickerIds.Count >= 30)">
+                <Icon Name="edit" /><span>Create with layers<small>Combine images into a custom sticker.</small></span>
+            </button>
             <button class="toolbar-menu-option" type="button" @onclick="() => showGifSearch = true" disabled="@busy">
                 <Icon Name="search" /><span>Find a GIF<small>Search and preview GIFs in a popup.</small></span>
             </button>
@@ -206,11 +209,25 @@ else
     <StickerInfoDialog Image="infoImage" OnClose="() => infoImageId = null" OnEdit="EditFromInfo" />
 }
 
+@if (showLayerEditor)
+{
+    <LayerEditorDialog StickerId="@compositionStickerId" PackId="@activePack" Images="@library.Stickers" Previews="@previews"
+                       OnCancel="() => showLayerEditor = false" OnSaved="CompositionSaved" />
+}
+
 @if (editing is not null)
 {
-    <dialog @ref="editDialog" class="folder-dialog image-edit-dialog" aria-labelledby="edit-title" @onkeydown="EditorKeyDown">
+    <dialog @ref="editDialog" class="folder-dialog image-edit-dialog" aria-labelledby="edit-title" aria-busy="@(busy ? "true" : "false")" @onkeydown="EditorKeyDown">
             <h2 id="edit-title">@(IsGif ? "Edit GIF" : editing.Animated || replacementAnimated ? "Edit animated image" : "Edit image")</h2>
-            @if (EditingStill)
+            @if (editorLoading)
+            {
+                <div class="editor-loading" role="status" aria-live="polite">
+                    <span class="feedback-spinner" aria-hidden="true"></span>
+                    <strong>@busyText</strong>
+                    <span class="helper">Getting the preview and editing tools ready.</span>
+                </div>
+            }
+            else if (EditingStill)
             {
                 <ImageCustomizer Source="@editSource" OnChanged="CustomizeImage" OnBusyChanged="value => customizing = value" />
             }
@@ -220,7 +237,7 @@ else
             }
             <label>
                 Name
-                <input @bind="editName" @bind:event="oninput" maxlength="128" />
+                <input @bind="editName" @bind:event="oninput" maxlength="128" disabled="@busy" />
             </label>
             <div class="edit-tools">
                 <label class="button file-button icon-button" title="Replace image">
@@ -229,7 +246,7 @@ else
                 </label>
             </div>
 
-            @if (IsGif && gifDuration > 0)
+            @if (!editorLoading && IsGif && gifDuration > 0)
             {
                 <div class="gif-trim">
                     <div class="trim-timeline">
@@ -268,7 +285,7 @@ else
                     </div>
                 </div>
             }
-            else if (!IsGif && (editing.Animated || replacementAnimated))
+            else if (!editorLoading && !IsGif && (editing.Animated || replacementAnimated))
             {
                 <p class="helper">Trimming is available for GIF files.</p>
             }

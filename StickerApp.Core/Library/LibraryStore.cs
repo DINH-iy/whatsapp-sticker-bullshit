@@ -5,7 +5,7 @@ namespace StickerApp.Core;
 public sealed record BatchImportFile(string Name, string Path);
 
 /// <summary>Single-process, atomic file persistence for the first build. Replace behind this service with SQLite later.</summary>
-public sealed class LibraryStore
+public sealed partial class LibraryStore
 {
     public const int MaxImportBytes = 10 * 1024 * 1024;
     private readonly SemaphoreSlim gate = new(1, 1);
@@ -438,7 +438,7 @@ public sealed class LibraryStore
             List<string> files = [];
             await MutateInternalAsync(l =>
             {
-                files = l.Stickers.Where(s => remove.Contains(s.Id)).SelectMany(s => new[] { s.FileName, s.OriginalFileName }).OfType<string>().Distinct().ToList();
+                files = l.Stickers.Where(s => remove.Contains(s.Id)).SelectMany(s => new[] { s.FileName, s.OriginalFileName, s.CompositionFileName }).OfType<string>().Distinct().ToList();
                 l.Stickers.RemoveAll(s => remove.Contains(s.Id));
                 foreach (var p in l.Packs.Where(p => p.StickerIds.Any(remove.Contains)))
                 {

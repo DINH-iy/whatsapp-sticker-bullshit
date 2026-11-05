@@ -38,6 +38,9 @@ public static class MauiProgram
         builder.Services.AddSingleton<IBulkImageImporter, IosBulkImageImporter>();
         builder.Services.AddSingleton<IWhatsAppExporter, IosWhatsAppExporter>();
 #endif
+#if ANDROID || IOS
+        builder.Services.AddSingleton<ITapFeedback, NativeTapFeedback>();
+#endif
         builder.Services.AddScoped<IPackFileSaver, NativePackFileSaver>();
         builder.Services.AddScoped<PackSharingService>();
         builder.Services.AddSingleton(_ => new PinterestImportClient());

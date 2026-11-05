@@ -22,20 +22,17 @@ public partial class Home
     private async Task Edit(Sticker image)
     {
         if (busy) return;
+        if (image.CompositionFileName is not null)
+        {
+            compositionStickerId = image.Id;
+            showLayerEditor = true;
+            return;
+        }
+        busy = editorLoading = true;
+        busyText = image.Animated ? "Loading animation…" : "Loading image…";
         editing = image;
         editName = image.Name;
         editSource = editPreview = previews[image.Id];
-        // Automatic conversion keeps the GIF original available for trimming and re-editing.
-        if (image.Animated && image.OriginalFileName is { } original)
-        {
-            try
-            {
-                var originalBytes = await File.ReadAllBytesAsync(Store.MediaPath(original));
-                if (MediaInspector.Inspect(originalBytes).MimeType == "image/gif")
-                    editSource = editPreview = $"data:image/gif;base64,{Convert.ToBase64String(originalBytes)}";
-            }
-            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
-        }
         replacement = null;
         transformed = false;
         replacementAnimated = false;
@@ -43,22 +40,32 @@ public partial class Home
         gifDuration = trimStart = trimEnd = 0;
         trimmedPreview = null;
         gifThumbnails = [];
-        if (IsGif)
+        StateHasChanged();
+        await Task.Yield();
+        try
         {
-            busy = true;
-            try
+            // Keep the imported GIF available for trimming after automatic conversion.
+            if (image.Animated && image.OriginalFileName is { } original)
             {
-                await InspectGif();
+                try
+                {
+                    var originalBytes = await File.ReadAllBytesAsync(Store.MediaPath(original));
+                    if (MediaInspector.Inspect(originalBytes).MimeType == "image/gif")
+                        editSource = editPreview = $"data:image/gif;base64,{Convert.ToBase64String(originalBytes)}";
+                }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
             }
-            catch (JSException exception)
-            {
-                Log.Error("GIF inspection", exception);
-                editError = "Could not read this GIF, or it is too large to edit.";
-            }
-            finally
-            {
-                busy = false;
-            }
+            if (IsGif) await InspectGif();
+        }
+        catch (JSException exception)
+        {
+            Log.Error("GIF inspection", exception);
+            editError = "Could not read this GIF, or it is too large to edit.";
+        }
+        finally
+        {
+            busy = editorLoading = false;
+            busyText = "Processing…";
         }
     }
 
@@ -66,7 +73,8 @@ public partial class Home
     {
         if (busy)
             return;
-        busy = true;
+        busy = editorLoading = true;
+        busyText = "Loading image…";
         editError = null;
         try
         {
@@ -89,7 +97,8 @@ public partial class Home
         }
         finally
         {
-            busy = false;
+            busy = editorLoading = false;
+            busyText = "Processing…";
         }
     }
 

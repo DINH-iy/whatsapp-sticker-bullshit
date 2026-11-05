@@ -1,0 +1,117 @@
+using System.Globalization;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.JSInterop;
+using StickerApp.Core;
+
+namespace StickerApp.Shared.Components.Editor.Layers;
+
+public partial class LayerEditorDialog
+{
+    [Parameter] public Guid? StickerId { get; set; }
+    [Parameter] public Guid? PackId { get; set; }
+    [Parameter] public IReadOnlyList<Sticker> Images { get; set; } = [];
+    [Parameter] public IReadOnlyDictionary<Guid, string> Previews { get; set; } = new Dictionary<Guid, string>();
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback<Guid> OnSaved { get; set; }
+    private ElementReference dialog, canvas;
+    private IJSObjectReference? module, controller, dialogs;
+    private DotNetObjectReference<LayerEditorDialog>? reference;
+    private LayerEditorState state = new();
+    private bool working = true, loading = true, keepRatio = true;
+    private string name = "Layered sticker", libraryImageId = "", progress = "Opening layer editor…";
+    private string? error;
+    private LayerPreview? Selected => state.Selected >= 0 && state.Selected < state.Layers.Count ? state.Layers[state.Selected] : null;
+    private static string Number(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
+
+    public sealed class LayerExport
+    {
+        public string Png { get; set; } = "";
+        public LayerComposition Document { get; set; } = new();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try
+        {
+            dialogs = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/dialog.js");
+            await dialogs.InvokeVoidAsync("open", dialog);
+            module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/media/layer-editor.js");
+            reference = DotNetObjectReference.Create(this);
+            controller = await module.InvokeAsync<IJSObjectReference>("create", canvas, reference);
+            LayerComposition? composition = null;
+            if (StickerId is { } id)
+            {
+                name = Images.FirstOrDefault(image => image.Id == id)?.Name ?? name;
+                composition = await Store.ReadCompositionAsync(id);
+            }
+            state = await controller.InvokeAsync<LayerEditorState>("open", composition);
+        }
+        catch (Exception exception) when (IsExpected(exception)) { Report("Open layer editor", exception); }
+        finally { working = loading = false; StateHasChanged(); }
+    }
+
+    [JSInvokable] public Task LayersChanged(LayerEditorState updated) => InvokeAsync(() => { state = updated; StateHasChanged(); });
+
+    private Task Select(int index) => Run("Selecting layer…", async () => state = await controller!.InvokeAsync<LayerEditorState>("select", index));
+    private Task Action(string action) => Run("Updating layers…", async () => state = await controller!.InvokeAsync<LayerEditorState>("action", action));
+    private Task ToggleTint(ChangeEventArgs args) => Tint(args.Value is true ? "#80d4b0" : null);
+    private Task Tint(string? color) => Run("Updating color…", async () => state = await controller!.InvokeAsync<LayerEditorState>("update", "tint", color));
+    private Task AddLibraryImage() => Run("Adding layer…", async () =>
+    {
+        if (!Guid.TryParse(libraryImageId, out var id) || !Previews.TryGetValue(id, out var source)) return;
+        var image = Images.First(image => image.Id == id);
+        state = await controller!.InvokeAsync<LayerEditorState>("add", image.Name, source);
+    }, showProgress: true);
+    private Task AddFiles(InputFileChangeEventArgs args) => Run("Loading layer images…", async () =>
+    {
+        foreach (var file in args.GetMultipleFiles(10))
+        {
+            if (state.Layers.Count >= 10) throw new InvalidOperationException("A composition supports up to 10 layers.");
+            await using var stream = file.OpenReadStream(LibraryStore.MaxImportBytes);
+            using var memory = new MemoryStream();
+            await stream.CopyToAsync(memory);
+            var bytes = memory.ToArray();
+            var info = MediaInspector.Inspect(bytes);
+            var source = $"data:{info.MimeType};base64,{Convert.ToBase64String(bytes)}";
+            state = await controller!.InvokeAsync<LayerEditorState>("add", Path.GetFileNameWithoutExtension(file.Name), source);
+        }
+    }, showProgress: true);
+    private Task Save() => Run("Saving sticker and layers…", async () =>
+    {
+        var export = await controller!.InvokeAsync<LayerExport>("export");
+        if (!export.Png.StartsWith("data:image/png;base64,", StringComparison.Ordinal)) throw new InvalidDataException("Could not export this sticker.");
+        var bytes = Convert.FromBase64String(export.Png[22..]);
+        var id = await Store.SaveCompositionAsync(StickerId, name, bytes, export.Document, PackId);
+        await OnSaved.InvokeAsync(id);
+    }, showProgress: true);
+    private async Task Run(string message, Func<Task> action, bool showProgress = false)
+    {
+        if (working || controller is null) return;
+        working = true; loading = showProgress; error = null; progress = message;
+        try { await action(); }
+        catch (Exception exception) when (IsExpected(exception)) { Report("Layer editor", exception); }
+        finally { working = loading = false; }
+    }
+    private static bool IsExpected(Exception exception) => exception is JSException or IOException or InvalidOperationException or NotSupportedException or UnauthorizedAccessException or System.Text.Json.JsonException or FormatException;
+    private void Report(string operation, Exception exception)
+    {
+        var id = Log.Error(operation, exception);
+        error = $"{exception.Message.Split('\n')[0]} Reference: {id}.";
+    }
+    private Task Cancel() => working ? Task.CompletedTask : OnCancel.InvokeAsync();
+    private Task HandleKey(KeyboardEventArgs args) => args.Key == "Escape" ? Cancel() : Task.CompletedTask;
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (controller is not null) { await controller.InvokeVoidAsync("dispose"); await controller.DisposeAsync(); }
+            if (module is not null) await module.DisposeAsync();
+            if (dialogs is not null) await dialogs.DisposeAsync();
+        }
+        catch (JSDisconnectedException) { }
+        reference?.Dispose();
+    }
+}

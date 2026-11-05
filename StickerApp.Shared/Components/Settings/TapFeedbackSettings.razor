@@ -1,0 +1,54 @@
+@inject IServiceProvider Services
+
+<section id="touch-feedback" class="settings-card" aria-labelledby="tap-feedback-title" data-tap-feedback="off">
+    <h2 id="tap-feedback-title">Touch feedback</h2>
+    <label class="tap-feedback-toggle">
+        <input type="checkbox" checked="@enabled" @onchange="Toggle" disabled="@(feedback is null)" />
+        Vibration
+    </label>
+    @if (feedback is null)
+    {
+        <p class="helper">Vibration is available in the Android and iPhone apps. These controls are disabled in the browser, including the Home Screen web app.</p>
+    }
+    else
+    {
+        <p class="helper">A gentle tap when you press buttons. Saved on this device.</p>
+    }
+    <label for="tap-intensity">Intensity · @intensity%</label>
+    <input id="tap-intensity" class="tap-intensity" type="range" min="1" max="100" step="1"
+           value="@intensity" @oninput="PreviewValue" @onchange="SaveIntensity" disabled="@(feedback is null || !enabled)" />
+    <p class="helper">Adjust within a gentle range. One preview tap plays when you release the slider. Strength depends on your device and its system vibration settings.</p>
+</section>
+
+@code {
+    private StickerApp.Shared.Services.ITapFeedback? feedback;
+    private bool enabled;
+    private int intensity = 25;
+
+    protected override void OnInitialized()
+    {
+        feedback = Services.GetService(typeof(StickerApp.Shared.Services.ITapFeedback)) as StickerApp.Shared.Services.ITapFeedback;
+        if (feedback is null) return;
+        enabled = feedback.Settings.Enabled;
+        intensity = feedback.Settings.Intensity;
+    }
+
+    private async Task Toggle(ChangeEventArgs args)
+    {
+        enabled = args.Value is true;
+        feedback?.Configure(enabled, intensity);
+        if (enabled && feedback is not null) await feedback.TapAsync();
+    }
+
+    private void PreviewValue(ChangeEventArgs args)
+    {
+        if (int.TryParse(args.Value?.ToString(), out var value)) intensity = Math.Clamp(value, 1, 100);
+    }
+
+    private async Task SaveIntensity(ChangeEventArgs args)
+    {
+        PreviewValue(args);
+        feedback?.Configure(enabled, intensity);
+        if (feedback is not null) await feedback.TapAsync();
+    }
+}

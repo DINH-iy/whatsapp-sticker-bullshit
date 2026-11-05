@@ -6,6 +6,7 @@ public sealed class Sticker
     public string Name { get; set; } = "";
     public string FileName { get; set; } = "";
     public string? OriginalFileName { get; set; }
+    public string? CompositionFileName { get; set; }
     public string MimeType { get; set; } = "";
     public int Width { get; set; }
     public int Height { get; set; }

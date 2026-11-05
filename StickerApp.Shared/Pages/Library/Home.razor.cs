@@ -22,6 +22,7 @@ public partial class Home
     private string editPreview = "";
     private string editSource = "";
     private bool busy;
+    private bool editorLoading;
     private bool renamingPack;
     private bool showGifSearch;
     private bool disposed;

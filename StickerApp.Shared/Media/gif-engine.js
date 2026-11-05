@@ -144,16 +144,47 @@ async function prepare(source) {
     throw new Error('This animation still exceeds 500 KB. Open Edit GIF and trim a shorter section, then prepare again. Your GIF is unchanged.');
 }
 
+// Build all six timeline previews while compositing the animation once. Calling
+// trim separately for each preview repeatedly decoded every preceding GIF patch.
+async function inspect(source) {
+    const gif = load(source);
+    const targets = Array.from({ length: 6 }, (_, i) => Math.floor((gif.duration - 10) * i / 5 / 10) * 10);
+    const thumbnails = [];
+    let clock = 0, frameCount = 0;
+    await trim(source, 0, gif.duration / 1000, false, async (screen, width, height, delay) => {
+        const end = clock + delay;
+        if (thumbnails.length < targets.length && targets[thumbnails.length] < end) {
+            const scale = Math.min(1, 96 / Math.max(width, height));
+            const outputWidth = Math.max(1, Math.round(width * scale));
+            const outputHeight = Math.max(1, Math.round(height * scale));
+            const pixels = new Uint8ClampedArray(outputWidth * outputHeight * 4);
+            for (let y = 0; y < outputHeight; y++) for (let x = 0; x < outputWidth; x++) {
+                const from = (Math.min(height - 1, Math.floor(y / scale)) * width + Math.min(width - 1, Math.floor(x / scale))) * 4;
+                pixels.set(screen.subarray(from, from + 4), (y * outputWidth + x) * 4);
+            }
+            const canvas = makeCanvas(outputWidth, outputHeight);
+            canvas.getContext('2d').putImageData(new ImageData(pixels, outputWidth, outputHeight), 0, 0);
+            const blob = canvas.convertToBlob
+                ? await canvas.convertToBlob({ type: 'image/png' })
+                : await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+            if (!blob) throw new Error('Could not create GIF previews.');
+            const bytes = new Uint8Array(await blob.arrayBuffer());
+            let binary = '';
+            for (let i = 0; i < bytes.length; i += 32768) binary += String.fromCharCode(...bytes.subarray(i, i + 32768));
+            const preview = 'data:image/png;base64,' + btoa(binary);
+            while (thumbnails.length < targets.length && targets[thumbnails.length] < end) thumbnails.push(preview);
+        }
+        clock = end;
+        // Keep the loading indicator responsive on older iOS without worker canvases.
+        if (typeof document !== 'undefined' && ++frameCount % 8 === 0)
+            await new Promise(resolve => setTimeout(resolve, 0));
+    });
+    return { duration: gif.duration / 1000, frameCount: gif.frames.length, thumbnails };
+}
+
 // The same engine can run on the main thread on iOS versions without OffscreenCanvas.
 export async function process(data) {
     if (data.action === 'prepare') return prepare(data.source);
-    if (data.action === 'inspect') {
-        const gif = load(data.source);
-        const thumbnails = await Promise.all(Array.from({ length: 6 }, (_, i) => {
-            const start = Math.floor((gif.duration - 10) * i / 5 / 10) * 10;
-            return trim(data.source, start / 1000, (start + 10) / 1000, true);
-        }));
-        return { duration: gif.duration / 1000, frameCount: gif.frames.length, thumbnails };
-    }
+    if (data.action === 'inspect') return inspect(data.source);
     return trim(data.source, data.start, data.end);
 }

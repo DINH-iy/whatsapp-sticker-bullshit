@@ -1,0 +1,70 @@
+.layer-editor-dialog { width: min(1040px, calc(100vw - 32px)); }
+.layer-name { width: 100%; }
+.layer-add-tools { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; margin: 16px 0; }
+.layer-add-tools select { width: 100%; min-width: 0; text-overflow: ellipsis; }
+.layer-workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 310px); gap: 20px; align-items: start; }
+.layer-stage, .layer-panel { min-width: 0; }
+.layer-canvas-wrap { display: flex; justify-content: center; overflow: hidden; border: 1px solid var(--line); border-radius: 10px; background: repeating-conic-gradient(var(--checker) 0% 25%, var(--surface) 0% 50%) 50% / 20px 20px; }
+.layer-canvas-wrap canvas { display: block; width: 100%; height: auto; aspect-ratio: 1; touch-action: none; cursor: move; }
+.layer-history { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.layer-history .helper { flex-basis: 100%; margin: 0; }
+.layer-panel h3 { margin: 0 0 10px; font-size: 15px; }
+.layer-panel h3 small { color: var(--muted); font-size: 12px; font-weight: 400; }
+.layer-stack { display: flex; flex-direction: column; gap: 6px; max-height: 180px; overflow-y: auto; margin-bottom: 16px; }
+.layer-stack-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 40px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.layer-stack-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+.layer-stack-item small { color: var(--muted); }
+.layer-stack-item[aria-pressed="true"] { border-color: var(--accent); background: var(--soft); }
+.layer-adjustments { border: 0; padding: 0; margin: 0; min-width: 0; }
+.layer-adjustments legend { font-size: 13px; font-weight: 600; padding: 0 0 12px; overflow-wrap: anywhere; }
+.layer-adjustments > label { margin: 12px 0; }
+.layer-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.layer-pair input { width: 100%; min-width: 0; }
+.layer-check { display: flex; flex-direction: row; align-items: center; gap: 8px; }
+.layer-adjustments input[type="range"] { width: 100%; min-width: 0; accent-color: var(--accent); padding: 0; }
+.layer-tint { display: flex; align-items: center; gap: 12px; margin: 12px 0; }
+.layer-tint input[type="color"] { width: 48px; min-height: 36px; padding: 3px; }
+.layer-operations { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.layer-operations .button { min-width: 0; font-size: 12px; padding: 0 8px; white-space: normal; line-height: 1.3; }
+.layer-footer { position: sticky; bottom: -24px; background: var(--surface); padding: 12px 0; margin-bottom: 0; flex-wrap: wrap; }
+@media (max-width: 700px) {
+    .layer-workspace { grid-template-columns: minmax(0, 1fr); }
+    .layer-canvas-wrap { max-width: 400px; margin: 0 auto; }
+    .layer-add-tools { gap: 6px; }
+    .layer-add-tools .button { padding-inline: 8px; gap: 5px; font-size: 12px; }
+    .layer-add-tools select { padding-inline: 8px; font-size: 12px; }
+    .layer-add-tools .app-icon { width: 17px; height: 17px; }
+    .layer-editor-dialog { padding: 16px; }
+    .layer-footer { bottom: -16px; }
+}
+
+/* Fixed-size hit targets remain easy to grab when the canvas is scaled down. */
+.layer-canvas-wrap { position: relative; overflow: visible; }
+.layer-canvas-wrap canvas { border-radius: 9px; cursor: grab; }
+.layer-handles { position: absolute; inset: 0; pointer-events: none; }
+.layer-handles[hidden] { display: none; }
+.layer-handle { position: absolute; display: grid; place-items: center; width: 44px; height: 44px; min-height: 44px; margin: 0; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--text); transform: translate(-50%, -50%); pointer-events: auto; touch-action: none; }
+.layer-handle span { display: block; width: 13px; height: 13px; border: 2px solid #fff; border-radius: 4px; background: var(--button-background); box-shadow: 0 1px 4px #0009; }
+.layer-handle:hover span, .layer-handle:active span { background: var(--accent); }
+.layer-handle:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+.layer-rotate-handle { cursor: grab; }
+.layer-rotate-handle span { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; font-size: 18px; line-height: 1; color: #fff; }
+
+.layer-thumbnail { width: 44px; height: 44px; flex: 0 0 44px; object-fit: contain; border: 1px solid var(--line); border-radius: 6px; background: repeating-conic-gradient(var(--checker) 0% 25%, var(--surface) 0% 50%) 50% / 10px 10px; }
+.layer-stack-item { min-height: 60px; }
+.layer-selected-preview { display: flex; align-items: center; gap: 12px; padding: 10px; margin: 0 0 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); }
+.layer-selected-preview img { width: 88px; height: 88px; flex: 0 0 88px; object-fit: contain; border: 1px solid var(--line); border-radius: 6px; background: repeating-conic-gradient(var(--checker) 0% 25%, var(--surface) 0% 50%) 50% / 12px 12px; }
+.layer-selected-preview div { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.layer-selected-preview strong { overflow-wrap: anywhere; font-size: 13px; }
+.layer-selected-preview small { color: var(--muted); font-size: 12px; }
+
+/* Common actions stay on screen; detailed adjustments can scroll independently. */
+.layer-editor-dialog .layer-footer { display: block; z-index: 5; border-top: 1px solid var(--line); }
+.layer-quick-tools { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 6px; }
+.layer-quick-tools .button { min-width: 0; min-height: 44px; height: 44px; flex-direction: column; gap: 3px; padding: 4px 2px; font-size: 10px; line-height: 1.1; white-space: normal; }
+.layer-quick-tools .app-icon { width: 17px; height: 17px; flex-shrink: 0; }
+.layer-save-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+@media (max-width: 700px) {
+    .layer-quick-tools { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    .layer-canvas-wrap { width: min(100%, 34vh); width: min(100%, 34dvh); }
+}

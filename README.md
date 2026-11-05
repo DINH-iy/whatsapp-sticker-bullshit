@@ -21,6 +21,12 @@ Sticker storage: use **Browse…** to navigate folders in a popup (and optionall
 
 For the browser development host, you can use an empty subfolder inside a locally synced OneDrive or Google Drive folder on the host computer. Keep it available offline and use one running app at a time; your cloud client handles syncing and the app does not resolve sync conflicts. Android accepts filesystem paths the app can access; Android document-provider/cloud folders and direct OneDrive/Google Drive sign-in are not implemented.
 
+## Layer editor
+
+In a pack or All images, open **Add stickers → Create with layers**. Add up to ten device or library images, drag them into place, resize with corner/edge handles, rotate with the round arrow handle, and adjust proportions, opacity, order, flip, or color tint. Quick actions stay pinned at the bottom for undo/redo, rotating, flipping, duplicating, reordering, centering, and removing. Save creates a transparent 512 × 512 sticker; its pencil button reopens the editable composition. GIF inputs become a still frame in this version.
+
+Editable sources stay in the local library as self-contained `.layers.json` files, separate from the automatically prepared sticker. Source images can be removed without damaging saved layers. Pack exports contain the flattened image only; transferring editable compositions and animated layer export remain on the ideas list.
+
 ## GIF search
 
 Open **GIF search** in the navigation, or **Add stickers → Find a GIF** in a pack or the library. The latter opens a popup so you can keep your place. Add your own KLIPY API key in **Settings → GIF search** first. Create a key through the [KLIPY Partner Panel](https://partner.klipy.com/) and configure its allowed app origins/platforms there. A saved key is not validated until you request results. The app supports keyword searches, loading more results, and copying GIF links. It does not load trending GIFs automatically. The search field retains KLIPY’s required provider placeholder; the optional Powered by KLIPY heading is omitted.

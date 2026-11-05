@@ -1,0 +1,70 @@
+/* Small, finite feedback effects; shared by the browser and native WebViews. */
+.button, .text-button, .color-option, .settings-tabs button,
+.app-nav a, .toolbar-menu-option, .image-card, .add-sticker-card {
+    transition: background-color 150ms ease, border-color 150ms ease,
+        color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .button:not(:disabled):not([aria-disabled="true"]):hover,
+    .text-button:not(:disabled):hover, .color-option:not(:disabled):hover {
+        transform: translateY(-1px);
+        border-color: var(--accent);
+        box-shadow: 0 3px 12px #0002;
+    }
+    .image-card:hover, .add-sticker-card:not(:disabled):hover {
+        border-color: var(--accent);
+        box-shadow: 0 3px 14px #0002;
+    }
+    .app-nav a:hover, .settings-tabs button:hover { background: var(--soft); }
+}
+
+.button:not(:disabled):active, .text-button:not(:disabled):active,
+.color-option:not(:disabled):active, .settings-tabs button:active,
+.add-sticker-card:not(:disabled):active { transform: scale(.98); }
+
+.button:focus-visible, .color-option:focus-visible, .settings-tabs button:focus-visible {
+    box-shadow: 0 0 0 3px var(--soft);
+}
+.toolbar-menu > .button[aria-expanded="true"] { border-color: var(--accent); }
+
+.toolbar-dropdown:not([hidden]) { animation: menu-arrive 150ms ease-out; }
+.folder-dialog[open] { animation: dialog-arrive 180ms ease-out; }
+.folder-dialog[open]::backdrop, .dialog-fallback-backdrop,
+.modal-backdrop { animation: feedback-fade 150ms ease-out; }
+[role="tabpanel"]:not([hidden]) { animation: feedback-fade 160ms ease-out; }
+
+@media (max-width: 860px) {
+    .app-navigation .app-nav.navigation-open { animation: menu-arrive 150ms ease-out; }
+}
+
+@keyframes menu-arrive {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+@keyframes dialog-arrive {
+    from { opacity: 0; transform: translate(-50%, calc(-50% + 8px)); }
+    to { opacity: 1; transform: translate(-50%, -50%); }
+}
+@keyframes feedback-fade { from { opacity: 0; } to { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+    .button, .text-button, .color-option, .settings-tabs button, .app-nav a,
+    .toolbar-menu-option, .image-card, .add-sticker-card { transition: none; }
+    .button:not(:disabled):hover, .text-button:not(:disabled):hover,
+    .color-option:not(:disabled):hover, .button:not(:disabled):active,
+    .text-button:not(:disabled):active, .color-option:not(:disabled):active,
+    .settings-tabs button:active, .add-sticker-card:not(:disabled):active { transform: none; }
+    .toolbar-dropdown:not([hidden]), .folder-dialog[open], .folder-dialog[open]::backdrop,
+    .dialog-fallback-backdrop, .modal-backdrop, [role="tabpanel"]:not([hidden]),
+    .app-navigation .app-nav.navigation-open { animation: none; }
+}
+
+.tap-intensity { display: block; width: 100%; max-width: 420px; margin: 12px 0; accent-color: var(--accent); }
+
+.editor-loading { min-height: 200px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 20px; }
+.feedback-spinner { width: 24px; height: 24px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: feedback-spin 800ms linear infinite; }
+@keyframes feedback-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .feedback-spinner { animation: none; } }
+
+.settings-card .tap-feedback-toggle { flex-direction: row; align-items: center; gap: 10px; }

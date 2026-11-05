@@ -45,6 +45,7 @@
             <p class="error" role="alert">@themeError</p>
         }
     </section>
+    <TapFeedbackSettings />
     <section class="settings-card faq" id="faq" aria-labelledby="faq-title">
         <h2 id="faq-title">Help &amp; FAQ</h2>
         <details>
@@ -60,17 +61,46 @@
         </details>
         <details>
             <summary>Can I add GIFs and other images?</summary>
-            <p>Yes. Add images imports JPEG, PNG, GIF, and WebP files into your library. The Add sticker tile inside a pack imports images straight into that pack. Open Packs to see all your collections, create one with the New pack tile, or choose its cover. You can store and share these files before they meet WhatsApp's requirements.</p>
+            <p>Yes. Choose Add stickers → Images or GIFs from device to import JPEG, PNG, GIF, and WebP files into your library. The Add sticker tile inside a pack imports images straight into that pack. Open Packs to see all your collections, create one with the New pack tile, or choose its cover. You can store and share these files before they meet WhatsApp's requirements.</p>
             <p>Images and GIFs are prepared automatically in the background: converted to WebP, fitted into 512 × 512 pixels without stretching, and compressed. Originals are kept. Open a sticker’s info button to see its details and status. GIFs longer than 10 seconds or too large to compress need a shorter selection in Edit; preparation resumes after you save. Animated WebP resizing requires its original GIF.</p>
         </details>
         <details>
+            <summary>How do I edit an image or trim a GIF?</summary>
+            <p>Tap a sticker’s picture or pencil button. Still images support cropping, rotating, flipping, resizing or stretching, erasing, tracing a cutout, and a magic wand for connected areas of similar color. Checkerboard areas are transparent. Save applies your edits and automatic sticker preparation runs again.</p>
+            <p>GIFs show a loading indicator while their preview and timeline are prepared. Once ready, set the start and end points, preview the trim, and save. Trimming needs the original GIF; an animated WebP without that original cannot be trimmed here.</p>
+        </details>
+        <details>
+            <summary>How do I combine images with layers?</summary>
+            <p>In a pack or All images, choose Add stickers → Create with layers. Add images from your device or library, then drag a layer on the canvas. Drag its corner or edge handles to resize, and the round arrow handle to rotate. Turn off Keep proportions to stretch. Position, size, rotation, opacity, and tint controls also provide precise adjustments. The top of the layer list is the front. Each layer has a thumbnail, and selecting one shows a larger preview so similar filenames are easier to distinguish. Quick buttons stay pinned at the bottom for undo, redo, rotating 90°, flipping, duplicating, reordering, centering, and removing the selected layer.</p>
+            <p>Save creates a sticker and keeps its editable layers locally. Tap that sticker’s pencil button to reopen its layers. Compositions support up to 10 layers on a transparent 512 × 512 canvas; GIFs become a still frame. Exported pack files contain the flattened image, not the editable layers.</p>
+        </details>
+        <details>
+            <summary>Where do I change vibration and intensity?</summary>
+            <p>Open Settings → General → Touch feedback. In the Android and iPhone apps, switch Vibration on or off and adjust Intensity within a gentle range. Releasing the slider plays one preview tap. Your choice is remembered on that device. Some Android motors cannot vary strength and use a short system tap instead.</p>
+            <p>Vibration is unavailable in the browser and Home Screen web app, so those controls are disabled there. Changes to native features appear on your phone after installing an updated mobile build.</p>
+        </details>
+        <details>
+            <summary>How do I go back or close something?</summary>
+            <p>Tap the logo or app name to open Packs; the space around it is not a home button. Use the menu to switch screens. Android Back or the iPhone app’s left-edge swipe closes an open popup first, then navigates back. Popups also have their own Close or Cancel control. In the browser, use its normal navigation controls.</p>
+        </details>
+        <details>
+            <summary>Where can I find error logs?</summary>
+            <p>Open Settings → Developer → Diagnostics &amp; error logs. View log shows recent entries, Close log hides them, and Export log (.txt) downloads a report or opens the phone’s share sheet. Logs are saved locally; nothing is uploaded automatically. Review a report before sharing it.</p>
+        </details>
+        <details>
             <summary>How do I import, export, or share a pack?</summary>
-            <p>Import pack opens .wastickers files or editable ZIP backups and creates a new pack. Use Share to export .wastickers for other sticker makers, or an editable ZIP to preserve original GIFs and metadata. Both formats support sharing links after configuring your server. On phones, exporting opens the system share sheet.</p>
+            <p>Import pack opens .wastickers files or editable ZIP backups and creates a new pack. Use Pack options → Share or export to export .wastickers for other sticker makers, or an editable ZIP to preserve original GIFs and metadata. Both formats support sharing links after configuring your server. On phones, exporting opens the system share sheet.</p>
             <p>A pack ZIP includes its images. A fingerprint identifies the file; it does not store or encrypt it. Anyone with a sharing link can download that pack.</p>
         </details>
         <details>
+            <summary>What works without internet?</summary>
+            <p>In the installed Android and iPhone apps, your saved library, packs, and editable layers are local. You can import files already on the device, edit images, combine layers, trim saved GIFs, prepare stickers, set pack covers, import/export local pack files, change settings, and view/export logs without internet. Cloud-only files must be downloaded first.</p>
+            <p>GIF search, Pinterest imports, creating or opening online sharing links, and online country lookup need a connection. A saved GIF can still be edited offline. Sending files through an online messaging service also needs its usual connection.</p>
+            <p>The browser and Home Screen web app are different: they must stay connected to the computer hosting Stick it. A local host on the same Wi-Fi can work without internet, but if that computer stops or the host connection is lost, editing and saving are unavailable. The reconnect notice refers to that host connection; it does not mean native layer editing needs internet.</p>
+        </details>
+        <details>
             <summary>Do my phones sync automatically?</summary>
-            <p>Each device keeps its own library and appearance settings. Use pack files or sharing links to move packs between devices. Direct OneDrive, Google Drive, and iCloud library sync is not available.</p>
+            <p>Each installed Android/iPhone app keeps its own library. The browser and Home Screen web app use the library on the computer hosting Stick it and need a connection to it. Use pack files or sharing links to move packs between native apps. Automatic syncing and separate browser libraries for each friend are planned for later.</p>
         </details>
     </section>
 </div>

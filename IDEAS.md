@@ -17,11 +17,12 @@ These are a backlog, not instructions to implement now. None of the features bel
 
 ## Layer editor
 
-- [ ] Put multiple stickers/images on top of one another to create a new custom sticker.
-- [ ] Move, resize, rotate, and reorder individual layers.
-- [ ] Adjust opacity and optionally color per layer.
-- [ ] Preserve an editable composition and export a flattened sticker with transparency.
-- [ ] Decide how animated and still layers should combine.
+- [x] Put multiple stickers/images on top of one another to create a new custom sticker.
+- [x] Move, resize, rotate, and reorder individual layers.
+- [x] Adjust opacity and optional color tint per layer; flip, duplicate, remove, undo and redo.
+- [x] Preserve an editable composition locally and export a flattened sticker with transparency.
+- [ ] Animated layer compositions: the current editor intentionally captures GIFs as a still frame.
+- [ ] Transfer editable layers in pack backups; current pack exports contain the flattened sticker only.
 
 ## Owner/admin application
 

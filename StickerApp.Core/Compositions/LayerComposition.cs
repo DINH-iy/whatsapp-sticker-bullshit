@@ -1,0 +1,55 @@
+namespace StickerApp.Core;
+
+public sealed class LayerComposition
+{
+    public const int MaxLayers = 10;
+    public const int MaxSourceCharacters = 8 * 1024 * 1024;
+    public int Version { get; set; } = 1;
+    public List<CompositionLayer> Layers { get; set; } = [];
+
+    public void Validate()
+    {
+        if (Version != 1 || Layers is null || Layers.Count is < 1 or > MaxLayers)
+            throw new InvalidDataException("A composition needs 1–10 layers.");
+        long characters = 0;
+        var ids = new HashSet<string>();
+        foreach (var layer in Layers)
+        {
+            if (layer is null || string.IsNullOrEmpty(layer.Id) || layer.Id.Length > 64 || !ids.Add(layer.Id) ||
+                string.IsNullOrWhiteSpace(layer.Name) || layer.Name.Length > 128 ||
+                layer.Source is null || !layer.Source.StartsWith("data:image/png;base64,", StringComparison.Ordinal))
+                throw new InvalidDataException("A layer has invalid image data or metadata.");
+            characters += layer.Source.Length;
+            if (characters > MaxSourceCharacters) throw new InvalidDataException("Layer images exceed the 8 MB composition limit.");
+            byte[] bytes;
+            try { bytes = Convert.FromBase64String(layer.Source[22..]); }
+            catch (FormatException) { throw new InvalidDataException("A layer image is damaged."); }
+            var image = MediaInspector.Inspect(bytes);
+            if (image.MimeType != "image/png" || image.Animated || image.Width > 1024 || image.Height > 1024)
+                throw new InvalidDataException("Layer images must be still PNGs up to 1024 pixels per side.");
+            if (!Within(layer.X, -2048, 2560) || !Within(layer.Y, -2048, 2560) ||
+                !Within(layer.Width, 1, 2048) || !Within(layer.Height, 1, 2048) ||
+                !Within(layer.Rotation, -180, 180) || !Within(layer.Opacity, 0, 1) ||
+                (layer.Tint is not null && (layer.Tint.Length != 7 || layer.Tint[0] != '#' || !layer.Tint.AsSpan(1).ToString().All(Uri.IsHexDigit))))
+                throw new InvalidDataException("A layer has invalid position, size, opacity, or color.");
+        }
+    }
+
+    private static bool Within(double value, double min, double max) => double.IsFinite(value) && value >= min && value <= max;
+}
+
+public sealed class CompositionLayer
+{
+    public string Id { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string Source { get; set; } = "";
+    // Position is the layer's center, in the 512 × 512 canvas coordinate space.
+    public double X { get; set; } = 256;
+    public double Y { get; set; } = 256;
+    public double Width { get; set; } = 256;
+    public double Height { get; set; } = 256;
+    public double Rotation { get; set; }
+    public double Opacity { get; set; } = 1;
+    public bool FlipX { get; set; }
+    public string? Tint { get; set; }
+}
