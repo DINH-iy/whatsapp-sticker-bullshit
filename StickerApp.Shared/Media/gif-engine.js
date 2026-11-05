@@ -182,8 +182,93 @@ async function inspect(source) {
     return { duration: gif.duration / 1000, frameCount: gif.frames.length, thumbnails };
 }
 
+// Incremental, disposal-aware GIF decoding, shared by live layer preview and export.
+export function createReader(source) {
+    const { gif, frames, width, height, duration } = load(source);
+    const canvas = makeCanvas(width, height), context = canvas.getContext('2d');
+    const screen = new Uint8ClampedArray(width * height * 4);
+    const background = gif.gct?.[gif.lsd.backgroundColorIndex] || [0, 0, 0];
+    let index = 0, end = 0, previous, restore, lastTime = -1, dirty = true;
+    function clear(rect, transparent) {
+        for (let y = rect.top; y < rect.top + rect.height; y++) for (let x = rect.left; x < rect.left + rect.width; x++) {
+            const offset = (y * width + x) * 4;
+            screen[offset] = transparent ? 0 : background[0]; screen[offset + 1] = transparent ? 0 : background[1];
+            screen[offset + 2] = transparent ? 0 : background[2]; screen[offset + 3] = transparent ? 0 : 255;
+        }
+    }
+    return { width, height, duration,
+        at(time) {
+            time = Math.max(0, Math.min(duration - 1, time));
+            if (time < lastTime) { index = 0; end = 0; previous = restore = undefined; screen.fill(0); }
+            lastTime = time;
+            while (index < frames.length && time >= end) {
+                const raw = frames[index++], frame = decompressFrame(raw, gif.gct, true), rect = frame.dims;
+                if (!rect.width || !rect.height || rect.left + rect.width > width || rect.top + rect.height > height) throw new Error('Invalid GIF frame.');
+                if (!previous) clear({ top: 0, left: 0, width, height }, frame.transparentIndex !== undefined);
+                if (previous?.disposalType === 2) clear(previous.dims, previous.transparentIndex !== undefined);
+                if (previous?.disposalType === 3 && restore) screen.set(restore);
+                restore = frame.disposalType === 3 ? screen.slice() : undefined;
+                for (let y = 0; y < rect.height; y++) for (let x = 0; x < rect.width; x++) {
+                    const from = (y * rect.width + x) * 4;
+                    if (frame.patch[from + 3]) screen.set(frame.patch.subarray(from, from + 4), ((rect.top + y) * width + rect.left + x) * 4);
+                }
+                end += delayOf(raw); previous = frame; dirty = true;
+            }
+            if (dirty) { context.putImageData(new ImageData(screen, width, height), 0, 0); dirty = false; }
+            return canvas;
+        }
+    };
+}
+
+async function compose(composition) {
+    const layers = composition.layers;
+    const readers = new Map(), stills = new Map();
+    const duration = Math.min(10000, Math.max(...layers.filter(layer => layer.gifSource).map(layer => (layer.trimEnd - layer.trimStart) * 1000)));
+    if (!Number.isFinite(duration) || duration < 20) throw new Error('Choose an animated layer selection first.');
+    try {
+        for (const layer of layers) {
+            if (layer.gifSource) readers.set(layer.id, createReader(layer.gifSource));
+            else if (typeof createImageBitmap !== 'undefined') stills.set(layer.id, await createImageBitmap(await (await fetch(layer.source)).blob()));
+            else { const image = new Image(); image.src = layer.source; await image.decode(); stills.set(layer.id, image); }
+        }
+        const canvas = makeCanvas(512, 512), context = canvas.getContext('2d');
+        const tintCanvas = makeCanvas(1, 1), tintContext = tintCanvas.getContext('2d');
+        const frameCount = Math.max(2, Math.ceil(duration / 100));
+        const frameDuration = duration / frameCount;
+        for (const quality of [0.65, 0.4, 0.2, 0.08]) {
+            const output = []; let total = 0;
+            for (let frameIndex = 0; frameIndex < frameCount; frameIndex++) {
+                const clock = Math.round(frameIndex * frameDuration);
+                context.clearRect(0, 0, 512, 512);
+                for (const layer of layers) {
+                    let source = layer.gifSource ? readers.get(layer.id).at(layer.trimStart * 1000 + clock % ((layer.trimEnd - layer.trimStart) * 1000)) : stills.get(layer.id);
+                    if (layer.tint) {
+                        tintCanvas.width = source.width; tintCanvas.height = source.height;
+                        tintContext.globalCompositeOperation = 'source-over'; tintContext.drawImage(source, 0, 0);
+                        tintContext.globalCompositeOperation = 'source-in'; tintContext.fillStyle = layer.tint; tintContext.fillRect(0, 0, source.width, source.height);
+                        source = tintCanvas;
+                    }
+                    context.save(); context.globalAlpha = layer.opacity; context.translate(layer.x, layer.y);
+                    context.rotate(layer.rotation * Math.PI / 180); context.scale(layer.flipX ? -1 : 1, 1);
+                    context.drawImage(source, -layer.width / 2, -layer.height / 2, layer.width, layer.height); context.restore();
+                }
+                if (typeof document !== 'undefined' && typeof window !== 'undefined') await new Promise(resolve => setTimeout(resolve, 0));
+                const bytes = await encode(canvas, quality); total += bytes.length + 24;
+                if (total > 500 * 1024) break;
+                output.push({ bytes, duration: Math.round((frameIndex + 1) * frameDuration) - clock });
+            }
+            if (total <= 500 * 1024) {
+                const result = animation(output);
+                if (result.length <= 500 * 1024) return dataUrl(result);
+            }
+        }
+        throw new Error('This animation exceeds 500 KB. Shorten the GIF selections or use fewer animated layers.');
+    } finally { for (const image of stills.values()) image.close?.(); }
+}
+
 // The same engine can run on the main thread on iOS versions without OffscreenCanvas.
 export async function process(data) {
+    if (data.action === 'compose') return compose(data.composition);
     if (data.action === 'prepare') return prepare(data.source);
     if (data.action === 'inspect') return inspect(data.source);
     return trim(data.source, data.start, data.end);

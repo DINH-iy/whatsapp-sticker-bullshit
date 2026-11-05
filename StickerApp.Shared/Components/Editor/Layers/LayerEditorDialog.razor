@@ -9,7 +9,7 @@
         <h2 id="layers-title">Layer editor</h2>
         <button class="button icon-button" type="button" aria-label="Close layer editor" @onclick="Cancel" disabled="@working"><Icon Name="close" /></button>
     </div>
-    <p class="helper">Combine images on a transparent 512 × 512 canvas. Drag a layer to move it, its corners or edges to resize, and the round arrow handle to rotate. GIF layers become a still frame.</p>
+    <p class="helper">Combine images on a transparent 512 × 512 canvas. Drag a layer to move it, its corners or edges to resize, and the round arrow handle to rotate. GIF layers keep their animation; select one to trim its clip below its row.</p>
     <label for="composition-name">Sticker name</label>
     <input id="composition-name" class="layer-name" @bind="name" @bind:event="oninput" maxlength="128" disabled="@working" />
     <div class="layer-add-tools">
@@ -18,7 +18,7 @@
         </label>
         <select aria-label="Choose a library image for a layer" @bind="libraryImageId" disabled="@working">
             <option value="">Choose from library…</option>
-            @foreach (var image in Images) { <option value="@image.Id">@image.Name@(image.Animated ? " (still frame)" : "")</option> }
+            @foreach (var image in Images) { <option value="@image.Id">@image.Name@(image.Animated ? " (GIF)" : "")</option> }
         </select>
         <button class="button" type="button" @onclick="AddLibraryImage" disabled="@(working || libraryImageId == "" || state.Layers.Count >= 10)">Add layer</button>
     </div>
@@ -38,11 +38,31 @@
                 {
                     var layerIndex = index;
                     var layer = state.Layers[index];
-                    <button @key="layer.Id" class="layer-stack-item @(state.Selected == index ? "selected-tool" : "")" type="button"
-                            aria-pressed="@(state.Selected == index ? "true" : "false")" @onclick="() => Select(layerIndex)" disabled="@working">
-                        <img class="layer-thumbnail" src="@layer.Thumbnail" alt="" />
-                        <span>@layer.Name</span><small>@Math.Round(layer.Opacity * 100)%</small>
-                    </button>
+                    <div @key="layer.Id" class="layer-row" data-layer-row="@layer.Id">
+                        <div class="layer-row-main">
+                            <button class="layer-drag-handle" type="button" data-layer-grip aria-label="Reorder @layer.Name" title="Drag to reorder; arrow keys also work" disabled="@working"><Icon Name="grip" /></button>
+                            <button class="layer-stack-item @(state.Selected == index ? "selected-tool" : "")" type="button"
+                                    aria-pressed="@(state.Selected == index ? "true" : "false")" @onclick="() => Select(layerIndex)" disabled="@working">
+                                <img class="layer-thumbnail" src="@layer.Thumbnail" alt="" />
+                                <span>@layer.Name</span><small>@(layer.IsGif ? "GIF · " : "")@Math.Round(layer.Opacity * 100)%</small>
+                            </button>
+                        </div>
+                        @if (state.Selected == index && layer.IsGif)
+                        {
+                            <fieldset class="layer-gif-editor" aria-label="GIF trim range" disabled="@working">
+                                <div class="trim-timeline">
+                                    <div class="timeline-frames" aria-hidden="true">
+                                        @foreach (var thumbnail in layer.GifThumbnails) { <img src="@thumbnail" alt="" /> }
+                                    </div>
+                                    <div class="timeline-mask left" style="width:@(Number(layer.TrimStart / layer.GifDuration * 100))%"></div>
+                                    <div class="timeline-mask right" style="width:@(Number((layer.GifDuration - layer.TrimEnd) / layer.GifDuration * 100))%"></div>
+                                    <div class="timeline-selection" style="left:@(Number(layer.TrimStart / layer.GifDuration * 100))%;right:@(Number((layer.GifDuration - layer.TrimEnd) / layer.GifDuration * 100))%"></div>
+                                    <input class="trim-handle start" aria-label="GIF layer start" type="range" min="0" max="@Number(layer.GifDuration)" step="0.01" value="@Number(layer.TrimStart)" data-gif-bound="start" />
+                                    <input class="trim-handle end" aria-label="GIF layer end" type="range" min="0" max="@Number(layer.GifDuration)" step="0.01" value="@Number(layer.TrimEnd)" data-gif-bound="end" />
+                                </div>
+                            </fieldset>
+                        }
+                    </div>
                 }
             </div>
             @if (Selected is { } current)
@@ -51,32 +71,78 @@
                     <img src="@current.Thumbnail" alt="Preview of @current.Name" />
                     <div><small>Selected layer</small><strong>@current.Name</strong><small>Layer @(state.Selected + 1) · @Math.Round(current.Opacity * 100)% opacity</small></div>
                 </div>
-                <fieldset disabled="@working" class="layer-adjustments">
-                    <legend>Adjust @current.Name</legend>
-                    <div class="layer-pair">
-                        <label>X position<input aria-label="Layer X position" type="number" min="-2048" max="2560" step="1" value="@Number(current.X)" data-layer-property="x" /></label>
-                        <label>Y position<input aria-label="Layer Y position" type="number" min="-2048" max="2560" step="1" value="@Number(current.Y)" data-layer-property="y" /></label>
-                        <label>Width<input aria-label="Layer width" type="number" min="1" max="2048" value="@Number(current.Width)" data-layer-property="width" /></label>
-                        <label>Height<input aria-label="Layer height" type="number" min="1" max="2048" value="@Number(current.Height)" data-layer-property="height" /></label>
-                    </div>
-                    <label class="layer-check"><input type="checkbox" data-layer-ratio @bind="keepRatio" /> Keep proportions</label>
-                    <label><span>Rotation · <span data-layer-readout="rotation">@Number(current.Rotation)</span>°</span><input aria-label="Layer rotation" type="range" min="-180" max="180" step="1" value="@Number(current.Rotation)" data-layer-property="rotation" /></label>
-                    <label><span>Opacity · <span data-layer-readout="opacity">@Math.Round(current.Opacity * 100)</span>%</span><input aria-label="Layer opacity" type="range" min="0" max="100" step="1" value="@Number(current.Opacity * 100)" data-layer-property="opacity" /></label>
-                    <div class="layer-tint">
-                        <label class="layer-check"><input type="checkbox" checked="@(current.Tint is not null)" @onchange="ToggleTint" /> Color tint</label>
-                        <input aria-label="Layer tint color" type="color" value="@(current.Tint ?? "#80d4b0")" data-layer-property="tint" disabled="@(working || current.Tint is null)" />
-                    </div>
 
-                </fieldset>
             }
         </div>
     </div>
     <p class="helper">Save keeps the editable layers @(FormFactor.GetFormFactor() == "Web" ? "on the computer hosting Stick it" : "on this device") and adds the flattened sticker to @(PackId is null ? "your library" : "this pack"). Tap its pencil button to edit the layers again. Pack exports contain the flattened image; layers do not travel with exported packs yet.</p>
     <div class="dialog-actions layer-footer">
+        @if (quickPanel != "" && Selected is { } adjustment)
+        {
+            <div class="layer-tool-panel" role="group" aria-label="@PanelTitle" tabindex="-1">
+                <div class="layer-tool-heading"><h3>@PanelTitle</h3><button class="button icon-button" type="button" aria-label="Close quick adjustments" @onclick='() => quickPanel = ""'><Icon Name="close" /></button></div>
+                <fieldset disabled="@working" class="layer-adjustments">
+                    @if (quickPanel == "transform")
+                    {
+                        <div class="layer-pair">
+                            <label>X position<input aria-label="Layer X position" type="number" min="-2048" max="2560" step="1" value="@Number(adjustment.X)" data-layer-property="x" /></label>
+                            <label>Y position<input aria-label="Layer Y position" type="number" min="-2048" max="2560" step="1" value="@Number(adjustment.Y)" data-layer-property="y" /></label>
+                            <label>Width<input aria-label="Layer width" type="number" min="1" max="2048" value="@Number(adjustment.Width)" data-layer-property="width" /></label>
+                            <label>Height<input aria-label="Layer height" type="number" min="1" max="2048" value="@Number(adjustment.Height)" data-layer-property="height" /></label>
+                        </div>
+                        <label class="layer-check"><input type="checkbox" data-layer-ratio @bind="keepRatio" /> Keep proportions</label>
+                        <p class="helper">Turn off to stretch. On-image handles remain available.</p>
+                    }
+                    else if (quickPanel == "rotate")
+                    {
+                        <svg class="layer-rotation-dial" viewBox="0 0 200 200" role="slider" tabindex="0" aria-label="Rotation dial" aria-valuemin="-180" aria-valuemax="180" aria-valuenow="@Number(adjustment.Rotation)" data-layer-dial>
+                            <circle class="dial-track" cx="100" cy="100" r="75" />
+                            @for (var tick = 0; tick < 8; tick++)
+                            {
+                                <line class="dial-tick" x1="100" y1="18" x2="100" y2="29" transform="@($"rotate({tick * 45} 100 100)")" />
+                            }
+                            <g data-layer-dial-needle transform="@($"rotate({Number(adjustment.Rotation)} 100 100)")"><line class="dial-needle" x1="100" y1="100" x2="100" y2="30" /><circle class="dial-knob" cx="100" cy="25" r="10" /></g>
+                            <circle class="dial-center" cx="100" cy="100" r="39" />
+                            <text x="100" y="108" text-anchor="middle"><tspan data-layer-readout="rotation">@Number(adjustment.Rotation)</tspan>°</text>
+                        </svg>
+                        <input aria-label="Layer rotation" type="range" min="-180" max="180" step="1" value="@Number(adjustment.Rotation)" data-layer-property="rotation" />
+                        <div class="layer-presets" role="group" aria-label="Rotation presets">
+                            <button class="button" type="button" @onclick="() => RotateBy(-90)">−90°</button>
+                            <button class="button" type="button" @onclick="() => RotateBy(-45)">−45°</button>
+                            <button class="button" type="button" @onclick="() => SetRotation(0)">Reset</button>
+                            <button class="button" type="button" @onclick="() => RotateBy(45)">+45°</button>
+                            <button class="button" type="button" @onclick="() => RotateBy(90)">+90°</button>
+                        </div>
+                    }
+                    else if (quickPanel == "opacity")
+                    {
+                        <label><span>Opacity · <span data-layer-readout="opacity">@Math.Round(adjustment.Opacity * 100)</span>%</span><input aria-label="Layer opacity" type="range" min="0" max="100" step="1" value="@Number(adjustment.Opacity * 100)" data-layer-property="opacity" /></label>
+                        <div class="layer-presets" role="group" aria-label="Opacity presets">
+                            @foreach (var percent in new[] { 0, 25, 50, 75, 100 })
+                            {
+                                <button class="button" type="button" @onclick="() => SetOpacity(percent)">@percent%</button>
+                            }
+                        </div>
+                    }
+                    else if (quickPanel == "tint")
+                    {
+                        <div class="layer-tint">
+                            <label class="layer-check"><input type="checkbox" checked="@(adjustment.Tint is not null)" @onchange="ToggleTint" /> Color tint</label>
+                            <input aria-label="Layer tint color" type="color" value="@(adjustment.Tint ?? "#80d4b0")" data-layer-property="tint" disabled="@(working || adjustment.Tint is null)" />
+                        </div>
+                        <p class="helper">Enable tint to recolor the layer while keeping transparency.</p>
+                    }
+                </fieldset>
+            </div>
+        }
+
         <div class="layer-quick-tools" role="group" aria-label="Quick layer actions">
             <button class="button" type="button" @onclick='() => Action("undo")' disabled="@(working || !state.CanUndo)" title="Undo last change"><Icon Name="undo" /><span>Undo</span></button>
             <button class="button" type="button" @onclick='() => Action("redo")' disabled="@(working || !state.CanRedo)" title="Redo last change"><Icon Name="redo" /><span>Redo</span></button>
-            <button class="button" type="button" @onclick='() => Action("rotate")' disabled="@(working || Selected is null)" title="Rotate selected layer 90 degrees"><Icon Name="rotate" /><span>Rotate 90°</span></button>
+            <button class="button" type="button" data-layer-tool="transform" aria-expanded="@(quickPanel == "transform" ? "true" : "false")" @onclick='() => ToggleTool("transform")' disabled="@(working || Selected is null)"><Icon Name="crop" /><span>Size / pos.</span></button>
+            <button class="button" type="button" data-layer-tool="rotate" aria-expanded="@(quickPanel == "rotate" ? "true" : "false")" @onclick='() => ToggleTool("rotate")' disabled="@(working || Selected is null)"><Icon Name="rotate" /><span>Rotate</span></button>
+            <button class="button" type="button" data-layer-tool="opacity" aria-expanded="@(quickPanel == "opacity" ? "true" : "false")" @onclick='() => ToggleTool("opacity")' disabled="@(working || Selected is null)"><Icon Name="opacity" /><span>Opacity</span></button>
+            <button class="button" type="button" data-layer-tool="tint" aria-expanded="@(quickPanel == "tint" ? "true" : "false")" @onclick='() => ToggleTool("tint")' disabled="@(working || Selected is null)"><Icon Name="palette" /><span>Color</span></button>
             <button class="button" type="button" @onclick='() => Action("flip")' disabled="@(working || Selected is null)" title="Flip selected layer"><Icon Name="flip" /><span>Flip</span></button>
             <button class="button" type="button" @onclick='() => Action("duplicate")' disabled="@(working || Selected is null || state.Layers.Count >= 10)" title="Duplicate selected layer"><Icon Name="copy" /><span>Duplicate</span></button>
             <button class="button" type="button" @onclick='() => Action("front")' disabled="@(working || Selected is null || state.Selected == state.Layers.Count - 1)" title="Bring selected layer forward"><Icon Name="up" /><span>Forward</span></button>

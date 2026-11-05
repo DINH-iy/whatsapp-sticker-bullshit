@@ -1,6 +1,8 @@
-# Stick it — ideas for later
+# Stick it — remaining work
 
-These are a backlog, not instructions to implement now. None of the features below are implemented by creating this list.
+Only unfinished ideas and follow-up work are listed here. This is a backlog, not an instruction to implement these features now.
+
+Last updated: 5 November 2026.
 
 ## Hosting and syncing (later, at home)
 
@@ -15,13 +17,8 @@ These are a backlog, not instructions to implement now. None of the features bel
 - [ ] A private/public setting on each pack. Public packs appear in the overview; private packs do not.
 - [ ] Define whether "public" means visible to this friends-only app or visible to anyone with a link.
 
-## Layer editor
+## Editable layer backups
 
-- [x] Put multiple stickers/images on top of one another to create a new custom sticker.
-- [x] Move, resize, rotate, and reorder individual layers.
-- [x] Adjust opacity and optional color tint per layer; flip, duplicate, remove, undo and redo.
-- [x] Preserve an editable composition locally and export a flattened sticker with transparency.
-- [ ] Animated layer compositions: the current editor intentionally captures GIFs as a still frame.
 - [ ] Transfer editable layers in pack backups; current pack exports contain the flattened sticker only.
 
 ## Owner/admin application
@@ -35,11 +32,17 @@ These are a backlog, not instructions to implement now. None of the features bel
 - [ ] Manage API keys and integrations centrally, keeping secrets on the server where possible.
 - [ ] Define access control for the admin panel separately from the friendly first-name popup.
 
+## Feature requests (later)
+
+- [ ] An in-app section where friends can submit feature requests.
+- [ ] Show submitted requests in the owner's admin panel, associated with the client's chosen name.
+- [ ] Let the owner review, organize, and update request status (for example: new, planned, in progress, completed).
+- [ ] Decide what request statuses or responses friends can see in the app.
+
 ## Pack sharing settings
 
 - [ ] Review whether the existing pack-sharing server configuration is useful for friends.
 - [ ] Remove or replace that settings section if it is redundant once the shared dashboard exists.
-- Current behavior: this config powers **Create share link** by uploading a selected pack to a configured server. File export works without it. No settings are removed as part of this backlog request.
 
 ## Discord integration — investigate first
 

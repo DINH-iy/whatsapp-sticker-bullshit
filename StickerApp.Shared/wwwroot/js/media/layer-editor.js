@@ -1,4 +1,6 @@
-const size = 512, maxLayers = 10, maxSources = 8 * 1024 * 1024;
+import { openGif } from './layer-gifs.js';
+import { watchLayerOrder } from './layer-reorder.js';
+const size = 512, maxLayers = 10, maxSources = 24 * 1024 * 1024;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 export function create(canvas, reference) {
@@ -30,17 +32,27 @@ export function create(canvas, reference) {
         return handle;
     });
     const root = canvas.closest('dialog');
-    let editingControl = null, notifyTimer;
+    let editingControl = null, notifyTimer, dialDrag = null, keepProportions = true;
+    const proportions = () => root.querySelector('[data-layer-ratio]')?.checked ?? keepProportions;
     const blockCancel = event => event.preventDefault();
     root.addEventListener('cancel', blockCancel);
     canvas.width = canvas.height = size;
     let layers = [], selected = -1, undo = [], redo = [], drag = null, disposed = false;
-    const images = new Map(), tints = new Map(), thumbnails = new WeakMap();
+    const images = new Map(), tints = new Map(), thumbnails = new WeakMap(), gifs = new Map();
+    let animationFrame, animationTime = 0, playbackOrigin = performance.now(), exporting = false;
+    function play(now) {
+        animationFrame = undefined;
+        if (disposed || exporting || !layers.some(layer => layer.gifSource)) return;
+        if (now - animationTime >= 50) { animationTime = now; render(); }
+        animationFrame = requestAnimationFrame(play);
+    }
+    function animate() { if (!animationFrame && !disposed && !exporting) animationFrame = requestAnimationFrame(play); }
+    const sourceSize = layer => layer.source.length + (layer.gifSource?.length ?? 0);
     const snapshot = () => ({ layers: layers.map(layer => ({ ...layer })), selected });
     const remember = () => {
         undo.push(snapshot()); if (undo.length > 20) undo.shift(); redo = [];
         const retained = new Set([...layers, ...undo.flatMap(item => item.layers)].map(layer => layer.id));
-        for (const id of images.keys()) if (!retained.has(id)) { images.delete(id); tints.delete(id); }
+        for (const id of images.keys()) if (!retained.has(id)) { images.delete(id); tints.delete(id); gifs.delete(id); }
     };
     const active = () => layers[selected];
     function thumbnail(layer) {
@@ -56,7 +68,7 @@ export function create(canvas, reference) {
         }
         return thumbnails.get(image);
     }
-    const state = () => ({ layers: layers.map(({ source, ...layer }) => ({ ...layer, thumbnail: thumbnail(layer) })),
+    const state = () => ({ layers: layers.map(({ source, gifSource, ...layer }) => ({ ...layer, isGif: !!gifSource, gifThumbnails: gifs.get(layer.id)?.thumbnails ?? [], thumbnail: thumbnail(layer) })),
         selected, canUndo: undo.length > 0, canRedo: redo.length > 0 });
     const notify = () => { if (!disposed) return reference.invokeMethodAsync('LayersChanged', state()); };
     const decode = async source => { const image = new Image(); image.src = source; await image.decode(); return image; };
@@ -98,15 +110,19 @@ export function create(canvas, reference) {
             const image = images.get(layer.id);
             if (!image) continue;
             let source = image;
+            if (layer.gifSource && gifs.has(layer.id)) {
+                const length = Math.max(20, (layer.trimEnd - layer.trimStart) * 1000);
+                source = gifs.get(layer.id).reader.at(layer.trimStart * 1000 + (performance.now() - playbackOrigin) % length);
+            }
             if (layer.tint) {
                 let cached = tints.get(layer.id);
-                if (!cached || cached.color !== layer.tint) {
+                if (!cached || cached.color !== layer.tint || layer.gifSource) {
                     const tinted = document.createElement('canvas');
-                    tinted.width = image.width; tinted.height = image.height;
+                    tinted.width = source.width; tinted.height = source.height;
                     const tintContext = tinted.getContext('2d');
-                    tintContext.drawImage(image, 0, 0);
+                    tintContext.drawImage(source, 0, 0);
                     tintContext.globalCompositeOperation = 'source-in';
-                    tintContext.fillStyle = layer.tint; tintContext.fillRect(0, 0, image.width, image.height);
+                    tintContext.fillStyle = layer.tint; tintContext.fillRect(0, 0, source.width, source.height);
                     cached = { color: layer.tint, image: tinted }; tints.set(layer.id, cached);
                 }
                 source = cached.image;
@@ -120,6 +136,16 @@ export function create(canvas, reference) {
         }
         const layer = active();
         placeHandles(layer, selection);
+        if (layer) {
+            const dial = root.querySelector('[data-layer-dial]');
+            if (dial) {
+                dial.setAttribute('aria-valuenow', String(Math.round(layer.rotation)));
+                dial.querySelector('[data-layer-dial-needle]').setAttribute('transform', `rotate(${layer.rotation} 100 100)`);
+                for (const readout of dial.querySelectorAll('[data-layer-readout]')) readout.textContent = String(Math.round(layer.rotation));
+            }
+            const rotation = root.querySelector('input[data-layer-property="rotation"]');
+            if (rotation && rotation !== editingControl) rotation.value = String(layer.rotation);
+        }
         if (selection && layer) {
             context.save(); context.translate(layer.x, layer.y); context.rotate(layer.rotation * Math.PI / 180);
             context.lineWidth = 2; context.strokeStyle = '#ffffff'; context.setLineDash([6, 4]);
@@ -138,7 +164,7 @@ export function create(canvas, reference) {
         const layer = active(), p = point(event);
         editingControl = null;
         drag = { pointer: event.pointerId, mode, handle, start: { ...layer }, point: p,
-            keepRatio: root.querySelector('[data-layer-ratio]').checked, changed: false };
+            keepRatio: proportions(), changed: false };
         event.preventDefault();
         canvas.setPointerCapture(event.pointerId);
         canvas.style.cursor = mode === 'move' ? 'grabbing' : 'crosshair';
@@ -146,12 +172,12 @@ export function create(canvas, reference) {
         notify()?.catch(() => {});
     }
     function startHandle(event, handle) {
-        if (drag || disposed || event.button !== 0 || !active() || root.getAttribute('aria-busy') === 'true') return;
+        if (drag || dialDrag || disposed || event.button !== 0 || !active() || root.getAttribute('aria-busy') === 'true') return;
         event.stopPropagation();
         begin(event, handle.rotating ? 'rotate' : 'resize', handle);
     }
     function down(event) {
-        if (drag || disposed || event.button !== 0 || root.getAttribute('aria-busy') === 'true') return;
+        if (drag || dialDrag || disposed || event.button !== 0 || root.getAttribute('aria-busy') === 'true') return;
         const p = point(event);
         let index = -1;
         for (let i = layers.length - 1; i >= 0; i--) if (hit(layers[i], p)) { index = i; break; }
@@ -226,7 +252,7 @@ export function create(canvas, reference) {
             const dx = event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0;
             const dy = event.key === 'ArrowUp' ? -step : event.key === 'ArrowDown' ? step : 0;
             transformDrag({ start: { ...layer }, point: p, mode: 'resize', handle,
-                keepRatio: root.querySelector('[data-layer-ratio]').checked }, { x: p.x + dx, y: p.y + dy });
+                keepRatio: proportions() }, { x: p.x + dx, y: p.y + dy });
         }
         render(); notify()?.catch(() => {});
     }
@@ -252,12 +278,36 @@ export function create(canvas, reference) {
     function input(event) {
         const control = event.target;
         const property = control.dataset?.layerProperty;
+        if (control.dataset?.gifBound && active()?.gifSource) {
+            let value = Number(control.value); if (!Number.isFinite(value)) return;
+            if (editingControl !== control) { remember(); editingControl = control; }
+            const layer = active();
+            if (control.dataset.gifBound === 'start') {
+                layer.trimStart = clamp(value, 0, layer.trimEnd - 0.02);
+                if (layer.trimEnd - layer.trimStart > 10) layer.trimEnd = layer.trimStart + 10;
+            } else {
+                layer.trimEnd = clamp(value, layer.trimStart + 0.02, layer.gifDuration);
+                if (layer.trimEnd - layer.trimStart > 10) layer.trimStart = layer.trimEnd - 10;
+            }
+            for (const field of root.querySelectorAll('[data-gif-bound]'))
+                field.value = String(field.dataset.gifBound === 'start' ? layer.trimStart : layer.trimEnd);
+            const timeline = control.closest('.trim-timeline');
+            const left = `${layer.trimStart / layer.gifDuration * 100}%`;
+            const right = `${(layer.gifDuration - layer.trimEnd) / layer.gifDuration * 100}%`;
+            timeline.querySelector('.timeline-mask.left').style.width = left;
+            timeline.querySelector('.timeline-mask.right').style.width = right;
+            timeline.querySelector('.timeline-selection').style.left = left;
+            timeline.querySelector('.timeline-selection').style.right = right;
+            playbackOrigin = performance.now(); render();
+            clearTimeout(notifyTimer); notifyTimer = setTimeout(() => notify()?.catch(() => {}), 60);
+            return;
+        }
         if (!property || !active()) return;
         let value = property === 'tint' ? control.value : Number(control.value);
         if (control.value === '' || (property !== 'tint' && !Number.isFinite(value))) return;
         if (property === 'opacity') value /= 100;
         if (editingControl !== control) { remember(); editingControl = control; }
-        update(property, value, root.querySelector('[data-layer-ratio]').checked, false);
+        update(property, value, proportions(), false);
         // Update linked fields locally; publish metadata once the adjustment ends.
         for (const field of root.querySelectorAll('[data-layer-property]')) {
             if (field === control || field.dataset.layerProperty === 'tint') continue;
@@ -272,11 +322,69 @@ export function create(canvas, reference) {
         }
     }
     function change(event) {
-        if (!event.target.dataset?.layerProperty) return;
+        if (event.target.hasAttribute('data-layer-ratio')) { keepProportions = event.target.checked; return; }
+        if (!event.target.dataset?.layerProperty && !event.target.dataset?.gifBound) return;
         editingControl = null;
         clearTimeout(notifyTimer);
         notify()?.catch(() => {});
     }
+    const wrapAngle = angle => ((angle + 180) % 360 + 360) % 360 - 180;
+    function dialAngle(event, element) {
+        const bounds = element.getBoundingClientRect();
+        const x = event.clientX - bounds.left - bounds.width / 2;
+        const y = event.clientY - bounds.top - bounds.height / 2;
+        if (Math.hypot(x, y) < 10) return null;
+        let angle = Math.atan2(x, -y) * 180 / Math.PI;
+        angle = event.shiftKey ? Math.round(angle / 15) * 15 : Math.round(angle);
+        return wrapAngle(angle);
+    }
+    function dialDown(event) {
+        const element = event.target.closest?.('[data-layer-dial]');
+        if (!element || !active() || drag || dialDrag || event.button !== 0 || root.getAttribute('aria-busy') === 'true') return;
+        const angle = dialAngle(event, element);
+        if (angle === null) return;
+        event.preventDefault(); event.stopPropagation();
+        editingControl = null; remember();
+        dialDrag = { pointer: event.pointerId, element };
+        element.setPointerCapture(event.pointerId);
+        update('rotation', angle, false, false);
+    }
+    function dialMove(event) {
+        if (!dialDrag || event.pointerId !== dialDrag.pointer) return;
+        const angle = dialAngle(event, dialDrag.element);
+        if (angle !== null) update('rotation', angle, false, false);
+    }
+    function dialUp(event) {
+        if (!dialDrag || event.pointerId !== dialDrag.pointer) return;
+        if (dialDrag.element.hasPointerCapture(event.pointerId)) dialDrag.element.releasePointerCapture(event.pointerId);
+        dialDrag = null; notify()?.catch(() => {});
+    }
+    function dialKey(event) {
+        if (!event.target.matches?.('[data-layer-dial]') || !active() || root.getAttribute('aria-busy') === 'true') return;
+        if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return;
+        event.preventDefault(); event.stopPropagation();
+        const direction = event.key === 'ArrowRight' || event.key === 'ArrowUp' ? 1 : -1;
+        const angle = event.key === 'Home' ? -180 : event.key === 'End' ? 180 : wrapAngle(active().rotation + direction * (event.shiftKey ? 15 : 1));
+        update('rotation', angle, false); notify()?.catch(() => {});
+    }
+    root.addEventListener('pointerdown', dialDown);
+    root.addEventListener('pointermove', dialMove);
+    root.addEventListener('pointerup', dialUp);
+    root.addEventListener('pointercancel', dialUp);
+    root.addEventListener('keydown', dialKey);
+    function reorder(order) {
+        if (order.length !== layers.length || new Set(order).size !== layers.length || order.some(id => !layers.some(layer => layer.id === id))) return;
+        if (order.every((id, index) => layers[index].id === id)) return;
+        const id = active()?.id; remember();
+        const byId = new Map(layers.map(layer => [layer.id, layer]));
+        layers = order.map(id => byId.get(id)); selected = layers.findIndex(layer => layer.id === id);
+        render(); notify()?.catch(() => {});
+    }
+    const orderControls = watchLayerOrder(root, reorder, (id, direction) => {
+        const order = layers.map(layer => layer.id), from = order.indexOf(id), to = from + direction;
+        if (from < 0 || to < 0 || to >= order.length) return;
+        [order[from], order[to]] = [order[to], order[from]]; reorder(order);
+    });
     const resizeObserver = new ResizeObserver(() => { if (!disposed) render(); });
     resizeObserver.observe(canvas);
     root.addEventListener('input', input);
@@ -284,39 +392,45 @@ export function create(canvas, reference) {
     canvas.addEventListener('pointerdown', down); canvas.addEventListener('pointermove', move);
     canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
     return {
+        focusPanel() { render(); root.querySelector('.layer-tool-panel')?.focus({ preventScroll: true }); },
+        rotateBy(degrees) { return active() ? update('rotation', wrapAngle(active().rotation + degrees), false) : state(); },
         async open(composition) {
-            layers = []; selected = -1; undo = []; redo = []; images.clear(); tints.clear();
+            layers = []; selected = -1; undo = []; redo = []; images.clear(); tints.clear(); gifs.clear();
             if (composition) {
                 for (const layer of composition.layers) {
                     const image = await decode(layer.source);
                     if (disposed) return;
                     layers.push({ ...layer }); images.set(layer.id, image);
+                    if (layer.gifSource) gifs.set(layer.id, await openGif(layer.gifSource));
                 }
                 selected = layers.length - 1;
             }
-            render(); return state();
+            playbackOrigin = performance.now(); render(); animate(); return state();
         },
         async add(name, source) {
             if (layers.length >= maxLayers) throw new Error('A composition supports up to 10 layers.');
-            const image = await decode(source);
+            const gif = source.startsWith('data:image/gif;base64,') ? await openGif(source) : null;
+            const image = gif ? gif.reader.at(0) : await decode(source);
             if (disposed) return state();
-            if (image.naturalWidth * image.naturalHeight > 16_000_000) throw new Error('Choose an image smaller than 16 megapixels.');
+            const sourceWidth = image.naturalWidth || image.width, sourceHeight = image.naturalHeight || image.height;
+            if (sourceWidth * sourceHeight > 16_000_000) throw new Error('Choose an image smaller than 16 megapixels.');
             const normalized = document.createElement('canvas');
-            const scale = Math.min(1, 1024 / Math.max(image.naturalWidth, image.naturalHeight));
-            normalized.width = Math.max(1, Math.round(image.naturalWidth * scale));
-            normalized.height = Math.max(1, Math.round(image.naturalHeight * scale));
+            const scale = Math.min(1, 1024 / Math.max(sourceWidth, sourceHeight));
+            normalized.width = Math.max(1, Math.round(sourceWidth * scale));
+            normalized.height = Math.max(1, Math.round(sourceHeight * scale));
             normalized.getContext('2d').drawImage(image, 0, 0, normalized.width, normalized.height);
             const png = normalized.toDataURL('image/png');
-            if (layers.reduce((sum, layer) => sum + layer.source.length, png.length) > maxSources)
-                throw new Error('Layer images exceed 8 MB. Use smaller or fewer images.');
+            if (layers.reduce((sum, layer) => sum + sourceSize(layer), png.length + (gif ? source.length : 0)) > maxSources)
+                throw new Error('Layer images exceed 24 MB. Use smaller or fewer images.');
             const fit = Math.min(1, 400 / Math.max(normalized.width, normalized.height));
             const id = `layer-${Date.now()}-${Math.random().toString(36).slice(2)}`;
             const layer = { id, name: name.slice(0, 128) || 'Image', source: png, x: 256, y: 256,
                 width: Math.max(1, Math.round(normalized.width * fit)), height: Math.max(1, Math.round(normalized.height * fit)),
-                rotation: 0, opacity: 1, flipX: false, tint: null };
+                rotation: 0, opacity: 1, flipX: false, tint: null, gifSource: gif ? source : null,
+                gifDuration: gif ? gif.reader.duration / 1000 : 0, trimStart: 0, trimEnd: gif ? Math.min(10, gif.reader.duration / 1000) : 0 };
             const still = await decode(png);
-            remember(); layers.push(layer); images.set(id, still); selected = layers.length - 1;
-            render(); return state();
+            remember(); layers.push(layer); images.set(id, still); if (gif) gifs.set(id, gif); selected = layers.length - 1;
+            playbackOrigin = performance.now(); render(); animate(); return state();
         },
         select(index) { editingControl = null; if (layers[index]) selected = index; render(); return state(); },
         update,
@@ -327,11 +441,11 @@ export function create(canvas, reference) {
             else if (active()) {
                 const layer = active();
                 if (action === 'duplicate') {
-                    if (layers.length >= maxLayers || layers.reduce((sum, item) => sum + item.source.length, layer.source.length) > maxSources)
+                    if (layers.length >= maxLayers || layers.reduce((sum, item) => sum + sourceSize(item), sourceSize(layer)) > maxSources)
                         throw new Error('This composition has reached its layer or image-size limit.');
                     remember(); const id = `layer-${Date.now()}-${Math.random().toString(36).slice(2)}`;
                     layers.splice(selected + 1, 0, { ...layer, id, x: clamp(layer.x + 12, -2048, 2560), y: clamp(layer.y + 12, -2048, 2560) });
-                    images.set(id, images.get(layer.id)); selected++;
+                    images.set(id, images.get(layer.id)); if (gifs.has(layer.id)) gifs.set(id, gifs.get(layer.id).copy()); selected++;
                 } else if (action === 'front' && selected < layers.length - 1) {
                     remember(); layers.splice(selected, 1); layers.splice(++selected, 0, layer);
                 } else if (action === 'back' && selected > 0) {
@@ -341,26 +455,35 @@ export function create(canvas, reference) {
                 else if (action === 'flip') { remember(); layer.flipX = !layer.flipX; }
                 else if (action === 'center') { remember(); layer.x = layer.y = 256; }
             }
-            render(); return state();
+            render(); animate(); return state();
         },
-        export() {
+        async export() {
             if (!layers.length) throw new Error('Add at least one layer before saving.');
+            exporting = true; cancelAnimationFrame(animationFrame); animationFrame = undefined;
             render(false);
             try {
-                if (!context.getImageData(0, 0, size, size).data.some((value, index) => index % 4 === 3 && value > 0))
+                if (!layers.some(layer => layer.gifSource) && !context.getImageData(0, 0, size, size).data.some((value, index) => index % 4 === 3 && value > 0))
                     throw new Error('The sticker is completely transparent. Move a visible layer onto the canvas.');
-                return { png: canvas.toDataURL('image/png'), document: { version: 1, layers: layers.map(layer => ({ ...layer })) } };
-            } finally { render(); }
+                const document = { version: 1, layers: layers.map(layer => ({ ...layer })) };
+                const png = layers.some(layer => layer.gifSource)
+                    ? await (await import('./gif-editor.js')).compose(document)
+                    : canvas.toDataURL('image/png');
+                return { png, document };
+            } finally { exporting = false; render(); animate(); }
         },
         dispose() {
             disposed = true;
+            cancelAnimationFrame(animationFrame); orderControls.dispose();
             clearTimeout(notifyTimer);
             resizeObserver.disconnect(); overlay.remove();
+            root.removeEventListener('pointerdown', dialDown); root.removeEventListener('pointermove', dialMove);
+            root.removeEventListener('pointerup', dialUp); root.removeEventListener('pointercancel', dialUp);
+            root.removeEventListener('keydown', dialKey);
             root.removeEventListener('input', input); root.removeEventListener('change', change);
             root.removeEventListener('cancel', blockCancel);
             canvas.removeEventListener('pointerdown', down); canvas.removeEventListener('pointermove', move);
             canvas.removeEventListener('pointerup', up); canvas.removeEventListener('pointercancel', up);
-            layers = []; undo = []; redo = []; images.clear(); tints.clear();
+            layers = []; undo = []; redo = []; images.clear(); tints.clear(); gifs.clear();
         }
     };
 }

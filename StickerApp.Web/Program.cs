@@ -19,7 +19,7 @@ if (builder.Environment.IsDevelopment())
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
-    .AddHubOptions(options => options.MaximumReceiveMessageSize = 16 * 1024 * 1024);
+    .AddHubOptions(options => options.MaximumReceiveMessageSize = 64 * 1024 * 1024);
 
 // Add device-specific services used by the StickerApp.Shared project
 builder.Services.AddSingleton<IFormFactor, FormFactor>();

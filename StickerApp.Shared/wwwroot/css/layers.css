@@ -60,11 +60,42 @@
 
 /* Common actions stay on screen; detailed adjustments can scroll independently. */
 .layer-editor-dialog .layer-footer { display: block; z-index: 5; border-top: 1px solid var(--line); }
-.layer-quick-tools { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 6px; }
+.layer-quick-tools { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 6px; }
 .layer-quick-tools .button { min-width: 0; min-height: 44px; height: 44px; flex-direction: column; gap: 3px; padding: 4px 2px; font-size: 10px; line-height: 1.1; white-space: normal; }
 .layer-quick-tools .app-icon { width: 17px; height: 17px; flex-shrink: 0; }
 .layer-save-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
 @media (max-width: 700px) {
-    .layer-quick-tools { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    .layer-quick-tools { grid-template-columns: repeat(6, minmax(0, 1fr)); }
     .layer-canvas-wrap { width: min(100%, 34vh); width: min(100%, 34dvh); }
 }
+
+.layer-tool-panel { position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); width: min(350px, calc(100vw - 64px)); max-height: min(390px, calc(var(--dialog-viewport-height, 100vh) - 200px)); overflow-y: auto; padding: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 40px #0006; }
+.layer-tool-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.layer-tool-heading h3 { margin: 0; font-size: 15px; }
+.layer-tool-heading .button { width: 32px; height: 32px; min-height: 32px; padding: 0; }
+.layer-presets { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; margin-top: 10px; }
+.layer-presets .button { min-width: 0; padding: 0 4px; font-size: 12px; }
+.layer-rotation-dial { display: block; width: 140px; height: 140px; margin: 0 auto 8px; touch-action: none; cursor: grab; }
+.layer-rotation-dial:active { cursor: grabbing; }
+.layer-rotation-dial * { pointer-events: none; }
+.layer-rotation-dial:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 50%; }
+.dial-track { fill: var(--soft); stroke: var(--line); stroke-width: 2; }
+.dial-tick { stroke: var(--muted); stroke-width: 3; }
+.dial-needle { stroke: var(--accent); stroke-width: 3; }
+.dial-knob { fill: var(--accent); stroke: var(--surface); stroke-width: 3; }
+.dial-center { fill: var(--surface); }
+.layer-rotation-dial text { fill: var(--text); font: 600 24px system-ui; }
+.layer-quick-tools [aria-expanded="true"] { border-color: var(--accent); background: var(--soft); }
+@media (max-width: 360px) { .layer-quick-tools { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+.layer-stack { max-height: none; overflow: visible; }
+.layer-row { min-width: 0; border-radius: 8px; }
+.layer-row-main { display: flex; align-items: center; gap: 4px; }
+.layer-row-main .layer-stack-item { flex: 1; min-width: 0; }
+.layer-drag-handle { display: grid; place-items: center; flex: 0 0 36px; min-height: 48px; padding: 4px; border: 0; border-radius: 6px; color: var(--muted); background: transparent; cursor: grab; touch-action: none; }
+.layer-drag-handle:active { cursor: grabbing; }
+.layer-drag-handle:hover, .layer-drag-handle:focus-visible { color: var(--accent); background: var(--soft); }
+.layer-row-dragging { opacity: .55; }
+.layer-drop-before { box-shadow: 0 -3px var(--accent); }
+.layer-drop-after { box-shadow: 0 3px var(--accent); }
+.layer-gif-editor { min-width: 0; margin: 8px 4px 16px 40px; padding: 0; border: 0; }

@@ -2,10 +2,11 @@
 @inject IJSRuntime JS
 @using Microsoft.AspNetCore.Components.Web
 
-<div class="toolbar-menu" @onkeydown="HandleKey">
-    <button class="button @(Primary ? "primary" : "")" type="button" @onclick="Toggle" disabled="@Disabled" @ref="trigger"
+<div class="toolbar-menu @(TileStyle ? "add-sticker-menu" : "")" @onkeydown="HandleKey">
+    <button class="@(TileStyle ? "add-sticker-card" : $"button {(Primary ? "primary" : "")}")" type="button" @onclick="Toggle" disabled="@Disabled" @ref="trigger"
             aria-expanded="@(open ? "true" : "false")" aria-controls="@id">
-        <Icon Name="@IconName" /> @Label
+        @if (TriggerContent is not null) { @TriggerContent }
+        else { <Icon Name="@IconName" /> @Label }
     </button>
     @if (open)
     {
@@ -20,6 +21,8 @@
     [Parameter, EditorRequired] public string Label { get; set; } = "";
     [Parameter] public string IconName { get; set; } = "more";
     [Parameter] public bool Primary { get; set; }
+    [Parameter] public bool TileStyle { get; set; }
+    [Parameter] public RenderFragment? TriggerContent { get; set; }
     [Parameter] public bool Disabled { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     private readonly string id = "actions-" + Guid.NewGuid().ToString("N");

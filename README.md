@@ -23,9 +23,9 @@ For the browser development host, you can use an empty subfolder inside a locall
 
 ## Layer editor
 
-In a pack or All images, open **Add stickers → Create with layers**. Add up to ten device or library images, drag them into place, resize with corner/edge handles, rotate with the round arrow handle, and adjust proportions, opacity, order, flip, or color tint. Quick actions stay pinned at the bottom for undo/redo, rotating, flipping, duplicating, reordering, centering, and removing. Save creates a transparent 512 × 512 sticker; its pencil button reopens the editable composition. GIF inputs become a still frame in this version.
+In a pack or All images, open **Add stickers → Layered image**. Add up to ten device or library images, drag them into place, resize with corner/edge handles, rotate with the round arrow handle, and adjust proportions, opacity, order, flip, or color tint. Quick actions stay pinned at the bottom for undo/redo, rotating, flipping, duplicating, reordering, centering, and removing. Save creates a transparent 512 × 512 sticker; its pencil button reopens the editable composition. GIF layers retain their animation, with a trim timeline beneath the selected layer. Drag the grip beside each layer to reorder it. Animated compositions save as WhatsApp-ready animated WebP; still-only compositions stay visually still and receive identical frames during WhatsApp export.
 
-Editable sources stay in the local library as self-contained `.layers.json` files, separate from the automatically prepared sticker. Source images can be removed without damaging saved layers. Pack exports contain the flattened image only; transferring editable compositions and animated layer export remain on the ideas list.
+Editable sources stay in the local library as self-contained `.layers.json` files, separate from the automatically prepared sticker. Source images can be removed without damaging saved layers. Pack exports contain the flattened image only; transferring editable compositions remains on the ideas list.
 
 ## GIF search
 
@@ -60,7 +60,7 @@ Dark themes share neutral charcoal backgrounds across all five accents. Primary 
 
 ## Quickly saving GIFs and adding images to packs
 
-Every GIF search result has a download-shaped **Open original GIF to save** link. It opens the provider's original URL in a new tab. This is not an automatic download: use the browser's Save Image option, then import the saved file through **Add stickers → Images or GIFs from device**. Cross-origin links cannot reliably force a file download, and the app does not fetch or re-host provider media.
+Every GIF search result has a download-shaped **Open original GIF to save** link. It opens the provider's original URL in a new tab. This is not an automatic download: use the browser's Save Image option, then import the saved file through **Add stickers → GIF from device**. Cross-origin links cannot reliably force a file download, and the app does not fetch or re-host provider media.
 
 Once an image is in the local library, its folder-plus **Add to pack** action opens a picker of all packs. Choose an existing pack, or enter a name and use **Create & add**. Creating a pack and adding the image happen in a single atomic write. Already-added images and full packs are disabled in the picker. This works for imported GIFs and still images; WhatsApp export still requires compliant WebP files.
 
@@ -105,7 +105,7 @@ On iOS, keep the library inside the app sandbox. You can import pack ZIPs throug
 
 Android builds must select their target explicitly: `dotnet build StickerApp/StickerApp.csproj -f net10.0-android`. They also need the Android SDK and JDK, which are not currently installed on this Mac. `dev.ps1 android` now selects that target; `dev.ps1 ios` builds the Apple Silicon simulator target.
 
-When viewing a pack, the first grid cell is always **Add sticker**, even when the pack is empty or a search has no matches. Click it to choose images or GIFs from the device; files are imported directly into that pack in the same index write. Full packs disable the tile, and invalid files report an error without leaving unused images in the library. **Add stickers → Images or GIFs from device** in the all-images view imports into the library. **Import pack** creates a separate pack from an exported archive.
+When viewing a pack, the first grid cell is always **Add sticker**, even when the pack is empty or a search has no matches. Click it for Image from device, GIF from device, or Layered image; files are imported directly into that pack in the same index write. Full packs disable the tile, and invalid files report an error without leaving unused images in the library. **Add stickers → Image from device / GIF from device** in the all-images view imports into the library. Each file picker filters the matching formats. **Import pack** creates a separate pack from an exported archive.
 
 ## Pack overview and covers
 

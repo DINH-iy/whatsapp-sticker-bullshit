@@ -8,9 +8,9 @@ function reset(message) {
     for (const request of pending.values()) { clearTimeout(request.timer); request.reject(new Error(message)); }
     pending.clear();
 }
-function request(action, source, start, end) {
+function request(action, source, start, end, composition) {
     if (typeof OffscreenCanvas === 'undefined')
-        return import('./gif-engine.js').then(engine => engine.process({ action, source, start, end }));
+        return import('./gif-engine.js').then(engine => engine.process({ action, source, start, end, composition }));
     if (!worker) {
         worker = new Worker(new URL('./gif-worker.js', import.meta.url), { type: 'module' });
         worker.onmessage = ({ data }) => {
@@ -23,9 +23,9 @@ function request(action, source, start, end) {
     }
     return new Promise((resolve, reject) => {
         const id = ++sequence;
-        const timer = setTimeout(() => reset('GIF processing timed out. Use a smaller GIF.'), 60000);
+        const timer = setTimeout(() => reset('GIF processing timed out. Use a smaller GIF.'), action === 'compose' ? 180000 : 60000);
         pending.set(id, { resolve, reject, timer });
-        worker.postMessage({ id, action, source, start, end });
+        worker.postMessage({ id, action, source, start, end, composition });
     });
 }
 export function inspect(source) { return request('inspect', source); }
@@ -33,3 +33,5 @@ export function trim(source, start, end) { return request('trim', source, start,
 export function dispose() { reset('GIF editor closed.'); }
 
 export function prepare(source) { return request('prepare', source); }
+
+export function compose(composition) { return request('compose', null, null, null, composition); }

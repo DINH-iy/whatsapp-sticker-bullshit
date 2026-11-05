@@ -26,14 +26,7 @@
     <div class="header-actions sticker-toolbar">
         <ActionMenu Label="Add stickers" IconName="plus" Primary="true" Disabled="@busy">
             <p class="toolbar-menu-heading">@(CurrentPack is null ? "Add to your library" : $"Add to {CurrentPack.Name}")</p>
-            <label class="toolbar-menu-option file-button">
-                <Icon Name="image-plus" />
-                <span>Images or GIFs from device<small>Choose saved files to add here.</small></span>
-                <InputFile OnChange="Import" accept="image/*" multiple disabled="@(busy || CurrentPack?.StickerIds.Count >= 30)" aria-label="Choose images or GIFs from device" />
-            </label>
-            <button class="toolbar-menu-option" type="button" @onclick="NewComposition" disabled="@(busy || CurrentPack?.StickerIds.Count >= 30)">
-                <Icon Name="edit" /><span>Create with layers<small>Combine images into a custom sticker.</small></span>
-            </button>
+            <AddStickerChoices Disabled="@(busy || CurrentPack?.StickerIds.Count >= 30)" OnImport="Import" OnLayers="NewComposition" />
             <button class="toolbar-menu-option" type="button" @onclick="() => showGifSearch = true" disabled="@busy">
                 <Icon Name="search" /><span>Find a GIF<small>Search and preview GIFs in a popup.</small></span>
             </button>
@@ -166,10 +159,10 @@ else
     <div class="image-grid @(CurrentPack is not null ? "pack-stickers" : "")">
         @if (CurrentPack is { } currentPack)
         {
-            <AddTile Title="Add sticker" Hint="@(currentPack.StickerIds.Count >= 30 ? "Pack full · 30/30 stickers" : "Choose images or GIFs")">
-                <InputFile OnChange="Import" accept="image/*" multiple
-                           disabled="@(busy || currentPack.StickerIds.Count >= 30)" aria-label="@($"Add stickers to {currentPack.Name}")" />
-            </AddTile>
+            <ActionMenu Label="Add sticker" TileStyle="true" Disabled="@(busy || currentPack.StickerIds.Count >= 30)">
+                <TriggerContent><AddTileLabel Title="Add sticker" Hint="@(currentPack.StickerIds.Count >= 30 ? "Pack full · 30/30 stickers" : "Image, GIF, or layered image")" /></TriggerContent>
+                <ChildContent><AddStickerChoices Disabled="@(busy || currentPack.StickerIds.Count >= 30)" OnImport="Import" OnLayers="NewComposition" /></ChildContent>
+            </ActionMenu>
         }
         @foreach (var image in Visible)
         {

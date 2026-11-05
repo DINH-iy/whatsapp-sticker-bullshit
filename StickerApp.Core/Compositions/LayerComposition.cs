@@ -3,7 +3,7 @@ namespace StickerApp.Core;
 public sealed class LayerComposition
 {
     public const int MaxLayers = 10;
-    public const int MaxSourceCharacters = 8 * 1024 * 1024;
+    public const int MaxSourceCharacters = 24 * 1024 * 1024;
     public int Version { get; set; } = 1;
     public List<CompositionLayer> Layers { get; set; } = [];
 
@@ -19,14 +19,25 @@ public sealed class LayerComposition
                 string.IsNullOrWhiteSpace(layer.Name) || layer.Name.Length > 128 ||
                 layer.Source is null || !layer.Source.StartsWith("data:image/png;base64,", StringComparison.Ordinal))
                 throw new InvalidDataException("A layer has invalid image data or metadata.");
-            characters += layer.Source.Length;
-            if (characters > MaxSourceCharacters) throw new InvalidDataException("Layer images exceed the 8 MB composition limit.");
+            characters += layer.Source.Length + (layer.GifSource?.Length ?? 0);
+            if (characters > MaxSourceCharacters) throw new InvalidDataException("Layer images exceed the 24 MB composition limit.");
             byte[] bytes;
             try { bytes = Convert.FromBase64String(layer.Source[22..]); }
             catch (FormatException) { throw new InvalidDataException("A layer image is damaged."); }
             var image = MediaInspector.Inspect(bytes);
             if (image.MimeType != "image/png" || image.Animated || image.Width > 1024 || image.Height > 1024)
                 throw new InvalidDataException("Layer images must be still PNGs up to 1024 pixels per side.");
+            if (layer.GifSource is not null)
+            {
+                if (!layer.GifSource.StartsWith("data:image/gif;base64,", StringComparison.Ordinal)) throw new InvalidDataException("Invalid GIF layer source.");
+                byte[] gif;
+                try { gif = Convert.FromBase64String(layer.GifSource[22..]); }
+                catch (FormatException) { throw new InvalidDataException("A GIF layer is damaged."); }
+                if (gif.Length > LibraryStore.MaxImportBytes || MediaInspector.Inspect(gif).MimeType != "image/gif" ||
+                    !Within(layer.GifDuration, 0.02, 600) || !Within(layer.TrimStart, 0, layer.GifDuration) ||
+                    !Within(layer.TrimEnd, layer.TrimStart + 0.02, layer.GifDuration + 0.001) || layer.TrimEnd - layer.TrimStart > 10.001)
+                    throw new InvalidDataException("Choose a valid GIF selection of at most 10 seconds.");
+            }
             if (!Within(layer.X, -2048, 2560) || !Within(layer.Y, -2048, 2560) ||
                 !Within(layer.Width, 1, 2048) || !Within(layer.Height, 1, 2048) ||
                 !Within(layer.Rotation, -180, 180) || !Within(layer.Opacity, 0, 1) ||
@@ -43,6 +54,10 @@ public sealed class CompositionLayer
     public string Id { get; set; } = "";
     public string Name { get; set; } = "";
     public string Source { get; set; } = "";
+    public string? GifSource { get; set; }
+    public double GifDuration { get; set; }
+    public double TrimStart { get; set; }
+    public double TrimEnd { get; set; }
     // Position is the layer's center, in the 512 × 512 canvas coordinate space.
     public double X { get; set; } = 256;
     public double Y { get; set; } = 256;

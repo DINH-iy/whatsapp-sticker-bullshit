@@ -15,6 +15,11 @@ public sealed class LayerPreview
     public string Id { get; set; } = "";
     public string Name { get; set; } = "";
     public string Thumbnail { get; set; } = "";
+    public bool IsGif { get; set; }
+    public double GifDuration { get; set; }
+    public double TrimStart { get; set; }
+    public double TrimEnd { get; set; }
+    public List<string> GifThumbnails { get; set; } = [];
     public double X { get; set; }
     public double Y { get; set; }
     public double Width { get; set; }

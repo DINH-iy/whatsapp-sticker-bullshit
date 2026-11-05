@@ -22,6 +22,9 @@ public partial class LayerEditorDialog
     private bool working = true, loading = true, keepRatio = true;
     private string name = "Layered sticker", libraryImageId = "", progress = "Opening layer editor…";
     private string? error;
+    private string quickPanel = "";
+    private bool focusQuickPanel;
+    private string PanelTitle => quickPanel switch { "rotate" => "Rotate layer", "opacity" => "Layer opacity", "tint" => "Layer color", _ => "Size & position" };
     private LayerPreview? Selected => state.Selected >= 0 && state.Selected < state.Layers.Count ? state.Layers[state.Selected] : null;
     private static string Number(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
 
@@ -33,7 +36,11 @@ public partial class LayerEditorDialog
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender) return;
+        if (!firstRender)
+        {
+            if (focusQuickPanel && controller is not null) { focusQuickPanel = false; await controller.InvokeVoidAsync("focusPanel"); }
+            return;
+        }
         try
         {
             dialogs = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/dialog.js");
@@ -57,12 +64,22 @@ public partial class LayerEditorDialog
 
     private Task Select(int index) => Run("Selecting layer…", async () => state = await controller!.InvokeAsync<LayerEditorState>("select", index));
     private Task Action(string action) => Run("Updating layers…", async () => state = await controller!.InvokeAsync<LayerEditorState>("action", action));
+    private void ToggleTool(string tool)
+    {
+        quickPanel = quickPanel == tool ? "" : tool;
+        focusQuickPanel = quickPanel != "";
+    }
+    private Task SetRotation(double angle) => Run("Rotating layer…", async () => state = await controller!.InvokeAsync<LayerEditorState>("update", "rotation", ((angle + 180) % 360 + 360) % 360 - 180, false));
+    private Task RotateBy(int degrees) => Run("Rotating layer…", async () => state = await controller!.InvokeAsync<LayerEditorState>("rotateBy", degrees));
+    private Task SetOpacity(int percent) => Run("Updating opacity…", async () => state = await controller!.InvokeAsync<LayerEditorState>("update", "opacity", percent / 100d, false));
     private Task ToggleTint(ChangeEventArgs args) => Tint(args.Value is true ? "#80d4b0" : null);
     private Task Tint(string? color) => Run("Updating color…", async () => state = await controller!.InvokeAsync<LayerEditorState>("update", "tint", color));
     private Task AddLibraryImage() => Run("Adding layer…", async () =>
     {
         if (!Guid.TryParse(libraryImageId, out var id) || !Previews.TryGetValue(id, out var source)) return;
         var image = Images.First(image => image.Id == id);
+        if (image.Animated)
+            source = await Store.ReadLayerGifAsync(id) ?? throw new InvalidOperationException("This animation needs its original GIF. Import the GIF file to add an animated layer.");
         state = await controller!.InvokeAsync<LayerEditorState>("add", image.Name, source);
     }, showProgress: true);
     private Task AddFiles(InputFileChangeEventArgs args) => Run("Loading layer images…", async () =>
@@ -79,11 +96,11 @@ public partial class LayerEditorDialog
             state = await controller!.InvokeAsync<LayerEditorState>("add", Path.GetFileNameWithoutExtension(file.Name), source);
         }
     }, showProgress: true);
-    private Task Save() => Run("Saving sticker and layers…", async () =>
+    private Task Save() => Run("Rendering sticker and saving layers…", async () =>
     {
-        var export = await controller!.InvokeAsync<LayerExport>("export");
-        if (!export.Png.StartsWith("data:image/png;base64,", StringComparison.Ordinal)) throw new InvalidDataException("Could not export this sticker.");
-        var bytes = Convert.FromBase64String(export.Png[22..]);
+        var export = await controller!.InvokeAsync<LayerExport>("export", TimeSpan.FromMinutes(4));
+        if (!export.Png.StartsWith("data:image/png;base64,", StringComparison.Ordinal) && !export.Png.StartsWith("data:image/webp;base64,", StringComparison.Ordinal)) throw new InvalidDataException("Could not export this sticker.");
+        var bytes = Convert.FromBase64String(export.Png[(export.Png.IndexOf(',') + 1)..]);
         var id = await Store.SaveCompositionAsync(StickerId, name, bytes, export.Document, PackId);
         await OnSaved.InvokeAsync(id);
     }, showProgress: true);
@@ -102,7 +119,12 @@ public partial class LayerEditorDialog
         error = $"{exception.Message.Split('\n')[0]} Reference: {id}.";
     }
     private Task Cancel() => working ? Task.CompletedTask : OnCancel.InvokeAsync();
-    private Task HandleKey(KeyboardEventArgs args) => args.Key == "Escape" ? Cancel() : Task.CompletedTask;
+    private Task HandleKey(KeyboardEventArgs args)
+    {
+        if (args.Key != "Escape") return Task.CompletedTask;
+        if (quickPanel != "") { quickPanel = ""; return Task.CompletedTask; }
+        return Cancel();
+    }
     public async ValueTask DisposeAsync()
     {
         try
