@@ -29,6 +29,13 @@ public static class MauiProgram
 #endif
         builder.Services.AddScoped<IPackFileSaver, NativePackFileSaver>();
         builder.Services.AddScoped<PackSharingService>();
+        builder.Services.AddSingleton(_ => new PinterestImportClient());
+        builder.Services.AddSingleton<PinterestShareState>();
+#if IOS
+        builder.Services.AddSingleton<IPinterestShareInbox, IosPinterestShareInbox>();
+#else
+        builder.Services.AddSingleton<IPinterestShareInbox, EmptyPinterestShareInbox>();
+#endif
 
         builder.Services.AddMauiBlazorWebView();
 

@@ -6,10 +6,12 @@
     <nav class="app-nav" aria-label="Main navigation">
         <NavLink href="" Match="NavLinkMatch.All" class="@(Navigation.ToBaseRelativePath(Navigation.Uri).StartsWith("packs/") ? "active" : null)">Packs</NavLink>
         <NavLink href="gifs">GIF search</NavLink>
+        <NavLink href="pinterest">Pinterest</NavLink>
         <NavLink href="settings">Settings</NavLink>
     </nav>
     </div>
     @Body
 </main>
 <LocationSurprise />
+<PinterestShareReceiver />
 <div id="blazor-error-ui">Error. <a href="">Reload</a></div>

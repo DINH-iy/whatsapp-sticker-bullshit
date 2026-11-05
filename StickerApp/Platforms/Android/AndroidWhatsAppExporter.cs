@@ -19,17 +19,14 @@ public sealed class AndroidWhatsAppExporter(LibraryStore store) : IWhatsAppExpor
     {
         var errors = PackRules.Validate(pack, stickers);
         if (errors.Count > 0) throw new InvalidOperationException(string.Join(" ", errors));
-        var animatedPack = stickers.Any(sticker => sticker.Animated);
         // Keep immutable snapshots so WhatsApp never reads a half-edited pack.
-        var folder = Path.Combine(ExportRoot, pack.Id.ToString("N"), pack.Version);
+        var exportVersion = pack.Version + "-animated-v2";
+        var folder = Path.Combine(ExportRoot, pack.Id.ToString("N"), exportVersion);
         Directory.CreateDirectory(folder);
         foreach (var s in stickers)
         {
             var bytes = await File.ReadAllBytesAsync(store.MediaPath(s.FileName));
-            var info = MediaInspector.Inspect(bytes);
-            if (info.MimeType != "image/webp") throw new InvalidOperationException("Convert all stickers to WebP first.");
-            if (animatedPack && !info.Animated)
-                bytes = MediaInspector.AsSingleFrameAnimation(bytes);
+            bytes = WhatsAppSticker.PrepareForExport(bytes);
             await File.WriteAllBytesAsync(Path.Combine(folder, s.FileName), bytes);
         }
         var coverBytes = pack.CoverImage is null ? null : PackCover.ReadBytes(pack.CoverImage);
@@ -48,8 +45,8 @@ public sealed class AndroidWhatsAppExporter(LibraryStore store) : IWhatsAppExpor
             Id = pack.Id,
             Name = pack.Name,
             Publisher = pack.Publisher,
-            Animated = animatedPack,
-            Version = pack.Version,
+            Animated = true,
+            Version = exportVersion,
             StickerIds = pack.StickerIds.ToList(),
             CoverImage = pack.CoverImage
         };

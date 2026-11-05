@@ -6,9 +6,6 @@ using StickerApp.ShareServer;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = PackArchive.MaxArchiveBytes);
-builder.Services.Configure<PinterestOptions>(builder.Configuration.GetSection("Pinterest"));
-builder.Services.AddHttpClient();
-builder.Services.AddSingleton<PinterestService>();
 
 var publishingToken = builder.Configuration["Sharing:PublishToken"];
 if (string.IsNullOrWhiteSpace(publishingToken) || publishingToken.Length is < 32 or > 512)
@@ -47,47 +44,6 @@ bool CanPublish(HttpRequest request)
 }
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
-
-app.MapGet("/api/pinterest/login", (PinterestService pinterest) =>
-{
-    var url = pinterest.CreateAuthorizationUrl(out var state);
-    return Results.Redirect(url);
-});
-
-app.MapGet("/api/pinterest/callback", async (string? code, string? state, PinterestService pinterest, CancellationToken cancellationToken) =>
-{
-    if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(state))
-        return Results.BadRequest(new { error = "Pinterest did not return an authorization code." });
-    try
-    {
-        var session = await pinterest.CompleteAuthorizationAsync(code, state, cancellationToken);
-        return Results.Redirect($"{pinterest.PostLoginRedirect}?session={Uri.EscapeDataString(session)}");
-    }
-    catch (InvalidOperationException exception)
-    {
-        return Results.BadRequest(new { error = exception.Message });
-    }
-});
-
-app.MapGet("/api/pinterest/boards", async Task<IResult> (HttpRequest request, PinterestService pinterest, CancellationToken cancellationToken) =>
-{
-    var session = request.Headers["X-Pinterest-Session"].ToString();
-    if (string.IsNullOrWhiteSpace(session))
-        return Results.Unauthorized();
-    try { return Results.Json(await pinterest.GetBoardsAsync(session, cancellationToken)); }
-    catch (UnauthorizedAccessException) { return Results.Unauthorized(); }
-    catch (InvalidOperationException) { return Results.StatusCode(StatusCodes.Status502BadGateway); }
-});
-
-app.MapGet("/api/pinterest/boards/{boardId}/pins", async Task<IResult> (string boardId, HttpRequest request, PinterestService pinterest, CancellationToken cancellationToken) =>
-{
-    var session = request.Headers["X-Pinterest-Session"].ToString();
-    if (string.IsNullOrWhiteSpace(session))
-        return Results.Unauthorized();
-    try { return Results.Json(await pinterest.GetPinsAsync(session, boardId, cancellationToken)); }
-    catch (UnauthorizedAccessException) { return Results.Unauthorized(); }
-    catch (InvalidOperationException) { return Results.StatusCode(StatusCodes.Status502BadGateway); }
-});
 
 app.MapPost("/api/packs", async (HttpRequest request, PackRepository repository, CancellationToken cancellationToken) =>
 {

@@ -2,14 +2,19 @@
 
 public partial class App : Application
 {
-    public App()
+    private readonly StickerApp.Shared.Services.PinterestShareState shares;
+
+    public App(StickerApp.Shared.Services.PinterestShareState shares)
     {
+        this.shares = shares;
         InitializeComponent();
     }
 
     protected override Window CreateWindow(IActivationState? activationState)
     {
-        return new Window(new MainPage()) { Title = "StickerApp" };
+        var window = new Window(new MainPage()) { Title = "StickerApp" };
+        window.Resumed += (_, _) => shares.CheckInbox();
+        return window;
     }
 }
 

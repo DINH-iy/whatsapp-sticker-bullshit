@@ -1,0 +1,90 @@
+@page "/pinterest"
+@implements IDisposable
+@inject LibraryStore Store
+@inject PinterestImportClient Importer
+@inject StickerApp.Shared.Services.IPinterestShareInbox Inbox
+@inject StickerApp.Shared.Services.PinterestShareState Shares
+
+<PageTitle>Pinterest · Stickers</PageTitle>
+<header class="page-header"><h1>Import from Pinterest</h1></header>
+<section class="settings-card pinterest-import" aria-labelledby="pinterest-link-title">
+    <h2 id="pinterest-link-title">Share a selection</h2>
+    <p>In Pinterest, select several pins on a public board and share the selection. Paste the link or shared text below.</p>
+    <p class="helper">On iPhone, choose Stickers in the share sheet, save the link, then open Stickers to preview it here.</p>
+    <form @onsubmit="Load" @onsubmit:preventDefault>
+        <label for="pinterest-link">Pinterest selection link</label>
+        <textarea id="pinterest-link" rows="3" maxlength="4096" @bind="text" @bind:event="oninput" readonly="@(pending is not null)" disabled="@busy" placeholder="https://pin.it/…"></textarea>
+        <div class="dialog-actions">
+            <button type="submit" class="button primary" disabled="@(busy || string.IsNullOrWhiteSpace(text))">Preview images</button>
+            @if (pending is not null)
+            {
+                <button type="button" class="button" disabled="@busy" @onclick="DismissShare">Discard saved link</button>
+            }
+            else
+            {
+                <button type="button" class="button" disabled="@busy" @onclick="ReadSharedLink">Check saved links</button>
+            }
+        </div>
+    </form>
+</section>
+@if (error is not null)
+{
+    <p class="notice notice-error" role="alert">@error</p>
+}
+@if (success is not null)
+{
+    <p class="notice notice-success" role="status">@success <a href="@destinationLink">Open destination</a></p>
+}
+@if (busy)
+{
+    <div class="pinterest-progress" role="status" aria-live="polite">
+        <p>@status</p>
+        <button class="button" type="button" @onclick="Cancel">Cancel</button>
+    </div>
+}
+@if (selection is not null)
+{
+    <section class="settings-card pinterest-import" aria-labelledby="pinterest-images-title">
+        <h2 id="pinterest-images-title">Choose images</h2>
+        <p>@selected.Count of @selection.Count selected</p>
+        <div class="dialog-actions">
+            <button class="button" type="button" @onclick="SelectAll" disabled="@busy">Select all</button>
+            <button class="button" type="button" @onclick="ClearSelection" disabled="@busy">Clear selection</button>
+        </div>
+        <div class="pinterest-grid">
+            @foreach (var image in selection.Images)
+            {
+                <label class="pinterest-image" @key="image.PinId">
+                    <img src="@image.ThumbnailUrl" alt="@(string.IsNullOrWhiteSpace(image.Title) ? $"Pinterest pin {image.PinId}" : image.Title)" loading="lazy" referrerpolicy="no-referrer" />
+                    <span><input type="checkbox" checked="@selected.Contains(image.PinId)" @onchange="() => Toggle(image.PinId)" disabled="@busy" /> @(string.IsNullOrWhiteSpace(image.Title) ? $"Pin {image.PinId}" : image.Title)</span>
+                </label>
+            }
+        </div>
+        <div class="pinterest-destination-row">
+            <div class="pinterest-destination-field">
+                <label for="pinterest-destination">Import into</label>
+                <select id="pinterest-destination" @bind="destination" disabled="@busy">
+                    <option value="">All images (library)</option>
+                    <option value="new">Create new pack…</option>
+                    @foreach (var pack in library.Packs)
+                    {
+                        <option value="@pack.Id">@pack.Name (@pack.StickerIds.Count/30)</option>
+                    }
+                </select>
+            </div>
+            @if (CreatingPack)
+            {
+                <div class="pinterest-destination-field">
+                    <label for="pinterest-pack-name">New pack name</label>
+                    <input id="pinterest-pack-name" @bind="newPackName" @bind:event="oninput" maxlength="128" placeholder="Pack name" disabled="@busy" />
+                </div>
+            }
+            <button class="button primary" type="button" @onclick="Import" disabled="@(busy || selected.Count == 0 || CapacityError is not null || (CreatingPack && string.IsNullOrWhiteSpace(newPackName)))">@(CreatingPack ? $"Create pack & import {selected.Count} images" : $"Import {selected.Count} images")</button>
+        </div>
+        @if (CapacityError is not null)
+        {
+            <p class="error" role="alert">@CapacityError</p>
+        }
+        <p class="helper">Imports the original images. Use Prepare sticker in your pack to convert them for WhatsApp.</p>
+    </section>
+}

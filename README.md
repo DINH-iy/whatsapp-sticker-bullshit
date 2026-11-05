@@ -115,4 +115,48 @@ GIF editing is labeled **Edit GIF**. Timeline handles and start/end number field
 
 Pack creation needs only a name; still and animated images can share a pack. Animation metadata is inferred from its contents. All pack tools sit in the heading, with Add to WhatsApp fixed at the bottom right. Validation lists only current problems, includes actual dimensions and size limits, and offers Prepare sticker or Edit / trim. Preparation preserves the first imported original, never crops or stretches the image, and never silently trims animation. Very detailed GIFs may need a shorter selection to fit 500 KB. The readable encoder wrapper and GIF worker source live in `StickerApp.Shared/Media`; rebuild their generated assets with `npm run build` in `tools/gif`. WebP encoding uses Apache-2.0 jSquash/libwebp, with its license included beside the bundled assets.
 
-dotnet build .\StickerApp\StickerApp.csproj -f net10.0-android -c Release -p:AndroidSdkDirectory="$env:LOCALAPPDATA\Android\Sdk"
+### Mixing still pictures and GIFs
+
+Keep both in the same app pack. Library images, editing, and previews retain their original still/animated behavior. **Prepare sticker** fits each image into 512 × 512 WebP as before. When exporting a `.wastickers` pack or handing off through Android, every sticker uses animated WebP. Still pictures are wrapped as two identical 500 ms frames without re-encoding the artwork; they remain visually still. Existing multi-frame animations retain their exact bytes. Older one-frame wrappers are repaired into two identical frames. The export copy is checked against the 500 KB, 10-second, and minimum 8 ms frame limits. Editable ZIP backups keep the library files unchanged.
+
+WhatsApp's [sample validator](https://github.com/WhatsApp/stickers/blob/main/Android/app/src/main/java/com/example/samplestickerapp/StickerPackValidator.java) requires more than one frame for each sticker in an animated pack. An animation flag or a one-frame wrapper is insufficient. This change is verified through local export checks; actual WhatsApp acceptance still needs a phone. The native iOS exporter has not been updated or tested in this pass.
+
+## Pinterest selection import
+
+Open **Pinterest** in the navigation, or **Pinterest import** inside a pack to preselect that destination. In Pinterest, select several pins on a public board and share the selection as one link. Paste either the link or Pinterest's shared text, choose **Preview images**, select the images you want, and import into **All images**, an existing pack, or **Create new pack…**. For a new pack, enter its name and choose **Create pack & import**. The pack and its images are saved together after every download succeeds. Each pack holds at most 30 stickers; the preview shows remaining capacity. Imports retain the original image format. Use **Prepare sticker** afterwards for WhatsApp.
+
+The app calls the separate [pinterest-link-extractor](https://github.com/DINH-iy/pinterest-link-extractor) service at `https://stickers.dinnyvanhuizen.com/api/pinterest/import`. No Pinterest login, client ID, secret, or backend settings are needed. The old OAuth settings and sharing-server routes have been removed; pack publishing remains independent. The Pi returns metadata and image URLs; the app downloads the confirmed images directly from `i.pinimg.com`. In the browser development host these requests and library writes run on the host computer.
+
+Only public `https://pin.it/...` and `https://www.pinterest.com/multi-pin-share/...` selection links are supported, with at most 100 images per selection. Whole boards, individual-pin links, private content, videos, and carousel expansion are not supported. Extraction depends on Pinterest's public page structure. A healthy `/health` response checks the service process; a real import also checks Chromium and Pinterest access.
+
+The client rejects incomplete selections, repeated pin IDs, and image URLs outside the HTTPS Pinterest image CDN. Redirects are disabled. Metadata is bounded to 512 KiB and each image to 10 MiB, including responses without a Content-Length header. Preview requests time out after 90 seconds; the complete batch has a 10-minute deadline. Downloads go into a unique temporary directory. All selected images and pack membership commit together under the library lock. Failed/cancelled downloads and failed validation leave the library unchanged, and temporary downloads are removed. Cancellation is honored before the atomic commit; a commit already in progress finishes normally.
+
+### iPhone share sheet
+
+1. Share a Pinterest selection and choose **Stickers** (enable it under **More** if needed).
+2. Tap **Save link for Stickers**.
+3. Open the main **Stickers** app to preview the images, select them, and choose the destination.
+
+The extension saves links in the shared App Group container; it does not download images. Apple does not provide a supported way for a Share Extension to launch its containing app. The main app checks on startup and when resumed. Saved links survive app restarts and remain queued until successfully imported or explicitly discarded. Up to 100 links can be queued, and **Check saved links** opens the next one. Android and the browser support pasted links; Android share-sheet receiving is not implemented.
+
+The extension is a separate .NET iOS library, `StickerApp.ShareExtension`, embedded through an iOS-only project reference. Its principal controller is registered with Objective-C as `PinterestShareViewController`. Both targets declare the App Group in their entitlement files. Enable these identifiers and capabilities in Apple Developer and regenerate the development/distribution profiles:
+
+| Target | Bundle identifier | App Group |
+| --- | --- | --- |
+| Main app | `com.stickerstudio.app` | `group.com.stickerstudio.app` |
+| Share Extension | `com.stickerstudio.app.pinterestshare` | `group.com.stickerstudio.app` |
+
+If changing bundle identifiers, keep the extension's identifier prefixed by the main app's identifier, update both entitlements, and update `PinterestShareLink.AppGroup`. Both targets must use the same Apple team; each device target needs its own matching provisioning profile. Use the matching Xcode version described above. Build the main project to build and embed the extension:
+
+```sh
+dotnet build StickerApp/StickerApp.csproj -f net10.0-ios -p:RuntimeIdentifier=iossimulator-arm64
+```
+
+On an iPhone, verify that the built app contains `PlugIns/StickerApp.ShareExtension.appex`, that sharing works with Stickers closed and backgrounded, that saved links survive an app restart, and that preview, deselection, cancellation, and nearly full packs work. A simulator build or source compile does not verify device provisioning or Pinterest's iOS share payload.
+
+### Local builds
+
+```sh
+dotnet build StickerApp.Web/StickerApp.Web.csproj
+dotnet build StickerApp.ShareServer/StickerApp.ShareServer.csproj
+```

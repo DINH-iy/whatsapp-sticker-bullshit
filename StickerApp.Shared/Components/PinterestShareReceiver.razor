@@ -1,0 +1,30 @@
+@implements IDisposable
+@inject StickerApp.Shared.Services.IPinterestShareInbox Inbox
+@inject StickerApp.Shared.Services.PinterestShareState Shares
+@inject NavigationManager Navigation
+
+@code {
+    private bool disposed;
+
+    protected override void OnInitialized() => Shares.Changed += Check;
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) Check();
+        return Task.CompletedTask;
+    }
+
+    private void Check() => _ = InvokeAsync(() =>
+    {
+        if (disposed || Navigation.ToBaseRelativePath(Navigation.Uri).StartsWith("pinterest", StringComparison.Ordinal))
+            return;
+        if (Inbox.Peek() is not null)
+            Navigation.NavigateTo("pinterest");
+    });
+
+    public void Dispose()
+    {
+        disposed = true;
+        Shares.Changed -= Check;
+    }
+}

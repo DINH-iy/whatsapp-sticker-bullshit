@@ -3,25 +3,38 @@ using System.Text;
 
 namespace StickerApp.Core;
 
-public sealed record MediaInfo(string MimeType, string Extension, int Width, int Height, bool Animated, int DurationMs = 0, int MinimumFrameMs = 0);
+public sealed record MediaInfo(string MimeType, string Extension, int Width, int Height, bool Animated, int DurationMs = 0, int MinimumFrameMs = 0, int FrameCount = 1);
 
 public static class MediaInspector
 {
-    public static byte[] AsSingleFrameAnimation(ReadOnlySpan<byte> data, int durationMs = 1000)
+    /// <summary>Use two identical frames so WhatsApp accepts still artwork in an animated pack.</summary>
+    public static byte[] AsAnimatedSticker(ReadOnlySpan<byte> data, int durationMs = 1000)
     {
         var info = Inspect(data);
-        if (info.MimeType != "image/webp" || info.Animated)
+        if (info.MimeType != "image/webp")
+            throw new InvalidDataException("Use Prepare sticker to convert this image to WebP first.");
+        if (info.Animated && info.FrameCount > 1)
             return data.ToArray();
-        if (durationMs < 8 || durationMs > 10_000)
+        if (durationMs < 16 || durationMs > 10_000)
             throw new ArgumentOutOfRangeException(nameof(durationMs));
 
         List<byte[]> frameChunks = [];
+        byte[]? singleFrameHeader = null;
+        byte[]? colorProfile = null;
         for (var offset = 12; offset + 8 <= data.Length;)
         {
             var length = BinaryPrimitives.ReadUInt32LittleEndian(data[(offset + 4)..]);
             if (length > int.MaxValue || offset + 8L + length > data.Length)
                 throw new InvalidDataException("Invalid WebP chunk.");
             var type = Encoding.ASCII.GetString(data.Slice(offset, 4));
+            if (type == "ICCP")
+                colorProfile = Chunk("ICCP", data.Slice(offset + 8, (int)length));
+            if (type == "ANMF" && info.Animated && length >= 16)
+            {
+                // Also repair older one-frame wrappers without re-encoding the artwork.
+                singleFrameHeader = data.Slice(offset + 8, 16).ToArray();
+                frameChunks.Add(data.Slice(offset + 24, (int)length - 16).ToArray());
+            }
             if (type is "ALPH" or "VP8 " or "VP8L")
             {
                 var chunkLength = checked(8 + (int)length + ((int)length & 1));
@@ -33,17 +46,23 @@ public static class MediaInspector
             throw new InvalidDataException("The WebP contains no image frame.");
 
         var vp8x = new byte[10];
-        vp8x[0] = 0x12;
+        vp8x[0] = (byte)(colorProfile is null ? 0x12 : 0x32);
         Write24(vp8x, 4, info.Width - 1);
         Write24(vp8x, 7, info.Height - 1);
-        var frameHeader = new byte[16];
-        Write24(frameHeader, 6, info.Width - 1);
-        Write24(frameHeader, 9, info.Height - 1);
-        Write24(frameHeader, 12, durationMs);
+        var frameHeader = singleFrameHeader ?? new byte[16];
+        if (singleFrameHeader is null)
+        {
+            Write24(frameHeader, 6, info.Width - 1);
+            Write24(frameHeader, 9, info.Height - 1);
+        }
+        Write24(frameHeader, 12, durationMs / 2);
         frameHeader[15] = 2;
 
-        var body = Join(Chunk("VP8X", vp8x), Chunk("ANIM", new byte[6]),
-            Chunk("ANMF", Join(frameHeader, Join(frameChunks.ToArray()))));
+        var frameBytes = Join(frameChunks.ToArray());
+        var firstFrame = Chunk("ANMF", Join(frameHeader, frameBytes));
+        Write24(frameHeader, 12, durationMs - durationMs / 2);
+        var body = Join(Chunk("VP8X", vp8x), colorProfile ?? [], Chunk("ANIM", new byte[6]),
+            firstFrame, Chunk("ANMF", Join(frameHeader, frameBytes)));
         using var output = new MemoryStream(8 + body.Length);
         output.Write("RIFF"u8);
         WriteUInt32(output, checked((uint)(body.Length + 4)));
@@ -119,7 +138,7 @@ public static class MediaInspector
             offset = checked(offset + 8 + (int)length + ((int)length & 1));
         }
         if (animated && frames == 0) throw new InvalidDataException("The animated WebP has no frames.");
-        return Check(new("image/webp", ".webp", width, height, animated, duration, frames > 0 ? minimum : 0));
+        return Check(new("image/webp", ".webp", width, height, animated, duration, frames > 0 ? minimum : 0, Math.Max(1, frames)));
     }
 
     private static int Read24(ReadOnlySpan<byte> b) => b[0] | b[1] << 8 | b[2] << 16;

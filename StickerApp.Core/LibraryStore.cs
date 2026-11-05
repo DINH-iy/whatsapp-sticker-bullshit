@@ -2,6 +2,8 @@ using System.Text.Json;
 
 namespace StickerApp.Core;
 
+public sealed record BatchImportFile(string Name, string Path);
+
 /// <summary>Single-process, atomic file persistence for the first build. Replace behind this service with SQLite later.</summary>
 public sealed class LibraryStore
 {
@@ -203,6 +205,92 @@ public sealed class LibraryStore
         {
             gate.Release();
         }
+    }
+
+    /// <summary>Validate and commit the whole selection together, or remove every new media file.</summary>
+    public async Task<Guid?> ImportBatchAsync(IReadOnlyList<BatchImportFile> files, Guid? packId = null,
+        CancellationToken cancellationToken = default, string? newPackName = null)
+    {
+        if (files.Count is < 1 or > PinterestImportClient.MaxImages)
+            throw new InvalidDataException("Choose between 1 and 100 images.");
+        await gate.WaitAsync(cancellationToken);
+        List<string> created = [];
+        try
+        {
+            var library = await ReadInternalAsync();
+            StickerPack? newPack = null;
+            if (newPackName is not null)
+            {
+                if (packId is not null)
+                    throw new InvalidOperationException("Choose an existing pack or create a new one.");
+                if (library.Packs.Count >= 10)
+                    throw new InvalidOperationException("This build supports up to 10 packs.");
+                if (files.Count > 30)
+                    throw new InvalidOperationException("A pack can contain at most 30 stickers. Select fewer images or choose the library.");
+                newPack = new StickerPack { Name = CleanName(newPackName) };
+            }
+            if (packId is { } destination)
+            {
+                var pack = library.Packs.FirstOrDefault(p => p.Id == destination)
+                    ?? throw new InvalidOperationException("This pack no longer exists.");
+                if (pack.StickerIds.Count + files.Count > 30)
+                    throw new InvalidOperationException($"This pack has room for {30 - pack.StickerIds.Count} more stickers. Select fewer images or choose the library.");
+            }
+            List<Sticker> stickers = [];
+            foreach (var file in files)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await using var input = File.OpenRead(file.Path);
+                if (input.Length is 0 or > MaxImportBytes)
+                    throw new InvalidDataException("Choose images smaller than 10 MB.");
+                var bytes = new byte[(int)input.Length];
+                await input.ReadExactlyAsync(bytes, cancellationToken);
+                var info = MediaInspector.Inspect(bytes);
+                var sticker = new Sticker
+                {
+                    Name = CleanName(file.Name), MimeType = info.MimeType,
+                    Width = info.Width, Height = info.Height, Animated = info.Animated,
+                    Bytes = bytes.Length, DurationMs = info.DurationMs, MinimumFrameMs = info.MinimumFrameMs
+                };
+                sticker.FileName = $"{sticker.Id:N}{info.Extension}";
+                var path = MediaPath(sticker.FileName);
+                await using (var output = new FileStream(path, FileMode.CreateNew, FileAccess.Write))
+                {
+                    created.Add(path);
+                    await output.WriteAsync(bytes, cancellationToken);
+                }
+                stickers.Add(sticker);
+            }
+            cancellationToken.ThrowIfCancellationRequested();
+            // Once the atomic index write starts it must finish, even if the caller cancels.
+            await MutateInternalAsync(state =>
+            {
+                state.Stickers.AddRange(stickers);
+                if (newPack is not null)
+                {
+                    newPack.StickerIds.AddRange(stickers.Select(s => s.Id));
+                    state.Packs.Add(newPack);
+                }
+                else if (packId is { } id)
+                {
+                    var pack = state.Packs.Single(p => p.Id == id);
+                    pack.StickerIds.AddRange(stickers.Select(s => s.Id));
+                    Touch(pack);
+                }
+            });
+            return newPack?.Id ?? packId;
+        }
+        catch
+        {
+            foreach (var path in created)
+            {
+                try { File.Delete(path); }
+                catch (IOException) { }
+                catch (UnauthorizedAccessException) { }
+            }
+            throw;
+        }
+        finally { gate.Release(); }
     }
 
     public async Task<Guid> CreatePackAsync(string name)

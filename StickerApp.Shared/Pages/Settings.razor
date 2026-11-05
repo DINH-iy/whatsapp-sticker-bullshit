@@ -48,7 +48,7 @@
             <ul>
                 <li>A name of 1–128 characters and 3–30 different stickers.</li>
                 <li>Each sticker must be a 512 × 512 pixel WebP image.</li>
-                <li>You can keep still images and animated stickers together in the library. When exporting a mixed pack to WhatsApp, still WebPs are wrapped as one-frame animated WebPs so the WhatsApp pack remains consistently animated.</li>
+                <li>You can mix still images and GIFs in the same pack. Still pictures keep their appearance in the app. The .wastickers export stores every sticker as animated WebP; still pictures use two identical frames, so they stay visually still.</li>
                 <li>Still stickers: up to 100 KB each. Animated stickers: up to 500 KB each.</li>
                 <li>Animations: at most 10 seconds, with frames lasting at least 8 milliseconds.</li>
             </ul>
@@ -75,7 +75,6 @@
             <h2 id="developer-settings-title">Developer settings</h2>
             <p class="helper">Advanced integrations and credentials are stored only on this device.</p>
         </section>
-        <PinterestSettings />
         <SurpriseSettings />
         <GifSearchSettings />
         <PackSharingSettings />

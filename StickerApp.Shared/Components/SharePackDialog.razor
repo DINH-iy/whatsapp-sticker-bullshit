@@ -18,6 +18,7 @@
         </select>
     </label>
     <p class="helper">.wastickers contains WebP stickers, a cover, and the pack name. Prepare stickers first. Editable backup keeps GIFs and other original formats, names, and tags.</p>
+    <p class="helper">Still images and GIFs can share one .wastickers pack. Still images are exported with two identical frames, so they keep looking still.</p>
     <div class="settings-actions">
         <button class="button primary" type="button" @onclick="SaveFile" disabled="@(!isReady || isWorking)">
             <Icon Name="download" /> @Sharing.FileActionLabel

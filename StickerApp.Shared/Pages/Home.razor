@@ -18,6 +18,7 @@
         <h1>@(CurrentPack?.Name ?? "All images")</h1>
     </div>
     <div class="header-actions">
+        <a class="button" href="@(CurrentPack is { } pinterestPack ? $"pinterest?pack={pinterestPack.Id}" : "pinterest")">Pinterest import</a>
         <a class="button icon-button" href="gifs" title="Find GIFs" aria-label="Find GIFs">
             <Icon Name="search" />
         </a>

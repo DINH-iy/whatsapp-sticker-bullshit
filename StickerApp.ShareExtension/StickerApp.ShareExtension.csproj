@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-ios</TargetFramework>
+    <OutputType>Library</OutputType>
+    <IsAppExtension>true</IsAppExtension>
+    <SupportedOSPlatformVersion>15.0</SupportedOSPlatformVersion>
+    <ApplicationId>com.stickerstudio.app.pinterestshare</ApplicationId>
+    <ApplicationTitle>Stickers</ApplicationTitle>
+    <ApplicationDisplayVersion>0.1.0</ApplicationDisplayVersion>
+    <ApplicationVersion>1</ApplicationVersion>
+    <CodesignEntitlements>Entitlements.plist</CodesignEntitlements>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../StickerApp.Core/PinterestShareLink.cs" Link="PinterestShareLink.cs" />
+    <Compile Include="../StickerApp.Core/PinterestShareInboxFiles.cs" Link="PinterestShareInboxFiles.cs" />
+  </ItemGroup>
+</Project>

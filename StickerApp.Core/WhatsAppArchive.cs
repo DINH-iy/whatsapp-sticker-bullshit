@@ -15,7 +15,6 @@ public static class WhatsAppArchive
         var coverInfo = MediaInspector.Inspect(cover);
         if (coverInfo.MimeType != "image/png" || coverInfo.Width != 96 || coverInfo.Height != 96 || cover.Length > 50 * 1024)
             throw new InvalidDataException("The pack cover must be a 96 × 96 PNG smaller than 50 KB.");
-        var animatedPack = images.Any(image => image.Animated);
         using (var archive = new ZipArchive(destination, ZipArchiveMode.Create, leaveOpen: true))
         {
             for (var index = 0; index < images.Count; index++)
@@ -25,8 +24,7 @@ public static class WhatsAppArchive
                 var info = MediaInspector.Inspect(bytes);
                 if (info.MimeType != "image/webp")
                     throw new InvalidDataException($"Prepare “{images[index].Name}” first using Prepare sticker in the pack, or choose Editable backup (.zip) to keep the original files.");
-                if (animatedPack && !info.Animated)
-                    bytes = MediaInspector.AsSingleFrameAnimation(bytes);
+                bytes = WhatsAppSticker.PrepareForExport(bytes);
                 await PackArchive.WriteEntryAsync(archive, $"{index:D2}.webp", bytes);
             }
             await PackArchive.WriteEntryAsync(archive, "cover.png", cover);
