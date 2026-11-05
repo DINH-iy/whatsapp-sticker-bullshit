@@ -19,6 +19,10 @@ public class MainActivity : MauiAppCompatActivity
     {
         current = this;
         base.OnCreate(savedInstanceState);
+        // Native system bars use the neutral app background rather than MAUI's default purple.
+        if (Window is { } window &&
+            AndroidX.Core.View.WindowCompat.GetInsetsController(window, window.DecorView) is { } controller)
+            controller.AppearanceLightStatusBars = false;
     }
 
     internal static Task<bool> AddStickerPackAsync(string identifier, string authority, string name)

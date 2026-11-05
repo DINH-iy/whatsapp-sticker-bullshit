@@ -17,13 +17,17 @@
             <option value="zip">Editable backup (.zip)</option>
         </select>
     </label>
-    <p class="helper">.wastickers contains WebP stickers, a cover, and the pack name. Prepare stickers first. Editable backup keeps GIFs and other original formats, names, and tags.</p>
+    <p class="helper">.wastickers contains WebP stickers, a cover, and the pack name. Images are prepared automatically. Editable backup keeps GIFs and other original formats, names, and tags.</p>
     <p class="helper">Still images and GIFs can share one .wastickers pack. Still images are exported with two identical frames, so they keep looking still.</p>
+    @if (WaitingForPreparation)
+    {
+        <p class="helper" role="status">Waiting for automatic preparation. If a sticker needs attention, open its info button and edit it. You can save an editable backup at any time.</p>
+    }
     <div class="settings-actions">
-        <button class="button primary" type="button" @onclick="SaveFile" disabled="@(!isReady || isWorking)">
+        <button class="button primary" type="button" @onclick="SaveFile" disabled="@(!isReady || isWorking || WaitingForPreparation)">
             <Icon Name="download" /> @Sharing.FileActionLabel
         </button>
-        <button class="button" type="button" @onclick="PublishLink" disabled="@(!isReady || isWorking || !canPublish)">
+        <button class="button" type="button" @onclick="PublishLink" disabled="@(!isReady || isWorking || !canPublish || WaitingForPreparation)">
             <Icon Name="link" /> Create share link
         </button>
     </div>

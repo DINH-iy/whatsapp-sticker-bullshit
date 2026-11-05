@@ -30,10 +30,10 @@ public static class PackRules
             if (image.Bytes <= 0)
                 issues.Add(new($"{image.Name}: this file is empty. Open Edit and replace it with the original image.", image.Id, "Edit / replace"));
             else if (changes.Count > 0)
-                issues.Add(new($"{image.Name}: {string.Join("; ", changes)}. Prepare sticker does this automatically and keeps the original file.", image.Id, "Prepare sticker"));
+                issues.Add(new($"{image.Name}: {string.Join("; ", changes)}. Automatic preparation is pending; open sticker details for its status.", image.Id, "Details"));
             if (image.Animated && image.MimeType == "image/webp" &&
                 (image.DurationMs <= 0 || image.DurationMs > 10_000 || image.MinimumFrameMs < 8))
-                issues.Add(new($"{image.Name}: animation is {image.DurationMs / 1000d:0.##} seconds; WhatsApp allows up to 10 seconds and at least 8 ms per frame. Replace it with a shorter GIF, then trim and prepare it.", image.Id, "Edit / replace"));
+                issues.Add(new($"{image.Name}: animation is {image.DurationMs / 1000d:0.##} seconds; WhatsApp allows up to 10 seconds and at least 8 ms per frame. Replace it with a shorter GIF, then trim and save it. Preparation runs automatically.", image.Id, "Edit / replace"));
         }
         return issues;
     }

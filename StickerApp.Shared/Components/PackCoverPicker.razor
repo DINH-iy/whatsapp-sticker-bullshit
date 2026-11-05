@@ -1,17 +1,18 @@
 @inject LibraryStore Store
 @inject IJSRuntime JS
 
-<div class="pack-cover-picker">
-    <label class="button file-button">
+<div class="pack-cover-picker @(MenuStyle ? "pack-cover-menu" : "")">
+    <label class="@(MenuStyle ? "toolbar-menu-option file-button" : "button file-button")">
         <Icon Name="image-plus" />
-        <span>@(Pack.CoverImage is null ? "Set cover" : "Change cover")</span>
+        <span>@(Pack.CoverImage is null ? "Set cover" : "Change cover")@if (MenuStyle) { <small>Choose the picture shown on this pack.</small> }</span>
         <input type="file" accept="image/*" @ref="input" @onchange="Upload"
                disabled="@working" aria-label="@($"Choose cover for {Pack.Name}")" />
     </label>
     @if (AllowRemove && Pack.CoverImage is not null)
     {
-        <button class="button icon-button" type="button" @onclick="Remove" disabled="@working" title="Remove cover" aria-label="Remove cover">
+        <button class="@(MenuStyle ? "toolbar-menu-option" : "button icon-button")" type="button" @onclick="Remove" disabled="@working" title="Remove cover" aria-label="Remove cover">
             <Icon Name="close" />
+            @if (MenuStyle) { <span>Remove cover<small>Use the first sticker as the cover.</small></span> }
         </button>
     }
 </div>
@@ -23,6 +24,7 @@
 @code {
     [Parameter, EditorRequired] public StickerPack Pack { get; set; } = default!;
     [Parameter] public bool AllowRemove { get; set; } = true;
+    [Parameter] public bool MenuStyle { get; set; }
     [Parameter] public EventCallback OnChanged { get; set; }
     private ElementReference input;
     private bool working;

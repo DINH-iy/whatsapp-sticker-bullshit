@@ -6,8 +6,9 @@
 @inject StickerApp.Shared.Services.IBulkImageImporter BulkImporter
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
+@inject StickerApp.Shared.Services.StickerPreparationService Preparation
 
-<PageTitle>@(CurrentPack?.Name ?? "Packs") · Stickers</PageTitle>
+<PageTitle>@(CurrentPack?.Name ?? "Packs") · Stick it</PageTitle>
 
 <header class="page-header">
     <div class="page-title">
@@ -17,58 +18,47 @@
         }
         <h1>@(CurrentPack?.Name ?? "All images")</h1>
     </div>
-    <div class="header-actions">
-        <a class="button" href="@(CurrentPack is { } pinterestPack ? $"pinterest?pack={pinterestPack.Id}" : "pinterest")">Pinterest import</a>
-        <a class="button icon-button" href="gifs" title="Find GIFs" aria-label="Find GIFs">
-            <Icon Name="search" />
-        </a>
-        <label class="button file-button" title="Open a .wastickers pack or an editable ZIP backup">
-            <Icon Name="folder-import" />
-            <span>Import pack</span>
-            <InputFile OnChange="ImportPack" accept=".zip,.wastickers" disabled="@busy" aria-label="Import pack file" />
-        </label>
-        @if (BulkImporter.IsAvailable)
-        {
-            <button class="button" type="button" @onclick="ImportFolder" disabled="@busy" title="@BulkImporter.ActionLabel">
-                <Icon Name="folder-import" /> @BulkImporter.ActionLabel
+    <div class="header-actions sticker-toolbar">
+        <ActionMenu Label="Add stickers" IconName="plus" Primary="true" Disabled="@busy">
+            <p class="toolbar-menu-heading">@(CurrentPack is null ? "Add to your library" : $"Add to {CurrentPack.Name}")</p>
+            <label class="toolbar-menu-option file-button">
+                <Icon Name="image-plus" />
+                <span>Images or GIFs from device<small>Choose saved files to add here.</small></span>
+                <InputFile OnChange="Import" accept="image/*" multiple disabled="@(busy || CurrentPack?.StickerIds.Count >= 30)" aria-label="Choose images or GIFs from device" />
+            </label>
+            <button class="toolbar-menu-option" type="button" @onclick="() => showGifSearch = true" disabled="@busy">
+                <Icon Name="search" /><span>Find a GIF<small>Search and preview GIFs in a popup.</small></span>
             </button>
-        }
+            <a class="toolbar-menu-option" href="@(CurrentPack is { } pinterestPack ? $"pinterest?pack={pinterestPack.Id}" : "pinterest")">
+                <Icon Name="link" /><span>Import a Pinterest selection<small>Paste a shared link and choose its images.</small></span>
+            </a>
+            @if (BulkImporter.IsAvailable)
+            {
+                <button class="toolbar-menu-option" type="button" @onclick="ImportFolder" disabled="@busy">
+                    <Icon Name="folder-import" /><span>@BulkImporter.ActionLabel<small>Add supported images from a device folder.</small></span>
+                </button>
+            }
+            <div class="toolbar-menu-divider"></div>
+            <label class="toolbar-menu-option file-button">
+                <Icon Name="folder-import" /><span>Import a pack file<small>Open a .wastickers or ZIP file as a new pack.</small></span>
+                <InputFile OnChange="ImportPack" accept=".zip,.wastickers" disabled="@busy" aria-label="Import pack file" />
+            </label>
+        </ActionMenu>
         @if (CurrentPack is not null)
         {
-            @if (renamingPack)
-            {
-                <form class="pack-name-row" @onsubmit="RenamePack" @onsubmit:preventDefault>
-                    <input aria-label="New pack name" @bind="packName" @bind:event="oninput" maxlength="128" required disabled="@busy" />
-                    <button class="button" type="submit" disabled="@(busy || string.IsNullOrWhiteSpace(packName))">Save</button>
-                    <button class="button" type="button" @onclick="() => renamingPack = false" disabled="@busy">Cancel</button>
-                </form>
-            }
-            else
-            {
-                <div class="pack-name-row">
-                    <button class="button" type="button" @onclick="BeginRenamePack" disabled="@busy">
-                        <Icon Name="edit" /> Rename
-                    </button>
-                </div>
-            }
-            <PackCoverPicker Pack="@CurrentPack" OnChanged="Reload" />
-            <div class="pack-actions">
-                <button class="button icon-button" type="button" @onclick="() => packToShare = CurrentPack"
-                        title="Share or export pack" aria-label="Share or export pack" disabled="@busy">
-                    <Icon Name="share" />
+            <ActionMenu Label="Pack options" Disabled="@busy">
+                <button class="toolbar-menu-option" type="button" @onclick="BeginRenamePack" disabled="@busy">
+                    <Icon Name="edit" /><span>Rename pack<small>Change the name of this collection.</small></span>
                 </button>
-                <button class="button icon-button danger" @onclick="() => deletePack = true" disabled="@busy" title="Delete pack" aria-label="Delete pack">
-                    <Icon Name="trash" />
+                <PackCoverPicker Pack="@CurrentPack" OnChanged="Reload" MenuStyle="true" />
+                <button class="toolbar-menu-option" type="button" @onclick="() => packToShare = CurrentPack" disabled="@busy">
+                    <Icon Name="share" /><span>Share or export<small>Save a pack file or create a sharing link.</small></span>
                 </button>
-            </div>
-        }
-        @if (CurrentPack is null)
-        {
-            <label class="button primary file-button" title="Choose images or GIFs from your device">
-                <Icon Name="image-plus" />
-                <span>Add images</span>
-                <InputFile OnChange="Import" accept="image/*" multiple disabled="@busy" aria-label="Add images" />
-            </label>
+                <div class="toolbar-menu-divider"></div>
+                <button class="toolbar-menu-option danger" type="button" @onclick="() => deletePack = true" disabled="@busy">
+                    <Icon Name="trash" /><span>Delete pack<small>Images stay in your library.</small></span>
+                </button>
+            </ActionMenu>
         }
     </div>
 </header>
@@ -93,6 +83,14 @@
 <div class="toolbar">
     <input class="search" aria-label="Search images" placeholder="Search" @bind="search" @bind:event="oninput" />
 </div>
+@if (PendingPreparationCount > 0)
+{
+    <p class="helper" role="status">Preparing @PendingPreparationCount stickers automatically… You can keep using the app.</p>
+}
+@if (AttentionCount > 0)
+{
+    <p class="helper">@AttentionCount stickers need attention. Open their ⓘ details to see what needs adjusting.</p>
+}
 
 @if (CurrentPack is not null)
 {
@@ -100,25 +98,15 @@
             @onclick="Export" disabled="@(busy || !Exporter.IsAvailable || Validation.Count > 0)">
         <Icon Name="whatsapp" /> Add to WhatsApp
     </button>
-    @if (Validation.Count > 0)
+    @if (Issues.Any(issue => issue.StickerId is null))
     {
         <details class="validation" open>
             <summary>Fix before adding to WhatsApp</summary>
             <ul>
-                @foreach (var issue in Issues)
+                @foreach (var issue in Issues.Where(issue => issue.StickerId is null))
                 {
                     <li>
                         @issue.Message
-                        @if (issue.StickerId is not null && issue.Action is not null)
-                        {
-                            <div class="validation-actions">
-                                <button class="button" disabled="@busy" @onclick="() => FixIssue(issue)">@issue.Action</button>
-                                @if (issue.Action == "Prepare sticker")
-                                {
-                                    <button class="button" disabled="@busy" @onclick='() => FixIssue(issue with { Action = "Edit / replace" })'>Edit / trim</button>
-                                }
-                            </div>
-                        }
                     </li>
                 }
             </ul>
@@ -176,9 +164,13 @@ else
                     <img src="@previews[image.Id]" alt="@image.Name" loading="lazy" />
                 </button>
                 <strong>@image.Name</strong>
-                <small>@image.Width × @image.Height @(image.Animated ? "· Animated" : "")</small>
+                @if (StickerApp.Shared.Services.StickerPreparationService.NeedsPreparation(image))
+                {
+                    <small class="sticker-preparation-status">@(Preparation.GetStatus(image)?.Error is not null ? "Needs attention · see ⓘ" : "Preparing…")</small>
+                }
                 <div class="card-actions">
                     <div class="sticker-actions">
+                        <button class="button icon-button" type="button" @onclick="() => infoImageId = image.Id" title="Sticker details" aria-label="Details for @image.Name"><Icon Name="info" /></button>
                         <button class="button icon-button" type="button" @onclick="() => imageToAdd = image"
                                 disabled="@busy" title="Add to pack" aria-label="Add @image.Name to pack">
                             <Icon Name="folder-plus" />
@@ -196,29 +188,28 @@ else
     </div>
 }
 
+@if (InfoImage is { } infoImage)
+{
+    <StickerInfoDialog Image="infoImage" OnClose="() => infoImageId = null" OnEdit="EditFromInfo" />
+}
+
 @if (editing is not null)
 {
-    <div class="modal-backdrop">
-        <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="edit-title">
+    <dialog @ref="editDialog" class="folder-dialog image-edit-dialog" aria-labelledby="edit-title" @onkeydown="EditorKeyDown">
             <h2 id="edit-title">@(IsGif ? "Edit GIF" : editing.Animated || replacementAnimated ? "Edit animated image" : "Edit image")</h2>
-            <img class="edit-preview" src="@editPreview" alt="@editing.Name" />
+            @if (EditingStill)
+            {
+                <ImageCustomizer Source="@editSource" OnChanged="CustomizeImage" OnBusyChanged="value => customizing = value" />
+            }
+            else
+            {
+                <img class="edit-preview" src="@editPreview" alt="@editing.Name" />
+            }
             <label>
                 Name
                 <input @bind="editName" @bind:event="oninput" maxlength="128" />
             </label>
             <div class="edit-tools">
-                @if (!editing.Animated && !replacementAnimated)
-                {
-                    <button class="button icon-button" @onclick="Rotate" disabled="@busy" title="Rotate" aria-label="Rotate">
-                        <Icon Name="rotate" />
-                    </button>
-                    <button class="button icon-button" @onclick="Crop" disabled="@busy" title="Crop square" aria-label="Crop square">
-                        <Icon Name="crop" />
-                    </button>
-                    <button class="button icon-button" @onclick="ResetImage" disabled="@busy" title="Reset" aria-label="Reset">
-                        <Icon Name="reset" />
-                    </button>
-                }
                 <label class="button file-button icon-button" title="Replace image">
                     <Icon Name="image" />
                     <InputFile OnChange="Replace" accept="image/*" disabled="@busy" aria-label="Replace image" />
@@ -275,10 +266,9 @@ else
             }
             <div class="dialog-actions">
                 <button class="button" @onclick="() => editing = null" disabled="@busy">Cancel</button>
-                <button class="button primary" @onclick="Save" disabled="@busy">Save</button>
+                <button class="button primary" @onclick="Save" disabled="@(busy || customizing)">Save</button>
             </div>
-        </section>
-    </div>
+    </dialog>
 }
 
 @if (pendingRemoval is not null || deletePack)
@@ -302,5 +292,26 @@ else
 
 @if (packToShare is not null)
 {
-    <SharePackDialog Pack="@packToShare" OnClose="() => packToShare = null" />
+    <SharePackDialog Pack="@packToShare" PreparationPending="@PackImages.Any(StickerApp.Shared.Services.StickerPreparationService.NeedsPreparation)" OnClose="() => packToShare = null" />
+}
+
+@if (showGifSearch)
+{
+    <GifSearchDialog OnClose="() => showGifSearch = false" />
+}
+@if (renamingPack)
+{
+    <div class="modal-backdrop">
+        <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="rename-pack-title">
+            <h2 id="rename-pack-title">Rename pack</h2>
+            <form @onsubmit="RenamePack" @onsubmit:preventDefault>
+                <label for="rename-pack-name">Pack name</label>
+                <input id="rename-pack-name" class="folder-input" @bind="packName" @bind:event="oninput" maxlength="128" required autofocus disabled="@busy" />
+                <div class="dialog-actions">
+                    <button class="button" type="button" @onclick="() => renamingPack = false" disabled="@busy">Cancel</button>
+                    <button class="button primary" type="submit" disabled="@(busy || string.IsNullOrWhiteSpace(packName))">Save name</button>
+                </div>
+            </form>
+        </section>
+    </div>
 }

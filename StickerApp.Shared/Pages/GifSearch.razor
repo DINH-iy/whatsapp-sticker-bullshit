@@ -2,10 +2,11 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 
-<PageTitle>GIF search · Stickers</PageTitle>
-<header class="page-header">
-    <h1>GIF search</h1>
-</header>
+@if (!Embedded)
+{
+    <PageTitle>GIF search · Stick it</PageTitle>
+    <header class="page-header"><h1>GIF search</h1></header>
+}
 
 @if (!isReady)
 {
@@ -16,7 +17,7 @@ else if (!isConfigured)
     <section class="settings-card gif-setup">
         <h2>Connect KLIPY</h2>
         <p>Add your KLIPY API key in Settings to search for GIFs.</p>
-        <a class="button primary" href="settings">Set up GIF search</a>
+        <a class="button primary" href="settings#gif-search">Set up GIF search</a>
     </section>
 }
 else
@@ -24,11 +25,11 @@ else
     <form class="gif-search-form" @onsubmit="StartSearch" @onsubmit:preventDefault>
         <label class="visually-hidden" for="gif-query">Search KLIPY GIFs</label>
         <input id="gif-query" class="search" @bind="query" @bind:event="oninput"
-               placeholder="Search KLIPY" maxlength="200" disabled="@isLoading" />
+               placeholder="Search KLIPY" maxlength="200" disabled="@isLoading" autofocus="@Embedded" />
         <button class="button primary" type="submit" disabled="@(isLoading || string.IsNullOrWhiteSpace(query))">Search</button>
     </form>
 
-    <p class="helper">Preview GIFs, copy a share link, or open the original with the download icon. To save it manually, use your browser’s Save Image option, then import the file with Add images → Downloads.</p>
+    <p class="helper">Find a GIF, open its original, and save it to your device. @(Embedded ? "Close this popup, then choose" : "Then choose") <strong>Add stickers → Images or GIFs from device</strong> to add the saved file.</p>
     @if (hasSearched)
     {
         <h2 class="gif-results-heading">Results for “@activeQuery”</h2>

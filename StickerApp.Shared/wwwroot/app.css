@@ -685,7 +685,8 @@ a:focus-visible {
     border: 1px solid var(--line);
     border-radius: 14px;
     width: min(600px, calc(100% - 32px));
-    max-height: 90vh;
+    max-height: calc(100vh - 32px);
+    max-height: calc(100dvh - 32px);
     overflow: auto;
     padding: 24px;
     box-shadow: 0 20px 80px #0005;
@@ -1324,7 +1325,9 @@ button.add-sticker-card:disabled { opacity: .55; cursor: default; }
 .pack-cover > .app-icon { width: 44px; height: 44px; color: var(--muted); }
 .pack-cover-picker { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .pack-card .pack-cover-picker { margin-top: auto; }
-.new-pack-panel { margin-bottom: 20px; }
+.create-pack-dialog { width: min(440px, calc(100vw - 32px)); }
+.create-pack-dialog .new-pack-name { width: 100%; margin-top: 8px; }
+.create-pack-dialog .dialog-actions { margin-top: 24px; }
 
 /* Links must not fall back to the browser's blue/purple visited colors. */
 a, a:visited { color: var(--accent); }
@@ -1334,16 +1337,71 @@ a.button.primary, a.button.primary:visited { color: white; }
 .app-nav a.active, .app-nav a.active:visited { color: var(--accent); }
 
 .app-navigation {
-    display: flex;
+    position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 12px;
-    padding-bottom: 16px;
+    gap: 24px;
+    padding-bottom: 20px;
     margin-bottom: 28px;
     border-bottom: 1px solid var(--line);
 }
-.app-navigation .app-nav { flex: 1; margin: 0; padding: 0; border: 0; }
+.app-brand, .app-brand:visited { display: inline-flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; white-space: nowrap; font-size: 19px; font-weight: 750; letter-spacing: -.5px; }
+.app-brand-mark { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px 10px 10px 3px; background: var(--accent); color: var(--background); }
+.app-navigation .app-nav { grid-column: 2; grid-row: 1; justify-content: center; flex-wrap: nowrap; min-width: 0; gap: 4px; margin: 0; padding: 0; border: 0; }
+.app-navigation .app-nav a { white-space: nowrap; padding: 0 12px; }
+.navigation-tools { display: flex; align-items: center; gap: 8px; grid-column: 3; grid-row: 1; }
 .history-controls { display: flex; gap: 6px; }
+.navigation-toggle { display: none; }
+.navigation-dismiss { display: none; }
+.toolbar-menu { position: relative; }
+.toolbar-menu-dismiss { position: fixed; inset: 0; z-index: 25; width: 100%; height: 100%; padding: 0; border: 0; background: transparent; cursor: default; }
+.toolbar-dropdown { position: absolute; top: calc(100% + 8px); left: 0; z-index: 30; width: min(340px, calc(100vw - 32px)); max-height: calc(100dvh - 140px); overflow-y: auto; padding: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 16px 40px #0005; }
+.sticker-toolbar .toolbar-menu + .toolbar-menu .toolbar-dropdown { left: auto; right: 0; }
+.toolbar-dropdown[hidden] { display: none; }
+.toolbar-menu-heading { margin: 4px 10px 8px; font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.toolbar-menu-option, .toolbar-menu-option:visited { position: relative; display: flex; align-items: flex-start; gap: 12px; width: 100%; height: auto; min-height: 56px; margin: 0; padding: 12px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--text); text-align: left; text-decoration: none; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; white-space: normal; }
+.toolbar-menu-option:hover { background: var(--soft); }
+.toolbar-menu-option .app-icon { margin-top: 2px; }
+.toolbar-menu-option > span { flex: 1; min-width: 0; line-height: 1.4; }
+.toolbar-menu-option small { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; font-weight: 400; line-height: 1.5; }
+.toolbar-menu-option.danger { color: var(--danger); }
+.toolbar-menu-divider { height: 1px; margin: 6px 10px; background: var(--line); }
+.pack-cover-picker.pack-cover-menu { display: block; }
+.gif-search-dialog { width: min(880px, calc(100vw - 32px)); }
+.gif-search-dialog > .folder-dialog-heading { margin-bottom: 20px; }
+.sticker-info-dialog { width: min(480px, calc(100vw - 32px)); }
+.sticker-detail-list { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px 24px; margin: 24px 0; font-size: 14px; }
+.sticker-detail-list dt { color: var(--muted); }
+.sticker-detail-list dd { margin: 0; overflow-wrap: anywhere; }
+.sticker-info-dialog .dialog-actions { flex-wrap: wrap; margin-top: 24px; }
+.sticker-preparation-status { color: var(--muted); }
+.gif-search-dialog .gif-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+@media (max-width: 860px) {
+    .app-navigation { grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; row-gap: 16px; }
+    .navigation-tools { grid-column: 2; grid-row: 1; }
+    .navigation-toggle { display: inline-flex; }
+    .app-navigation .app-nav {
+        display: none;
+        position: absolute;
+        top: calc(100% - 10px);
+        right: 0;
+        z-index: 40;
+        grid-column: auto;
+        grid-row: auto;
+        width: min(300px, 100%);
+        max-height: calc(100dvh - 112px);
+        overflow-y: auto;
+        padding: 8px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--surface);
+        box-shadow: 0 16px 40px #0005;
+    }
+    .navigation-dismiss { display: block; position: fixed; inset: 0; z-index: 35; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; cursor: default; }
+    .app-navigation .app-nav.navigation-open { display: flex; flex-direction: column; gap: 4px; }
+    .app-navigation .app-nav a { width: 100%; justify-content: flex-start; }
+}
 
 .trim-fields { margin-top: 12px; }
 .trim-timeline { isolation: isolate; }
@@ -1409,3 +1467,25 @@ a.button.primary, a.button.primary:visited { color: white; }
 }
 .pinterest-progress { margin: 16px 0; }
 .app-nav { flex-wrap: wrap; }
+
+/* Card tools fit their own card, including the two-column phone layout. */
+.image-card { container-type: inline-size; }
+.card-actions { min-width: 0; }
+.sticker-actions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; gap: 6px; }
+.sticker-actions .button { width: 100%; min-width: 0; padding: 0; height: 42px; }
+.sticker-actions .icon { width: 20px; height: 20px; }
+@container (max-width: 190px) {
+    .sticker-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.image-edit-dialog { width: min(640px, 100%); max-height: calc(100dvh - 32px); padding: 20px; }
+.customizer-canvas-wrap { display: flex; justify-content: center; margin: 12px 0; background: repeating-conic-gradient(var(--checker) 0% 25%, var(--surface) 0% 50%) 50% / 16px 16px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.customizer-canvas-wrap canvas { display: block; max-width: 100%; max-height: 38dvh; width: auto; height: auto; touch-action: none; cursor: crosshair; }
+.customizer-tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.customizer-tools .button { font-size: 13px; min-width: 0; padding: 9px 12px; }
+.selected-tool { border-color: var(--accent); background: var(--accent-soft, #80d4b022); }
+.customizer-dimensions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+.customizer-dimensions input { width: 100%; min-width: 0; }
+.customizer-ratio { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.customizer-resize { border-block: 1px solid var(--line); padding: 12px 0; margin-top: 12px; }
+.customizer-resize summary { cursor: pointer; }
+.image-edit-dialog .dialog-actions { position: sticky; bottom: -20px; background: var(--surface); padding: 12px 0; flex-wrap: wrap; }

@@ -9,6 +9,7 @@ public sealed class LibraryStore
 {
     public const int MaxImportBytes = 10 * 1024 * 1024;
     private readonly SemaphoreSlim gate = new(1, 1);
+    public event Action? Changed;
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true };
     public string Root { get; private set; }
     public string DefaultRoot { get; }
@@ -153,6 +154,7 @@ public sealed class LibraryStore
         var temp = Index + ".tmp";
         await File.WriteAllTextAsync(temp, JsonSerializer.Serialize(state, Json));
         File.Move(temp, Index, true);
+        Changed?.Invoke();
     }
 
     public async Task ImportAsync(string name, byte[] bytes, Guid? packId = null)
@@ -346,19 +348,25 @@ public sealed class LibraryStore
             Touch(p);
     });
 
-    public async Task ReplaceImageAsync(Guid id, byte[] bytes)
+    public async Task<bool> ReplaceImageAsync(Guid id, byte[] bytes, string? expectedFileName = null, CancellationToken cancellationToken = default)
     {
-        await gate.WaitAsync();
+        await gate.WaitAsync(cancellationToken);
         try
         {
+            if (expectedFileName is not null)
+            {
+                var current = (await ReadInternalAsync()).Stickers.FirstOrDefault(image => image.Id == id);
+                if (current is null || current.FileName != expectedFileName) return false;
+            }
             if (bytes.Length is 0 or > MaxImportBytes)
                 throw new InvalidDataException("Maximum file size: 10 MB.");
             var info = MediaInspector.Inspect(bytes);
             var fileName = Guid.NewGuid().ToString("N") + info.Extension;
             var path = MediaPath(fileName);
-            await File.WriteAllBytesAsync(path, bytes);
             try
             {
+                await File.WriteAllBytesAsync(path, bytes, cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
                 await MutateInternalAsync(l =>
                 {
                     var sticker = l.Stickers.Single(s => s.Id == id);
@@ -374,6 +382,7 @@ public sealed class LibraryStore
                     foreach (var pack in l.Packs.Where(p => p.StickerIds.Contains(id)))
                         Touch(pack);
                 });
+                return true;
             }
             catch
             {

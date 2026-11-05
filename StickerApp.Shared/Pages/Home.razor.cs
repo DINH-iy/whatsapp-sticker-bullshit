@@ -23,11 +23,21 @@ public partial class Home
     private string editSource = "";
     private bool busy;
     private bool renamingPack;
+    private bool showGifSearch;
+    private bool disposed;
+    private bool preparationRefreshPending;
+    private Guid? infoImageId;
+    private Sticker? InfoImage => library.Stickers.FirstOrDefault(image => image.Id == infoImageId);
+    private IEnumerable<Sticker> PreparationImages => CurrentPack is null ? library.Stickers : PackImages;
+    private int PendingPreparationCount => PreparationImages.Count(image => StickerApp.Shared.Services.StickerPreparationService.NeedsPreparation(image) && Preparation.GetStatus(image)?.Error is null);
+    private int AttentionCount => PreparationImages.Count(image => Preparation.GetStatus(image)?.Error is not null);
     private bool deletePack;
-    private bool square;
+    private ElementReference editDialog;
+    private IJSObjectReference? editDialogHelper;
+    private bool customizing;
+    private bool EditingStill => editing is not null && (replacement is not null ? !replacementAnimated : !editing.Animated);
     private bool replacementAnimated;
     private bool transformed;
-    private int rotation;
     private string? notice;
     private bool noticeIsError;
     private string? editError;
@@ -36,7 +46,6 @@ public partial class Home
     private Sticker? imageToAdd;
     private StickerPack? packToShare;
     private byte[]? replacement;
-    private IJSObjectReference? editor;
     private IJSObjectReference? gifEditor;
     private string busyText = "Processing…";
     private double gifDuration;
@@ -69,11 +78,33 @@ public partial class Home
         : PackImages)
         .Where(sticker => sticker.Name.Contains(search, StringComparison.OrdinalIgnoreCase));
 
+    protected override void OnInitialized() => Preparation.Changed += OnPreparationChanged;
+
+    private void OnPreparationChanged(bool mediaChanged) => _ = InvokeAsync(async () =>
+    {
+        if (disposed) return;
+        if (mediaChanged)
+        {
+            if (busy) preparationRefreshPending = true;
+            else await Reload();
+        }
+        if (!disposed) StateHasChanged();
+    });
+
+    private async Task EditFromInfo()
+    {
+        var image = InfoImage;
+        infoImageId = null;
+        if (image is not null) await Edit(image);
+    }
+
     protected override Task OnParametersSetAsync() => Run(() =>
     {
         activePack = PackId;
         selected.Clear();
         renamingPack = false;
+        showGifSearch = false;
+        infoImageId = null;
         return Task.CompletedTask;
     });
 
@@ -110,6 +141,11 @@ public partial class Home
         finally
         {
             busy = false;
+            if (preparationRefreshPending && !disposed)
+            {
+                preparationRefreshPending = false;
+                await Reload();
+            }
         }
     }
     private static async Task<byte[]> ReadFile(IBrowserFile file)
@@ -228,15 +264,36 @@ public partial class Home
         selected.Clear();
     });
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (editing is null) return;
+        editDialogHelper ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/dialog.js");
+        await editDialogHelper.InvokeVoidAsync("open", editDialog);
+    }
+
+    private void EditorKeyDown(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape" && !busy && !customizing) editing = null;
+    }
+
     private async Task Edit(Sticker image)
     {
         if (busy) return;
         editing = image;
         editName = image.Name;
         editSource = editPreview = previews[image.Id];
+        // Automatic conversion keeps the GIF original available for trimming and re-editing.
+        if (image.Animated && image.OriginalFileName is { } original)
+        {
+            try
+            {
+                var originalBytes = await File.ReadAllBytesAsync(Store.MediaPath(original));
+                if (MediaInspector.Inspect(originalBytes).MimeType == "image/gif")
+                    editSource = editPreview = $"data:image/gif;base64,{Convert.ToBase64String(originalBytes)}";
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
+        }
         replacement = null;
-        rotation = 0;
-        square = false;
         transformed = false;
         replacementAnimated = false;
         editError = null;
@@ -273,8 +330,6 @@ public partial class Home
             var info = MediaInspector.Inspect(bytes);
             replacement = bytes;
             replacementAnimated = info.Animated;
-            rotation = 0;
-            square = false;
             transformed = false;
             editPreview = editSource = $"data:{info.MimeType};base64,{Convert.ToBase64String(bytes)}";
             gifDuration = trimStart = trimEnd = 0;
@@ -293,10 +348,11 @@ public partial class Home
         }
     }
 
-    private Task Rotate()
+    private void CustomizeImage(string png)
     {
-        rotation = (rotation + 90) % 360;
-        return Transform();
+        editPreview = png;
+        transformed = true;
+        editError = null;
     }
 
     private async Task InspectGif()
@@ -367,46 +423,9 @@ public partial class Home
         }
     }
 
-    private Task Crop()
-    {
-        square = true;
-        return Transform();
-    }
-
-    private void ResetImage()
-    {
-        editPreview = editSource;
-        rotation = 0;
-        square = false;
-        transformed = false;
-        editError = null;
-    }
-
-    private async Task Transform()
-    {
-        if (busy)
-            return;
-        busy = true;
-        editError = null;
-        try
-        {
-            editor ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/image-editor.js");
-            editPreview = await editor.InvokeAsync<string>("transform", editSource, rotation, square);
-            transformed = true;
-        }
-        catch (JSException)
-        {
-            editError = "Could not edit this image.";
-        }
-        finally
-        {
-            busy = false;
-        }
-    }
-
     private async Task Save()
     {
-        if (busy || editing is null)
+        if (busy || customizing || editing is null)
             return;
         busy = true;
         editError = null;
@@ -457,30 +476,6 @@ public partial class Home
         CancelRemoval();
     });
 
-    private async Task FixIssue(PackRules.Issue issue)
-    {
-        var image = library.Stickers.FirstOrDefault(image => image.Id == issue.StickerId);
-        if (image is null) return;
-        if (issue.Action != "Prepare sticker") { await Edit(image); return; }
-        await Run(async () =>
-        {
-            busyText = "Preparing sticker…";
-            try
-            {
-                await using var converter = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/sticker-converter.js");
-                var result = await converter.InvokeAsync<string>("prepare", previews[image.Id], image.Animated);
-                var bytes = Convert.FromBase64String(result[(result.IndexOf(',') + 1)..]);
-                var info = MediaInspector.Inspect(bytes);
-                if (info.MimeType != "image/webp" || info.Width != 512 || info.Height != 512 ||
-                    info.Animated != image.Animated || bytes.Length > (image.Animated ? 500 : 100) * 1024)
-                    throw new InvalidOperationException("The prepared image did not meet the sticker requirements. Your image was kept unchanged.");
-                await Store.ReplaceImageAsync(image.Id, bytes);
-                notice = $"Prepared “{image.Name}”: 512 × 512 WebP, {Math.Ceiling(bytes.Length / 1024d):0} KB. Original file kept.";
-            }
-            finally { busyText = "Processing…"; }
-        });
-    }
-
     private Task Export() => Run(async () =>
     {
         if (CurrentPack is { } p)
@@ -493,10 +488,11 @@ public partial class Home
     });
     public async ValueTask DisposeAsync()
     {
+        disposed = true;
+        Preparation.Changed -= OnPreparationChanged;
         try
         {
-            if (editor is not null)
-                await editor.DisposeAsync();
+            if (editDialogHelper is not null) await editDialogHelper.DisposeAsync();
             if (gifEditor is not null)
             {
                 await gifEditor.InvokeVoidAsync("dispose");

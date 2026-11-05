@@ -1,17 +1,44 @@
 @inherits LayoutComponentBase
+@implements IDisposable
 @inject NavigationManager Navigation
 <main class="simple-app">
-    <div class="app-navigation">
+    <div class="app-navigation" @onkeydown="HandleMenuKey">
+    <a class="app-brand" href="" aria-label="Stick it home">
+        <span class="app-brand-mark" aria-hidden="true"><Icon Name="image" /></span>
+        <span>Stick it</span>
+    </a>
+    <div class="navigation-tools">
     <HistoryButtons />
-    <nav class="app-nav" aria-label="Main navigation">
+    <button class="button icon-button navigation-toggle" type="button" @onclick="ToggleMenu" @ref="menuToggle"
+            aria-label="@(menuOpen ? "Close navigation menu" : "Open navigation menu")"
+            aria-expanded="@(menuOpen ? "true" : "false")" aria-controls="main-navigation">
+        <svg class="app-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            @if (menuOpen)
+            {
+                <path d="M6 6l12 12M6 18L18 6" />
+            }
+            else
+            {
+                <path d="M4 6h16M4 12h16M4 18h16" />
+            }
+        </svg>
+    </button>
+    </div>
+    <nav id="main-navigation" class="app-nav @(menuOpen ? "navigation-open" : "")" aria-label="Main navigation" @onclick="CloseMenu">
         <NavLink href="" Match="NavLinkMatch.All" class="@(Navigation.ToBaseRelativePath(Navigation.Uri).StartsWith("packs/") ? "active" : null)">Packs</NavLink>
+        <NavLink href="library">All images</NavLink>
         <NavLink href="gifs">GIF search</NavLink>
         <NavLink href="pinterest">Pinterest</NavLink>
         <NavLink href="settings">Settings</NavLink>
     </nav>
+    @if (menuOpen)
+    {
+        <button class="navigation-dismiss" type="button" aria-label="Dismiss navigation menu" tabindex="-1" @onclick="CloseMenu"></button>
+    }
     </div>
     @Body
 </main>
 <LocationSurprise />
 <PinterestShareReceiver />
+<StickerPreparationHost />
 <div id="blazor-error-ui">Error. <a href="">Reload</a></div>

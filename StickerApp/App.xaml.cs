@@ -12,7 +12,7 @@ public partial class App : Application
 
     protected override Window CreateWindow(IActivationState? activationState)
     {
-        var window = new Window(new MainPage()) { Title = "StickerApp" };
+        var window = new Window(new MainPage()) { Title = "Stick it" };
         window.Resumed += (_, _) => shares.CheckInbox();
         return window;
     }

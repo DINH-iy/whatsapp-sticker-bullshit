@@ -3,7 +3,7 @@
 @inject IJSRuntime JS
 @inject StickerApp.Shared.Services.IFormFactor FormFactor
 
-<PageTitle>Settings · Stickers</PageTitle>
+<PageTitle>Settings · Stick it</PageTitle>
 <header class="page-header">
     <h1 role="button" tabindex="0"
         aria-label="Settings" title="Settings"
@@ -41,6 +41,7 @@
             <p class="error" role="alert">@themeError</p>
         }
     </section>
+    <GifSearchSettings />
     <section class="settings-card faq" id="faq" aria-labelledby="faq-title">
         <h2 id="faq-title">Help &amp; FAQ</h2>
         <details>
@@ -57,7 +58,7 @@
         <details>
             <summary>Can I add GIFs and other images?</summary>
             <p>Yes. Add images imports JPEG, PNG, GIF, and WebP files into your library. The Add sticker tile inside a pack imports images straight into that pack. Open Packs to see all your collections, create one with the New pack tile, or choose its cover. You can store and share these files before they meet WhatsApp's requirements.</p>
-            <p>Choose Prepare sticker next to a warning to convert images or GIFs to WebP, fit them into 512 × 512 pixels without stretching, and compress them. The original file is kept. Trim GIFs longer than 10 seconds first. If an animation is still too large, trim a shorter section and prepare again. A bundled encoder supports iPhone and Safari too. Animated WebP resizing currently requires its original GIF.</p>
+            <p>Images and GIFs are prepared automatically in the background: converted to WebP, fitted into 512 × 512 pixels without stretching, and compressed. Originals are kept. Open a sticker’s info button to see its details and status. GIFs longer than 10 seconds or too large to compress need a shorter selection in Edit; preparation resumes after you save. Animated WebP resizing requires its original GIF.</p>
         </details>
         <details>
             <summary>How do I import, export, or share a pack?</summary>
@@ -76,7 +77,6 @@
             <p class="helper">Advanced integrations and credentials are stored only on this device.</p>
         </section>
         <SurpriseSettings />
-        <GifSearchSettings />
         <PackSharingSettings />
         <section class="settings-card" aria-labelledby="storage-title">
             <h2 id="storage-title">Sticker storage</h2>

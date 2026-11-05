@@ -4,6 +4,7 @@ namespace StickerApp.Shared.Pages;
 
 public partial class GifSearch
 {
+    [Microsoft.AspNetCore.Components.Parameter] public bool Embedded { get; set; }
     private readonly List<GifResult> results = [];
     private IJSObjectReference? client;
     private string query = "";

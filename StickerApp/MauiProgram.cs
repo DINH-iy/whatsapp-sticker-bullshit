@@ -31,6 +31,7 @@ public static class MauiProgram
         builder.Services.AddScoped<PackSharingService>();
         builder.Services.AddSingleton(_ => new PinterestImportClient());
         builder.Services.AddSingleton<PinterestShareState>();
+        builder.Services.AddScoped<StickerPreparationService>();
 #if IOS
         builder.Services.AddSingleton<IPinterestShareInbox, IosPinterestShareInbox>();
 #else

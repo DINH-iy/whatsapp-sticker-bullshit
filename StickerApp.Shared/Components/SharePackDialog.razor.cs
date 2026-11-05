@@ -10,6 +10,8 @@ public partial class SharePackDialog
 {
     [Parameter, EditorRequired] public StickerPack Pack { get; set; } = default!;
     [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public bool PreparationPending { get; set; }
+    private bool WaitingForPreparation => format == "wastickers" && PreparationPending;
 
     private ElementReference dialog;
     private IJSObjectReference? dialogHelper;

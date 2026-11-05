@@ -1,0 +1,9 @@
+@inject StickerApp.Shared.Services.StickerPreparationService Preparation
+
+@code {
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) Preparation.Start();
+        return Task.CompletedTask;
+    }
+}

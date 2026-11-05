@@ -2,11 +2,10 @@
 @inject LibraryStore Store
 @inject NavigationManager Navigation
 
-<PageTitle>Packs · Stickers</PageTitle>
+<PageTitle>Packs · Stick it</PageTitle>
 <header class="page-header">
     <h1>Packs</h1>
     <div class="header-actions">
-        <a class="button" href="library"><Icon Name="image" /> All images</a>
         <label class="button file-button" title="Open a .wastickers pack or an editable ZIP backup">
             <Icon Name="folder-import" /> Import pack
             <InputFile OnChange="ImportPack" accept=".zip,.wastickers" disabled="@busy" aria-label="Import pack file" />
@@ -19,16 +18,7 @@
 }
 @if (showCreate)
 {
-    <section class="settings-card new-pack-panel" aria-labelledby="new-pack-title">
-        <h2 id="new-pack-title">New pack</h2>
-        <form class="new-pack-form" @onsubmit="CreatePack" @onsubmit:preventDefault>
-            <label>Pack name <input @bind="name" @bind:event="oninput" maxlength="128" required disabled="@busy" /></label>
-            <div class="settings-actions">
-                <button class="button primary" type="submit" disabled="@(busy || string.IsNullOrWhiteSpace(name))">Create pack</button>
-                <button class="button" type="button" @onclick="() => showCreate = false" disabled="@busy">Cancel</button>
-            </div>
-        </form>
-    </section>
+    <NewPackDialog OnCreated="PackCreated" OnCancel="() => showCreate = false" />
 }
 <div class="image-grid pack-grid">
     <AddTile Title="New pack" Hint="Start a sticker collection" Disabled="@(busy || library.Packs.Count >= 10)" OnClick="() => showCreate = true" />

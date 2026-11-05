@@ -65,7 +65,7 @@ export function animation(frames) {
 export async function prepare(source, animated) {
     if (animated) {
         if (!source.startsWith('data:image/gif;'))
-            throw new Error('To resize or compress this animated WebP, open Edit and replace it with its original GIF, then choose Prepare sticker. Animation will not be flattened.');
+            throw new Error('To resize or compress this animated WebP, open Edit and replace it with its original GIF, then save it for automatic preparation. Animation will not be flattened.');
         const editor = await import('./gif-editor.js');
         try { return await editor.prepare(source); }
         finally { editor.dispose(); }
@@ -82,5 +82,5 @@ export async function prepare(source, animated) {
         const bytes = await encode(canvas, quality);
         if (bytes.length <= 100 * 1024) return dataUrl(bytes);
     }
-    throw new Error('This image still exceeds 100 KB. Crop unnecessary detail in Edit, then prepare it again. Your image is unchanged.');
+    throw new Error('This image still exceeds 100 KB. Crop unnecessary detail in Edit, then save it for automatic preparation. Your image is unchanged.');
 }

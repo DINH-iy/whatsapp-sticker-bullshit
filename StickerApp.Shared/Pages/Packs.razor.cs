@@ -7,7 +7,6 @@ public partial class Packs
 {
     private StickerLibrary library = new();
     private readonly Dictionary<Guid, string> covers = [];
-    private string name = "";
     private string? error;
     private bool busy;
     private bool showCreate;
@@ -27,11 +26,11 @@ public partial class Packs
         }
     }
 
-    private Task CreatePack() => Run(async () =>
+    private void PackCreated(Guid id)
     {
-        var id = await Store.CreatePackAsync(name);
+        showCreate = false;
         Navigation.NavigateTo($"packs/{id}");
-    });
+    }
 
     private Task ImportPack(InputFileChangeEventArgs args) => Run(async () =>
     {

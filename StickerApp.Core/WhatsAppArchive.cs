@@ -23,7 +23,7 @@ public static class WhatsAppArchive
                 var bytes = await PackArchive.ReadBoundedAsync(source, LibraryStore.MaxImportBytes);
                 var info = MediaInspector.Inspect(bytes);
                 if (info.MimeType != "image/webp")
-                    throw new InvalidDataException($"Prepare “{images[index].Name}” first using Prepare sticker in the pack, or choose Editable backup (.zip) to keep the original files.");
+                    throw new InvalidDataException($"Wait for “{images[index].Name}” to finish automatic preparation; check its sticker details, or choose Editable backup (.zip) to keep the original files.");
                 bytes = WhatsAppSticker.PrepareForExport(bytes);
                 await PackArchive.WriteEntryAsync(archive, $"{index:D2}.webp", bytes);
             }
