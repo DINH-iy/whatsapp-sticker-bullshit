@@ -1,0 +1,24 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build web",
+            "type": "process",
+            "command": "dotnet",
+            "windows": {
+                "command": "powershell.exe",
+                "args": [
+                    "-NoProfile",
+                    "-Command",
+                    "$localDotnet = Join-Path (Get-Location) '.tools/dotnet/dotnet.exe'; $dotnetCommand = if (Test-Path -LiteralPath $localDotnet) { $localDotnet } else { 'dotnet' }; & $dotnetCommand build StickerApp.Web/StickerApp.Web.csproj -c Debug; exit $LASTEXITCODE"
+                ]
+            },
+            "args": ["build", "StickerApp.Web/StickerApp.Web.csproj", "-c", "Debug"],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": "$msCompile",
+            "group": "build"
+        }
+    ]
+}

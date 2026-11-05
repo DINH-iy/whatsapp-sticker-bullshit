@@ -21,12 +21,15 @@
         {
             <span class="pack-title-cover pack-title-placeholder"><Icon Name="image" /></span>
         }
-        <h1>@(CurrentPack?.Name ?? "All images")</h1>
+        <div class="pack-heading-text">
+            <h1>@(CurrentPack?.Name ?? "All images")</h1>
+            @if (CurrentPack is { } headingPack) { <p class="helper pack-publisher">By @headingPack.Publisher</p> }
+        </div>
     </div>
     <div class="header-actions sticker-toolbar">
         <ActionMenu Label="Add stickers" IconName="plus" Primary="true" Disabled="@busy">
             <p class="toolbar-menu-heading">@(CurrentPack is null ? "Add to your library" : $"Add to {CurrentPack.Name}")</p>
-            <AddStickerChoices Disabled="@(busy || CurrentPack?.StickerIds.Count >= 30)" OnImport="Import" OnLayers="NewComposition" />
+            <AddStickerChoices @key="importPickerVersion" Disabled="@(busy || CurrentPack?.StickerIds.Count >= 30)" OnImport="Import" OnLayers="NewComposition" />
             <button class="toolbar-menu-option" type="button" @onclick="() => showGifSearch = true" disabled="@busy">
                 <Icon Name="search" /><span>Find a GIF<small>Search and preview GIFs in a popup.</small></span>
             </button>
@@ -49,7 +52,7 @@
         {
             <ActionMenu Label="Pack options" Disabled="@busy">
                 <button class="toolbar-menu-option" type="button" @onclick="BeginRenamePack" disabled="@busy">
-                    <Icon Name="edit" /><span>Rename pack<small>Change the name of this collection.</small></span>
+                    <Icon Name="edit" /><span>Edit pack details<small>Change this pack's name and publisher.</small></span>
                 </button>
                 <PackCoverPicker Pack="@CurrentPack" OnChanged="Reload" MenuStyle="true" />
                 <button class="toolbar-menu-option" type="button" @onclick="() => packToShare = CurrentPack" disabled="@busy">
@@ -81,9 +84,41 @@
     <p class="status-info" role="status">@busyText</p>
 }
 
-<div class="toolbar">
-    <input class="search" aria-label="Search images" placeholder="Search" @bind="search" @bind:event="oninput" />
+@{ var visibleImages = Visible; }
+<div class="toolbar browse-toolbar">
+    <label class="browse-search">Search<input type="search" class="search" aria-label="Search images" placeholder="Search images or tags" @bind="search" @bind:event="oninput" /></label>
+    <div class="browse-actions">
+        <button class="button @(sort != "default" ? "browse-action-active" : "")" type="button" aria-label="Sort images" aria-haspopup="dialog" @onclick='() => browsePanel = "sort"'>Sort</button>
+        <button class="button @(FilterCount > 0 ? "browse-action-active" : "")" type="button" aria-label="Filter images" aria-haspopup="dialog" @onclick='() => browsePanel = "filters"'>Filters @if (FilterCount > 0) { <small class="filter-count">@FilterCount</small> }</button>
+    </div>
 </div>
+@if (browsePanel is not null)
+{
+<BrowseOptionsPopup Title="@(browsePanel == "sort" ? "Sort images" : "Filter images")" OnClose="() => browsePanel = null">
+    @if (browsePanel == "sort")
+    {
+    <label>Sort by<select aria-label="Sort images" @bind="sort">
+        <option value="default">@(CurrentPack is null ? "Recently added" : "Saved pack order")</option>
+        @if (CurrentPack is null) { <option value="oldest">Oldest added</option> }
+        <option value="name-asc">Name: A–Z</option><option value="name-desc">Name: Z–A</option>
+        <option value="type">Type</option>
+        <option value="file-desc">File size: largest first</option><option value="file-asc">File size: smallest first</option>
+        <option value="storage-desc">Stored size: largest first</option><option value="storage-asc">Stored size: smallest first</option>
+    </select></label>
+    }
+    else
+    {
+    <div class="browse-filter-fields">
+        <label>Type<select aria-label="Filter image type" @bind="typeFilter"><option value="all">All types</option><option value="still">Still images</option><option value="animated">GIFs / animations</option><option value="layered">Editable layers</option></select></label>
+        <label>Saved format<select aria-label="Filter image format" @bind="formatFilter"><option value="all">All formats</option><option value="webp">WebP</option><option value="png">PNG</option><option value="jpeg">JPEG</option><option value="gif">GIF</option></select></label>
+        <label>Total stored size<select aria-label="Filter image storage" @bind="storageFilter"><option value="all">Any size</option><option value="small">Under 100 @SmallSizeUnit</option><option value="medium">100–500 @SmallSizeUnit</option><option value="large">500 @SmallSizeUnit or more</option></select></label>
+    </div>
+    <p class="helper">File size is the current image; stored size includes originals and layers. Prepared GIFs use WebP but remain under GIFs / animations.</p>
+    <button class="button" type="button" @onclick="ResetFilters">Reset filters</button>
+    }
+</BrowseOptionsPopup>
+}
+<p class="helper browse-result" role="status">Showing @visibleImages.Count of @(CurrentPack is null ? library.Stickers.Count : PackImages.Count) images.@if (CurrentPack is not null) { <span> Sorting changes this view only; saved sticker order stays the same.</span> }</p>
 @if (PendingPreparationCount > 0)
 {
     <p class="helper" role="status">Preparing @PendingPreparationCount stickers automatically… You can keep using the app.</p>
@@ -150,9 +185,9 @@
     </div>
 }
 
-@if (!Visible.Any() && CurrentPack is null)
+@if (visibleImages.Count == 0 && CurrentPack is null)
 {
-    <p class="empty-state">No images.</p>
+    <p class="empty-state">@(library.Stickers.Count == 0 ? "No images yet. Add images or GIFs to get started." : "No images match your search or filters.")</p>
 }
 else
 {
@@ -161,10 +196,10 @@ else
         {
             <ActionMenu Label="Add sticker" TileStyle="true" Disabled="@(busy || currentPack.StickerIds.Count >= 30)">
                 <TriggerContent><AddTileLabel Title="Add sticker" Hint="@(currentPack.StickerIds.Count >= 30 ? "Pack full · 30/30 stickers" : "Image, GIF, or layered image")" /></TriggerContent>
-                <ChildContent><AddStickerChoices Disabled="@(busy || currentPack.StickerIds.Count >= 30)" OnImport="Import" OnLayers="NewComposition" /></ChildContent>
+                <ChildContent><AddStickerChoices @key="importPickerVersion" Disabled="@(busy || currentPack.StickerIds.Count >= 30)" OnImport="Import" OnLayers="NewComposition" /></ChildContent>
             </ActionMenu>
         }
-        @foreach (var image in Visible)
+        @foreach (var image in visibleImages)
         {
             <article class="image-card" @key="image.Id">
                 <input type="checkbox" class="image-select" aria-label="Select @image.Name"
@@ -173,6 +208,8 @@ else
                     <img src="@previews[image.Id]" alt="@image.Name" loading="lazy" />
                 </button>
                 <strong>@image.Name</strong>
+                <small class="image-file-summary">@image.Width × @image.Height · @(image.Animated ? "Animated" : "Still")</small>
+                <small class="image-file-summary">File @Size(ImageSize(image).FileBytes) · Stored @Size(ImageSize(image).TotalBytes)</small>
                 @if (StickerApp.Shared.Services.StickerPreparationService.NeedsPreparation(image))
                 {
                     <small class="sticker-preparation-status">@(Preparation.GetStatus(image)?.Error is not null ? "Needs attention · see ⓘ" : "Preparing…")</small>
@@ -197,6 +234,11 @@ else
     </div>
 }
 
+@if (CurrentPack is not null && PackImages.Count > 0 && visibleImages.Count == 0)
+{
+    <p class="empty-state">No stickers match your search or filters.</p>
+}
+
 @if (InfoImage is { } infoImage)
 {
     <StickerInfoDialog Image="infoImage" OnClose="() => infoImageId = null" OnEdit="EditFromInfo" />
@@ -206,6 +248,11 @@ else
 {
     <LayerEditorDialog StickerId="@compositionStickerId" PackId="@activePack" Images="@library.Stickers" Previews="@previews"
                        OnCancel="() => showLayerEditor = false" OnSaved="CompositionSaved" />
+}
+
+@if (pendingImports is not null)
+{
+    <ImportOriginalChoices Items="@pendingImports.Select(file => file.Choice).ToList()" OnConfirm="ConfirmImageImport" OnCancel="CancelImageImport" />
 }
 
 @if (editing is not null)
@@ -280,9 +327,21 @@ else
             }
             else if (!editorLoading && !IsGif && (editing.Animated || replacementAnimated))
             {
-                <p class="helper">Trimming is available for GIF files.</p>
+                <p class="status-info" role="note">This animation is saved as WebP. It can play normally, but trimming requires a source GIF. Use Replace image to import your saved GIF; .wastickers files do not include the source GIF.</p>
             }
 
+            @if (!editorLoading)
+            {
+                <label class="toggle-row">
+                    <input type="checkbox" @bind="keepEditOriginal" disabled="@(busy || customizing)" />
+                    Keep the source image / GIF after saving (uses more storage)
+                </label>
+                <p class="helper">Applies when you save a trim, replacement, or image edit. Cancel keeps everything unchanged.</p>
+                @if (!keepEditOriginal)
+                {
+                    <p class="status-info" role="note">Only the prepared sticker will remain after conversion succeeds. You cannot restore the previous image or uncut GIF unless you reimport your own saved copy. Further GIF trimming requires a source GIF. Editable layer projects keep their embedded sources separately.</p>
+                }
+            }
             @if (editError is not null)
             {
                 <p class="error" role="alert">@editError</p>
@@ -322,19 +381,7 @@ else
 {
     <GifSearchDialog OnClose="() => showGifSearch = false" />
 }
-@if (renamingPack)
+@if (renamingPack && CurrentPack is { } detailsPack)
 {
-    <div class="modal-backdrop">
-        <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="rename-pack-title">
-            <h2 id="rename-pack-title">Rename pack</h2>
-            <form @onsubmit="RenamePack" @onsubmit:preventDefault>
-                <label for="rename-pack-name">Pack name</label>
-                <input id="rename-pack-name" class="folder-input" @bind="packName" @bind:event="oninput" maxlength="128" required autofocus disabled="@busy" />
-                <div class="dialog-actions">
-                    <button class="button" type="button" @onclick="() => renamingPack = false" disabled="@busy">Cancel</button>
-                    <button class="button primary" type="submit" disabled="@(busy || string.IsNullOrWhiteSpace(packName))">Save name</button>
-                </div>
-            </form>
-        </section>
-    </div>
+    <NewPackDialog Pack="@detailsPack" OnSaved="PackDetailsSaved" OnCancel="() => renamingPack = false" />
 }

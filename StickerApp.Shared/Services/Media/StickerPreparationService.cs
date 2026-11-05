@@ -4,7 +4,7 @@ using StickerApp.Core;
 
 namespace StickerApp.Shared.Services;
 
-/// <summary>One browser/device worker prepares images across page changes, preserving every original.</summary>
+/// <summary>One browser/device worker prepares images across page changes, respecting source-retention preferences.</summary>
 public sealed class StickerPreparationService(LibraryStore store, IJSRuntime js, AppLog log) : IAsyncDisposable
 {
     public sealed record Status(string FileName, bool Working, string? Error = null);

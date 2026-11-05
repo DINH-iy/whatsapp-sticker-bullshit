@@ -15,7 +15,14 @@ public partial class Home
     // Library filters and pack creation.
     private string search = "";
     private string destination = "";
-    private string packName = "";
+    private LibraryBrowseSnapshot? browse;
+    private string typeFilter = "all";
+    private string formatFilter = "all";
+    private string storageFilter = "all";
+    private string sort = "default";
+    private string? browsePanel;
+    private string SmallSizeUnit => Store.DecimalStorageUnits ? "KB" : "KiB";
+    private int FilterCount => new[] { typeFilter, formatFilter, storageFilter }.Count(value => value != "all");
 
     // The editor keeps the source separate from its preview so Reset can restore it.
     private string editName = "";
@@ -38,6 +45,7 @@ public partial class Home
     private bool customizing;
     private bool EditingStill => editing is not null && (replacement is not null ? !replacementAnimated : !editing.Animated);
     private bool replacementAnimated;
+    private bool keepEditOriginal;
     private bool transformed;
     private string? notice;
     private bool noticeIsError;
@@ -75,10 +83,16 @@ public partial class Home
     private string? PackHeaderCover => CurrentPack?.CoverImage ?? (PackImages.FirstOrDefault() is { } first && previews.TryGetValue(first.Id, out var preview) ? preview : null);
     private IReadOnlyList<PackRules.Issue> Issues => CurrentPack is { } p ? PackRules.Inspect(p, PackImages) : [];
     private IReadOnlyList<string> Validation => CurrentPack is { } p ? PackRules.Validate(p, PackImages) : [];
-    private IEnumerable<Sticker> Visible => (activePack is null
-        ? library.Stickers.AsEnumerable().Reverse()
-        : PackImages)
-        .Where(sticker => sticker.Name.Contains(search, StringComparison.OrdinalIgnoreCase));
+    private IReadOnlyList<Sticker> Visible => browse is null ? [] : LibraryBrowsing.Images(browse,
+        new(search, typeFilter, formatFilter, "all", storageFilter, sort), Store.DecimalStorageUnits, activePack);
+    private ImageStorageSize ImageSize(Sticker image) => browse?.ImageSizes.GetValueOrDefault(image.Id) ?? new(0, 0);
+    private string Size(long bytes) => StorageDisplay.Format(bytes, Store.DecimalStorageUnits);
+
+    private void ResetFilters()
+    {
+        search = "";
+        typeFilter = formatFilter = storageFilter = "all";
+    }
 
     protected override void OnInitialized() => Preparation.Changed += OnPreparationChanged;
 
@@ -103,6 +117,7 @@ public partial class Home
     protected override Task OnParametersSetAsync() => Run(() =>
     {
         activePack = PackId;
+        browsePanel = null;
         selected.Clear();
         renamingPack = false;
         showGifSearch = false;
@@ -112,13 +127,15 @@ public partial class Home
 
     private async Task Reload()
     {
-        var updatedLibrary = await Store.ReadAsync();
+        var snapshot = await Store.ReadBrowseSnapshotAsync();
+        var updatedLibrary = snapshot.Library;
         var updatedPreviews = new Dictionary<Guid, string>();
         foreach (var image in updatedLibrary.Stickers)
             updatedPreviews[image.Id] = await Store.PreviewAsync(image);
 
         // Publish a complete snapshot so navigation cannot render images without previews.
         library = updatedLibrary;
+        browse = snapshot;
         previews = updatedPreviews;
         selected.IntersectWith(library.Stickers.Select(s => s.Id));
     }
@@ -155,14 +172,13 @@ public partial class Home
     }
     private void BeginRenamePack()
     {
-        packName = CurrentPack?.Name ?? "";
         renamingPack = true;
     }
 
-    private Task RenamePack() => Run(async () =>
+    private Task PackDetailsSaved(Guid id) => Run(() =>
     {
-        await Store.RenamePackAsync(activePack!.Value, packName);
         renamingPack = false;
+        return Task.CompletedTask;
     });
 
     private void Toggle(Guid id)

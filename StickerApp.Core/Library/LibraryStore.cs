@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace StickerApp.Core;
 
-public sealed record BatchImportFile(string Name, string Path);
+public sealed record BatchImportFile(string Name, string Path, bool? KeepOriginal = null);
 
 /// <summary>Single-process, atomic file persistence for the first build. Replace behind this service with SQLite later.</summary>
 public sealed partial class LibraryStore
@@ -13,6 +13,12 @@ public sealed partial class LibraryStore
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true };
     public string Root { get; private set; }
     public string DefaultRoot { get; }
+    public bool KeepOriginalStillImages { get; private set; }
+    public bool KeepOriginalAnimations { get; private set; } = true;
+    public long? StorageLimitBytes { get; private set; }
+    public bool DecimalStorageUnits { get; private set; }
+    public bool DonutStorageChart { get; private set; }
+    public bool AskForOriginalOnImport { get; private set; } = true;
     private readonly string settingsFile;
     private string Index => Path.Combine(Root, "library.json");
     public LibraryStore(string root)
@@ -24,12 +30,87 @@ public sealed partial class LibraryStore
         var saved = File.Exists(settingsFile)
             ? JsonSerializer.Deserialize<StorageSettings>(File.ReadAllText(settingsFile)) : null;
         Root = saved is null ? DefaultRoot : Path.GetFullPath(saved.LibraryRoot);
+        KeepOriginalStillImages = saved?.KeepOriginalStillImages ?? false;
+        KeepOriginalAnimations = saved?.KeepOriginalAnimations ?? true;
+        StorageLimitBytes = saved?.StorageLimitBytes;
+        DecimalStorageUnits = saved?.DecimalStorageUnits ?? false;
+        DonutStorageChart = saved?.DonutStorageChart ?? false;
+        AskForOriginalOnImport = saved?.AskForOriginalOnImport ?? true;
         if (saved is not null && !Directory.Exists(Root))
             throw new DirectoryNotFoundException($"The sticker folder is unavailable: {Root}. Reconnect it before starting the app.");
         Directory.CreateDirectory(Path.Combine(Root, "media"));
     }
 
-    private sealed record StorageSettings(string LibraryRoot);
+    private sealed record StorageSettings(string LibraryRoot, bool KeepOriginalStillImages = false,
+        bool KeepOriginalAnimations = true, long? StorageLimitBytes = null, bool DecimalStorageUnits = false,
+        bool DonutStorageChart = false, bool AskForOriginalOnImport = true);
+
+    public async Task SetAskForOriginalOnImportAsync(bool ask)
+    {
+        await gate.WaitAsync();
+        try
+        {
+            await File.WriteAllTextAsync(settingsFile + ".tmp", JsonSerializer.Serialize(
+                new StorageSettings(Root, KeepOriginalStillImages, KeepOriginalAnimations, StorageLimitBytes, DecimalStorageUnits, DonutStorageChart, ask), Json));
+            File.Move(settingsFile + ".tmp", settingsFile, true);
+            AskForOriginalOnImport = ask;
+        }
+        finally { gate.Release(); }
+    }
+
+    public async Task SetDonutStorageChartAsync(bool useDonut)
+    {
+        await gate.WaitAsync();
+        try
+        {
+            await File.WriteAllTextAsync(settingsFile + ".tmp", JsonSerializer.Serialize(
+                new StorageSettings(Root, KeepOriginalStillImages, KeepOriginalAnimations, StorageLimitBytes, DecimalStorageUnits, useDonut, AskForOriginalOnImport), Json));
+            File.Move(settingsFile + ".tmp", settingsFile, true);
+            DonutStorageChart = useDonut;
+        }
+        finally { gate.Release(); }
+    }
+
+    public async Task SetDecimalStorageUnitsAsync(bool useDecimal)
+    {
+        await gate.WaitAsync();
+        try
+        {
+            await File.WriteAllTextAsync(settingsFile + ".tmp", JsonSerializer.Serialize(
+                new StorageSettings(Root, KeepOriginalStillImages, KeepOriginalAnimations, StorageLimitBytes, useDecimal, DonutStorageChart, AskForOriginalOnImport), Json));
+            File.Move(settingsFile + ".tmp", settingsFile, true);
+            DecimalStorageUnits = useDecimal;
+        }
+        finally { gate.Release(); }
+    }
+
+    public async Task SetOriginalRetentionAsync(bool keepStills, bool keepAnimations)
+    {
+        await gate.WaitAsync();
+        try
+        {
+            await File.WriteAllTextAsync(settingsFile + ".tmp", JsonSerializer.Serialize(new StorageSettings(Root, keepStills, keepAnimations, StorageLimitBytes, DecimalStorageUnits, DonutStorageChart, AskForOriginalOnImport), Json));
+            File.Move(settingsFile + ".tmp", settingsFile, true);
+            KeepOriginalStillImages = keepStills;
+            KeepOriginalAnimations = keepAnimations;
+        }
+        finally { gate.Release(); }
+    }
+
+    public async Task SetStorageLimitAsync(long? limitBytes)
+    {
+        if (limitBytes.HasValue && (limitBytes < 1024 * 1024 || limitBytes > 1024L * 1024 * 1024 * 1024))
+            throw new InvalidOperationException("Choose a library limit between 1 MiB and 1 TiB.");
+        await gate.WaitAsync();
+        try
+        {
+            await File.WriteAllTextAsync(settingsFile + ".tmp", JsonSerializer.Serialize(
+                new StorageSettings(Root, KeepOriginalStillImages, KeepOriginalAnimations, limitBytes, DecimalStorageUnits, DonutStorageChart, AskForOriginalOnImport), Json));
+            File.Move(settingsFile + ".tmp", settingsFile, true);
+            StorageLimitBytes = limitBytes;
+        }
+        finally { gate.Release(); }
+    }
 
     /// <summary>Copy to an empty folder before committing the new location. Keep the old copy as a backup.</summary>
     public async Task ChangeFolderAsync(string folder)
@@ -69,7 +150,7 @@ public sealed partial class LibraryStore
                     created.Add(index);
                     await JsonSerializer.SerializeAsync(output, await ReadInternalAsync(), Json);
                 }
-                await File.WriteAllTextAsync(settingsFile + ".tmp", JsonSerializer.Serialize(new StorageSettings(target), Json));
+                await File.WriteAllTextAsync(settingsFile + ".tmp", JsonSerializer.Serialize(new StorageSettings(target, KeepOriginalStillImages, KeepOriginalAnimations, StorageLimitBytes, DecimalStorageUnits, DonutStorageChart, AskForOriginalOnImport), Json));
                 File.Move(settingsFile + ".tmp", settingsFile, true);
                 Root = target;
             }
@@ -149,15 +230,10 @@ public sealed partial class LibraryStore
     {
         var state = await ReadInternalAsync();
         action(state);
-        foreach (var pack in state.Packs)
-            pack.Animated = state.Stickers.Any(image => image.Animated && pack.StickerIds.Contains(image.Id));
-        var temp = Index + ".tmp";
-        await File.WriteAllTextAsync(temp, JsonSerializer.Serialize(state, Json));
-        File.Move(temp, Index, true);
-        Changed?.Invoke();
+        await SaveLibrarySnapshotAsync(state);
     }
 
-    public async Task ImportAsync(string name, byte[] bytes, Guid? packId = null)
+    public async Task ImportAsync(string name, byte[] bytes, Guid? packId = null, bool? keepOriginal = null)
     {
         await gate.WaitAsync();
         try
@@ -168,6 +244,7 @@ public sealed partial class LibraryStore
             var s = new Sticker
             {
                 Name = CleanName(Path.GetFileNameWithoutExtension(name)),
+                KeepOriginalOverride = keepOriginal ?? (info.Animated ? KeepOriginalAnimations : KeepOriginalStillImages),
                 MimeType = info.MimeType,
                 Width = info.Width,
                 Height = info.Height,
@@ -211,7 +288,7 @@ public sealed partial class LibraryStore
 
     /// <summary>Validate and commit the whole selection together, or remove every new media file.</summary>
     public async Task<Guid?> ImportBatchAsync(IReadOnlyList<BatchImportFile> files, Guid? packId = null,
-        CancellationToken cancellationToken = default, string? newPackName = null)
+        CancellationToken cancellationToken = default, string? newPackName = null, string? newPackPublisher = null)
     {
         if (files.Count is < 1 or > PinterestImportClient.MaxImages)
             throw new InvalidDataException("Choose between 1 and 100 images.");
@@ -229,7 +306,7 @@ public sealed partial class LibraryStore
                     throw new InvalidOperationException("This build supports up to 10 packs.");
                 if (files.Count > 30)
                     throw new InvalidOperationException("A pack can contain at most 30 stickers. Select fewer images or choose the library.");
-                newPack = new StickerPack { Name = CleanName(newPackName) };
+                newPack = new StickerPack { Name = CleanName(newPackName), Publisher = CleanPublisher(newPackPublisher ?? "Sticker Studio") };
             }
             if (packId is { } destination)
             {
@@ -251,6 +328,7 @@ public sealed partial class LibraryStore
                 var sticker = new Sticker
                 {
                     Name = CleanName(file.Name), MimeType = info.MimeType,
+                    KeepOriginalOverride = file.KeepOriginal ?? (info.Animated ? KeepOriginalAnimations : KeepOriginalStillImages),
                     Width = info.Width, Height = info.Height, Animated = info.Animated,
                     Bytes = bytes.Length, DurationMs = info.DurationMs, MinimumFrameMs = info.MinimumFrameMs
                 };
@@ -295,9 +373,9 @@ public sealed partial class LibraryStore
         finally { gate.Release(); }
     }
 
-    public async Task<Guid> CreatePackAsync(string name)
+    public async Task<Guid> CreatePackAsync(string name, string publisher = "Sticker Studio")
     {
-        var pack = new StickerPack { Name = CleanName(name) };
+        var pack = new StickerPack { Name = CleanName(name), Publisher = CleanPublisher(publisher) };
         await MutateAsync(l =>
         {
             if (l.Packs.Count >= 10)
@@ -320,7 +398,7 @@ public sealed partial class LibraryStore
     }
 
     // Creating the pack and adding its first image share one atomic write.
-    public Task CreatePackWithStickerAsync(string name, Guid stickerId) => MutateAsync(library =>
+    public Task CreatePackWithStickerAsync(string name, Guid stickerId, string publisher = "Sticker Studio") => MutateAsync(library =>
     {
         if (library.Packs.Count >= 10)
             throw new InvalidOperationException("This build supports up to 10 packs.");
@@ -331,12 +409,21 @@ public sealed partial class LibraryStore
         library.Packs.Add(new StickerPack
         {
             Name = CleanName(name),
+            Publisher = CleanPublisher(publisher),
             Animated = sticker.Animated,
             StickerIds = [sticker.Id]
         });
     });
 
     public Task RenamePackAsync(Guid id, string name) => MutateAsync(l => { var p = l.Packs.Single(p => p.Id == id); p.Name = CleanName(name); Touch(p); });
+    public Task UpdatePackDetailsAsync(Guid id, string name, string publisher) => MutateAsync(library =>
+    {
+        var pack = library.Packs.FirstOrDefault(pack => pack.Id == id)
+            ?? throw new InvalidOperationException("This pack no longer exists.");
+        pack.Name = CleanName(name);
+        pack.Publisher = CleanPublisher(publisher);
+        Touch(pack);
+    });
     public Task DeletePackAsync(Guid id) => MutateAsync(l => l.Packs.RemoveAll(p => p.Id == id));
     public Task FavoriteAsync(Guid id) => MutateAsync(l => { var s = l.Stickers.Single(s => s.Id == id); s.Favorite = !s.Favorite; });
     public Task EditStickerAsync(Guid id, string name, string tags) => MutateAsync(l =>
@@ -348,7 +435,8 @@ public sealed partial class LibraryStore
             Touch(p);
     });
 
-    public async Task<bool> ReplaceImageAsync(Guid id, byte[] bytes, string? expectedFileName = null, CancellationToken cancellationToken = default)
+    public async Task<bool> ReplaceImageAsync(Guid id, byte[] bytes, string? expectedFileName = null, CancellationToken cancellationToken = default,
+        bool? keepOriginal = null)
     {
         await gate.WaitAsync(cancellationToken);
         try
@@ -363,6 +451,8 @@ public sealed partial class LibraryStore
             var info = MediaInspector.Inspect(bytes);
             var fileName = Guid.NewGuid().ToString("N") + info.Extension;
             var path = MediaPath(fileName);
+            var obsoleteFiles = new List<string>();
+            var retainedFiles = new HashSet<string>();
             try
             {
                 await File.WriteAllBytesAsync(path, bytes, cancellationToken);
@@ -370,7 +460,16 @@ public sealed partial class LibraryStore
                 await MutateInternalAsync(l =>
                 {
                     var sticker = l.Stickers.Single(s => s.Id == id);
-                    sticker.OriginalFileName ??= sticker.FileName;
+                    obsoleteFiles = ImageFiles(sticker).Where(file => file != sticker.CompositionFileName).ToList();
+                    if (keepOriginal.HasValue) sticker.KeepOriginalOverride = keepOriginal;
+                    var retainOriginal = sticker.KeepOriginalOverride ??
+                        (sticker.Animated || info.Animated ? KeepOriginalAnimations : KeepOriginalStillImages);
+                    var prepared = info.MimeType == "image/webp" && info.Width == 512 && info.Height == 512 &&
+                        bytes.Length <= (info.Animated ? 500 : 100) * 1024 &&
+                        (!info.Animated || (info.DurationMs is > 0 and <= 10_000 && info.MinimumFrameMs >= 8));
+                    // Retain a recovery copy until preparation succeeds, even when the user opts out.
+                    sticker.OriginalFileName = retainOriginal || !prepared ? sticker.OriginalFileName ?? sticker.FileName : null;
+                    sticker.OriginalDiscarded |= !retainOriginal && prepared;
                     sticker.FileName = fileName;
                     sticker.MimeType = info.MimeType;
                     sticker.Width = info.Width;
@@ -381,14 +480,17 @@ public sealed partial class LibraryStore
                     sticker.MinimumFrameMs = info.MinimumFrameMs;
                     foreach (var pack in l.Packs.Where(p => p.StickerIds.Contains(id)))
                         Touch(pack);
+                    retainedFiles = l.Stickers.SelectMany(ImageFiles).ToHashSet();
                 });
-                return true;
             }
             catch
             {
                 File.Delete(path);
                 throw;
             }
+            // Cleanup cannot roll back a committed image if a file could not be deleted.
+            foreach (var file in obsoleteFiles.Distinct().Except(retainedFiles)) TryDeleteMedia(file);
+            return true;
         }
         finally
         {
@@ -498,6 +600,7 @@ public sealed partial class LibraryStore
                     MimeType = image.Info.MimeType,
                     Width = image.Info.Width,
                     Height = image.Info.Height,
+                    KeepOriginalOverride = image.Info.Animated ? KeepOriginalAnimations : KeepOriginalStillImages,
                     Animated = image.Info.Animated,
                     Bytes = image.Bytes.Length,
                     DurationMs = image.Info.DurationMs,
@@ -548,7 +651,9 @@ public sealed partial class LibraryStore
         await gate.WaitAsync();
         try
         {
-            return $"data:{sticker.MimeType};base64,{Convert.ToBase64String(await File.ReadAllBytesAsync(MediaPath(sticker.FileName)))}";
+            var bytes = await File.ReadAllBytesAsync(MediaPath(sticker.FileName));
+            if (sticker.Animated && sticker.MimeType == "image/webp") bytes = MediaInspector.ForLoopingPreview(bytes);
+            return $"data:{sticker.MimeType};base64,{Convert.ToBase64String(bytes)}";
         }
         finally
         {
@@ -558,4 +663,7 @@ public sealed partial class LibraryStore
     private static void Touch(StickerPack p) => p.Version = Guid.NewGuid().ToString("N");
     private static string CleanName(string name) => !string.IsNullOrWhiteSpace(name) && name.Trim().Length <= 128
         ? name.Trim() : throw new InvalidOperationException("Use a name of 1–128 characters.");
+    private static string CleanPublisher(string publisher) => !string.IsNullOrWhiteSpace(publisher) &&
+        publisher.Trim().Length <= 128 && !publisher.Any(char.IsControl)
+        ? publisher.Trim() : throw new InvalidOperationException("Use a publisher of 1–128 characters on a single line.");
 }

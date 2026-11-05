@@ -11,9 +11,11 @@ public partial class PinterestImport
     private PinterestSelection? selection;
     private PendingPinterestShare? pending;
     private readonly HashSet<string> selected = [];
+    private readonly Dictionary<string, bool> keepOriginals = [];
     private string text = "";
     private string destination = "";
     private string newPackName = "";
+    private string newPackPublisher = "";
     private string destinationLink = "library";
     private string status = "";
     private string? error;
@@ -89,6 +91,8 @@ public partial class PinterestImport
         {
             status = "Loading the shared selection from Pinterest…";
             selection = await Importer.LoadAsync(text, token);
+            keepOriginals.Clear();
+            foreach (var image in selection.Images) keepOriginals[image.PinId] = Store.KeepOriginalStillImages;
             SelectAll();
             library = await Store.ReadAsync();
         });
@@ -97,10 +101,11 @@ public partial class PinterestImport
     private async Task Import()
     {
         if (busy || selection is null || selected.Count == 0 || CapacityError is not null ||
-            (CreatingPack && string.IsNullOrWhiteSpace(newPackName))) return;
+            (CreatingPack && (string.IsNullOrWhiteSpace(newPackName) || string.IsNullOrWhiteSpace(newPackPublisher)))) return;
         var images = selection.Images.Where(image => selected.Contains(image.PinId)).ToList();
         var pack = DestinationId;
         var name = CreatingPack ? newPackName.Trim() : null;
+        var publisher = CreatingPack ? newPackPublisher.Trim() : null;
         await Run(async token =>
         {
             status = $"Downloading 0 of {images.Count} images…";
@@ -110,11 +115,13 @@ public partial class PinterestImport
                 status = value.Completed == value.Total ? "Saving images…" : $"Downloading {value.Completed} of {value.Total} images…";
                 StateHasChanged();
             }));
-            var importedPack = await Importer.ImportAsync(Store, images, pack, progress, token, name);
+            var importedPack = await Importer.ImportAsync(Store, images, pack, progress, token, name,
+                Store.AskForOriginalOnImport ? keepOriginals : null, publisher);
             success = name is null ? $"Imported {images.Count} images." : $"Created “{name}” with {images.Count} images.";
             destinationLink = importedPack is { } id ? $"packs/{id}" : "library";
             destination = importedPack?.ToString() ?? "";
             newPackName = "";
+            newPackPublisher = "";
             selection = null;
             selected.Clear();
             text = "";

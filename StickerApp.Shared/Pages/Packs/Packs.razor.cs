@@ -10,12 +10,42 @@ public partial class Packs
     private string? error;
     private bool busy;
     private bool showCreate;
+    private StickerPack? editingPack;
+    private LibraryBrowseSnapshot? browse;
+    private string search = "";
+    private string sort = "default";
+    private string? browsePanel;
+    private string typeFilter = "all";
+    private string countFilter = "all";
+    private string storageFilter = "all";
+    private string SizeUnit => Store.DecimalStorageUnits ? "MB" : "MiB";
+    private int FilterCount => new[] { typeFilter, countFilter, storageFilter }.Count(value => value != "all");
+    private IReadOnlyList<StickerPack> VisiblePacks => browse is null ? [] : LibraryBrowsing.Packs(browse,
+        new(search, typeFilter, countFilter, storageFilter, sort), Store.DecimalStorageUnits);
+    private string PackSize(StickerPack pack) => StorageDisplay.Format(
+        browse?.PackSizes.TryGetValue(pack.Id, out var size) == true ? size.StickerBytes + size.SourceBytes : 0,
+        Store.DecimalStorageUnits);
+    private string PackTypeLabel(StickerPack pack) => LibraryBrowsing.PackType(pack, library.Stickers) switch
+        { "still" => "Still", "animated" => "Animated", "mixed" => "Mixed", _ => "Empty" };
+
+    private void ResetFilters()
+    {
+        search = "";
+        typeFilter = countFilter = storageFilter = "all";
+    }
+
+    private Task PackDetailsSaved(Guid id) => Run(async () =>
+    {
+        editingPack = null;
+        await Reload();
+    });
 
     protected override Task OnInitializedAsync() => Run(Reload);
 
     private async Task Reload()
     {
-        library = await Store.ReadAsync();
+        browse = await Store.ReadBrowseSnapshotAsync();
+        library = browse.Library;
         covers.Clear();
         foreach (var pack in library.Packs)
         {

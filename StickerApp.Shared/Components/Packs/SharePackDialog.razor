@@ -11,7 +11,7 @@
             <Icon Name="close" />
         </button>
     </div>
-    <p class="helper">@Pack.Name · @Pack.StickerIds.Count @(Pack.StickerIds.Count == 1 ? "image" : "images")</p>
+    <p class="helper">@Pack.Name · By @Pack.Publisher · @Pack.StickerIds.Count @(Pack.StickerIds.Count == 1 ? "image" : "images")</p>
     <label>File format
         <select @bind="format" disabled="@isWorking">
             <option value="wastickers">Sticker pack (.wastickers)</option>

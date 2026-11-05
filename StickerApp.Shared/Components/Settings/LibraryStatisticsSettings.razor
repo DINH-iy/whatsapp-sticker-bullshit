@@ -1,0 +1,220 @@
+@inject LibraryStore Store
+@inject AppLog Log
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<section @ref="statisticsElement" class="settings-card library-statistics-card @(customizingStats ? "quick-stats-editing" : "")" aria-labelledby="library-statistics-title" aria-busy="@(busy || layoutSaving ? "true" : "false")">
+    <div class="storage-section-header">
+        <h2 id="library-statistics-title">Library statistics &amp; storage</h2>
+        <button type="button" class="button icon-button" disabled="@busy" @onclick="Refresh" title="Refresh statistics" aria-label="Refresh statistics"><Icon Name="rotate" /></button>
+    </div>
+    <p class="helper">Library space on this device or host computer.</p>
+    <div class="quick-stats-toolbar">
+        <button class="button" type="button" disabled="@(!layoutReady || busy || layoutSaving)" aria-pressed="@(customizingStats ? "true" : "false")" @onclick="() => customizingStats = !customizingStats">@(customizingStats ? "Done customizing" : "Customize stats")</button>
+        @if (customizingStats) { <button class="text-button" type="button" disabled="@(busy || layoutSaving)" @onclick="ResetQuickStats">Reset defaults</button> }
+    </div>
+    @if (layoutNotice is not null) { <p class="helper quick-stats-notice" role="status">@layoutNotice</p> }
+    @if (customizingStats) { <p class="helper">Drag cards between Quick overview and Library details to choose what stays visible. Drag to reorder, or use the pin and arrow buttons.</p> }
+    @if (statistics is { } stats)
+    {
+        @if (customizingStats) { <h3 class="settings-subheading">Quick overview</h3> }
+        <dl class="library-statistics-grid library-quick-statistics" data-stat-zone="quick">
+            @foreach (var stat in QuickStats)
+            {
+                <StatisticTile @key="stat.Id" Stat="@stat" Quick="true" Editing="@customizingStats" Pinned="true" Disabled="@(busy || layoutSaving)"
+                               First="@(quickStats.IndexOf(stat.Id) == 0)" Last="@(quickStats.IndexOf(stat.Id) == quickStats.Count - 1)"
+                               OnToggle="ToggleQuickStat" OnMove="direction => MoveQuickStat(stat.Id, direction)" />
+            }
+        </dl>
+        @if (quickStats.Count == 0) { <p class="helper">No quick stats selected. Use Customize stats to choose them.</p> }
+        <details class="storage-section" open="@customizingStats">
+        <summary>Library details <small>Images, originals &amp; layers</small></summary>
+        <div class="storage-section-body">
+        <dl class="library-statistics-grid" data-stat-zone="library">
+            @foreach (var stat in AllStats)
+            {
+                <StatisticTile @key="stat.Id" Stat="@stat" Editing="@customizingStats" Pinned="@quickStats.Contains(stat.Id)" Disabled="@(busy || layoutSaving)" OnToggle="ToggleQuickStat" />
+            }
+        </dl>
+        <dl class="storage-location"><dt>Library folder</dt><dd>@stats.Root</dd></dl>
+        <p class="helper">Totals count each file once, even when an image belongs to several packs. Logs, exported downloads, and previous library folders are excluded. Originals and layers can be much larger than prepared stickers.</p>
+        </div>
+        </details>
+        <div class="total-storage-summary">
+            <div class="pack-storage-heading"><strong>Total used</strong><span>@Size(stats.MediaBytes + stats.IndexBytes)</span></div>
+            <div class="storage-view-controls" role="group" aria-label="Storage chart style">
+                <button type="button" disabled="@busy" aria-pressed="@(!donutChart ? "true" : "false")" @onclick="() => ChangeChart(false)"><Icon Name="chart-bar" />Bar</button>
+                <button type="button" disabled="@busy" aria-pressed="@(donutChart ? "true" : "false")" @onclick="() => ChangeChart(true)"><Icon Name="chart-donut" />Donut</button>
+            </div>
+            <div class="storage-chart-layout @(donutChart ? "storage-chart-layout-donut" : "")">
+                @if (donutChart)
+                {
+                    <div class="storage-donut" role="img" aria-label="Total used: @Size(stats.MediaBytes + stats.IndexBytes). See storage breakdown below.">
+                        <svg viewBox="0 0 112 112" aria-hidden="true" focusable="false">
+                            <circle class="storage-donut-track" cx="56" cy="56" r="44" />
+                            @foreach (var slice in DonutSlices())
+                            {
+                                <circle class="storage-donut-slice @slice.Segment.ColorClass" cx="56" cy="56" r="44" pathLength="100"
+                                        stroke-dasharray="@slice.Dash" stroke-dashoffset="@slice.Offset" transform="rotate(-90 56 56)">
+                                    <title>@slice.Segment.Label: @Size(slice.Segment.Bytes)</title>
+                                </circle>
+                            }
+                        </svg>
+                        <div class="storage-donut-label" aria-hidden="true"><span>Used</span><strong>@Size(stats.MediaBytes + stats.IndexBytes)</strong></div>
+                    </div>
+                }
+                else
+                {
+                    <div class="total-storage-track" role="img" aria-label="Total used: @Size(stats.MediaBytes + stats.IndexBytes). See storage breakdown below.">
+                        @foreach (var segment in stats.StorageSegments)
+                        {
+                            <span class="storage-slice @segment.ColorClass" style="width: @StorageWidth(segment.Bytes)" title="@segment.Label: @Size(segment.Bytes)"></span>
+                        }
+                    </div>
+                }
+            <div class="storage-breakdown">
+            <ul class="storage-legend" aria-label="Total storage breakdown">
+                @foreach (var segment in stats.StorageSegments)
+                {
+                    <li class="@segment.ColorClass"><span class="pack-storage-dot" aria-hidden="true"></span><span>@segment.Label</span><strong>@Size(segment.Bytes)</strong></li>
+                }
+                @if (Store.StorageLimitBytes is { } totalBudget && totalBudget > stats.MediaBytes + stats.IndexBytes)
+                {
+                    <li class="storage-color-free"><span class="pack-storage-dot" aria-hidden="true"></span><span>Remaining within limit</span><strong>@Size(totalBudget - stats.MediaBytes - stats.IndexBytes)</strong></li>
+                }
+            </ul>
+            <p class="helper">Each file counts once here. Pack colors include their images and retained sources; files used by several packs are grouped as shared. With a storage limit, the unfilled part shows remaining library budget. Your chart style is remembered.</p>
+            </div>
+            </div>
+        </div>
+        @if (stats.PackStorage.Count == 0)
+        {
+            <p class="helper">Create a pack to see its storage here.</p>
+        }
+        else
+        {
+            <details class="pack-storage-details">
+                <summary>Pack details <span class="helper">(@stats.PackStorage.Count packs)</span></summary>
+                <div class="pack-storage-list">
+                    @for (var packIndex = 0; packIndex < stats.PackStorage.Count; packIndex++)
+                    {
+                        var pack = stats.PackStorage[packIndex];
+                        <div class="pack-storage-item pack-color-@(packIndex % 10)">
+                            <div class="pack-storage-heading">
+                                <strong><span class="pack-storage-dot" aria-hidden="true"></span>@pack.Name</strong>
+                                <span>@Size(pack.StickerBytes + pack.SourceBytes)</span>
+                            </div>
+                            <div class="pack-storage-track" aria-hidden="true"><div style="width: @PackWidth(pack, stats.PackStorage)"></div></div>
+                            <p class="helper">@pack.Images stickers · @Size(pack.StickerBytes) image files · @Size(pack.SourceBytes) originals &amp; layers</p>
+                        </div>
+                    }
+                </div>
+                <p class="helper">Bars compare each pack with the largest pack. Shared images appear in each pack's size, so pack sizes can add up to more than the library total. Covers and pack metadata are included in the library index above.</p>
+            </details>
+        }
+    }
+    <div class="storage-options-grid">
+    <details class="storage-section">
+        <summary>Display units <small>@LimitUnit</small></summary>
+        <div class="storage-section-body">
+            <label for="storage-display-units">Storage units</label>
+            <select id="storage-display-units" value="@(decimalUnits ? "decimal" : "binary")" @onchange="ChangeUnits" disabled="@busy">
+                <option value="binary">MiB — binary (1,048,576 bytes)</option>
+                <option value="decimal">MB — decimal (1,000,000 bytes)</option>
+            </select>
+            <p class="helper">Applies to totals, pack sizes, cleanup estimates, and the limit input. Switching units keeps your actual storage limit unchanged. This preference is remembered.</p>
+        </div>
+    </details>
+    <details class="storage-section">
+    <summary>Storage limit <small>@(Store.StorageLimitBytes is { } cap ? Size(cap) : "No limit")</small></summary>
+    <div class="storage-section-body">
+    @if (statistics is { } usage && Store.StorageLimitBytes is { } budget)
+    {
+        var used = usage.MediaBytes + usage.IndexBytes;
+        <label for="library-storage-meter">@Size(used) of @Size(budget) used</label>
+        <progress id="library-storage-meter" class="library-storage-meter" max="@budget" value="@Math.Min(used, budget)"></progress>
+        <p class="helper">@(used > budget ? "The library is above its limit. Existing files are kept; clean up or raise the limit to add more." : $"{Size(Math.Max(0, budget - used))} remaining within your library budget.")</p>
+    }
+    <label class="toggle-row"><input type="checkbox" @bind="limitEnabled" disabled="@busy" /> Limit library storage</label>
+    <label for="library-limit">Maximum library size (@LimitUnit)</label>
+    <input id="library-limit" type="number" min="@InputNumber(MinimumLimit)" max="@InputNumber(MaximumLimit)" step="any" @bind="limitAmount" disabled="@(busy || !limitEnabled)" />
+    <button type="button" class="button" @onclick="SaveStorageLimit" disabled="@busy">Save storage limit</button>
+    <p class="helper">@(decimalUnits ? "1,000 MB = 1 GB." : "1,024 MiB = 1 GiB.") This limits the saved library, including sources, layers, unused media, and its index. It does not reserve device space or guarantee that much free space. Temporary imports and conversions need extra room. Logs, exported packs, and other apps are outside this budget. Cleanup and saves that reduce usage are allowed even above the limit.</p>
+    </div>
+    </details>
+    <details class="storage-section">
+    <summary>Original file defaults <small>@(askOnImport ? "Ask per file" : "Use defaults")</small></summary>
+    <div class="storage-section-body">
+    <label class="toggle-row"><input type="checkbox" checked="@(!askOnImport)" @onchange="ChangeImportPrompts" disabled="@busy" /> Always use these defaults; skip per-file import choices</label>
+    <label class="toggle-row"><input type="checkbox" checked="@keepStills" @onchange="ChangeStillRetention" disabled="@busy" /> Keep originals for new still images</label>
+    <label class="toggle-row"><input type="checkbox" checked="@keepAnimations" @onchange="ChangeAnimationRetention" disabled="@busy" /> Keep source GIFs / animations for future trimming</label>
+    <p class="helper">Choose for each image or GIF when adding files. These defaults preselect the choices, or apply automatically if you skip them. Saved per-file choices stay with that image. You can also change the choice when saving an edit. Original GIF sources are on by default to keep trimming available.</p>
+    @if (!keepStills || !keepAnimations)
+    {
+        <p class="status-info" role="note">When originals are off, only the smaller prepared sticker remains after conversion succeeds. You cannot return to the previous image or uncut GIF without reimporting a copy you saved yourself. Without a source GIF, further trimming requires reimporting. Editable layer projects still keep their embedded sources.</p>
+    }
+    </div>
+    </details>
+    @if (busy) { <p class="helper" role="status">@progress</p> }
+    @if (error is not null) { <p class="error" role="alert">@error</p> }
+    @if (notice is not null) { <p class="settings-success" role="status">@notice</p> }
+    <details class="storage-section storage-cleanup">
+    <summary>Cleanup &amp; duplicates <small>@(statistics is { UnusedFiles: > 0 } measured ? $"{measured.UnusedFiles} unused files" : "Review before removing")</small></summary>
+    <div class="storage-section-body">
+    <p class="helper">Scan first, then review what to remove. Originals and editable layers are kept unless you explicitly choose to remove originals.</p>
+    <button type="button" class="button" disabled="@busy" @onclick="Scan">Find duplicates &amp; unused files</button>
+    @if (scan is not null)
+    {
+        <h3 class="settings-subheading">Review cleanup</h3>
+        <p class="helper">Only exact file duplicates are matched. Different originals or editable layers stay separate. Similar-looking pictures with different encodings are not matched.</p>
+        @if (scan.Duplicates.Count == 0)
+        {
+            <p>No exact duplicate images or GIFs found.</p>
+        }
+        @for (var index = 0; index < scan.Duplicates.Count; index++)
+        {
+            var group = scan.Duplicates[index];
+            var groupIndex = index;
+            <fieldset class="duplicate-review" disabled="@busy">
+                <legend>Duplicate group @(index + 1) · @group.Images.Count copies</legend>
+                @if (duplicatePreviews.TryGetValue(group.Fingerprint, out var preview))
+                {
+                    <img class="duplicate-preview" src="@preview" alt="Preview shared by these duplicate copies" loading="lazy" />
+                }
+                <label for="duplicate-keep-@index">Keep this image and its name</label>
+                <select id="duplicate-keep-@index" @bind="keepers[groupIndex]">
+                    @foreach (var image in group.Images)
+                    {
+                        <option value="@image.Id">@image.Name · @(image.Animated ? "Animated" : "Still") · @Size(image.Bytes) · Copy @(group.Images.ToList().IndexOf(image) + 1)</option>
+                    }
+                </select>
+                <p class="helper">Other copies: @string.Join(", ", group.Images.Where(image => image.Id != keepers[groupIndex]).Select(image => image.Name))</p>
+            </fieldset>
+        }
+        @if (scan.Duplicates.Count > 0)
+        {
+            <p class="helper">Removing copies merges their pack memberships, favorites, and tags into the chosen images. Pack order is retained where possible. Copy names are discarded. This cannot be undone.</p>
+            <label class="toggle-row"><input type="checkbox" @bind="confirmDuplicates" disabled="@busy" /> I reviewed the copies and want to remove them.</label>
+            <button type="button" class="button danger" disabled="@(busy || !confirmDuplicates)" @onclick="RemoveDuplicates">Remove @DuplicateCount duplicate copies</button>
+        }
+        <h3 class="settings-subheading">Remove retained originals</h3>
+        <p>@scan.Statistics.RemovableOriginals source files · @Size(scan.Statistics.RemovableOriginalBytes) reclaimable</p>
+        <p class="helper">Keeps prepared stickers. Removes the saved source images and GIFs for stickers that are ready. Editable layer sources stay. You cannot restore previous images or uncut GIFs; further GIF trimming requires reimporting your own saved file. This cannot be undone.</p>
+        @if (scan.Statistics.RemovableOriginals > 0)
+        {
+            <label class="toggle-row"><input type="checkbox" @bind="confirmOriginals" disabled="@busy" /> I have saved any originals I need and accept losing the previous versions.</label>
+            <button type="button" class="button danger" disabled="@(busy || !confirmOriginals)" @onclick="RemoveOriginals">Remove retained originals</button>
+        }
+        <h3 class="settings-subheading">Unused edit files</h3>
+        <p>@scan.Statistics.UnusedFiles unused files · @Size(scan.Statistics.UnusedBytes)</p>
+        <p class="helper">These app-generated files are no longer referenced by any image, original, or editable composition. Cleanup keeps all referenced originals and layers.</p>
+        @if (scan.UnusedFiles.Count > 0)
+        {
+            <label class="toggle-row"><input type="checkbox" @bind="confirmUnused" disabled="@busy" /> Permanently delete these unused files.</label>
+            <button type="button" class="button danger" disabled="@(busy || !confirmUnused)" @onclick="RemoveUnused">Remove unused files</button>
+        }
+    }
+    </div>
+    </details>
+    </div>
+</section>

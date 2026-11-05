@@ -1,18 +1,28 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.JSInterop;
+using StickerApp.Core;
 
 namespace StickerApp.Shared.Components.Packs;
 
 public partial class NewPackDialog
 {
     [Parameter] public EventCallback<Guid> OnCreated { get; set; }
+    [Parameter] public StickerPack? Pack { get; set; }
+    [Parameter] public EventCallback<Guid> OnSaved { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
     private ElementReference dialog;
     private IJSObjectReference? dialogHelper;
     private string name = "";
+    private string publisher = "";
     private string? error;
     private bool saving;
+
+    protected override void OnInitialized()
+    {
+        name = Pack?.Name ?? "";
+        publisher = Pack?.Publisher ?? "";
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -23,13 +33,21 @@ public partial class NewPackDialog
 
     private async Task CreatePack()
     {
-        if (saving || string.IsNullOrWhiteSpace(name)) return;
+        if (saving || string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(publisher)) return;
         saving = true;
         error = null;
         try
         {
-            var id = await Store.CreatePackAsync(name);
-            await OnCreated.InvokeAsync(id);
+            if (Pack is { } pack)
+            {
+                await Store.UpdatePackDetailsAsync(pack.Id, name, publisher);
+                await OnSaved.InvokeAsync(pack.Id);
+            }
+            else
+            {
+                var id = await Store.CreatePackAsync(name, publisher);
+                await OnCreated.InvokeAsync(id);
+            }
         }
         catch (Exception exception) when (exception is IOException or InvalidOperationException or UnauthorizedAccessException)
         {

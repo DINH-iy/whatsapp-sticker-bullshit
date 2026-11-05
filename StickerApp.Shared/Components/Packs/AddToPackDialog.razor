@@ -40,9 +40,12 @@
             <div class="folder-input-row">
                 <input id="quick-pack-name" @bind="newPackName" @bind:event="oninput" maxlength="128"
                        placeholder="Pack name" disabled="@isSaving" />
-                <button class="button primary" type="submit" disabled="@(isSaving || string.IsNullOrWhiteSpace(newPackName))">
-                    Create &amp; add
-                </button>
+            </div>
+            <label for="quick-pack-publisher" class="settings-field-label">Publisher</label>
+            <input id="quick-pack-publisher" class="folder-input" @bind="newPackPublisher" @bind:event="oninput" maxlength="128"
+                   placeholder="Your name or brand" disabled="@isSaving" required />
+            <div class="settings-actions">
+                <button class="button primary" type="submit" disabled="@(isSaving || string.IsNullOrWhiteSpace(newPackName) || string.IsNullOrWhiteSpace(newPackPublisher))">Create &amp; add</button>
             </div>
         </form>
     }

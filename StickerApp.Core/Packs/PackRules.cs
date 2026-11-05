@@ -11,7 +11,9 @@ public static class PackRules
     {
         List<Issue> issues = [];
         if (string.IsNullOrWhiteSpace(pack.Name) || pack.Name.Length > 128)
-            issues.Add(new("Give this pack a name of 1–128 characters using Rename."));
+            issues.Add(new("Give this pack a name of 1–128 characters using Edit pack details."));
+        if (string.IsNullOrWhiteSpace(pack.Publisher) || pack.Publisher.Length > 128 || pack.Publisher.Any(char.IsControl))
+            issues.Add(new("Give this pack a publisher of 1–128 characters on a single line using Edit pack details."));
         if (stickers.Count < 3)
             issues.Add(new($"Add {3 - stickers.Count} more {(3 - stickers.Count == 1 ? "sticker" : "stickers")} using the Add sticker tile. WhatsApp needs at least 3 per pack."));
         if (stickers.Count > 30)

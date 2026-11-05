@@ -82,6 +82,8 @@ public sealed partial class LibraryStore
                 image.Name = name;
                 image.FileName = imageFile;
                 image.OriginalFileName = null;
+                image.OriginalDiscarded = false;
+                image.KeepOriginalOverride = null;
                 image.CompositionFileName = compositionFile;
                 image.MimeType = info.MimeType;
                 image.Width = info.Width;

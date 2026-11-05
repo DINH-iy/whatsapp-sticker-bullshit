@@ -55,10 +55,16 @@
         <div class="pinterest-grid">
             @foreach (var image in selection.Images)
             {
-                <label class="pinterest-image" @key="image.PinId">
+                <div class="pinterest-image-choice" @key="image.PinId">
+                <label class="pinterest-image">
                     <img src="@image.ThumbnailUrl" alt="@(string.IsNullOrWhiteSpace(image.Title) ? $"Pinterest pin {image.PinId}" : image.Title)" loading="lazy" referrerpolicy="no-referrer" />
                     <span><input type="checkbox" checked="@selected.Contains(image.PinId)" @onchange="() => Toggle(image.PinId)" disabled="@busy" /> @(string.IsNullOrWhiteSpace(image.Title) ? $"Pin {image.PinId}" : image.Title)</span>
                 </label>
+                @if (Store.AskForOriginalOnImport)
+                {
+                    <label class="toggle-row pinterest-original-choice"><input type="checkbox" @bind="keepOriginals[image.PinId]" disabled="@(busy || !selected.Contains(image.PinId))" /> Keep original</label>
+                }
+                </div>
             }
         </div>
         <div class="pinterest-destination-row">
@@ -78,14 +84,16 @@
                 <div class="pinterest-destination-field">
                     <label for="pinterest-pack-name">New pack name</label>
                     <input id="pinterest-pack-name" @bind="newPackName" @bind:event="oninput" maxlength="128" placeholder="Pack name" disabled="@busy" />
+                    <label for="pinterest-pack-publisher">Publisher</label>
+                    <input id="pinterest-pack-publisher" @bind="newPackPublisher" @bind:event="oninput" maxlength="128" placeholder="Your name or brand" disabled="@busy" required />
                 </div>
             }
-            <button class="button primary" type="button" @onclick="Import" disabled="@(busy || selected.Count == 0 || CapacityError is not null || (CreatingPack && string.IsNullOrWhiteSpace(newPackName)))">@(CreatingPack ? $"Create pack & import {selected.Count} images" : $"Import {selected.Count} images")</button>
+            <button class="button primary" type="button" @onclick="Import" disabled="@(busy || selected.Count == 0 || CapacityError is not null || (CreatingPack && (string.IsNullOrWhiteSpace(newPackName) || string.IsNullOrWhiteSpace(newPackPublisher))))">@(CreatingPack ? $"Create pack & import {selected.Count} images" : $"Import {selected.Count} images")</button>
         </div>
         @if (CapacityError is not null)
         {
             <p class="error" role="alert">@CapacityError</p>
         }
-        <p class="helper">Originals are kept. Images are prepared for WhatsApp automatically in the background.</p>
+        <p class="helper">Choose Keep original for each selected image, or use your saved Settings defaults when per-file choices are disabled. Discarding originals saves space after preparation succeeds; previous full-size images cannot be recovered without your own copy. GIF trimming requires a retained source GIF. Editable layer sources are separate.</p>
     </section>
 }

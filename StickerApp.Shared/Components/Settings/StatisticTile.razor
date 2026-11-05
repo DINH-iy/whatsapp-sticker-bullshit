@@ -1,0 +1,29 @@
+<div class="statistic-tile @(Stat.Id == "used" ? "stat-highlight" : "")" data-stat-id="@Stat.Id">
+    <dt><Icon Name="@Stat.Icon" /><span>@Stat.Label</span></dt>
+    <dd>@Stat.Value @if (!Quick && Stat.Note is not null) { <small>@Stat.Note</small> }</dd>
+    @if (Editing)
+    {
+        <div class="stat-edit-tools">
+            <button class="button icon-button stat-drag-handle" data-stat-grip type="button" disabled="@Disabled" aria-label="Drag @Stat.Label" title="Drag to choose or reorder this stat"><Icon Name="grip" /></button>
+            @if (Quick)
+            {
+                <button class="button icon-button" type="button" disabled="@(Disabled || First)" @onclick="() => OnMove.InvokeAsync(-1)" aria-label="Move @Stat.Label earlier" title="Move earlier"><Icon Name="up" /></button>
+                <button class="button icon-button" type="button" disabled="@(Disabled || Last)" @onclick="() => OnMove.InvokeAsync(1)" aria-label="Move @Stat.Label later" title="Move later"><Icon Name="down" /></button>
+            }
+            <button class="button icon-button @(Pinned ? "stat-pin-active" : "")" type="button" disabled="@Disabled" aria-pressed="@(Pinned ? "true" : "false")"
+                    @onclick="() => OnToggle.InvokeAsync(Stat.Id)" aria-label="@(Pinned ? $"Hide {Stat.Label} from quick stats" : $"Pin {Stat.Label} to quick stats")" title="@(Pinned ? "Hide from quick stats" : "Pin to quick stats")"><Icon Name="@(Pinned ? "check" : "plus")" /></button>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public LibraryStatistic Stat { get; set; } = default!;
+    [Parameter] public bool Editing { get; set; }
+    [Parameter] public bool Pinned { get; set; }
+    [Parameter] public bool Quick { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool First { get; set; }
+    [Parameter] public bool Last { get; set; }
+    [Parameter] public EventCallback<string> OnToggle { get; set; }
+    [Parameter] public EventCallback<int> OnMove { get; set; }
+}

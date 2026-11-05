@@ -58,7 +58,8 @@ public sealed class PinterestImportClient : IDisposable
         uri.Host == "i.pinimg.com" && uri.Port == 443 && uri.UserInfo.Length == 0 && uri.Fragment.Length == 0;
 
     public async Task<Guid?> ImportAsync(LibraryStore store, IReadOnlyList<PinterestImage> images, Guid? packId = null,
-        IProgress<PinterestImportProgress>? progress = null, CancellationToken cancellationToken = default, string? newPackName = null)
+        IProgress<PinterestImportProgress>? progress = null, CancellationToken cancellationToken = default, string? newPackName = null,
+        IReadOnlyDictionary<string, bool>? keepOriginals = null, string? newPackPublisher = null)
     {
         if (images.Count is < 1 or > MaxImages || images.Any(image => !IsValidImage(image)) ||
             images.Select(image => image.PinId).Distinct(StringComparer.Ordinal).Count() != images.Count)
@@ -80,10 +81,11 @@ public sealed class PinterestImportClient : IDisposable
                 var path = Path.Combine(directory, image.PinId);
                 await File.WriteAllBytesAsync(path, bytes, timeout.Token);
                 var title = string.IsNullOrWhiteSpace(image.Title) ? $"Pinterest {image.PinId}" : image.Title.Trim();
-                files.Add(new(title[..Math.Min(128, title.Length)], path));
+                files.Add(new(title[..Math.Min(128, title.Length)], path,
+                    keepOriginals is not null && keepOriginals.TryGetValue(image.PinId, out var keep) ? keep : null));
                 progress?.Report(new(files.Count, images.Count));
             }
-            return await store.ImportBatchAsync(files, packId, timeout.Token, newPackName);
+            return await store.ImportBatchAsync(files, packId, timeout.Token, newPackName, newPackPublisher);
         }
         finally
         {

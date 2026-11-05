@@ -31,6 +31,7 @@ public partial class Home
         busy = editorLoading = true;
         busyText = image.Animated ? "Loading animation…" : "Loading image…";
         editing = image;
+        keepEditOriginal = image.KeepOriginalOverride ?? (image.Animated ? Store.KeepOriginalAnimations : Store.KeepOriginalStillImages);
         editName = image.Name;
         editSource = editPreview = previews[image.Id];
         replacement = null;
@@ -196,7 +197,10 @@ public partial class Home
                 bytes = Convert.FromBase64String(gif[(gif.IndexOf(',') + 1)..]);
             }
             if (bytes is not null)
-                await Store.ReplaceImageAsync(editing.Id, bytes);
+            {
+                if (!await Store.ReplaceImageAsync(editing.Id, bytes, editing.FileName, keepOriginal: keepEditOriginal))
+                    throw new InvalidOperationException("This image changed while you were editing. Reopen it before saving.");
+            }
             await Store.EditStickerAsync(editing.Id, editName, editing.Tags);
             await Reload();
             editing = null;

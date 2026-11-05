@@ -3,15 +3,15 @@
 @inject IJSRuntime JS
 
 <div class="pack-cover-picker @(MenuStyle ? "pack-cover-menu" : "")">
-    <label class="@(MenuStyle ? "toolbar-menu-option file-button" : "button file-button")">
+    <label class="@(MenuStyle ? "toolbar-menu-option file-button" : "button file-button")" title="Choose or change this pack's cover">
         <Icon Name="image-plus" />
-        <span>@(Pack.CoverImage is null ? "Set cover" : "Change cover")@if (MenuStyle) { <small>Choose the picture shown on this pack.</small> }</span>
+        <span>@(MenuStyle ? Pack.CoverImage is null ? "Set cover" : "Change cover" : "Cover")@if (MenuStyle) { <small>Choose the picture shown on this pack.</small> }</span>
         <input type="file" accept="image/*" @ref="input" @onchange="Upload"
                disabled="@working" aria-label="@($"Choose cover for {Pack.Name}")" />
     </label>
     @if (AllowRemove && Pack.CoverImage is not null)
     {
-        <button class="@(MenuStyle ? "toolbar-menu-option" : "button icon-button")" type="button" @onclick="Remove" disabled="@working" title="Remove cover" aria-label="Remove cover">
+        <button class="@(MenuStyle ? "toolbar-menu-option danger" : "button icon-button danger")" type="button" @onclick="Remove" disabled="@working" title="Remove cover" aria-label="Remove cover">
             <Icon Name="close" />
             @if (MenuStyle) { <span>Remove cover<small>Use the first sticker as the cover.</small></span> }
         </button>

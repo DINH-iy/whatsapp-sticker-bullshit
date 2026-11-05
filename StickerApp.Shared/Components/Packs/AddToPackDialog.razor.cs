@@ -15,6 +15,7 @@ public partial class AddToPackDialog
     private IJSObjectReference? dialogHelper;
     private List<StickerPack> availablePacks = [];
     private string newPackName = "";
+    private string newPackPublisher = "";
     private string? error;
     private bool isLoading = true;
     private bool isSaving;
@@ -47,7 +48,7 @@ public partial class AddToPackDialog
         () => Store.AddToPackAsync(pack.Id, [Image.Id]), pack.Name);
 
     private Task CreatePackAndAdd() => SaveAddition(
-        () => Store.CreatePackWithStickerAsync(newPackName, Image.Id), newPackName.Trim());
+        () => Store.CreatePackWithStickerAsync(newPackName, Image.Id, newPackPublisher), newPackName.Trim());
 
     private async Task SaveAddition(Func<Task> save, string packName)
     {

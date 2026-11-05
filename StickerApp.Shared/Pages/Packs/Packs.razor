@@ -21,9 +21,49 @@
 {
     <NewPackDialog OnCreated="PackCreated" OnCancel="() => showCreate = false" />
 }
+@if (editingPack is not null)
+{
+    <NewPackDialog Pack="@editingPack" OnSaved="PackDetailsSaved" OnCancel="() => editingPack = null" />
+}
+@{ var visiblePacks = VisiblePacks; }
+<div class="toolbar browse-toolbar">
+    <label class="browse-search">Search<input type="search" class="search" aria-label="Search packs" placeholder="Search packs or publishers" @bind="search" @bind:event="oninput" /></label>
+    <div class="browse-actions">
+        <button class="button @(sort != "default" ? "browse-action-active" : "")" type="button" aria-label="Sort packs" aria-haspopup="dialog" @onclick='() => browsePanel = "sort"'>Sort</button>
+        <button class="button @(FilterCount > 0 ? "browse-action-active" : "")" type="button" aria-label="Filter packs" aria-haspopup="dialog" @onclick='() => browsePanel = "filters"'>Filters @if (FilterCount > 0) { <small class="filter-count">@FilterCount</small> }</button>
+    </div>
+</div>
+@if (browsePanel is not null)
+{
+<BrowseOptionsPopup Title="@(browsePanel == "sort" ? "Sort packs" : "Filter packs")" OnClose="() => browsePanel = null">
+    @if (browsePanel == "sort")
+    {
+    <label>Sort by<select aria-label="Sort packs" @bind="sort">
+        <option value="default">Oldest added</option><option value="newest">Recently added</option>
+        <option value="name-asc">Name: A–Z</option><option value="name-desc">Name: Z–A</option><option value="publisher">Publisher: A–Z</option>
+        <option value="count-desc">Most stickers</option><option value="count-asc">Fewest stickers</option>
+        <option value="file-desc">Image files: largest first</option><option value="file-asc">Image files: smallest first</option>
+        <option value="storage-desc">Stored size: largest first</option><option value="storage-asc">Stored size: smallest first</option>
+    </select></label>
+    }
+    else
+    {
+    <div class="browse-filter-fields">
+        <label>Type<select aria-label="Filter pack type" @bind="typeFilter"><option value="all">All types</option><option value="still">Still images only</option><option value="animated">GIFs / animations only</option><option value="mixed">Mixed still &amp; animated</option><option value="empty">Empty packs</option></select></label>
+        <label>Sticker count<select aria-label="Filter pack count" @bind="countFilter"><option value="all">Any count</option><option value="empty">Empty</option><option value="few">1–2 stickers</option><option value="ready">3–30 stickers</option><option value="full">Full (30 stickers)</option></select></label>
+        <label>Total stored size<select aria-label="Filter pack storage" @bind="storageFilter"><option value="all">Any size</option><option value="small">Under 1 @SizeUnit</option><option value="medium">1–5 @SizeUnit</option><option value="large">5–20 @SizeUnit</option><option value="huge">20 @SizeUnit or more</option></select></label>
+    </div>
+    <p class="helper">Stored size includes images, retained originals, and editable layers. An image shared by several packs appears in each pack's size; the library total counts it once.</p>
+    <button class="button" type="button" @onclick="ResetFilters">Reset filters</button>
+    }
+</BrowseOptionsPopup>
+}
+<p class="helper browse-result" role="status">Showing @visiblePacks.Count of @library.Packs.Count packs</p>
+@if (visiblePacks.Count > 0 || library.Packs.Count == 0)
+{
 <div class="image-grid pack-grid">
     <AddTile Title="New pack" Hint="Start a sticker collection" Disabled="@(busy || library.Packs.Count >= 10)" OnClick="() => showCreate = true" />
-    @foreach (var pack in library.Packs)
+    @foreach (var pack in visiblePacks)
     {
         <article class="image-card pack-card" @key="pack.Id">
             <a class="pack-card-link" href="@($"packs/{pack.Id}")" aria-label="@($"Open {pack.Name}")">
@@ -38,12 +78,28 @@
                     }
                 </div>
                 <strong>@pack.Name</strong>
-                <small>@pack.StickerIds.Count @(pack.StickerIds.Count == 1 ? "sticker" : "stickers")</small>
+                <small class="pack-card-publisher" title="@pack.Publisher">By @pack.Publisher</small>
+                <small>@pack.StickerIds.Count @(pack.StickerIds.Count == 1 ? "sticker" : "stickers") · @PackTypeLabel(pack)</small>
+                <small class="image-file-summary">@PackSize(pack) stored</small>
             </a>
-            <PackCoverPicker Pack="@pack" OnChanged="Reload" AllowRemove="false" />
+            <div class="pack-card-actions">
+                <PackCoverPicker Pack="@pack" OnChanged="Reload" AllowRemove="false" />
+                <button class="button icon-button" type="button" disabled="@busy" @onclick="() => editingPack = pack" title="Edit pack details" aria-label="Edit details for @pack.Name"><Icon Name="edit" /></button>
+            </div>
         </article>
     }
 </div>
+}
+@if (visiblePacks.Count == 0 && library.Packs.Count > 0)
+{
+    <div class="browse-empty" role="status">
+        <div><strong>No packs match your search or filters.</strong><p class="helper">Try another type or size, or clear the filters.</p></div>
+        <div class="settings-actions">
+            <button class="button" type="button" @onclick="ResetFilters">Clear filters</button>
+            <button class="button" type="button" disabled="@(busy || library.Packs.Count >= 10)" @onclick="() => showCreate = true">New pack</button>
+        </div>
+    </div>
+}
 @if (library.Packs.Count >= 10)
 {
     <p class="helper">This build supports up to 10 packs.</p>

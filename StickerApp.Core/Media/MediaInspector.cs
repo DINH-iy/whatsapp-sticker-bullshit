@@ -7,6 +7,30 @@ public sealed record MediaInfo(string MimeType, string Extension, int Width, int
 
 public static class MediaInspector
 {
+    /// <summary>Loop a display-only copy of finite WebP animations without changing saved frames.</summary>
+    public static byte[] ForLoopingPreview(byte[] source)
+    {
+        if (source.Length < 20 || !source.AsSpan(0, 4).SequenceEqual("RIFF"u8) ||
+            !source.AsSpan(8, 4).SequenceEqual("WEBP"u8)) return source;
+        var info = Inspect(source);
+        if (!info.Animated) return source;
+        for (var offset = 12; offset + 8 <= source.Length;)
+        {
+            var length = BinaryPrimitives.ReadUInt32LittleEndian(source.AsSpan(offset + 4));
+            if (length > int.MaxValue || offset + 8L + length > source.Length)
+                throw new InvalidDataException("Invalid WebP chunk.");
+            if (source.AsSpan(offset, 4).SequenceEqual("ANIM"u8) && length >= 6)
+            {
+                if (BinaryPrimitives.ReadUInt16LittleEndian(source.AsSpan(offset + 12)) == 0) return source;
+                var preview = (byte[])source.Clone();
+                BinaryPrimitives.WriteUInt16LittleEndian(preview.AsSpan(offset + 12), 0);
+                return preview;
+            }
+            offset = checked(offset + 8 + (int)length + ((int)length & 1));
+        }
+        return source;
+    }
+
     /// <summary>Use two identical frames so WhatsApp accepts still artwork in an animated pack.</summary>
     public static byte[] AsAnimatedSticker(ReadOnlySpan<byte> data, int durationMs = 1000)
     {
