@@ -7,6 +7,7 @@ public partial class MainPage : ContentPage
         InitializeComponent();
 #if IOS
         BackgroundColor = Color.FromArgb(Preferences.Default.Get("native.background", "#f8f9f5"));
+        blazorWebView.BlazorWebViewInitialized += (_, args) => EnableBackGesture(args.WebView);
 #endif
 #if ANDROID || IOS
         // Keep the WebView inside system bars, cutouts, and the software keyboard.

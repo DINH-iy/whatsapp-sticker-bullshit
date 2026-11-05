@@ -1,4 +1,4 @@
-// Native Android Back and the app's Back button share overlay-first navigation.
+// Android system Back and the iOS edge swipe share overlay-first navigation.
 window.stickerNavigation = {
     back(native = false) {
         const dialogs = [...document.querySelectorAll('dialog[open]')];

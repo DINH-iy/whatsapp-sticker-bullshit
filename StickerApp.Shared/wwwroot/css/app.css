@@ -1340,7 +1340,6 @@ a.button.primary, a.button.primary:visited { color: white; }
 .app-navigation .app-nav { grid-column: 2; grid-row: 1; justify-content: center; flex-wrap: nowrap; min-width: 0; gap: 4px; margin: 0; padding: 0; border: 0; }
 .app-navigation .app-nav a { white-space: nowrap; padding: 0 12px; }
 .navigation-tools { display: flex; align-items: center; gap: 8px; grid-column: 3; grid-row: 1; }
-.history-controls { display: flex; gap: 6px; }
 .navigation-toggle { display: none; }
 .navigation-dismiss { display: none; }
 .toolbar-menu { position: relative; }

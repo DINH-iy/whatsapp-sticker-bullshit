@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.JSInterop;
 using StickerApp.Core;
 using StickerApp.Shared.Services;
+using StickerApp.Shared.Components.Settings;
 
 namespace StickerApp.Shared.Components.Packs;
 

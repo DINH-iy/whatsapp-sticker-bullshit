@@ -31,7 +31,9 @@ KLIPY search results are separate from the local sticker library. Standard KLIPY
 
 ## Finding your way around the code
 
-- `StickerApp.Shared/Pages/Library/Home.razor` contains the library screen markup; `Home.razor.cs` contains importing, pack actions, and image editing.
+See [the code map](docs/ARCHITECTURE.md) for the feature folders and asset build pipeline.
+
+- `StickerApp.Shared/Pages/Library/Home.razor` contains the library screen markup; `Home.razor.cs` holds screen state and pack actions, with importing in `Home.Importing.cs` and editing in `Home.Editing.cs`.
 - `StickerApp.Shared/Pages/Settings/Settings.razor` and `Settings.razor.cs` contain appearance and storage settings.
 - `StickerApp.Shared/Pages/Gifs/GifSearch.razor` and `GifSearch.razor.cs` contain the GIF browsing screen and its state.
 - `StickerApp.Shared/Components/Settings/GifSearchSettings.razor` and its `.razor.cs` file handle API-key setup; `FolderPicker.razor` and its `.razor.cs` file handle folder browsing.
@@ -46,7 +48,7 @@ App source uses four-space indentation and named methods. Screen markup and C# b
 
 **Settings → Easter eggs** contains an optional **Location surprises** toggle, off by default. When enabled, the device asks [country.is](https://country.is/) for the country of its public IP. Romania (`RO`) triggers a dismissible Romania roast and a brief bat animation once per session. The setting persists in local storage; only the country code and lookup time are cached in session storage for up to 30 minutes. No IP address or GPS location is saved by the app. A VPN can affect the country; failed lookups silently skip the surprise. The **Preview Romania surprise** button works anywhere without making a location request.
 
-`Components/Surprises/LocationSurprise.razor` and its code-behind render the surprise. `Components/Settings/SurpriseSettings.razor` and its code-behind handle the toggle and preview. `wwwroot/location-surprises.js` owns device-local preferences, session checks, and direct IP-country lookup. Add more country effects there and expose a corresponding named callback on the component.
+`Components/Surprises/LocationSurprise.razor` and its code-behind render the surprise. `Components/Settings/SurpriseSettings.razor` and its code-behind handle the toggle and preview. `wwwroot/js/ui/location-surprises.js` owns device-local preferences, session checks, and direct IP-country lookup. Add more country effects there and expose a corresponding named callback on the component.
 
 Dark themes share neutral charcoal backgrounds across all five accents. Primary buttons and highlights carry the selected accent. Shared controls use a 44px height and 8px corner radius; preview canvases, checkboxes, and sliders retain dimensions appropriate to their purpose. Compact library actions use local SVG icons from `Components/Common/Icon.razor`, with accessible labels and hover titles.
 
@@ -56,7 +58,7 @@ Every GIF search result has a download-shaped **Open original GIF to save** link
 
 Once an image is in the local library, its folder-plus **Add to pack** action opens a picker of all packs. Choose an existing pack, or enter a name and use **Create & add**. Creating a pack and adding the image happen in a single atomic write. Already-added images and full packs are disabled in the picker. This works for imported GIFs and still images; WhatsApp export still requires compliant WebP files.
 
-The picker lives in `Components/Packs/AddToPackDialog.razor` and its code-behind. Both folder browsing and pack picking use `wwwroot/dialog.js` to open an accessible native dialog with browser focus management.
+The picker lives in `Components/Packs/AddToPackDialog.razor` and its code-behind. Both folder browsing and pack picking use `wwwroot/js/ui/dialog.js` to open an accessible native dialog with browser focus management.
 
 ## Pack import, export, and sharing links
 
@@ -105,7 +107,7 @@ When viewing a pack, the first grid cell is always **Add sticker**, even when th
 
 Use **Set cover** on a pack card or inside the pack. Covers are cropped to a square and resized on the device before saving. The original is not added as a sticker; the cover does not count toward the 30-sticker limit. Covers persist in the library, travel with exported pack ZIPs and share links, and supply the native WhatsApp tray icon. Without a custom cover, the overview shows the first sticker. Remove a custom cover inside the pack to return to that fallback.
 
-`Components/Common/AddTile.razor` reuses the add-tile appearance for New pack and Add sticker. `PackCoverPicker` and `wwwroot/pack-cover.js` handle device-side cover preparation. `PackCover.cs` checks the saved/imported cover format and size.
+`Components/Common/AddTile.razor` reuses the add-tile appearance for New pack and Add sticker. `PackCoverPicker` and `wwwroot/js/ui/pack-cover.js` handle device-side cover preparation. `PackCover.cs` checks the saved/imported cover format and size.
 
 WhatsApp problems appear in red only for packs with validation errors. The full rules and usage FAQ live in **Settings → Help & FAQ**. Success messages use green, errors use red, and informational status uses blue, independently of the chosen accent and light/dark appearance.
 
