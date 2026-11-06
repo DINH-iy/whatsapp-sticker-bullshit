@@ -52,7 +52,7 @@ Editable sources stay in the local library as self-contained `.layers.json` file
 
 ## GIF search
 
-Open **GIF search** in the navigation, or **Add stickers → Find a GIF** in a pack or the library. The latter opens a popup so you can keep your place. Add your own KLIPY API key in **Settings → GIF search** first. Create a key through the [KLIPY Partner Panel](https://partner.klipy.com/) and configure its allowed app origins/platforms there. A saved key is not validated until you request results. The app supports keyword searches, loading more results, copying GIF links, and one-button GIF import. It does not load trending GIFs automatically. The search field retains KLIPY’s required provider placeholder; the optional Powered by KLIPY heading is omitted.
+Open **GIF search** in the navigation, or **Add stickers → Find a GIF** in a pack or the library. The latter opens a popup so you can keep your place. Add your own KLIPY API key in **Settings → GIF search** first. Create a key through the [KLIPY Partner Panel](https://partner.klipy.com/) and configure its allowed app origins/platforms there. A saved key is not validated until you request results. The app supports keyword searches, loading more results, opening GIFs in the browser, and one-button GIF import. It does not load trending GIFs automatically. The search field retains KLIPY’s required provider placeholder; the optional Powered by KLIPY heading is omitted.
 
 The key stays in local storage on the current browser/device. It is not encrypted and is not placed in the sticker library or sent to the Blazor host. Requests go directly from the device to KLIPY. Search API responses are not retained. A GIF is saved in the local library only when you choose Import. Results retain the provider's order and media URLs; the API's medium content filter is used. Copying a link sends a share event to KLIPY without a customer identifier.
 
@@ -83,7 +83,7 @@ Dark themes share neutral charcoal backgrounds across all five accents. Primary 
 
 ## Quickly saving GIFs and adding images to packs
 
-Every GIF search result has an **Import** button and a download-shaped **Open original GIF to save** link. It opens the provider's original URL in a new tab. This is not an automatic download: use the browser's Save Image option, then import the saved file through **Add stickers → GIF from device**. The Import button instead downloads the original directly into the library, without the manual save/upload round trip.
+Every GIF search result has an **Import** button and an **Open in browser** link. Import saves the original to All images, then opens a pack picker: choose an existing pack, create one, or use Keep in library. Closing the picker leaves the imported GIF in the library. The browser link opens the provider's original URL in a new tab.
 
 Once an image is in the local library, its folder-plus **Add to pack** action opens a picker of all packs. Choose an existing pack, or enter a name and use **Create & add**. Creating a pack and adding the image happen in a single atomic write. Already-added images and full packs are disabled in the picker. This works for imported GIFs and still images; WhatsApp export still requires compliant WebP files.
 
