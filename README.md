@@ -2,6 +2,13 @@
 
 C# / Blazor Hybrid app for Android and iPhone/iPad, with a browser development host.
 
+build apk: dotnet publish StickerApp/StickerApp.csproj -f net10.0-android -c Release -p:AndroidPackageFormat=apk
+dotnet build StickerApp/StickerApp.csproj \
+  -t:InstallAndroidDependencies \
+  -f net10.0-android \
+  -p:AndroidSdkDirectory="$HOME/Library/Android/sdk" \
+  -p:JavaSdkDirectory="$HOME/Library/Java/maui-jdk" \
+  -p:AcceptAndroidSDKLicenses=True
 Run the browser version: `.\dev.ps1 web`
 
 Open `http://localhost:5100` for local desktop use. In VS Code, install the recommended C# extension, select **Stik-er-in (localhost)** in **Run and Debug**, and press **F5** to build, launch, and open the app with debugging. **Ctrl+F5** launches without debugging. Stop an already-running terminal server with **Ctrl+C** before using the editor launcher so port 5100 is available.
