@@ -2,13 +2,14 @@
 @inject LibraryStore Store
 @inject IJSRuntime JS
 
-<dialog @ref="dialog" class="folder-dialog" aria-labelledby="add-to-pack-title" @onkeydown="HandleKey">
+<dialog @ref="dialog" class="folder-dialog" aria-labelledby="add-to-pack-title" @onkeydown="HandleKey" @onkeydown:stopPropagation>
     <div class="folder-dialog-heading">
-        <h2 id="add-to-pack-title">Add to pack</h2>
+        <h2 id="add-to-pack-title">@Title</h2>
         <button class="button icon-button" type="button" title="Close" aria-label="Close pack picker" @onclick="Cancel">
             <Icon Name="close" />
         </button>
     </div>
+    @if (Description is not null) { <p class="helper">@Description</p> }
     <p class="helper">@Image.Name · @(Image.Animated ? "Animated image" : "Still image")</p>
 
     @if (isLoading)
@@ -59,6 +60,6 @@
         <p class="helper" role="status">Adding to pack…</p>
     }
     <div class="dialog-actions">
-        <button class="button" type="button" @onclick="Cancel" disabled="@isSaving">Cancel</button>
+        <button class="button" type="button" @onclick="Cancel" disabled="@isSaving">@CancelLabel</button>
     </div>
 </dialog>

@@ -33,7 +33,7 @@ else
     </form>
 
     <HelpDisclosure Summary="About importing GIFs">
-        <p class="helper">Choose Import to add a GIF directly to @(PackId is null ? "All images" : "this pack"). Imports use your GIF original-file setting; sticker preparation runs automatically. Maximum file size: 10 MB.</p>
+        <p class="helper">Choose Import to save a GIF to your library, then choose a pack or keep it in All images. Imports use your GIF original-file setting; sticker preparation runs automatically. Maximum file size: 10 MB.</p>
     </HelpDisclosure>
     @if (IsImporting)
     {
@@ -44,21 +44,12 @@ else
     }
     @if (importNotice is not null)
     {
-        <div class="notice" role="status">@importNotice <a href="@(PackId is { } pack ? $"packs/{pack}" : "library")">View images</a></div>
+        <div class="notice" role="status">@importNotice <a href="library">View images</a></div>
     }
     @if (importError is not null) { <p class="error" role="alert">@importError</p> }
     @if (hasSearched)
     {
         <h2 class="gif-results-heading">Results for “@activeQuery”</h2>
-    }
-
-    @if (selectedGif is not null)
-    {
-        <div class="gif-share-panel">
-            <label for="selected-gif-link">Share link · @selectedGif.Title</label>
-            <input id="selected-gif-link" class="folder-input" value="@selectedGif.ShareUrl" readonly />
-            <p class="helper" role="status">@shareNotice</p>
-        </div>
     }
 
     <div class="gif-grid" aria-label="KLIPY GIF results" aria-busy="@(isLoading ? "true" : "false")">
@@ -82,16 +73,11 @@ else
                             <Icon Name="@(importedUrls.Contains(gif.ShareUrl) ? "check" : "plus")" />
                             @(importedUrls.Contains(gif.ShareUrl) ? "Imported" : importingUrl == gif.ShareUrl ? "Importing…" : "Import")
                         </button>
-                        <button class="button icon-button" type="button" @onclick="() => CopyLink(gif)"
-                                disabled="@(isCopying || string.IsNullOrEmpty(gif.ShareUrl))"
-                                title="Copy link" aria-label="Copy link for @gif.Title">
-                            <Icon Name="copy" />
-                        </button>
                         @if (!string.IsNullOrEmpty(gif.ShareUrl))
                         {
                             <a class="button icon-button" href="@gif.ShareUrl" target="_blank" rel="noopener noreferrer"
-                               title="Open original GIF to save" aria-label="Open @gif.Title to save">
-                                <Icon Name="download" />
+                               title="Open in browser" aria-label="Open @gif.Title in browser">
+                                <Icon Name="link" />
                             </a>
                         }
                     </div>
@@ -126,4 +112,11 @@ else
             <button class="button" type="button" @onclick="RetrySearch" disabled="@(isLoading || IsImporting)">Try again</button>
         }
     </div>
+}
+
+@if (importedImage is not null)
+{
+    <AddToPackDialog Image="@importedImage" Title="Add imported GIF to a pack?" CancelLabel="Keep in library"
+                     Description="Your GIF is saved. Choose a pack below, or keep it in All images."
+                     OnAdded="ImportAddedToPack" OnCancel="KeepImportedInLibrary" />
 }

@@ -11,6 +11,10 @@ public partial class AddToPackDialog
     [Parameter] public EventCallback<string> OnAdded { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
 
+    [Parameter] public string Title { get; set; } = "Add to pack";
+    [Parameter] public string CancelLabel { get; set; } = "Cancel";
+    [Parameter] public string? Description { get; set; }
+
     private ElementReference dialog;
     private IJSObjectReference? dialogHelper;
     private List<StickerPack> availablePacks = [];

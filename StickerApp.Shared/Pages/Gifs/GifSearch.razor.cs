@@ -21,14 +21,12 @@ public partial class GifSearch
     private string query = "";
     private string activeQuery = "";
     private string? error;
-    private string? shareNotice;
-    private GifResult? selectedGif;
+    private Sticker? importedImage;
     private int currentPage;
     private bool isReady;
     private bool hasSearched;
     private bool isConfigured;
     private bool isLoading;
-    private bool isCopying;
     private bool hasNextPage;
     private bool isDisposed;
 
@@ -77,8 +75,6 @@ public partial class GifSearch
         activeQuery = query.Trim();
         currentPage = 0;
         results.Clear();
-        selectedGif = null;
-        shareNotice = null;
         hasNextPage = false;
         await FetchPage(1);
     }
@@ -117,29 +113,17 @@ public partial class GifSearch
         }
     }
 
-    private async Task CopyLink(GifResult gif)
+    private async Task ImportAddedToPack(string message)
     {
-        if (client is null || isCopying)
-            return;
+        importedImage = null;
+        importNotice = message;
+        await OnImported.InvokeAsync();
+    }
 
-        isCopying = true;
-        selectedGif = gif;
-
-        try
-        {
-            var copied = await client.InvokeAsync<bool>("copyLink", gif.ShareUrl);
-            shareNotice = copied ? "Link copied. Paste it into your chat." : "Select and copy the link above to share this GIF.";
-            if (copied)
-                await client.InvokeVoidAsync("registerShare", gif.Slug, activeQuery);
-        }
-        catch (JSException)
-        {
-            shareNotice = "Select and copy the link above to share this GIF.";
-        }
-        finally
-        {
-            isCopying = false;
-        }
+    private void KeepImportedInLibrary()
+    {
+        importedImage = null;
+        importNotice = "GIF saved in All images.";
     }
 
     private async Task ImportGif(GifResult gif)
@@ -174,10 +158,11 @@ public partial class GifSearch
             // applies before this point, never to a partially committed sticker.
             importCommitting = true;
             StateHasChanged();
-            await Store.ImportAsync(ImportFileName(gif), bytes, PackId);
+            var stickerId = await Store.ImportAsync(ImportFileName(gif), bytes);
             importedUrls.Add(gif.ShareUrl);
             if (isDisposed) return;
-            importNotice = PackId is null ? "GIF imported into All images." : "GIF imported into this pack.";
+            importedImage = (await Store.ReadAsync()).Stickers.Single(image => image.Id == stickerId);
+            importNotice = "GIF imported into All images.";
             await OnImported.InvokeAsync();
             await client.InvokeVoidAsync("registerShare", gif.Slug, activeQuery);
         }
