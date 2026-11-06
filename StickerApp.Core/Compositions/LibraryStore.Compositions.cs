@@ -24,15 +24,17 @@ public sealed partial class LibraryStore
         finally { gate.Release(); }
     }
 
-    public async Task<string?> ReadLayerGifAsync(Guid stickerId)
+    public async Task<string?> ReadLayerAnimationAsync(Guid stickerId)
     {
         await gate.WaitAsync();
         try
         {
             var image = (await ReadInternalAsync()).Stickers.FirstOrDefault(image => image.Id == stickerId)
                 ?? throw new InvalidOperationException("This image no longer exists.");
-            var bytes = await File.ReadAllBytesAsync(MediaPath(image.OriginalFileName ?? image.FileName));
-            return MediaInspector.Inspect(bytes).MimeType == "image/gif" ? $"data:image/gif;base64,{Convert.ToBase64String(bytes)}" : null;
+            var bytes = await File.ReadAllBytesAsync(MediaPath(image.FileName));
+            var info = MediaInspector.Inspect(bytes);
+            return info.MimeType == "image/gif" || (info.MimeType == "image/webp" && info.Animated)
+                ? $"data:{info.MimeType};base64,{Convert.ToBase64String(bytes)}" : null;
         }
         finally { gate.Release(); }
     }

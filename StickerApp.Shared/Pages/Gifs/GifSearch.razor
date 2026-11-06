@@ -5,7 +5,7 @@
 
 @if (!Embedded)
 {
-    <PageTitle>GIF search · Stick it</PageTitle>
+    <PageTitle>GIF search · Stik-er-in</PageTitle>
     <header class="page-header"><h1>GIF search</h1></header>
 }
 
@@ -30,7 +30,9 @@ else
         <button class="button primary" type="submit" disabled="@(isLoading || string.IsNullOrWhiteSpace(query))">Search</button>
     </form>
 
+    <HelpDisclosure Summary="How to save GIFs">
     <p class="helper">Find a GIF, open its original, and save it to your device. @(Embedded ? "Close this popup, then choose" : "Then choose") <strong>Add stickers → Images or GIFs from device</strong> to add the saved file.</p>
+    </HelpDisclosure>
     @if (hasSearched)
     {
         <h2 class="gif-results-heading">Results for “@activeQuery”</h2>

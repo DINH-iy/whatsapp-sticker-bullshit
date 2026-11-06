@@ -6,12 +6,14 @@
 @inject StickerApp.Shared.Services.IPinterestShareInbox Inbox
 @inject StickerApp.Shared.Services.PinterestShareState Shares
 
-<PageTitle>Pinterest · Stick it</PageTitle>
+<PageTitle>Pinterest · Stik-er-in</PageTitle>
 <header class="page-header"><h1>Import from Pinterest</h1></header>
 <section class="settings-card pinterest-import" aria-labelledby="pinterest-link-title">
     <h2 id="pinterest-link-title">Share a selection</h2>
+    <HelpDisclosure Summary="How to share a Pinterest selection">
     <p>In Pinterest, select several pins on a public board and share the selection. Paste the link or shared text below.</p>
     <p class="helper">On iPhone, choose Stickers in the share sheet, save the link, then open Stickers to preview it here.</p>
+    </HelpDisclosure>
     <form @onsubmit="Load" @onsubmit:preventDefault>
         <label for="pinterest-link">Pinterest selection link</label>
         <textarea id="pinterest-link" rows="3" maxlength="4096" @bind="text" @bind:event="oninput" readonly="@(pending is not null)" disabled="@busy" placeholder="https://pin.it/…"></textarea>
@@ -94,6 +96,6 @@
         {
             <p class="error" role="alert">@CapacityError</p>
         }
-        <p class="helper">Choose Keep original for each selected image, or use your saved Settings defaults when per-file choices are disabled. Discarding originals saves space after preparation succeeds; previous full-size images cannot be recovered without your own copy. GIF trimming requires a retained source GIF. Editable layer sources are separate.</p>
+        <p class="helper">Choose Keep original for each selected image, or use your saved Settings defaults when per-file choices are disabled. Discarding originals saves space after preparation succeeds; previous full-size images cannot be recovered without your own copy. GIF and animated WebP stickers can both be trimmed and edited. Editable layer sources are separate.</p>
     </section>
 }

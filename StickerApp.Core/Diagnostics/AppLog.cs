@@ -63,7 +63,7 @@ public sealed class AppLog(string directory)
         }
     }
 
-    public string Report() => $"Stick it diagnostic log\nExported: {DateTimeOffset.UtcNow:O}\n" +
+    public string Report() => $"Stik-er-in diagnostic log\nExported: {DateTimeOffset.UtcNow:O}\n" +
         "Entries use UTC timestamps. Logs stay on this device until you export them.\n" +
         "URLs, embedded image data, and common credential fields are redacted. Review before sharing.\n\n" + Read();
 

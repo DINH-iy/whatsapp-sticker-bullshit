@@ -6,10 +6,10 @@
     <UseMaui>true</UseMaui>
     <SingleProject>true</SingleProject>
     <EnableDefaultCssItems>false</EnableDefaultCssItems>
-    <ApplicationTitle>Stick it</ApplicationTitle>
+    <ApplicationTitle>Stik-er-in</ApplicationTitle>
     <ApplicationId>com.stickerstudio.app</ApplicationId>
-    <ApplicationDisplayVersion>0.1.9</ApplicationDisplayVersion>
-    <ApplicationVersion>10</ApplicationVersion>
+    <ApplicationDisplayVersion>0.1.10</ApplicationDisplayVersion>
+    <ApplicationVersion>11</ApplicationVersion>
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">24.0</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
     <MauiVersion>10.0.120</MauiVersion>

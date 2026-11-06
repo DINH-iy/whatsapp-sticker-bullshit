@@ -14,9 +14,25 @@ public partial class Home
         await editDialogHelper.InvokeVoidAsync("open", editDialog);
     }
 
-    private void EditorKeyDown(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs args)
+    private Task EditorKeyDown(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs args) =>
+        args.Key == "Escape" ? CancelEditing() : Task.CompletedTask;
+
+    private void EditorToolsReady()
     {
-        if (args.Key == "Escape" && !busy && !customizing) editing = null;
+        editorToolsLoading = false;
+        if (!editorLoading) busyText = "Processing…";
+    }
+
+    private int editorSession;
+    private async Task CancelEditing()
+    {
+        if ((busy && !editorLoading) || (customizing && !editorToolsLoading)) return;
+        ++editorSession; // Late file reads or GIF results belong to the closed editor.
+        editing = null;
+        editorToolsLoading = customizing = false;
+        if (gifSession is not null) await gifSession.InvokeVoidAsync("dispose");
+        busy = editorLoading = false;
+        busyText = "Processing…";
     }
 
     private async Task Edit(Sticker image)
@@ -28,7 +44,8 @@ public partial class Home
             showLayerEditor = true;
             return;
         }
-        busy = editorLoading = true;
+        var session = ++editorSession;
+        busy = editorLoading = editorToolsLoading = true;
         busyText = image.Animated ? "Loading animation…" : "Loading image…";
         editing = image;
         keepEditOriginal = image.KeepOriginalOverride ?? (image.Animated ? Store.KeepOriginalAnimations : Store.KeepOriginalStillImages);
@@ -36,6 +53,7 @@ public partial class Home
         editSource = editPreview = previews[image.Id];
         replacement = null;
         transformed = false;
+        editRecipe = null;
         replacementAnimated = false;
         editError = null;
         gifDuration = trimStart = trimEnd = 0;
@@ -45,28 +63,24 @@ public partial class Home
         await Task.Yield();
         try
         {
-            // Keep the imported GIF available for trimming after automatic conversion.
-            if (image.Animated && image.OriginalFileName is { } original)
-            {
-                try
-                {
-                    var originalBytes = await File.ReadAllBytesAsync(Store.MediaPath(original));
-                    if (MediaInspector.Inspect(originalBytes).MimeType == "image/gif")
-                        editSource = editPreview = $"data:image/gif;base64,{Convert.ToBase64String(originalBytes)}";
-                }
-                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
-            }
-            if (IsGif) await InspectGif();
+            // Edit the current animation, including saved cutouts. The retained
+            // original is a backup and must not silently replace the edited sticker.
+            if (session != editorSession || disposed) return;
+            if (EditingAnimation) await InspectGif(session);
         }
         catch (JSException exception)
         {
+            if (session != editorSession || disposed) return;
             Log.Error("GIF inspection", exception);
             editError = "Could not read this GIF, or it is too large to edit.";
         }
         finally
         {
-            busy = editorLoading = false;
-            busyText = "Processing…";
+            if (session == editorSession && !disposed)
+            {
+                busy = editorLoading = false;
+                if (!editorToolsLoading) busyText = "Processing…";
+            }
         }
     }
 
@@ -74,32 +88,40 @@ public partial class Home
     {
         if (busy)
             return;
-        busy = editorLoading = true;
+        var session = ++editorSession;
+        busy = editorLoading = editorToolsLoading = true;
         busyText = "Loading image…";
         editError = null;
         try
         {
             var bytes = await ReadFile(e.File);
+            if (session != editorSession || disposed) return;
             var info = MediaInspector.Inspect(bytes);
             replacement = bytes;
             replacementAnimated = info.Animated;
             transformed = false;
+        editRecipe = null;
             editPreview = editSource = $"data:{info.MimeType};base64,{Convert.ToBase64String(bytes)}";
             gifDuration = trimStart = trimEnd = 0;
             trimmedPreview = null;
             gifThumbnails = [];
-            if (IsGif)
-                await InspectGif();
+            if (EditingAnimation)
+                await InspectGif(session);
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or InvalidOperationException or JSException)
         {
+            if (session != editorSession || disposed) return;
+            editorToolsLoading = false;
             Log.Error("Image editing", ex);
             editError = ex is JSException ? "Could not read this GIF, or it is too large to edit." : ex.Message;
         }
         finally
         {
-            busy = editorLoading = false;
-            busyText = "Processing…";
+            if (session == editorSession && !disposed)
+            {
+                busy = editorLoading = false;
+                if (!editorToolsLoading) busyText = "Processing…";
+            }
         }
     }
 
@@ -107,17 +129,25 @@ public partial class Home
     {
         editPreview = png;
         transformed = true;
+        trimmedPreview = null;
         editError = null;
     }
 
-    private async Task InspectGif()
+    private async Task InspectGif(int session)
     {
         gifEditor ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/media/gif-editor.js");
-        var info = await gifEditor.InvokeAsync<GifInfo>("inspect", editSource);
+        if (session != editorSession || disposed) return;
+        gifSession ??= await gifEditor.InvokeAsync<IJSObjectReference>("createSession");
+        if (session != editorSession || disposed) return;
+        var info = await gifSession.InvokeAsync<GifInfo>("inspect", editSource);
+        if (session != editorSession || disposed) return;
         gifDuration = trimEnd = info.Duration;
         trimStart = 0;
         gifThumbnails = info.Thumbnails;
     }
+
+    private void ChangeEditorTrimStart(double value) { trimStart = value; TrimStartChanged(); }
+    private void ChangeEditorTrimEnd(double value) { trimEnd = value; TrimEndChanged(); }
 
     private void TrimStartChanged()
     {
@@ -153,30 +183,8 @@ public partial class Home
     private async Task<string> BuildTrim()
     {
         ValidateTrim();
-        return trimmedPreview ??= await gifEditor!.InvokeAsync<string>("trim", editSource, trimStart, trimEnd);
-    }
-
-    private async Task PreviewTrim()
-    {
-        if (busy)
-            return;
-        busy = true;
-        busyText = "Trimming…";
-        editError = null;
-        try
-        {
-            editPreview = await BuildTrim();
-        }
-        catch (Exception ex) when (ex is JSException or InvalidOperationException)
-        {
-            Log.Error("Image editing", ex);
-            editError = ex is JSException ? "Could not trim this GIF. Try a shorter selection or a smaller GIF." : ex.Message;
-        }
-        finally
-        {
-            busy = false;
-            busyText = "Processing…";
-        }
+        if (editRecipe is null) throw new InvalidOperationException("Wait for the animation editor to finish opening.");
+        return trimmedPreview ??= await gifSession!.InvokeAsync<string>("edit", TimeSpan.FromMinutes(4), editSource, trimStart, trimEnd, editRecipe.Value);
     }
 
     private async Task Save()
@@ -190,9 +198,9 @@ public partial class Home
             if (string.IsNullOrWhiteSpace(editName) || editName.Trim().Length > 128)
                 throw new InvalidOperationException("Name: 1–128 characters.");
             var bytes = transformed ? Convert.FromBase64String(editPreview[(editPreview.IndexOf(',') + 1)..]) : replacement;
-            if (HasTrim)
+            if (EditingAnimation && (HasTrim || transformed))
             {
-                busyText = "Trimming…";
+                busyText = "Applying animation edits…";
                 var gif = await BuildTrim();
                 bytes = Convert.FromBase64String(gif[(gif.IndexOf(',') + 1)..]);
             }
@@ -208,7 +216,7 @@ public partial class Home
         catch (Exception ex) when (ex is IOException or InvalidDataException or InvalidOperationException or JSException)
         {
             Log.Error("Image editing", ex);
-            editError = ex is JSException ? "Could not trim this GIF. Try a shorter selection or a smaller GIF." : ex.Message;
+            editError = ex is JSException ? "Could not save this animation. Try a shorter selection or a smaller animation." : ex.Message;
         }
         finally
         {

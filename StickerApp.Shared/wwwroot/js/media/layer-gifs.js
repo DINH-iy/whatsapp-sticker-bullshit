@@ -1,6 +1,6 @@
+import { openAnimation } from './animation-reader.js';
 export async function openGif(source) {
-    const engine = await import('./gif-engine.js');
-    const reader = engine.createReader(source);
+    const reader = await openAnimation(source);
     const thumbnails = [];
     for (let index = 0; index < 6; index++) {
         const frame = reader.at(Math.floor((reader.duration - 1) * index / 5));
@@ -10,6 +10,5 @@ export async function openGif(source) {
         thumbnails.push(canvas.toDataURL('image/png'));
         await new Promise(resolve => setTimeout(resolve, 0));
     }
-    const copy = () => ({ reader: engine.createReader(source), thumbnails, copy });
-    return { reader, thumbnails, copy };
+    return { reader, thumbnails };
 }

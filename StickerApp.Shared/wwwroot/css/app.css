@@ -1686,3 +1686,126 @@ a.button.primary, a.button.primary:visited { color: white; }
     .import-original-row { grid-template-columns: 24px minmax(0, 1fr); }
     .import-original-row .toggle-row { grid-column: 2; }
 }
+
+/* Explanations remain available without displacing the active editor. */
+.help-disclosure, .editor-details { min-width: 0; margin: 8px 0; border-top: 1px solid var(--line); }
+.help-disclosure > summary, .editor-details > summary { padding: 10px 0; cursor: pointer; color: var(--muted); font-size: 13px; min-height: 40px; box-sizing: border-box; }
+.help-disclosure[open] > summary, .editor-details[open] > summary { color: var(--text); }
+.help-disclosure-content .helper { margin: 8px 0 12px; }
+.editor-details > label { margin-top: 10px; }
+
+/* Header and save actions stay outside the scrolling editing workspace. */
+.image-edit-dialog[open] { display: flex; flex-direction: column; gap: 8px; height: min(900px, calc(var(--dialog-viewport-height, 100vh) - 24px)); max-height: calc(var(--dialog-viewport-height, 100vh) - 24px); padding: 16px; overflow: hidden; box-sizing: border-box; }
+.image-edit-dialog > h2 { flex: 0 0 auto; margin: 0; font-size: 20px; line-height: 28px; }
+.editor-dialog-body { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.editor-dialog-body[hidden] { display: none; }
+.image-edit-dialog > .dialog-actions { position: static; flex: 0 0 auto; margin: 0; padding: 8px 0 0; border-top: 1px solid var(--line); }
+.image-edit-dialog > .editor-loading { flex: 1 1 auto; min-height: 0; }
+
+/* Canvas and timeline have their own region; only the tools and options scroll. */
+.customizer-preview-dock, .layer-preview-dock { position: relative; padding: 0 0 8px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.customizer-preview-dock .customizer-canvas-wrap { margin: 0 0 6px; }
+.customizer-preview-dock canvas { max-height: 28vh; max-height: 28dvh; }
+.animation-timeline { border: 0; padding: 0; margin: 0; min-width: 0; }
+.animation-timeline .trim-timeline { height: 48px; margin-top: 0; }
+.animation-trim-readout { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; color: var(--muted); font-size: 12px; line-height: 20px; padding: 0 6px; font-variant-numeric: tabular-nums; }
+.animation-preview-button { margin-top: 4px; width: 100%; }
+.customizer-controls > .customizer-tools { flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.customizer-controls > .customizer-tools .button { flex: 0 1 auto; white-space: normal; min-height: 44px; max-width: 100%; }
+.customizer-controls > label { display: block; margin: 8px 0; }
+.customizer-controls > label input[type="range"] { width: 100%; }
+@media (max-height: 500px) {
+    .customizer-preview-dock canvas { max-height: 18vh; max-height: 18dvh; }
+    .image-edit-dialog[open] { padding: 10px; gap: 4px; }
+}
+
+.image-edit-dialog .image-customizer, .layer-source-editor .image-customizer { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.image-edit-dialog .customizer-preview-dock, .layer-source-editor .customizer-preview-dock { flex: 0 0 auto; }
+.image-edit-dialog .customizer-controls, .layer-source-editor .customizer-controls { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-gutter: stable; padding-right: 4px; }
+
+/* Equal tool tiles stay aligned at every viewport width. */
+.customizer-controls > .customizer-tools {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+}
+.customizer-controls > .customizer-tools .button {
+    display: flex; flex-direction: column; justify-content: center;
+    gap: 5px; min-width: 0; min-height: 60px; padding: 8px 3px;
+    font-size: 12px; line-height: 1.2; text-align: center;
+}
+.customizer-tools .app-icon { width: 20px; height: 20px; flex-shrink: 0; }
+.selection-apply { width: 100%; min-height: 40px; font-size: 12px; }
+.animation-playback-tools { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 12px; margin-top: 6px; }
+.animation-playback-tools label { min-width: 0; margin: 0; font-size: 11px; color: var(--muted); }
+.animation-scrubber { display: grid; grid-template-columns: 1fr auto; gap: 2px 6px; }
+.animation-scrubber input { grid-column: 1 / -1; width: 100%; min-width: 0; height: 32px; padding: 0; accent-color: var(--accent); }
+.animation-speed select { width: 100%; min-height: 32px; padding: 4px 8px; font-size: 12px; }
+.animation-playback-tools output { font-variant-numeric: tabular-nums; }
+
+/* Quiet scrollbars and purpose-built slider grips throughout the app. */
+* { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--muted) 35%, transparent) transparent; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--muted) 35%, transparent); border: 2px solid transparent; background-clip: padding-box; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background-color: var(--accent); }
+::-webkit-scrollbar-button { display: none; }
+input[type="range"]:not(.trim-handle):not(.frame-playhead) { appearance: none; -webkit-appearance: none; width: 100%; min-width: 0; height: 32px; margin: 0; padding: 0; background: transparent; border: 0; cursor: ew-resize; }
+input[type="range"]:not(.trim-handle):not(.frame-playhead)::-webkit-slider-runnable-track { height: 4px; background: var(--line); border-radius: 8px; }
+input[type="range"]:not(.trim-handle):not(.frame-playhead)::-webkit-slider-thumb { appearance: none; -webkit-appearance: none; width: 14px; height: 20px; margin-top: -8px; border: 2px solid var(--surface); border-radius: 5px; background: var(--accent); box-shadow: 0 0 0 1px var(--line); }
+input[type="range"]:not(.trim-handle):not(.frame-playhead)::-moz-range-track { height: 4px; background: var(--line); border-radius: 8px; }
+input[type="range"]:not(.trim-handle):not(.frame-playhead)::-moz-range-thumb { width: 10px; height: 16px; border: 2px solid var(--surface); border-radius: 5px; background: var(--accent); }
+.animation-timeline .trim-timeline { height: 80px; }
+.animation-timeline .timeline-frames { inset: 4px 0 auto; height: 40px; }
+.animation-timeline .timeline-mask { top: 4px; bottom: auto; height: 40px; }
+.animation-timeline .timeline-selection { top: 2px; bottom: auto; height: 44px; border-width: 2px; }
+.animation-timeline .trim-handle, .animation-timeline .trim-handle::-webkit-slider-runnable-track { height: 48px; }
+.animation-timeline .trim-handle::-webkit-slider-thumb { height: 48px; border: 0; border-radius: 4px; box-shadow: 0 0 0 1px var(--surface); }
+.animation-timeline .trim-handle::-moz-range-track { height: 48px; }
+.animation-timeline .trim-handle::-moz-range-thumb { height: 48px; border: 0; border-radius: 4px; }
+.timeline-playhead-line { position: absolute; z-index: 2; left: 0; top: 4px; height: 40px; width: 2px; transform: translateX(-50%); background: var(--text); pointer-events: none; box-shadow: 0 0 2px #000; }
+.frame-playhead { position: absolute; z-index: 4; top: 44px; left: -14px; width: calc(100% + 28px); height: 32px; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; appearance: none; -webkit-appearance: none; pointer-events: none; }
+.frame-playhead::-webkit-slider-runnable-track { height: 30px; background: transparent; }
+.frame-playhead::-webkit-slider-thumb { appearance: none; -webkit-appearance: none; width: 28px; height: 30px; background: var(--soft); border: 0; border-radius: 7px; pointer-events: auto; cursor: ew-resize; }
+.frame-playhead::-moz-range-track { height: 30px; background: transparent; }
+.frame-playhead::-moz-range-thumb { width: 28px; height: 30px; background: var(--soft); border: 0; border-radius: 7px; pointer-events: auto; cursor: ew-resize; }
+.frame-playhead:focus-visible { outline: none; }
+.frame-playhead:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 2px var(--text); }
+.frame-playhead:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 2px var(--text); }
+.animation-playback-tools { align-items: center; }
+.animation-frame-time { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.animation-frame-time output { color: var(--text); }
+.animation-speed { display: flex; align-items: center; gap: 6px; }
+.animation-speed select { width: auto; }
+/* A small grip marks the playhead without suggesting a zoom tool. */
+.frame-playhead { --playhead-icon: none; }
+.frame-playhead::-webkit-slider-thumb { width: 28px; height: 26px; margin-top: 2px; border: 1px solid var(--accent); border-radius: 6px; background: linear-gradient(to right, transparent 8px, var(--accent) 8px 10px, transparent 10px 15px, var(--accent) 15px 17px, transparent 17px) center / 26px 10px no-repeat, var(--soft); box-shadow: 0 2px 4px #0003; }
+.frame-playhead::-moz-range-thumb { width: 26px; height: 24px; border: 1px solid var(--accent); border-radius: 6px; background: linear-gradient(to right, transparent 8px, var(--accent) 8px 10px, transparent 10px 15px, var(--accent) 15px 17px, transparent 17px) center / 26px 10px no-repeat, var(--soft); box-shadow: 0 2px 4px #0003; }
+.timeline-playhead-line { background: var(--accent); }
+.animation-playback-tools .animation-speed { flex-direction: row; gap: 6px; white-space: nowrap; }
+.animation-playback-tools .animation-speed select { min-height: 32px; height: 32px; margin: 0; padding-block: 4px; }
+
+/* Tool settings share the checkerboard preview, with space reserved for the rail. */
+.customizer-preview-stage, .layer-preview-stage { display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 0; padding: 6px; margin-bottom: 6px; border: 1px solid var(--line); border-radius: 9px; background: repeating-conic-gradient(var(--checker) 0% 25%, var(--surface) 0% 50%) 50% / 16px 16px; }
+.customizer-preview-stage .customizer-canvas-wrap { flex: 1 1 0; min-width: 0; margin: 0; border: 0; border-radius: 3px; background: transparent; }
+.editor-tool-dock { display: flex; flex-direction: column; align-items: center; justify-content: space-between; flex: 0 0 78px; gap: 6px; max-height: 240px; min-width: 0; padding: 7px 4px; border: 1px solid var(--line); border-radius: 8px; background: color-mix(in srgb, var(--surface) 94%, transparent); }
+.editor-tool-title { font-size: 11px; line-height: 1.2; text-align: center; }
+.editor-tool-values { display: flex; justify-content: center; width: 100%; min-width: 0; overflow-y: auto; overflow-x: hidden; }
+.editor-tool-values > .app-icon { width: 28px; height: 28px; margin: 10px 0; color: var(--muted); }
+.editor-tool-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; width: 100%; }
+.editor-tool-actions .button { min-height: 32px; height: 32px; width: 32px; min-width: 0; padding: 5px; }
+.editor-tool-actions .app-icon { width: 17px; height: 17px; }
+.editor-tool-dock .layer-presets, .editor-tool-dock .layer-rotation-dial, .editor-tool-dock .helper { display: none; }
+.editor-tool-dock .layer-adjustments, .editor-tool-dock .editor-adjustments { width: 100%; }
+.editor-tool-dock .vertical-tool-setting, .editor-tool-dock .editor-adjustments > label:not(.layer-check) { display: flex; flex-direction: column; align-items: center; gap: 3px; margin: 0; font-size: 10px; text-align: center; }
+.editor-tool-dock input[type="range"]:not(.trim-handle):not(.frame-playhead) { writing-mode: vertical-lr; direction: rtl; width: 32px; height: 96px; }
+.editor-tool-dock input[type="range"]:not(.trim-handle):not(.frame-playhead)::-webkit-slider-runnable-track { width: 4px; height: 100%; }
+.editor-tool-dock input[type="range"]:not(.trim-handle):not(.frame-playhead)::-webkit-slider-thumb { width: 20px; height: 14px; margin-top: 0; margin-left: -8px; }
+.editor-tool-dock input[type="range"]:not(.trim-handle):not(.frame-playhead)::-moz-range-track { width: 4px; height: 100%; }
+.editor-tool-dock input[type="range"]:not(.trim-handle):not(.frame-playhead)::-moz-range-thumb { width: 16px; height: 10px; }
+.editor-tool-dock .layer-pair { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+.editor-tool-dock .layer-pair label { font-size: 10px; margin: 0; gap: 2px; }
+.editor-tool-dock input[type="number"] { min-height: 28px; padding: 3px; font-size: 11px; }
+.editor-tool-dock .layer-check { display: flex; flex-direction: column; gap: 3px; margin: 4px 0; font-size: 10px; text-align: center; }
+.editor-tool-dock .layer-tint { flex-direction: column; gap: 4px; margin: 0; }
+@media (max-height: 500px) { .editor-tool-dock { max-height: 155px; } .editor-tool-dock input[type="range"]:not(.trim-handle):not(.frame-playhead) { height: 60px; } }

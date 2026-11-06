@@ -1,0 +1,51 @@
+@using System.Globalization
+
+<fieldset class="animation-timeline" aria-label="Animation trim range" disabled="@Disabled">
+    <div class="trim-timeline">
+        <div class="timeline-frames" aria-hidden="true">
+            @foreach (var frame in Thumbnails) { <img src="@frame" alt="" /> }
+        </div>
+        <div class="timeline-mask left" style="width:@Number(Left)%"></div>
+        <div class="timeline-mask right" style="width:@Number(Right)%"></div>
+        <div class="timeline-selection" style="left:@Number(Left)%;right:@Number(Right)%"></div>
+        <input class="trim-handle start" aria-label="Trim start" type="range" min="0" max="@Number(Duration)" step="0.01"
+               value="@Number(Start)" data-gif-bound="@(LayerControls ? "start" : null)" @oninput="StartInput" />
+        <input class="trim-handle end" aria-label="Trim end" type="range" min="0" max="@Number(Duration)" step="0.01"
+               value="@Number(End)" data-gif-bound="@(LayerControls ? "end" : null)" @oninput="EndInput" />
+        <span class="timeline-playhead-line" aria-hidden="true"></span>
+        <input class="frame-playhead" type="range" aria-label="Preview frame" min="0" max="@Number(Duration)" step="0.001" value="@Number(Start)" data-animation-seek />
+    </div>
+    <div class="animation-trim-readout" aria-live="off">
+        <span>@Number(Start)–@Number(End) s</span>
+        <span>@Number(Math.Max(0, End - Start)) s selected</span>
+    </div>
+    <div class="animation-playback-tools">
+        <span class="animation-frame-time">Frame <output data-animation-time>@Number(Start) s</output></span>
+        <label class="animation-speed">Preview speed
+            <select aria-label="Preview speed" data-animation-speed>
+                <option value="0.1">0.1×</option><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option>
+            </select>
+        </label>
+    </div>
+</fieldset>
+
+@code {
+    [Parameter] public IReadOnlyList<string> Thumbnails { get; set; } = [];
+    [Parameter] public double Duration { get; set; }
+    [Parameter] public double Start { get; set; }
+    [Parameter] public double End { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool LayerControls { get; set; }
+    [Parameter] public EventCallback<double> StartChanged { get; set; }
+    [Parameter] public EventCallback<double> EndChanged { get; set; }
+    private double Left => Duration > 0 ? Math.Clamp(Start / Duration * 100, 0, 100) : 0;
+    private double Right => Duration > 0 ? Math.Clamp((Duration - End) / Duration * 100, 0, 100) : 0;
+    private static string Number(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
+    private EventCallback<ChangeEventArgs> StartInput => LayerControls ? default : EventCallback.Factory.Create<ChangeEventArgs>(this, ChangeStart);
+    private EventCallback<ChangeEventArgs> EndInput => LayerControls ? default : EventCallback.Factory.Create<ChangeEventArgs>(this, ChangeEnd);
+    private Task ChangeStart(ChangeEventArgs args) => Read(args, StartChanged);
+    private Task ChangeEnd(ChangeEventArgs args) => Read(args, EndChanged);
+    private static Task Read(ChangeEventArgs args, EventCallback<double> callback) =>
+        double.TryParse(args.Value?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var value) && double.IsFinite(value)
+            ? callback.InvokeAsync(value) : Task.CompletedTask;
+}

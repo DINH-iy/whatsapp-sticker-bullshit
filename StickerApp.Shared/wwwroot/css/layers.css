@@ -58,9 +58,9 @@
 .layer-selected-preview strong { overflow-wrap: anywhere; font-size: 13px; }
 .layer-selected-preview small { color: var(--muted); font-size: 12px; }
 
-/* Common actions stay on screen; detailed adjustments can scroll independently. */
+/* Only the compact save row stays pinned; tools take up their own layout space. */
 .layer-editor-dialog .layer-footer { display: block; z-index: 5; border-top: 1px solid var(--line); }
-.layer-quick-tools { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 6px; }
+.layer-quick-tools { display: grid; grid-template-columns: repeat(auto-fit, minmax(58px, 1fr)); gap: 6px; }
 .layer-quick-tools .button { min-width: 0; min-height: 44px; height: 44px; flex-direction: column; gap: 3px; padding: 4px 2px; font-size: 10px; line-height: 1.1; white-space: normal; }
 .layer-quick-tools .app-icon { width: 17px; height: 17px; flex-shrink: 0; }
 .layer-save-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
@@ -69,7 +69,7 @@
     .layer-canvas-wrap { width: min(100%, 34vh); width: min(100%, 34dvh); }
 }
 
-.layer-tool-panel { position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); width: min(350px, calc(100vw - 64px)); max-height: min(390px, calc(var(--dialog-viewport-height, 100vh) - 200px)); overflow-y: auto; padding: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 40px #0006; }
+.layer-tool-panel { position: relative; width: 100%; margin: 12px 0; padding: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
 .layer-tool-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
 .layer-tool-heading h3 { margin: 0; font-size: 15px; }
 .layer-tool-heading .button { width: 32px; height: 32px; min-height: 32px; padding: 0; }
@@ -99,3 +99,62 @@
 .layer-drop-before { box-shadow: 0 -3px var(--accent); }
 .layer-drop-after { box-shadow: 0 3px var(--accent); }
 .layer-gif-editor { min-width: 0; margin: 8px 4px 16px 40px; padding: 0; border: 0; }
+
+/* The canvas and inspector never overlap, including on short phone screens. */
+.layer-stage .layer-quick-tools { margin-top: 14px; }
+.layer-source-editor { margin: 12px 0; padding: 12px; border: 1px solid var(--line); border-radius: 10px; }
+.layer-source-editor h3 { margin-top: 0; }
+.layer-source-editor .layer-save-actions { flex-wrap: wrap; }
+.layer-tool-panel, .image-adjustment-panel { min-width: 0; box-sizing: border-box; }
+.layer-canvas-wrap[hidden] { display: none; }
+.image-adjustment-panel { margin: 12px 0; padding: 12px; border: 1px solid var(--line); border-radius: 10px; }
+@media (max-width: 700px), (max-height: 700px) {
+    .layer-tool-panel .layer-rotation-dial, .image-adjustment-panel .layer-rotation-dial { display: none; }
+    .layer-tool-panel { padding: 10px; }
+    .layer-presets { gap: 4px; }
+    .layer-presets .button { min-height: 44px; }
+    .layer-add-tools { grid-template-columns: minmax(0, 1fr) auto; }
+    .layer-add-tools .file-button { grid-column: 1 / -1; justify-self: start; }
+    .layer-quick-tools { grid-template-columns: repeat(auto-fit, minmax(54px, 1fr)); }
+}
+
+@media (max-width: 700px) {
+    .layer-stage .layer-quick-tools { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+    .layer-stage .layer-quick-tools .button { min-height: 50px; height: auto; }
+}
+
+.layer-preview-dock[hidden] { display: none; }
+.layer-preview-dock { margin-bottom: 8px; }
+.layer-preview-dock .animation-timeline { margin-top: 6px; }
+.layer-source-editor .customizer-preview-dock { z-index: 6; }
+.layer-preview-dock .layer-canvas-wrap { width: min(100%, 28vh); width: min(100%, 28dvh); margin-inline: auto; }
+@media (max-height: 500px) {
+    .layer-preview-dock .layer-canvas-wrap { width: min(100%, 18vh); width: min(100%, 18dvh); }
+}
+
+.layer-source-editor { display: flex; flex-direction: column; height: min(760px, calc(var(--dialog-viewport-height, 100vh) - 140px)); min-height: 0; box-sizing: border-box; }
+.layer-source-editor > h3, .layer-source-editor > .layer-save-actions { flex: 0 0 auto; }
+.layer-source-editor > .image-customizer { flex: 1 1 auto; }
+.layer-source-editor > .layer-save-actions .button { padding-inline: 10px; font-size: 12px; }
+.layer-quick-tools[hidden] { display: none; }
+.layer-stage .layer-quick-tools { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.layer-stage .layer-quick-tools .button { height: auto; min-height: 60px; font-size: 12px; gap: 5px; padding: 8px 3px; }
+.layer-stage .layer-quick-tools .app-icon { width: 20px; height: 20px; }
+.layer-preview-dock { position: sticky; top: 0; z-index: 4; background: var(--surface); }
+/* Artwork editing uses the whole dialog instead of nesting a second long page. */
+.layer-editor-dialog:has(.layer-source-editor) { display: flex; flex-direction: column; height: min(900px, calc(var(--dialog-viewport-height, 100dvh) - 24px)); overflow: hidden; }
+.layer-editor-dialog:has(.layer-source-editor) > :not(.folder-dialog-heading):not(.layer-workspace):not(.error) { display: none; }
+.layer-editor-dialog:has(.layer-source-editor) .layer-workspace { display: block; flex: 1; min-height: 0; }
+.layer-editor-dialog:has(.layer-source-editor) .layer-stage { height: 100%; min-height: 0; }
+.layer-editor-dialog:has(.layer-source-editor) .layer-panel,
+.layer-editor-dialog:has(.layer-source-editor) .layer-stage > .helper { display: none; }
+.layer-editor-dialog .layer-source-editor { height: 100%; margin: 0; padding: 8px; }
+.layer-source-editor .customizer-canvas-wrap canvas { max-height: 22dvh; }
+.layer-source-editor > h3 { font-size: 14px; margin-bottom: 6px; }
+.layer-editor-dialog > .folder-dialog-heading { flex: 0 0 auto; margin-bottom: 14px; }
+.layer-editor-dialog > .folder-dialog-heading h2 { margin: 0; line-height: 1.3; }
+.layer-editor-dialog:has(.layer-source-editor) .layer-source-editor { border: 0; padding: 0; }
+.layer-source-editor > h3 { margin: 0 0 10px; }
+.layer-preview-stage .layer-canvas-wrap { flex: 0 1 28dvh; min-width: 0; margin: 0; }
+.layer-preview-stage .editor-tool-dock { margin-left: auto; }
+@media (max-height: 500px) { .layer-preview-stage .layer-canvas-wrap { flex-basis: 18dvh; } }

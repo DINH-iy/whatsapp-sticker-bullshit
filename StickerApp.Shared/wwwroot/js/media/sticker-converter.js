@@ -9,7 +9,7 @@ export function fit(context, image, width, height) {
 // One bundled encoder on every platform, including Safari's iPhone WebView.
 export async function encode(canvas, quality) {
     const software = await import('./webp-encoder.js');
-    const pixels = canvas.getContext('2d').getImageData(0, 0, 512, 512);
+    const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
     return software.encode(pixels, quality);
 }
 
@@ -38,10 +38,10 @@ function chunk(name, body) {
     result.set(body, 8);
     return result;
 }
-export function animation(frames) {
+export function animation(frames, width = 512, height = 512) {
     const header = new Uint8Array(10);
     header[0] = 0x12; // Alpha and animation flags.
-    write24(header, 4, 511); write24(header, 7, 511);
+    write24(header, 4, width - 1); write24(header, 7, height - 1);
     const parts = [chunk('VP8X', header), chunk('ANIM', new Uint8Array(6))];
     for (const { bytes, duration } of frames) {
         const imageChunks = [];
@@ -54,7 +54,7 @@ export function animation(frames) {
         }
         if (!imageChunks.length) throw new Error('Could not encode an animation frame.');
         const frameHeader = new Uint8Array(16);
-        write24(frameHeader, 6, 511); write24(frameHeader, 9, 511);
+        write24(frameHeader, 6, width - 1); write24(frameHeader, 9, height - 1);
         write24(frameHeader, 12, duration);
         frameHeader[15] = 2; // Replace the previous canvas, without blending.
         parts.push(chunk('ANMF', join([frameHeader, ...imageChunks])));
@@ -64,8 +64,6 @@ export function animation(frames) {
 
 export async function prepare(source, animated) {
     if (animated) {
-        if (!source.startsWith('data:image/gif;'))
-            throw new Error('To resize or compress this animated WebP, open Edit and replace it with its original GIF, then save it for automatic preparation. Animation will not be flattened.');
         const editor = await import('./gif-editor.js');
         try { return await editor.prepare(source); }
         finally { editor.dispose(); }

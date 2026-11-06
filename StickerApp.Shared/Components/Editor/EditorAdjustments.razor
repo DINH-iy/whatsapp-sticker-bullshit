@@ -1,0 +1,74 @@
+@using System.Globalization
+
+<div class="editor-adjustments" data-adjustment-scope="@Scope">
+    @if (Tool == "transform")
+    {
+        <div class="layer-pair">
+            @if (ShowPosition)
+            {
+                <label>X position<input aria-label="X position" type="number" min="-2048" max="2560" step="1" value="@Number(Value.X)" data-layer-property="x" /></label>
+                <label>Y position<input aria-label="Y position" type="number" min="-2048" max="2560" step="1" value="@Number(Value.Y)" data-layer-property="y" /></label>
+            }
+            <label>Width<input aria-label="Width" type="number" min="1" max="@MaxSize" value="@Number(Value.Width)" data-layer-property="width" /></label>
+            <label>Height<input aria-label="Height" type="number" min="1" max="@MaxSize" value="@Number(Value.Height)" data-layer-property="height" /></label>
+        </div>
+        <label class="layer-check"><input type="checkbox" data-layer-ratio checked="@KeepRatio" @onchange="args => KeepRatioChanged.InvokeAsync(args.Value is true)" /> Keep proportions</label>
+        <p class="helper">Turn off to stretch.@(ShowPosition ? " On-image handles remain available." : " Apply size to resize the image.")</p>
+    }
+    else if (Tool == "rotate")
+    {
+        <svg class="layer-rotation-dial" viewBox="0 0 200 200" role="slider" tabindex="0" aria-label="Rotation dial" aria-valuemin="-180" aria-valuemax="180" aria-valuenow="@Number(Value.Rotation)" data-layer-dial>
+            <circle class="dial-track" cx="100" cy="100" r="75" />
+            @for (var tick = 0; tick < 8; tick++)
+            {
+                <line class="dial-tick" x1="100" y1="18" x2="100" y2="29" transform="@($"rotate({tick * 45} 100 100)")" />
+            }
+            <g data-layer-dial-needle transform="@($"rotate({Number(Value.Rotation)} 100 100)")"><line class="dial-needle" x1="100" y1="100" x2="100" y2="30" /><circle class="dial-knob" cx="100" cy="25" r="10" /></g>
+            <circle class="dial-center" cx="100" cy="100" r="39" />
+            <text x="100" y="108" text-anchor="middle"><tspan data-layer-readout="rotation">@Number(Value.Rotation)</tspan>°</text>
+        </svg>
+        <label><span>Rotation · <span data-layer-readout="rotation">@Number(Value.Rotation)</span>°</span><input aria-label="Rotation" type="range" min="-180" max="180" step="1" value="@Number(Value.Rotation)" data-layer-property="rotation" /></label>
+        <div class="layer-presets" role="group" aria-label="Rotation presets">
+            <button class="button" type="button" @onclick="() => OnRotateBy.InvokeAsync(-90)">−90°</button>
+            <button class="button" type="button" @onclick="() => OnRotateBy.InvokeAsync(-45)">−45°</button>
+            <button class="button" type="button" @onclick="() => OnRotation.InvokeAsync(0)">Reset</button>
+            <button class="button" type="button" @onclick="() => OnRotateBy.InvokeAsync(45)">+45°</button>
+            <button class="button" type="button" @onclick="() => OnRotateBy.InvokeAsync(90)">+90°</button>
+        </div>
+    }
+    else if (Tool == "opacity")
+    {
+        <label><span>Opacity · <span data-layer-readout="opacity">@Math.Round(Value.Opacity * 100)</span>%</span><input aria-label="Opacity" type="range" min="0" max="100" step="1" value="@Number(Value.Opacity * 100)" data-layer-property="opacity" /></label>
+        <div class="layer-presets" role="group" aria-label="Opacity presets">
+            @foreach (var percent in new[] { 0, 25, 50, 75, 100 })
+            {
+                <button class="button" type="button" @onclick="() => OnOpacity.InvokeAsync(percent)">@percent%</button>
+            }
+        </div>
+    }
+    else if (Tool == "tint")
+    {
+        <div class="layer-tint">
+            <label class="layer-check"><input type="checkbox" checked="@(Value.Tint is not null)" @onchange="ToggleTint" /> Color tint</label>
+            <input aria-label="Tint color" type="color" value="@(Value.Tint ?? "#80d4b0")" data-layer-property="tint" disabled="@(Disabled || Value.Tint is null)" />
+        </div>
+        <p class="helper">Enable tint to recolor the image while keeping transparency.</p>
+    }
+</div>
+
+@code {
+    [Parameter] public string Tool { get; set; } = "transform";
+    [Parameter] public string Scope { get; set; } = "layer";
+    [Parameter, EditorRequired] public EditorAdjustmentValues Value { get; set; } = new();
+    [Parameter] public int MaxSize { get; set; } = 2048;
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool ShowPosition { get; set; } = true;
+    [Parameter] public bool KeepRatio { get; set; } = true;
+    [Parameter] public EventCallback<bool> KeepRatioChanged { get; set; }
+    [Parameter] public EventCallback<int> OnRotateBy { get; set; }
+    [Parameter] public EventCallback<double> OnRotation { get; set; }
+    [Parameter] public EventCallback<int> OnOpacity { get; set; }
+    [Parameter] public EventCallback<string?> OnTint { get; set; }
+    private Task ToggleTint(ChangeEventArgs args) => OnTint.InvokeAsync(args.Value is true ? "#80d4b0" : null);
+    private static string Number(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
+}

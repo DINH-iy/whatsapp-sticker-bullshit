@@ -272,6 +272,29 @@ try
         });
     }
 
+    await Check("edited WebP layers survive save, reopen and reuse without a GIF original", async store =>
+    {
+        var source = "data:image/webp;base64," + Convert.ToBase64String(animated);
+        var composition = new LayerComposition { Layers = [new CompositionLayer {
+            Id = "edited-animation", Name = "Cutout", Source = "data:image/png;base64," + Convert.ToBase64String(png),
+            GifSource = source, GifDuration = 1, TrimStart = 0, TrimEnd = 1, Opacity = 0.5
+        }] };
+        var id = await store.SaveCompositionAsync(null, "Animated cutout", animated, composition);
+        var reopened = await new LibraryStore(store.DefaultRoot).ReadCompositionAsync(id);
+        Require(reopened?.Layers.Single().GifSource == source, "Edited animation source changed on save");
+        Require(reopened!.Layers.Single().Opacity == 0.5, "Layer opacity was lost");
+        Require(await store.ReadLayerAnimationAsync(id) == source, "Animated WebP cannot be reused as a layer");
+        await store.ImportAsync("Original GIF", gif, keepOriginal: true);
+        var imported = (await store.ReadAsync()).Stickers.Single(image => image.Name == "Original GIF");
+        await store.ReplaceImageAsync(imported.Id, animated, keepOriginal: true);
+        Require(await store.ReadLayerAnimationAsync(imported.Id) == source, "Layer reuse opened the backup GIF instead of the current edited animation");
+        composition.Layers[0].GifSource = "data:image/webp;base64," + Convert.ToBase64String(webp);
+        var rejected = false;
+        try { await store.SaveCompositionAsync(id, "Invalid still animation", animated, composition); }
+        catch (InvalidDataException) { rejected = true; }
+        Require(rejected, "A still WebP was accepted as an animation source");
+    });
+
     await Check("preferences persist and survive library relocation", async store =>
     {
         await store.SetDonutStorageChartAsync(true);

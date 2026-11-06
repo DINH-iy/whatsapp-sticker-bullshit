@@ -49,7 +49,7 @@ public sealed class NativeTapFeedback(AppLog log) : ITapFeedback
             else
             {
                 // Older motors cannot vary amplitude; use the system's short key tap.
-                Platform.CurrentActivity?.Window?.DecorView?.PerformHapticFeedback(Android.Views.HapticFeedbackConstants.KeyboardTap);
+                Platform.CurrentActivity?.Window?.DecorView?.PerformHapticFeedback(Android.Views.FeedbackConstants.KeyboardTap);
             }
 #endif
         }

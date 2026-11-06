@@ -1,0 +1,9 @@
+<details class="help-disclosure">
+    <summary>@Summary</summary>
+    <div class="help-disclosure-content">@ChildContent</div>
+</details>
+
+@code {
+    [Parameter] public string Summary { get; set; } = "Help";
+    [Parameter, EditorRequired] public RenderFragment? ChildContent { get; set; }
+}

@@ -1,5 +1,7 @@
 import { fit, encode, animation, dataUrl } from './sticker-converter.js';
 import { parseGIF, decompressFrame } from 'gifuct-js';
+import { openAnimation } from '../wwwroot/js/media/animation-reader.js';
+import { createRasterRenderer } from '../wwwroot/js/media/raster-edits.js';
 import { GIFEncoder, quantize, applyPalette } from 'gifenc';
 
 let cachedSource, cached;
@@ -196,7 +198,7 @@ export function createReader(source) {
             screen[offset + 2] = transparent ? 0 : background[2]; screen[offset + 3] = transparent ? 0 : 255;
         }
     }
-    return { width, height, duration,
+    return { width, height, duration, frameCount: frames.length, frameDurations: frames.map(delayOf),
         at(time) {
             time = Math.max(0, Math.min(duration - 1, time));
             if (time < lastTime) { index = 0; end = 0; previous = restore = undefined; screen.fill(0); }
@@ -227,7 +229,7 @@ async function compose(composition) {
     if (!Number.isFinite(duration) || duration < 20) throw new Error('Choose an animated layer selection first.');
     try {
         for (const layer of layers) {
-            if (layer.gifSource) readers.set(layer.id, createReader(layer.gifSource));
+            if (layer.gifSource) readers.set(layer.id, await openAnimation(layer.gifSource));
             else if (typeof createImageBitmap !== 'undefined') stills.set(layer.id, await createImageBitmap(await (await fetch(layer.source)).blob()));
             else { const image = new Image(); image.src = layer.source; await image.decode(); stills.set(layer.id, image); }
         }
@@ -263,13 +265,80 @@ async function compose(composition) {
             }
         }
         throw new Error('This animation exceeds 500 KB. Shorten the GIF selections or use fewer animated layers.');
-    } finally { for (const image of stills.values()) image.close?.(); }
+    } finally { for (const image of stills.values()) image.close?.(); for (const reader of readers.values()) reader.dispose?.(); }
+}
+
+async function inspectAnimation(source) {
+    if (source.startsWith('data:image/gif;base64,')) return inspect(source);
+    const reader = await openAnimation(source);
+    try {
+        const thumbnails = [];
+        for (let index = 0; index < 6; index++) {
+            const frame = reader.at((reader.duration - 1) * index / 5), canvas = makeCanvas(96, 96);
+            const scale = Math.min(96 / frame.width, 96 / frame.height);
+            canvas.getContext('2d').drawImage(frame, (96 - frame.width * scale) / 2, (96 - frame.height * scale) / 2, frame.width * scale, frame.height * scale);
+            const blob = canvas.convertToBlob ? await canvas.convertToBlob({ type: 'image/png' }) : await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+            const bytes = new Uint8Array(await blob.arrayBuffer());
+            let binary = ''; for (let i = 0; i < bytes.length; i += 32768) binary += String.fromCharCode(...bytes.subarray(i, i + 32768));
+            thumbnails.push('data:image/png;base64,' + btoa(binary));
+        }
+        return { duration: reader.duration / 1000, frameCount: reader.frameCount, thumbnails };
+    } finally { reader.dispose?.(); }
+}
+
+async function editAnimation(source, startSeconds, endSeconds, recipe) {
+    const reader = await openAnimation(source), renderer = await createRasterRenderer(recipe);
+    try {
+        const start = Math.round(startSeconds * 1000), end = Math.round(endSeconds * 1000);
+        if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end > reader.duration + 1 || end - start < 16 || end - start > 10000)
+            throw new Error('Choose an animation selection between 0.02 and 10 seconds.');
+        let clock = 0;
+        const times = [];
+        for (const delay of reader.frameDurations) {
+            const retained = Math.min(end, clock + delay) - Math.max(start, clock);
+            if (retained > 0) times.push({ time: Math.max(start, clock), duration: retained });
+            clock += delay; if (clock >= end) break;
+        }
+        for (let index = 0; index < times.length && times.length > 1;) {
+            if (times[index].duration >= 8) { index++; continue; }
+            const item = times.splice(index, 1)[0];
+            times[index > 0 ? index - 1 : 0].duration += item.duration;
+        }
+        if (times.length === 1) { const item = times.pop(); const half = Math.floor(item.duration / 2); times.push({ time: item.time, duration: half }, { time: item.time, duration: item.duration - half }); }
+        const canvas = makeCanvas(512, 512), context = canvas.getContext('2d');
+        let visible = false;
+        for (const quality of [0.8, 0.55, 0.3, 0.1]) {
+            const output = []; let total = 0;
+            for (const item of times) {
+                const frame = renderer.render(reader.at(item.time));
+                if (recipe.layer) {
+                    canvas.width = frame.width; canvas.height = frame.height; context.drawImage(frame, 0, 0);
+                } else fit(context, frame, frame.width, frame.height);
+                if (!visible) visible = context.getImageData(0, 0, canvas.width, canvas.height).data.some((value, index) => index % 4 === 3 && value > 0);
+                if (typeof document !== 'undefined') await new Promise(resolve => setTimeout(resolve, 0));
+                const bytes = await encode(canvas, quality); total += bytes.length + 24;
+                if (total > 500 * 1024) break;
+                output.push({ bytes, duration: item.duration });
+            }
+            if (total <= 500 * 1024) {
+                if (!visible) throw new Error('The animation is completely transparent. Undo a cutout or increase opacity.');
+                const bytes = animation(output, canvas.width, canvas.height); if (bytes.length <= 500 * 1024) return dataUrl(bytes);
+            }
+        }
+        throw new Error('This animation exceeds 500 KB. Choose a shorter selection.');
+    } finally { reader.dispose?.(); renderer.dispose(); }
 }
 
 // The same engine can run on the main thread on iOS versions without OffscreenCanvas.
 export async function process(data) {
     if (data.action === 'compose') return compose(data.composition);
-    if (data.action === 'prepare') return prepare(data.source);
-    if (data.action === 'inspect') return inspect(data.source);
+    if (data.action === 'prepare') {
+        if (data.source.startsWith('data:image/gif;')) return prepare(data.source);
+        const reader = await openAnimation(data.source);
+        const recipe = { width: reader.width, height: reader.height, edits: [] }, duration = reader.duration;
+        reader.dispose?.(); return editAnimation(data.source, 0, duration / 1000, recipe);
+    }
+    if (data.action === 'inspect') return inspectAnimation(data.source);
+    if (data.action === 'edit') return editAnimation(data.source, data.start, data.end, data.composition);
     return trim(data.source, data.start, data.end);
 }

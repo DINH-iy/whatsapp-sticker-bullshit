@@ -29,7 +29,8 @@ public partial class Home
     private string editPreview = "";
     private string editSource = "";
     private bool busy;
-    private bool editorLoading;
+    private bool editorLoading, editorToolsLoading;
+    private bool EditorOpening => editorLoading || editorToolsLoading;
     private bool renamingPack;
     private bool showGifSearch;
     private bool disposed;
@@ -44,6 +45,8 @@ public partial class Home
     private IJSObjectReference? editDialogHelper;
     private bool customizing;
     private bool EditingStill => editing is not null && (replacement is not null ? !replacementAnimated : !editing.Animated);
+    private bool EditingAnimation => editing is not null && !EditingStill;
+    private System.Text.Json.JsonElement? editRecipe;
     private bool replacementAnimated;
     private bool keepEditOriginal;
     private bool transformed;
@@ -55,7 +58,7 @@ public partial class Home
     private Sticker? imageToAdd;
     private StickerPack? packToShare;
     private byte[]? replacement;
-    private IJSObjectReference? gifEditor;
+    private IJSObjectReference? gifEditor, gifSession;
     private string busyText = "Processing…";
     private double gifDuration;
     private double trimStart;
@@ -64,9 +67,7 @@ public partial class Home
     private List<string> gifThumbnails = [];
     private bool IsGif => editSource.StartsWith("data:image/gif;base64,", StringComparison.Ordinal);
     private string GifMax => gifDuration.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
-    private bool HasTrim => IsGif && gifDuration > 0 && (trimStart != 0 || trimEnd != gifDuration);
-    private string TrimLeft => (trimStart / gifDuration * 100).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
-    private string TrimRight => ((gifDuration - trimEnd) / gifDuration * 100).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+    private bool HasTrim => EditingAnimation && gifDuration > 0 && (trimStart != 0 || trimEnd != gifDuration);
     private sealed class GifInfo
     {
         public double Duration { get; set; }
@@ -231,15 +232,17 @@ public partial class Home
     public async ValueTask DisposeAsync()
     {
         disposed = true;
+        ++editorSession;
         Preparation.Changed -= OnPreparationChanged;
         try
         {
             if (editDialogHelper is not null) await editDialogHelper.DisposeAsync();
-            if (gifEditor is not null)
+            if (gifSession is not null)
             {
-                await gifEditor.InvokeVoidAsync("dispose");
-                await gifEditor.DisposeAsync();
+                await gifSession.InvokeVoidAsync("dispose");
+                await gifSession.DisposeAsync();
             }
+            if (gifEditor is not null) await gifEditor.DisposeAsync();
         }
         catch (JSDisconnectedException) { }
     }

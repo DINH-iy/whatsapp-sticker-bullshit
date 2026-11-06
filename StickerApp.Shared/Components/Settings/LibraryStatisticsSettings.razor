@@ -151,7 +151,7 @@
     <p class="helper">Choose for each image or GIF when adding files. These defaults preselect the choices, or apply automatically if you skip them. Saved per-file choices stay with that image. You can also change the choice when saving an edit. Original GIF sources are on by default to keep trimming available.</p>
     @if (!keepStills || !keepAnimations)
     {
-        <p class="status-info" role="note">When originals are off, only the smaller prepared sticker remains after conversion succeeds. You cannot return to the previous image or uncut GIF without reimporting a copy you saved yourself. Without a source GIF, further trimming requires reimporting. Editable layer projects still keep their embedded sources.</p>
+        <p class="status-info" role="note">When originals are off, only the smaller prepared sticker remains after conversion succeeds. You cannot return to the previous image or uncut GIF without reimporting a copy you saved yourself. Prepared animated WebP stickers can still be trimmed and edited. Editable layer projects still keep their embedded sources.</p>
     }
     </div>
     </details>
@@ -199,7 +199,7 @@
         }
         <h3 class="settings-subheading">Remove retained originals</h3>
         <p>@scan.Statistics.RemovableOriginals source files · @Size(scan.Statistics.RemovableOriginalBytes) reclaimable</p>
-        <p class="helper">Keeps prepared stickers. Removes the saved source images and GIFs for stickers that are ready. Editable layer sources stay. You cannot restore previous images or uncut GIFs; further GIF trimming requires reimporting your own saved file. This cannot be undone.</p>
+        <p class="helper">Keeps prepared stickers. Removes the saved source images and GIFs for stickers that are ready. Editable layer sources stay. You cannot restore previous images or uncut GIFs; trimmed-away frames require reimporting your own saved file. This cannot be undone.</p>
         @if (scan.Statistics.RemovableOriginals > 0)
         {
             <label class="toggle-row"><input type="checkbox" @bind="confirmOriginals" disabled="@busy" /> I have saved any originals I need and accept losing the previous versions.</label>

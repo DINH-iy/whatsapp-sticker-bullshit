@@ -27,7 +27,7 @@
     <p class="helper">Images are fitted into 512 × 512 WebP automatically without cropping or stretching. Still pictures stay visually still when exported in an animated pack.</p>
     @if (Image.Animated && Image.MimeType == "image/webp")
     {
-        <p class="helper">WebP animation previews loop here, including packs whose files play only once. Saved files and exported frames stay unchanged. Trimming requires the source GIF; a .wastickers pack contains WebP stickers, not those source GIFs.</p>
+        <p class="helper">WebP animation previews loop here, including packs whose files play only once. Saved files and exported frames stay unchanged. GIF and animated WebP stickers both support trimming, cutouts, and adjustments in Edit.</p>
     }
     <div class="dialog-actions">
         @if (State?.Error is not null)

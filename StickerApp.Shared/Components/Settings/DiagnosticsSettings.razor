@@ -44,7 +44,7 @@
         try {
             Log.Info("Diagnostics export", "User requested a local diagnostic report.");
             await using var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(Log.Report()));
-            await FileSaver.SaveAsync($"Stick-it-log-{DateTime.UtcNow:yyyyMMdd-HHmmss}.txt", stream, "text/plain");
+            await FileSaver.SaveAsync($"Stik-er-in-log-{DateTime.UtcNow:yyyyMMdd-HHmmss}.txt", stream, "text/plain");
             notice = "Log file prepared. Check your downloads or share sheet.";
         } catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidOperationException or JSException or OperationCanceledException) {
             var id = Log.Error("Diagnostics export", exception);

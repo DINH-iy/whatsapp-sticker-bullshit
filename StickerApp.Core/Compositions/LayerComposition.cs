@@ -29,11 +29,12 @@ public sealed class LayerComposition
                 throw new InvalidDataException("Layer images must be still PNGs up to 1024 pixels per side.");
             if (layer.GifSource is not null)
             {
-                if (!layer.GifSource.StartsWith("data:image/gif;base64,", StringComparison.Ordinal)) throw new InvalidDataException("Invalid GIF layer source.");
+                if (!layer.GifSource.StartsWith("data:image/gif;base64,", StringComparison.Ordinal) && !layer.GifSource.StartsWith("data:image/webp;base64,", StringComparison.Ordinal)) throw new InvalidDataException("Invalid GIF layer source.");
                 byte[] gif;
-                try { gif = Convert.FromBase64String(layer.GifSource[22..]); }
+                try { gif = Convert.FromBase64String(layer.GifSource[(layer.GifSource.IndexOf(',') + 1)..]); }
                 catch (FormatException) { throw new InvalidDataException("A GIF layer is damaged."); }
-                if (gif.Length > LibraryStore.MaxImportBytes || MediaInspector.Inspect(gif).MimeType != "image/gif" ||
+                var animation = MediaInspector.Inspect(gif);
+                if (gif.Length > LibraryStore.MaxImportBytes || animation.MimeType is not ("image/gif" or "image/webp") || !animation.Animated ||
                     !Within(layer.GifDuration, 0.02, 600) || !Within(layer.TrimStart, 0, layer.GifDuration) ||
                     !Within(layer.TrimEnd, layer.TrimStart + 0.02, layer.GifDuration + 0.001) || layer.TrimEnd - layer.TrimStart > 10.001)
                     throw new InvalidDataException("Choose a valid GIF selection of at most 10 seconds.");
@@ -54,6 +55,7 @@ public sealed class CompositionLayer
     public string Id { get; set; } = "";
     public string Name { get; set; } = "";
     public string Source { get; set; } = "";
+    // Keep the serialized field name for existing projects; edited animations may be WebP.
     public string? GifSource { get; set; }
     public double GifDuration { get; set; }
     public double TrimStart { get; set; }

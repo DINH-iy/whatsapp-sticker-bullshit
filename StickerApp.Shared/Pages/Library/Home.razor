@@ -9,7 +9,7 @@
 @inject NavigationManager Navigation
 @inject StickerApp.Shared.Services.StickerPreparationService Preparation
 
-<PageTitle>@(CurrentPack?.Name ?? "Packs") · Stick it</PageTitle>
+<PageTitle>@(CurrentPack?.Name ?? "Packs") · Stik-er-in</PageTitle>
 
 <header class="page-header">
     <div class="page-title">
@@ -257,99 +257,80 @@ else
 
 @if (editing is not null)
 {
-    <dialog @ref="editDialog" class="folder-dialog image-edit-dialog" aria-labelledby="edit-title" aria-busy="@(busy ? "true" : "false")" @onkeydown="EditorKeyDown">
-            <h2 id="edit-title">@(IsGif ? "Edit GIF" : editing.Animated || replacementAnimated ? "Edit animated image" : "Edit image")</h2>
-            @if (editorLoading)
+    <dialog @ref="editDialog" class="folder-dialog image-edit-dialog" aria-labelledby="edit-title" aria-busy="@(busy || EditorOpening ? "true" : "false")" @onkeydown="EditorKeyDown">
+        <h2 id="edit-title">@(IsGif ? "Edit GIF" : editing.Animated || replacementAnimated ? "Edit animated image" : "Edit image")</h2>
+        @if (EditorOpening)
+        {
+            <div class="editor-loading" role="status" aria-live="polite">
+                <span class="feedback-spinner" aria-hidden="true"></span>
+                <strong>@busyText</strong>
+            </div>
+        }
+        <div class="editor-dialog-body" hidden="@EditorOpening">
+            @if (EditingStill || EditingAnimation)
             {
-                <div class="editor-loading" role="status" aria-live="polite">
-                    <span class="feedback-spinner" aria-hidden="true"></span>
-                    <strong>@busyText</strong>
-                    <span class="helper">Getting the preview and editing tools ready.</span>
-                </div>
+                <ImageCustomizer @key="editSource" Source="@editSource" OnReady="EditorToolsReady" Animated="@EditingAnimation" TrimStart="@trimStart" TrimEnd="@(gifDuration > 0 ? trimEnd : null)" OnEditsChanged="recipe => editRecipe = recipe" OnChanged="CustomizeImage" OnBusyChanged="value => customizing = value">
+                    <Timeline>
+                        @if (EditingAnimation && gifDuration > 0)
+                        {
+                            <AnimationTimeline Thumbnails="@gifThumbnails" Duration="@gifDuration" Start="@trimStart" End="@trimEnd"
+                                               StartChanged="ChangeEditorTrimStart" EndChanged="ChangeEditorTrimEnd" Disabled="@(busy || customizing)" />
+                        }
+                    </Timeline>
+                    <Options>
+                        @if (EditingAnimation && gifDuration > 0)
+                        {
+                            <details class="editor-details">
+                                <summary>Precise trim times</summary>
+                                <div class="trim-fields">
+                                    <label>Start (seconds)
+                                        <input type="number" min="0" max="@GifMax" step="0.01" @bind="trimStart"
+                                               @bind:culture="System.Globalization.CultureInfo.InvariantCulture" @bind:event="oninput" @bind:after="TrimStartChanged" disabled="@busy" />
+                                    </label>
+                                    <label>End (seconds)
+                                        <input type="number" min="0" max="@GifMax" step="0.01" @bind="trimEnd"
+                                               @bind:culture="System.Globalization.CultureInfo.InvariantCulture" @bind:event="oninput" @bind:after="TrimEndChanged" disabled="@busy" />
+                                    </label>
+                                </div>
+                                <button class="button" @onclick="ResetTrim" disabled="@busy"><Icon Name="reset" /> Reset trim</button>
+                            </details>
+                        }
+                        <details class="editor-details">
+                            <summary>Name &amp; file options</summary>
+                            <label>Name <input @bind="editName" @bind:event="oninput" maxlength="128" disabled="@busy" /></label>
+                            <div class="edit-tools">
+                                <label class="button file-button"><Icon Name="image" /> Replace image
+                                    <InputFile OnChange="Replace" accept="image/*" disabled="@(busy || customizing)" aria-label="Replace image" />
+                                </label>
+                            </div>
+                            <label class="toggle-row">
+                                <input type="checkbox" @bind="keepEditOriginal" disabled="@(busy || customizing)" />
+                                Keep the source image / GIF after saving
+                            </label>
+                            @if (!keepEditOriginal)
+                            {
+                                <p class="status-info" role="note">Only the prepared sticker will remain after conversion succeeds. You cannot restore the previous image or uncut animation unless you reimport your saved copy.</p>
+                            }
+                            <HelpDisclosure Summary="About original files">
+                                <p class="helper">Keeping a source uses more storage. This choice applies when saving a trim, replacement, or image edit. Cancel keeps everything unchanged. Prepared animated WebP stickers can still be trimmed and edited; editable layer projects keep their own sources.</p>
+                            </HelpDisclosure>
+                        </details>
+                    </Options>
+                </ImageCustomizer>
             }
-            else if (EditingStill)
-            {
-                <ImageCustomizer Source="@editSource" OnChanged="CustomizeImage" OnBusyChanged="value => customizing = value" />
-            }
-            else
+            else if (!EditorOpening)
             {
                 <img class="edit-preview" src="@editPreview" alt="@editing.Name" />
             }
-            <label>
-                Name
-                <input @bind="editName" @bind:event="oninput" maxlength="128" disabled="@busy" />
-            </label>
-            <div class="edit-tools">
-                <label class="button file-button icon-button" title="Replace image">
-                    <Icon Name="image" />
-                    <InputFile OnChange="Replace" accept="image/*" disabled="@busy" aria-label="Replace image" />
-                </label>
-            </div>
-
-            @if (!editorLoading && IsGif && gifDuration > 0)
+        </div>
+        @if (editError is not null) { <p class="error" role="alert">@editError</p> }
+        <div class="dialog-actions">
+            <button class="button" @onclick="CancelEditing" disabled="@((busy && !editorLoading) || (customizing && !editorToolsLoading))">Cancel</button>
+            @if (!EditorOpening)
             {
-                <div class="gif-trim">
-                    <div class="trim-timeline">
-                        <div class="timeline-frames" aria-hidden="true">
-                            @foreach (var frame in gifThumbnails)
-                            {
-                                <img src="@frame" alt="" />
-                            }
-                        </div>
-                        <div class="timeline-mask left" style="width:@TrimLeft%"></div>
-                        <div class="timeline-mask right" style="width:@TrimRight%"></div>
-                        <div class="timeline-selection" style="left:@TrimLeft%;right:@TrimRight%"></div>
-                        <input class="trim-handle start" type="range" aria-label="Trim start" min="0" max="@GifMax" step="0.01"
-                               @bind="trimStart" @bind:culture="System.Globalization.CultureInfo.InvariantCulture" @bind:event="oninput" @bind:after="TrimStartChanged"
-                               @onchange="PreviewTrim" disabled="@busy" />
-                        <input class="trim-handle end" type="range" aria-label="Trim end" min="0" max="@GifMax" step="0.01"
-                               @bind="trimEnd" @bind:culture="System.Globalization.CultureInfo.InvariantCulture" @bind:event="oninput" @bind:after="TrimEndChanged"
-                               @onchange="PreviewTrim" disabled="@busy" />
-                    </div>
-                    <div class="trim-fields">
-                        <label>Start (seconds)
-                            <input type="number" min="0" max="@GifMax" step="0.01" @bind="trimStart"
-                                   @bind:culture="System.Globalization.CultureInfo.InvariantCulture" @bind:event="oninput" @bind:after="TrimStartChanged" disabled="@busy" />
-                        </label>
-                        <label>End (seconds)
-                            <input type="number" min="0" max="@GifMax" step="0.01" @bind="trimEnd"
-                                   @bind:culture="System.Globalization.CultureInfo.InvariantCulture" @bind:event="oninput" @bind:after="TrimEndChanged" disabled="@busy" />
-                        </label>
-                    </div>
-                    <div class="edit-tools">
-                        <button class="button" @onclick="PreviewTrim" disabled="@(busy || !HasTrim)">Preview trim</button>
-                        <button class="button icon-button" @onclick="ResetTrim" disabled="@busy" title="Reset trim" aria-label="Reset trim">
-                            <Icon Name="reset" />
-                        </button>
-                        <span class="helper">@Math.Max(0, trimEnd - trimStart).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) s</span>
-                    </div>
-                </div>
-            }
-            else if (!editorLoading && !IsGif && (editing.Animated || replacementAnimated))
-            {
-                <p class="status-info" role="note">This animation is saved as WebP. It can play normally, but trimming requires a source GIF. Use Replace image to import your saved GIF; .wastickers files do not include the source GIF.</p>
-            }
-
-            @if (!editorLoading)
-            {
-                <label class="toggle-row">
-                    <input type="checkbox" @bind="keepEditOriginal" disabled="@(busy || customizing)" />
-                    Keep the source image / GIF after saving (uses more storage)
-                </label>
-                <p class="helper">Applies when you save a trim, replacement, or image edit. Cancel keeps everything unchanged.</p>
-                @if (!keepEditOriginal)
-                {
-                    <p class="status-info" role="note">Only the prepared sticker will remain after conversion succeeds. You cannot restore the previous image or uncut GIF unless you reimport your own saved copy. Further GIF trimming requires a source GIF. Editable layer projects keep their embedded sources separately.</p>
-                }
-            }
-            @if (editError is not null)
-            {
-                <p class="error" role="alert">@editError</p>
-            }
-            <div class="dialog-actions">
-                <button class="button" @onclick="() => editing = null" disabled="@busy">Cancel</button>
                 <button class="button primary" @onclick="Save" disabled="@(busy || customizing)">Save</button>
-            </div>
+            }
+        </div>
     </dialog>
 }
 

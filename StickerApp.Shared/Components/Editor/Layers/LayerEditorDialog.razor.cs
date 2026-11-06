@@ -16,7 +16,7 @@ public partial class LayerEditorDialog
     [Parameter] public EventCallback OnCancel { get; set; }
     [Parameter] public EventCallback<Guid> OnSaved { get; set; }
     private ElementReference dialog, canvas;
-    private IJSObjectReference? module, controller, dialogs;
+    private IJSObjectReference? module, controller, dialogs, gifTools, gifSession;
     private DotNetObjectReference<LayerEditorDialog>? reference;
     private LayerEditorState state = new();
     private bool working = true, loading = true, keepRatio = true;
@@ -24,6 +24,11 @@ public partial class LayerEditorDialog
     private string? error;
     private string quickPanel = "";
     private bool focusQuickPanel;
+    private Task TogglePreview() => Run("Updating preview…", async () =>
+    {
+        state.PreviewPlaying = !state.PreviewPlaying;
+        await controller!.InvokeVoidAsync("preview", state.PreviewPlaying);
+    });
     private string PanelTitle => quickPanel switch { "rotate" => "Rotate layer", "opacity" => "Layer opacity", "tint" => "Layer color", _ => "Size & position" };
     private LayerPreview? Selected => state.Selected >= 0 && state.Selected < state.Layers.Count ? state.Layers[state.Selected] : null;
     private static string Number(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
@@ -60,15 +65,59 @@ public partial class LayerEditorDialog
         finally { working = loading = false; StateHasChanged(); }
     }
 
+    [JSInvokable] public void PreviewChanged(bool playing) { state.PreviewPlaying = playing; StateHasChanged(); }
+
     [JSInvokable] public Task LayersChanged(LayerEditorState updated) => InvokeAsync(() => { state = updated; StateHasChanged(); });
+
+    private string? layerEditSource, layerEditResult, layerEditId;
+    private bool editingLayerBusy, layerEditAnimated;
+    private double layerTrimStart, layerTrimEnd;
+    private System.Text.Json.JsonElement? layerEditRecipe;
+    private string layerInitialTool = "crop";
+    private Task EditLayerImage(string tool = "crop") => Run("Opening image editor…", async () =>
+    {
+        if (Selected is not { } current) return;
+        layerInitialTool = tool;
+        layerEditId = current.Id;
+        layerEditAnimated = current.IsGif; layerTrimStart = current.TrimStart; layerTrimEnd = current.TrimEnd;
+        layerEditRecipe = null;
+        layerEditSource = await controller!.InvokeAsync<string>("source");
+        layerEditResult = await controller!.InvokeAsync<string>("poster");
+        quickPanel = "";
+    });
+    private void LayerImageChanged(string png) => layerEditResult = png;
+    private void CancelLayerImage() => layerEditSource = layerEditResult = layerEditId = null;
+    private Task ApplyLayerImage() => Run("Updating layer artwork…", async () =>
+    {
+        if (layerEditResult is null || layerEditId is null) return;
+        string? animation = null;
+        if (layerEditAnimated)
+        {
+            if (layerEditRecipe is null) throw new InvalidOperationException("Wait for the animation editor to open.");
+            gifTools ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/media/gif-editor.js");
+            gifSession ??= await gifTools.InvokeAsync<IJSObjectReference>("createSession");
+            animation = await gifSession.InvokeAsync<string>("editLayer", TimeSpan.FromMinutes(4), layerEditSource, layerTrimStart, layerTrimEnd, layerEditRecipe.Value);
+        }
+        state = await controller!.InvokeAsync<LayerEditorState>("replaceSource", layerEditId, layerEditResult, animation);
+        CancelLayerImage();
+    });
 
     private Task Select(int index) => Run("Selecting layer…", async () => state = await controller!.InvokeAsync<LayerEditorState>("select", index));
     private Task Action(string action) => Run("Updating layers…", async () => state = await controller!.InvokeAsync<LayerEditorState>("action", action));
-    private void ToggleTool(string tool)
+    private Task ToggleTool(string tool) => Run("Opening layer tool…", async () =>
     {
-        quickPanel = quickPanel == tool ? "" : tool;
-        focusQuickPanel = quickPanel != "";
-    }
+        if (quickPanel == tool) { await controller!.InvokeVoidAsync("commitTool"); quickPanel = ""; return; }
+        await controller!.InvokeVoidAsync("beginTool");
+        quickPanel = tool;
+    });
+    private Task ApplyQuickTool() => Run("Applying layer changes…", async () =>
+    {
+        state = await controller!.InvokeAsync<LayerEditorState>("commitTool"); quickPanel = "";
+    });
+    private Task CancelQuickTool() => Run("Cancelling layer changes…", async () =>
+    {
+        state = await controller!.InvokeAsync<LayerEditorState>("cancelTool"); quickPanel = "";
+    });
     private Task SetRotation(double angle) => Run("Rotating layer…", async () => state = await controller!.InvokeAsync<LayerEditorState>("update", "rotation", ((angle + 180) % 360 + 360) % 360 - 180, false));
     private Task RotateBy(int degrees) => Run("Rotating layer…", async () => state = await controller!.InvokeAsync<LayerEditorState>("rotateBy", degrees));
     private Task SetOpacity(int percent) => Run("Updating opacity…", async () => state = await controller!.InvokeAsync<LayerEditorState>("update", "opacity", percent / 100d, false));
@@ -79,7 +128,7 @@ public partial class LayerEditorDialog
         if (!Guid.TryParse(libraryImageId, out var id) || !Previews.TryGetValue(id, out var source)) return;
         var image = Images.First(image => image.Id == id);
         if (image.Animated)
-            source = await Store.ReadLayerGifAsync(id) ?? throw new InvalidOperationException("This animation needs its original GIF. Import the GIF file to add an animated layer.");
+            source = await Store.ReadLayerAnimationAsync(id) ?? throw new InvalidOperationException("This animation source is unavailable. Import its GIF or animated WebP file again.");
         state = await controller!.InvokeAsync<LayerEditorState>("add", image.Name, source);
     }, showProgress: true);
     private Task AddFiles(InputFileChangeEventArgs args) => Run("Loading layer images…", async () =>
@@ -122,6 +171,7 @@ public partial class LayerEditorDialog
     private Task HandleKey(KeyboardEventArgs args)
     {
         if (args.Key != "Escape") return Task.CompletedTask;
+        if (layerEditSource is not null) { if (!editingLayerBusy) CancelLayerImage(); return Task.CompletedTask; }
         if (quickPanel != "") { quickPanel = ""; return Task.CompletedTask; }
         return Cancel();
     }
@@ -130,6 +180,8 @@ public partial class LayerEditorDialog
         try
         {
             if (controller is not null) { await controller.InvokeVoidAsync("dispose"); await controller.DisposeAsync(); }
+            if (gifSession is not null) { await gifSession.InvokeVoidAsync("dispose"); await gifSession.DisposeAsync(); }
+            if (gifTools is not null) await gifTools.DisposeAsync();
             if (module is not null) await module.DisposeAsync();
             if (dialogs is not null) await dialogs.DisposeAsync();
         }

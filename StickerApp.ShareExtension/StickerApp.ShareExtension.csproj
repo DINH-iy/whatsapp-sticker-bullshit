@@ -5,7 +5,7 @@
     <IsAppExtension>true</IsAppExtension>
     <SupportedOSPlatformVersion>15.0</SupportedOSPlatformVersion>
     <ApplicationId>com.stickerstudio.app.pinterestshare</ApplicationId>
-    <ApplicationTitle>Stick it</ApplicationTitle>
+    <ApplicationTitle>Stik-er-in</ApplicationTitle>
     <ApplicationDisplayVersion>0.1.9</ApplicationDisplayVersion>
     <ApplicationVersion>10</ApplicationVersion>
     <CodesignEntitlements>Entitlements.plist</CodesignEntitlements>

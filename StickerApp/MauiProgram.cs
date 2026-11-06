@@ -20,7 +20,7 @@ public static class MauiProgram
         var diagnostics = new AppLog(Path.Combine(FileSystem.AppDataDirectory, "logs"));
         builder.Services.AddSingleton(diagnostics);
         builder.Logging.AddProvider(new AppLogProvider(diagnostics));
-        diagnostics.Info("App startup", $"Stick it {AppInfo.Current.VersionString} ({AppInfo.Current.BuildString}); {DeviceInfo.Current.Platform}; OS {DeviceInfo.Current.VersionString}; .NET {Environment.Version}");
+        diagnostics.Info("App startup", $"Stik-er-in {AppInfo.Current.VersionString} ({AppInfo.Current.BuildString}); {DeviceInfo.Current.Platform}; OS {DeviceInfo.Current.VersionString}; .NET {Environment.Version}");
         AppDomain.CurrentDomain.UnhandledException += (_, args) => {
             if (args.ExceptionObject is Exception exception) diagnostics.Error("Unhandled application exception", exception);
         };

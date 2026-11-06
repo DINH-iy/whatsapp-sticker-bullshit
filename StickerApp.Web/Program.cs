@@ -12,7 +12,7 @@ builder.Services.AddSingleton(diagnostics);
 builder.Logging.AddProvider(new AppLogProvider(diagnostics));
 AppDomain.CurrentDomain.UnhandledException += (_, args) => { if (args.ExceptionObject is Exception exception) diagnostics.Error("Unhandled application exception", exception); };
 TaskScheduler.UnobservedTaskException += (_, args) => diagnostics.Error("Unobserved background task exception", args.Exception);
-diagnostics.Info("Web app startup", $"Stick it browser host; .NET {Environment.Version}");
+diagnostics.Info("Web app startup", $"Stik-er-in browser host; .NET {Environment.Version}");
 if (builder.Environment.IsDevelopment())
     builder.Services.AddDataProtection().UseEphemeralDataProtectionProvider();
 

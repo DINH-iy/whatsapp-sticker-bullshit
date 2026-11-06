@@ -1,3 +1,4 @@
+import { previewControls } from './animation-preview.js';
 import { openGif } from './layer-gifs.js';
 import { watchLayerOrder } from './layer-reorder.js';
 const size = 512, maxLayers = 10, maxSources = 24 * 1024 * 1024;
@@ -33,16 +34,31 @@ export function create(canvas, reference) {
     });
     const root = canvas.closest('dialog');
     let editingControl = null, notifyTimer, dialDrag = null, keepProportions = true;
-    const proportions = () => root.querySelector('[data-layer-ratio]')?.checked ?? keepProportions;
+    const proportions = () => root.querySelector('[data-adjustment-scope="layer"] [data-layer-ratio]')?.checked ?? keepProportions;
     const blockCancel = event => event.preventDefault();
     root.addEventListener('cancel', blockCancel);
     canvas.width = canvas.height = size;
     let layers = [], selected = -1, undo = [], redo = [], drag = null, disposed = false;
+    let toolCheckpoint = null;
     const images = new Map(), tints = new Map(), thumbnails = new WeakMap(), gifs = new Map();
-    let animationFrame, animationTime = 0, playbackOrigin = performance.now(), exporting = false;
+    let animationFrame, animationTime = 0, playbackOrigin = performance.now(), exporting = false, paused = false, pausedTime = 0, playbackOffset = 0, playbackRate = 1;
+    const elapsed = () => paused ? pausedTime : playbackOffset + (performance.now() - playbackOrigin) * playbackRate;
+    const controls = previewControls(root, {
+        seek(seconds) {
+            const layer = active(); if (!layer?.gifSource) return;
+            pausedTime = Math.max(0, (clamp(seconds, layer.trimStart, layer.trimEnd - 0.001) - layer.trimStart) * 1000);
+            paused = true; cancelAnimationFrame(animationFrame); animationFrame = undefined;
+            render(); reference.invokeMethodAsync('PreviewChanged', false).catch(() => {});
+        },
+        speed(rate) {
+            if (![0.1, 0.25, 0.5, 1].includes(rate)) return;
+            playbackOffset = elapsed(); playbackOrigin = performance.now(); playbackRate = rate;
+        },
+        error: () => {}
+    });
     function play(now) {
         animationFrame = undefined;
-        if (disposed || exporting || !layers.some(layer => layer.gifSource)) return;
+        if (disposed || exporting || paused || !layers.some(layer => layer.gifSource)) return;
         if (now - animationTime >= 50) { animationTime = now; render(); }
         animationFrame = requestAnimationFrame(play);
     }
@@ -51,12 +67,16 @@ export function create(canvas, reference) {
     const snapshot = () => ({ layers: layers.map(layer => ({ ...layer })), selected });
     const remember = () => {
         undo.push(snapshot()); if (undo.length > 20) undo.shift(); redo = [];
-        const retained = new Set([...layers, ...undo.flatMap(item => item.layers)].map(layer => layer.id));
-        for (const id of images.keys()) if (!retained.has(id)) { images.delete(id); tints.delete(id); gifs.delete(id); }
+        const retained = new Set([...layers, ...undo.flatMap(item => item.layers)].map(layer => layer.source));
+        for (const source of images.keys()) if (!retained.has(source)) images.delete(source);
+        const retainedIds = new Set([...layers, ...undo.flatMap(item => item.layers)].map(layer => layer.id));
+        for (const id of tints.keys()) if (!retainedIds.has(id)) tints.delete(id);
+        const retainedAnimations = new Set([...layers, ...undo.flatMap(item => item.layers)].map(layer => layer.gifSource));
+        for (const source of gifs.keys()) if (!retainedAnimations.has(source)) { gifs.get(source).reader.dispose?.(); gifs.delete(source); }
     };
     const active = () => layers[selected];
     function thumbnail(layer) {
-        const image = images.get(layer.id);
+        const image = images.get(layer.source);
         if (!image) return '';
         if (!thumbnails.has(image)) {
             const preview = document.createElement('canvas');
@@ -68,8 +88,8 @@ export function create(canvas, reference) {
         }
         return thumbnails.get(image);
     }
-    const state = () => ({ layers: layers.map(({ source, gifSource, ...layer }) => ({ ...layer, isGif: !!gifSource, gifThumbnails: gifs.get(layer.id)?.thumbnails ?? [], thumbnail: thumbnail(layer) })),
-        selected, canUndo: undo.length > 0, canRedo: redo.length > 0 });
+    const state = () => ({ layers: layers.map(({ source, gifSource, ...layer }) => ({ ...layer, isGif: !!gifSource, gifThumbnails: gifs.get(gifSource)?.thumbnails ?? [], thumbnail: thumbnail(layer) })),
+        selected, canUndo: undo.length > 0, canRedo: redo.length > 0, previewPlaying: !paused });
     const notify = () => { if (!disposed) return reference.invokeMethodAsync('LayersChanged', state()); };
     const decode = async source => { const image = new Image(); image.src = source; await image.decode(); return image; };
     const point = event => {
@@ -107,23 +127,23 @@ export function create(canvas, reference) {
     function render(selection = true) {
         context.clearRect(0, 0, size, size);
         for (const layer of layers) {
-            const image = images.get(layer.id);
+            const image = images.get(layer.source);
             if (!image) continue;
             let source = image;
-            if (layer.gifSource && gifs.has(layer.id)) {
+            if (layer.gifSource && gifs.has(layer.gifSource)) {
                 const length = Math.max(20, (layer.trimEnd - layer.trimStart) * 1000);
-                source = gifs.get(layer.id).reader.at(layer.trimStart * 1000 + (performance.now() - playbackOrigin) % length);
+                source = gifs.get(layer.gifSource).reader.at(layer.trimStart * 1000 + elapsed() % length);
             }
             if (layer.tint) {
                 let cached = tints.get(layer.id);
-                if (!cached || cached.color !== layer.tint || layer.gifSource) {
+                if (!cached || cached.color !== layer.tint || cached.source !== layer.source || layer.gifSource) {
                     const tinted = document.createElement('canvas');
                     tinted.width = source.width; tinted.height = source.height;
                     const tintContext = tinted.getContext('2d');
                     tintContext.drawImage(source, 0, 0);
                     tintContext.globalCompositeOperation = 'source-in';
                     tintContext.fillStyle = layer.tint; tintContext.fillRect(0, 0, source.width, source.height);
-                    cached = { color: layer.tint, image: tinted }; tints.set(layer.id, cached);
+                    cached = { color: layer.tint, source: layer.source, image: tinted }; tints.set(layer.id, cached);
                 }
                 source = cached.image;
             }
@@ -135,15 +155,16 @@ export function create(canvas, reference) {
             context.restore();
         }
         const layer = active();
+        if (layer?.gifSource) controls.update(layer.trimStart + elapsed() % Math.max(20, (layer.trimEnd - layer.trimStart) * 1000) / 1000);
         placeHandles(layer, selection);
         if (layer) {
-            const dial = root.querySelector('[data-layer-dial]');
+            const dial = root.querySelector('[data-adjustment-scope="layer"] [data-layer-dial]');
             if (dial) {
                 dial.setAttribute('aria-valuenow', String(Math.round(layer.rotation)));
                 dial.querySelector('[data-layer-dial-needle]').setAttribute('transform', `rotate(${layer.rotation} 100 100)`);
                 for (const readout of dial.querySelectorAll('[data-layer-readout]')) readout.textContent = String(Math.round(layer.rotation));
             }
-            const rotation = root.querySelector('input[data-layer-property="rotation"]');
+            const rotation = root.querySelector('[data-adjustment-scope="layer"] input[data-layer-property="rotation"]');
             if (rotation && rotation !== editingControl) rotation.value = String(layer.rotation);
         }
         if (selection && layer) {
@@ -277,6 +298,7 @@ export function create(canvas, reference) {
     }
     function input(event) {
         const control = event.target;
+        if (!control.closest('[data-adjustment-scope="layer"]') && !control.dataset?.gifBound) return;
         const property = control.dataset?.layerProperty;
         if (control.dataset?.gifBound && active()?.gifSource) {
             let value = Number(control.value); if (!Number.isFinite(value)) return;
@@ -298,7 +320,7 @@ export function create(canvas, reference) {
             timeline.querySelector('.timeline-mask.right').style.width = right;
             timeline.querySelector('.timeline-selection').style.left = left;
             timeline.querySelector('.timeline-selection').style.right = right;
-            playbackOrigin = performance.now(); render();
+            playbackOffset = pausedTime = 0; playbackOrigin = performance.now(); render();
             clearTimeout(notifyTimer); notifyTimer = setTimeout(() => notify()?.catch(() => {}), 60);
             return;
         }
@@ -309,19 +331,20 @@ export function create(canvas, reference) {
         if (editingControl !== control) { remember(); editingControl = control; }
         update(property, value, proportions(), false);
         // Update linked fields locally; publish metadata once the adjustment ends.
-        for (const field of root.querySelectorAll('[data-layer-property]')) {
+        for (const field of root.querySelectorAll('[data-adjustment-scope="layer"] [data-layer-property]')) {
             if (field === control || field.dataset.layerProperty === 'tint') continue;
             const prop = field.dataset.layerProperty;
             field.value = String(Math.round(active()[prop] * (prop === 'opacity' ? 100 : 1) * 100) / 100);
         }
         clearTimeout(notifyTimer);
         notifyTimer = setTimeout(() => notify()?.catch(() => {}), 60);
-        for (const readout of root.querySelectorAll('[data-layer-readout]')) {
+        for (const readout of root.querySelectorAll('[data-adjustment-scope="layer"] [data-layer-readout]')) {
             const prop = readout.dataset.layerReadout;
             readout.textContent = String(Math.round(active()[prop] * (prop === 'opacity' ? 100 : 1)));
         }
     }
     function change(event) {
+        if (!event.target.closest('[data-adjustment-scope="layer"]') && !event.target.dataset?.gifBound) return;
         if (event.target.hasAttribute('data-layer-ratio')) { keepProportions = event.target.checked; return; }
         if (!event.target.dataset?.layerProperty && !event.target.dataset?.gifBound) return;
         editingControl = null;
@@ -340,7 +363,7 @@ export function create(canvas, reference) {
     }
     function dialDown(event) {
         const element = event.target.closest?.('[data-layer-dial]');
-        if (!element || !active() || drag || dialDrag || event.button !== 0 || root.getAttribute('aria-busy') === 'true') return;
+        if (!element?.closest('[data-adjustment-scope="layer"]') || !active() || drag || dialDrag || event.button !== 0 || root.getAttribute('aria-busy') === 'true') return;
         const angle = dialAngle(event, element);
         if (angle === null) return;
         event.preventDefault(); event.stopPropagation();
@@ -360,7 +383,7 @@ export function create(canvas, reference) {
         dialDrag = null; notify()?.catch(() => {});
     }
     function dialKey(event) {
-        if (!event.target.matches?.('[data-layer-dial]') || !active() || root.getAttribute('aria-busy') === 'true') return;
+        if (!event.target.closest?.('[data-adjustment-scope="layer"]') || !event.target.matches?.('[data-layer-dial]') || !active() || root.getAttribute('aria-busy') === 'true') return;
         if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return;
         event.preventDefault(); event.stopPropagation();
         const direction = event.key === 'ArrowRight' || event.key === 'ArrowUp' ? 1 : -1;
@@ -392,24 +415,38 @@ export function create(canvas, reference) {
     canvas.addEventListener('pointerdown', down); canvas.addEventListener('pointermove', move);
     canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
     return {
-        focusPanel() { render(); root.querySelector('.layer-tool-panel')?.focus({ preventScroll: true }); },
+        preview(playing) {
+            if (playing && paused) { playbackOffset = pausedTime; playbackOrigin = performance.now(); paused = false; animate(); }
+            else if (!playing && !paused) { pausedTime = elapsed(); paused = true; cancelAnimationFrame(animationFrame); animationFrame = undefined; render(false); }
+        },
+        beginTool() { toolCheckpoint = { document: snapshot(), undo: [...undo], redo: [...redo] }; },
+        commitTool() { toolCheckpoint = null; return state(); },
+        cancelTool() {
+            if (toolCheckpoint) {
+                layers = toolCheckpoint.document.layers; selected = toolCheckpoint.document.selected;
+                undo = toolCheckpoint.undo; redo = toolCheckpoint.redo; toolCheckpoint = null;
+                render();
+            }
+            return state();
+        },
+        focusPanel() { render(); const panel = root.querySelector('.layer-tool-panel'); panel?.focus({ preventScroll: true }); },
         rotateBy(degrees) { return active() ? update('rotation', wrapAngle(active().rotation + degrees), false) : state(); },
         async open(composition) {
-            layers = []; selected = -1; undo = []; redo = []; images.clear(); tints.clear(); gifs.clear();
+            layers = []; selected = -1; undo = []; redo = []; images.clear(); tints.clear(); for (const gif of gifs.values()) gif.reader.dispose?.(); gifs.clear();
             if (composition) {
                 for (const layer of composition.layers) {
                     const image = await decode(layer.source);
                     if (disposed) return;
-                    layers.push({ ...layer }); images.set(layer.id, image);
-                    if (layer.gifSource) gifs.set(layer.id, await openGif(layer.gifSource));
+                    layers.push({ ...layer }); images.set(layer.source, image);
+                    if (layer.gifSource && !gifs.has(layer.gifSource)) gifs.set(layer.gifSource, await openGif(layer.gifSource));
                 }
                 selected = layers.length - 1;
             }
-            playbackOrigin = performance.now(); render(); animate(); return state();
+            playbackOffset = pausedTime = 0; playbackOrigin = performance.now(); paused = false; render(); animate(); return state();
         },
         async add(name, source) {
             if (layers.length >= maxLayers) throw new Error('A composition supports up to 10 layers.');
-            const gif = source.startsWith('data:image/gif;base64,') ? await openGif(source) : null;
+            const gif = source.startsWith('data:image/gif;base64,') || source.startsWith('data:image/webp;base64,') ? await openGif(source) : null;
             const image = gif ? gif.reader.at(0) : await decode(source);
             if (disposed) return state();
             const sourceWidth = image.naturalWidth || image.width, sourceHeight = image.naturalHeight || image.height;
@@ -429,8 +466,32 @@ export function create(canvas, reference) {
                 rotation: 0, opacity: 1, flipX: false, tint: null, gifSource: gif ? source : null,
                 gifDuration: gif ? gif.reader.duration / 1000 : 0, trimStart: 0, trimEnd: gif ? Math.min(10, gif.reader.duration / 1000) : 0 };
             const still = await decode(png);
-            remember(); layers.push(layer); images.set(id, still); if (gif) gifs.set(id, gif); selected = layers.length - 1;
-            playbackOrigin = performance.now(); render(); animate(); return state();
+            remember(); layers.push(layer); images.set(png, still); if (gif) gifs.set(source, gif); selected = layers.length - 1;
+            playbackOffset = pausedTime = 0; playbackOrigin = performance.now(); paused = false; render(); animate(); return state();
+        },
+        source() { return active()?.gifSource ?? active()?.source ?? null; },
+        poster() { return active()?.source ?? null; },
+        async replaceSource(id, source, animationSource = null) {
+            const layer = active();
+            if (!layer || layer.id !== id) throw new Error('Select a layer to edit.');
+            const image = await decode(source);
+            if (image.width > 1024 || image.height > 1024) throw new Error('Layer artwork must fit 1024 pixels per side.');
+            if (layers.reduce((sum, item) => sum + sourceSize(item), 0) - layer.source.length - (layer.gifSource?.length ?? 0) + source.length + (animationSource?.length ?? 0) > maxSources)
+                throw new Error('Layer images exceed 24 MB. Use smaller or fewer images.');
+            const animation = animationSource ? await openGif(animationSource) : null;
+            remember();
+            // Keep the edited artwork's aspect ratio while preserving its displayed scale.
+            const oldImage = images.get(layer.source);
+            const scaleX = layer.width / oldImage.width, scaleY = layer.height / oldImage.height;
+            layer.width = clamp(image.width * scaleX, 1, 2048);
+            layer.height = clamp(image.height * scaleY, 1, 2048);
+            layer.source = source; images.set(source, image); tints.delete(layer.id);
+            layer.gifSource = animationSource;
+            if (animation) {
+                gifs.set(animationSource, animation); layer.gifDuration = animation.reader.duration / 1000;
+                layer.trimStart = 0; layer.trimEnd = Math.min(10, layer.gifDuration);
+            }
+            render(); return state();
         },
         select(index) { editingControl = null; if (layers[index]) selected = index; render(); return state(); },
         update,
@@ -445,7 +506,7 @@ export function create(canvas, reference) {
                         throw new Error('This composition has reached its layer or image-size limit.');
                     remember(); const id = `layer-${Date.now()}-${Math.random().toString(36).slice(2)}`;
                     layers.splice(selected + 1, 0, { ...layer, id, x: clamp(layer.x + 12, -2048, 2560), y: clamp(layer.y + 12, -2048, 2560) });
-                    images.set(id, images.get(layer.id)); if (gifs.has(layer.id)) gifs.set(id, gifs.get(layer.id).copy()); selected++;
+                    selected++;
                 } else if (action === 'front' && selected < layers.length - 1) {
                     remember(); layers.splice(selected, 1); layers.splice(++selected, 0, layer);
                 } else if (action === 'back' && selected > 0) {
@@ -472,7 +533,7 @@ export function create(canvas, reference) {
             } finally { exporting = false; render(); animate(); }
         },
         dispose() {
-            disposed = true;
+            disposed = true; toolCheckpoint = null; controls.dispose();
             cancelAnimationFrame(animationFrame); orderControls.dispose();
             clearTimeout(notifyTimer);
             resizeObserver.disconnect(); overlay.remove();
@@ -483,7 +544,7 @@ export function create(canvas, reference) {
             root.removeEventListener('cancel', blockCancel);
             canvas.removeEventListener('pointerdown', down); canvas.removeEventListener('pointermove', move);
             canvas.removeEventListener('pointerup', up); canvas.removeEventListener('pointercancel', up);
-            layers = []; undo = []; redo = []; images.clear(); tints.clear(); gifs.clear();
+            layers = []; undo = []; redo = []; images.clear(); tints.clear(); for (const gif of gifs.values()) gif.reader.dispose?.(); gifs.clear();
         }
     };
 }
