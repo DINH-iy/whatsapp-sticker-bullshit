@@ -48,11 +48,9 @@
     }
     else if (Tool == "tint")
     {
-        <div class="layer-tint">
-            <label class="layer-check"><input type="checkbox" checked="@(Value.Tint is not null)" @onchange="ToggleTint" /> Color tint</label>
-            <input aria-label="Tint color" type="color" value="@(Value.Tint ?? "#80d4b0")" data-layer-property="tint" disabled="@(Disabled || Value.Tint is null)" />
-        </div>
-        <p class="helper">Enable tint to recolor the image while keeping transparency.</p>
+        <label><span>Hue · <span data-layer-readout="hue">@Number(Value.Hue)</span>°</span><input aria-label="Hue" type="range" min="-180" max="180" step="1" value="@Number(Value.Hue)" data-layer-property="hue" /></label>
+        <label><span>Strength · <span data-layer-readout="colorStrength">@Math.Round(Value.ColorStrength * 100)</span>%</span><input aria-label="Color strength" type="range" min="0" max="100" step="1" value="@Number(Value.ColorStrength * 100)" data-layer-property="colorStrength" /></label>
+
     }
 </div>
 
@@ -68,6 +66,8 @@
     [Parameter] public EventCallback<int> OnRotateBy { get; set; }
     [Parameter] public EventCallback<double> OnRotation { get; set; }
     [Parameter] public EventCallback<int> OnOpacity { get; set; }
+    [Parameter] public EventCallback<double> OnHue { get; set; }
+    [Parameter] public EventCallback<int> OnColorStrength { get; set; }
     [Parameter] public EventCallback<string?> OnTint { get; set; }
     private Task ToggleTint(ChangeEventArgs args) => OnTint.InvokeAsync(args.Value is true ? "#80d4b0" : null);
     private static string Number(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);

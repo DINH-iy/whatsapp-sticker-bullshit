@@ -1,3 +1,4 @@
+import { applyColorEffect } from './color-effect.js';
 // Replay the same spatial edits for every animation frame; masks come from the
 // editor's reference frame, so a traced/erased outline stays fixed during playback.
 const makeCanvas = (width, height) => {
@@ -44,6 +45,7 @@ export async function createRasterRenderer(recipe) {
                 let width = canvas.width, height = canvas.height;
                 let angle = 0, scale = 1;
                 if (edit.type === 'crop') { width = edit.width; height = edit.height; }
+                if (edit.type === 'transform') { width = 512; height = 512; }
                 if (edit.type === 'resize') { width = edit.width; height = edit.height; }
                 if (edit.type === 'adjust') {
                     angle = edit.rotation * Math.PI / 180;
@@ -56,6 +58,10 @@ export async function createRasterRenderer(recipe) {
                 const context = next.getContext('2d');
                 context.save();
                 if (edit.type === 'crop') context.drawImage(canvas, edit.x, edit.y, width, height, 0, 0, width, height);
+                else if (edit.type === 'transform') {
+                    context.translate(edit.x, edit.y); context.rotate(edit.rotation * Math.PI / 180);
+                    context.drawImage(canvas, -edit.imageWidth/2, -edit.imageHeight/2, edit.imageWidth, edit.imageHeight);
+                }
                 else if (edit.type === 'resize') context.drawImage(canvas, 0, 0, width, height);
                 else if (edit.type === 'adjust') {
                     context.globalAlpha = edit.opacity;
@@ -71,10 +77,7 @@ export async function createRasterRenderer(recipe) {
                     context.globalCompositeOperation = 'destination-in'; context.drawImage(masks.get(edit.mask), 0, 0, width, height);
                     context.globalCompositeOperation = 'source-over';
                 }
-                if (edit.type === 'adjust' && edit.tint) {
-                    context.globalCompositeOperation = 'source-in'; context.fillStyle = edit.tint; context.fillRect(0, 0, width, height);
-                    context.globalCompositeOperation = 'source-over';
-                }
+                if (edit.type === 'adjust') applyColorEffect(context, edit);
                 [canvas, next] = [next, canvas];
             }
             return canvas;

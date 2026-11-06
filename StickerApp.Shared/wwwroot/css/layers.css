@@ -158,3 +158,11 @@
 .layer-preview-stage .layer-canvas-wrap { flex: 0 1 28dvh; min-width: 0; margin: 0; }
 .layer-preview-stage .editor-tool-dock { margin-left: auto; }
 @media (max-height: 500px) { .layer-preview-stage .layer-canvas-wrap { flex-basis: 18dvh; } }
+.layer-preview-stage:not(.opacity-tool-stage) .layer-canvas-wrap { border-radius: 9px; background: repeating-conic-gradient(var(--checker) 0% 25%, var(--surface) 0% 50%) 50% / 16px 16px; }
+.layer-editor-dialog { container-type: inline-size; --editor-preview-size: min(512px, 32dvh, calc(100cqw - 140px)); }
+.layer-preview-stage, .layer-preview-stage.opacity-tool-stage, .layer-preview-stage:not(:has(.editor-tool-dock)) {
+    display: grid; grid-template-columns: var(--editor-preview-size) 92px; grid-template-rows: var(--editor-preview-size);
+    justify-content: center; align-items: start; gap: 10px; height: calc(var(--editor-preview-size) + 48px); padding: 0 0 48px; border: 0; background: transparent;
+}
+.layer-preview-stage .layer-canvas-wrap { width: var(--editor-preview-size); height: var(--editor-preview-size); margin: 0; }
+.layer-preview-stage .editor-tool-dock { width: 92px; height: var(--editor-preview-size); max-height: var(--editor-preview-size); margin: 0; border: 1px solid var(--line); background: var(--surface); overflow: hidden; }

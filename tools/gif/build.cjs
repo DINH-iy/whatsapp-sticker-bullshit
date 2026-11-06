@@ -19,9 +19,13 @@ fs.copyFileSync(path.join(__dirname, 'node_modules/@jsquash/webp/codec/enc/webp_
     path.join(output, 'webp_enc.wasm'));
 esbuild.buildSync({
     ...options, entryPoints: [path.join(media, 'gif-engine.js')],
-    outfile: path.join(output, 'gif-engine.js'), external: ['./sticker-converter.js', './gif-engine.js']
+    outfile: path.join(output, 'gif-engine.js'), external: ['./sticker-converter.js', './gif-engine.js', './color-effect.js']
 });
 esbuild.buildSync({
     ...options, entryPoints: [path.join(media, 'gif-worker.js')],
     outfile: path.join(output, 'gif-worker.js'), external: ['./gif-engine.js']
+});
+esbuild.buildSync({
+    ...options, entryPoints: [path.join(media, 'video-gif-encoder.js')],
+    outfile: path.join(output, 'video-gif-encoder.js')
 });

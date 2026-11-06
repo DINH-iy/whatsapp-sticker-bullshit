@@ -29,7 +29,7 @@
     <div class="header-actions sticker-toolbar">
         <ActionMenu Label="Add stickers" IconName="plus" Primary="true" Disabled="@busy">
             <p class="toolbar-menu-heading">@(CurrentPack is null ? "Add to your library" : $"Add to {CurrentPack.Name}")</p>
-            <AddStickerChoices @key="importPickerVersion" Disabled="@(busy || CurrentPack?.StickerIds.Count >= 30)" OnImport="Import" OnLayers="NewComposition" />
+            <AddStickerChoices @key="importPickerVersion" Disabled="@(busy || CurrentPack?.StickerIds.Count >= 30)" OnImport="Import" OnLayers="NewComposition" OnVideo="() => showVideoImport = true" />
             <button class="toolbar-menu-option" type="button" @onclick="() => showGifSearch = true" disabled="@busy">
                 <Icon Name="search" /><span>Find a GIF<small>Search and preview GIFs in a popup.</small></span>
             </button>
@@ -196,15 +196,15 @@ else
         {
             <ActionMenu Label="Add sticker" TileStyle="true" Disabled="@(busy || currentPack.StickerIds.Count >= 30)">
                 <TriggerContent><AddTileLabel Title="Add sticker" Hint="@(currentPack.StickerIds.Count >= 30 ? "Pack full · 30/30 stickers" : "Image, GIF, or layered image")" /></TriggerContent>
-                <ChildContent><AddStickerChoices @key="importPickerVersion" Disabled="@(busy || currentPack.StickerIds.Count >= 30)" OnImport="Import" OnLayers="NewComposition" /></ChildContent>
+                <ChildContent><AddStickerChoices @key="importPickerVersion" Disabled="@(busy || currentPack.StickerIds.Count >= 30)" OnImport="Import" OnLayers="NewComposition" OnVideo="() => showVideoImport = true" /></ChildContent>
             </ActionMenu>
         }
         @foreach (var image in visibleImages)
         {
-            <article class="image-card" @key="image.Id">
-                <input type="checkbox" class="image-select" aria-label="Select @image.Name"
+            <article class="image-card" @key="image.Id" @onclick="() => Edit(image)">
+                <input type="checkbox" class="image-select" @onclick:stopPropagation aria-label="Select @image.Name"
                        checked="@selected.Contains(image.Id)" @onchange="() => Toggle(image.Id)" />
-                <button class="image-preview" aria-label="Edit @image.Name" @onclick="() => Edit(image)">
+                <button class="image-preview" @onclick:stopPropagation aria-label="Edit @image.Name" @onclick="() => Edit(image)">
                     <img src="@previews[image.Id]" alt="@image.Name" loading="lazy" />
                 </button>
                 <strong>@image.Name</strong>
@@ -214,7 +214,7 @@ else
                 {
                     <small class="sticker-preparation-status">@(Preparation.GetStatus(image)?.Error is not null ? "Needs attention · see ⓘ" : "Preparing…")</small>
                 }
-                <div class="card-actions">
+                <div class="card-actions" @onclick:stopPropagation>
                     <div class="sticker-actions">
                         <button class="button icon-button" type="button" @onclick="() => infoImageId = image.Id" title="Sticker details" aria-label="Details for @image.Name"><Icon Name="info" /></button>
                         <button class="button icon-button" type="button" @onclick="() => imageToAdd = image"
@@ -360,9 +360,14 @@ else
 
 @if (showGifSearch)
 {
-    <GifSearchDialog OnClose="() => showGifSearch = false" />
+    <GifSearchDialog PackId="@activePack" OnImported="Reload" OnClose="() => showGifSearch = false" />
 }
 @if (renamingPack && CurrentPack is { } detailsPack)
 {
     <NewPackDialog Pack="@detailsPack" OnSaved="PackDetailsSaved" OnCancel="() => renamingPack = false" />
+}
+
+@if (showVideoImport)
+{
+    <VideoImportDialog PackId="@activePack" OnClose="() => showVideoImport = false" OnImported="VideoImported" />
 }

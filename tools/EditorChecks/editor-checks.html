@@ -5,8 +5,22 @@ async function run(source) {
             const { create } = await import(base + 'image-customizer.js');
             const { createRasterRenderer } = await import(base + 'raster-edits.js');
             const { openAnimation } = await import(base + 'animation-reader.js');
+            const { applyColorEffect } = await import(base + 'color-effect.js');
+            const colorCanvas = document.createElement('canvas'); colorCanvas.width = 2; colorCanvas.height = 1;
+            const colorContext = colorCanvas.getContext('2d');
+            const colorPixels = new ImageData(new Uint8ClampedArray([80,0,0,128, 220,0,0,255]),2,1);
+            colorContext.putImageData(colorPixels,0,0); const originalColor = colorContext.getImageData(0,0,2,1).data;
+            applyColorEffect(colorContext,{hue:120,colorStrength:0});
+            assert.equal([...colorContext.getImageData(0,0,2,1).data].join(','),[...originalColor].join(','),'zero color strength must preserve original pixels');
+            applyColorEffect(colorContext,{hue:120,colorStrength:1});
+            const shiftedColor = colorContext.getImageData(0,0,2,1).data;
+            assert.ok(shiftedColor[5] > shiftedColor[1] && shiftedColor[5] > 50,'hue must retain dark/light detail');
+            assert.equal(shiftedColor[3],128,'hue must preserve partial transparency');
+            colorContext.putImageData(colorPixels,0,0); applyColorEffect(colorContext,{hue:120,colorStrength:0.5});
+            const halfColor = colorContext.getImageData(0,0,2,1).data;
+            assert.ok(Math.abs(halfColor[5] - (originalColor[5]+shiftedColor[5])/2) < 2,'color strength must mix with the original');
             const { createSession } = await import(base + 'gif-editor.js');
-            const root = document.createElement('div'); root.className = 'image-customizer';
+            const root = document.createElement('div'); root.className = 'image-customizer'; root.style.width='512px'; root.style.height='512px';
             const seekControl = document.createElement('input'); seekControl.type = 'range'; seekControl.min = '0'; seekControl.max = '0.2'; seekControl.step = '0.001'; seekControl.dataset.animationSeek = '';
             const speedControl = document.createElement('select'); speedControl.dataset.animationSpeed = ''; speedControl.innerHTML = '<option value="0.1">0.1</option><option value="1" selected>1</option>';
             root.append(seekControl, speedControl);
@@ -18,6 +32,59 @@ async function run(source) {
             const controller = create(canvas, reference);
             const reader = await openAnimation(source);
             await controller.open(source, 1024, 1024, true);
+            const hueGroup = document.createElement('div'); hueGroup.dataset.adjustmentScope = 'image';
+            hueGroup.innerHTML = '<input type="range" min="-180" max="180" value="0" data-layer-property="hue"><input type="range" min="0" max="100" value="100" data-layer-property="colorStrength"><span data-layer-readout="colorStrength">100</span>';
+            root.append(hueGroup);
+            const [hueField, strengthField] = hueGroup.querySelectorAll('input');
+            hueField.value = '90'; hueField.dispatchEvent(new Event('input',{bubbles:true})); hueField.dispatchEvent(new Event('change',{bubbles:true}));
+            strengthField.value = '55'; strengthField.dispatchEvent(new Event('input',{bubbles:true})); strengthField.dispatchEvent(new Event('change',{bubbles:true}));
+            await new Promise(resolve=>setTimeout(resolve,30));
+            assert.equal(hueGroup.querySelector('[data-layer-readout]').textContent,'55','fast hue/strength input must retain the latest value');
+            assert.equal(recipe.edits.at(-1).colorStrength,0.55,'queued color strength must reach the animation recipe');
+            await controller.undo(); await controller.undo(); hueGroup.remove();
+            await controller.beginTool('resize'); controller.beginResize();
+            root.querySelector('[aria-label="Resize image right"]').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', shiftKey: true, bubbles: true }));
+            assert.equal(canvas.width, 26, 'resize handle must change image width');
+            assert.equal(canvas.height, 26, 'resize handle must keep proportions');
+            await controller.applyTool(true);
+            assert.equal(recipe.edits.at(-1).type, 'resize', 'Accept must record resize for every animation frame');
+            await controller.undo();
+            assert.equal(canvas.width, 16, 'resize must be undoable');
+            const ratio = document.createElement('input'); ratio.type = 'checkbox'; ratio.dataset.imageResizeRatio = ''; ratio.checked = false; root.append(ratio);
+            await controller.beginTool('resize'); controller.beginResize();
+            root.querySelector('[aria-label="Resize image right"]').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', shiftKey: true, bubbles: true }));
+            assert.equal(canvas.height, 16, 'unlocked handles must allow stretching');
+            await controller.cancelTool(); ratio.remove();
+            assert.equal(canvas.width, 16, 'Cancel must restore the image before handle resizing');
+            await controller.beginTool('resize'); controller.beginTransform();
+            const transformHandles = root.querySelector('.image-transform-handles');
+            const transformKey = (label,key) => transformHandles.querySelector(`[aria-label="${label}"]`).dispatchEvent(new KeyboardEvent('keydown',{key,shiftKey:true,bubbles:true}));
+            transformKey('Resize image right','ArrowRight');
+            transformKey('Move image','ArrowRight'); transformKey('Move image','ArrowDown');
+            transformKey('Rotate image','ArrowRight');
+            const rotateGrip=transformHandles.querySelector('[aria-label="Rotate image"]');
+            let previousGrip=[parseFloat(rotateGrip.style.left),parseFloat(rotateGrip.style.top)];
+            for(let turn=0;turn<36;turn++){
+                transformKey('Rotate image','ArrowRight');
+                const next=[parseFloat(rotateGrip.style.left),parseFloat(rotateGrip.style.top)];
+                assert.ok(Math.hypot(next[0]-previousGrip[0],next[1]-previousGrip[1])<20,'rotation grip must follow a continuous path without switching sides');
+                previousGrip=next;
+            }
+            for(let turn=0;turn<36;turn++)transformKey('Rotate image','ArrowLeft');
+            assert.equal(canvas.width,512,'combined transform must retain the fixed workspace');
+            await controller.applyTool(true);
+            const transformRecipe = structuredClone(recipe), transformEdit = recipe.edits.at(-1);
+            assert.equal(transformEdit.type,'transform','one operation must retain all three transforms');
+            assert.equal(transformEdit.imageWidth,26,'transform resizing must retain proportions');
+            assert.equal(transformEdit.x,266,'moving must persist the horizontal offset');
+            assert.equal(transformEdit.y,266,'moving must persist the vertical offset');
+            assert.equal(transformEdit.rotation,10,'rotation handle must persist the angle');
+            await controller.undo(); assert.equal(canvas.width,16,'combined transform must be undoable');
+            await controller.redo(); assert.equal(canvas.width,512,'combined transform must be redoable');
+            assert.equal(canvas.getContext('2d').getImageData(266,266,1,1).data[3],255,'redo must preserve moved artwork');
+            await controller.undo();
+            await controller.beginTool('resize');controller.beginTransform();transformKey('Move image','ArrowLeft');
+            await controller.cancelTool();assert.equal(canvas.width,16,'cancel must restore the pre-transform source');
             await controller.seek(0.15);
             assert.ok(canvas.getContext('2d').getImageData(8,8,1,1).data[2] > 200, 'scrubbing must select the blue frame');
             await controller.seek(0);
@@ -84,13 +151,33 @@ async function run(source) {
             wandRenderer.dispose();
             const firstRecipe = recipe;
             const session = createSession();
+            const transformedFrames = await openAnimation(await session.edit(source,0,0.2,transformRecipe));
+            for(const time of [0,100]) {
+                const pixels=transformedFrames.at(time).getContext('2d');
+                assert.equal(pixels.getImageData(266,266,1,1).data[3],255,'exported frames must retain the moved artwork');
+                assert.equal(pixels.getImageData(240,240,1,1).data[3],0,'export must preserve the transparent workspace');
+                const center=pixels.getImageData(266,266,1,1).data;
+                assert.ok(center[time===0?0:2]>200,'transformed animation must retain both source frames');
+            }
+            transformedFrames.dispose();
+            const hueRecipe = {width:16,height:16,edits:[{type:'adjust',rotation:0,opacity:1,hue:120,colorStrength:0.5}]};
+            const hueFrames = await openAnimation(await session.editLayer(source,0,0.2,hueRecipe));
+            const hueExpected = await createRasterRenderer(hueRecipe);
+            for (const time of [0,100]) {
+                const actual = hueFrames.at(time).getContext('2d').getImageData(8,8,1,1).data;
+                const expected = hueExpected.render(reader.at(time)).getContext('2d').getImageData(8,8,1,1).data;
+                assert.ok(actual.slice(0,3).every((v,i)=>Math.abs(v-expected[i])<25),'exported animation must apply the same partial hue on every frame');
+                assert.equal(actual[3],255,'hue export must retain alpha');
+            }
+            hueFrames.dispose(); hueExpected.dispose();
             const exported = await session.edit(source, 0, 0.2, recipe);
             const animated = await openAnimation(exported);
             const sample = time => {
                 const frame = animated.at(time), ctx = frame.getContext('2d');
-                return { color: Array.from(ctx.getImageData(400, 256, 1, 1).data), erased: ctx.getImageData(64, 256, 1, 1).data[3] };
+                return { color: Array.from(ctx.getImageData(260, 256, 1, 1).data), erased: ctx.getImageData(250, 256, 1, 1).data[3] };
             };
             const frames = [sample(0), sample(100)];
+            assert.equal(animated.at(0).getContext('2d').getImageData(400,256,1,1).data[3],0,'small GIFs must not be enlarged during sticker preparation');
             // An edited WebP can itself be inspected and edited without needing a GIF original.
             const inspected = await session.inspect(exported);
             await controller.open(exported, 1024, 1024, true);
@@ -98,17 +185,17 @@ async function run(source) {
             await controller.preview(0, 0.2);
             for (let i = 0; i < 12; i++) {
                 await new Promise(resolve => setTimeout(resolve, 25));
-                webpColors.add(Array.from(canvas.getContext('2d').getImageData(400,256,1,1).data).join(','));
+                webpColors.add(Array.from(canvas.getContext('2d').getImageData(260,256,1,1).data).join(','));
             }
             assert.ok(webpColors.size > 1, 'edited WebP preview must advance through frames');
             await controller.preview();
             await controller.seek(0.15);
-            assert.ok(canvas.getContext('2d').getImageData(400,256,1,1).data[2] > 200, 'animated WebP scrubbing must choose the blue frame');
+            assert.ok(canvas.getContext('2d').getImageData(260,256,1,1).data[2] > 200, 'animated WebP scrubbing must choose the blue frame');
             await controller.seek(0);
             await controller.adjust('opacity', 0.5);
             const secondExport = await session.edit(exported, 0, 0.2, recipe);
             const reopened = await openAnimation(secondExport);
-            const halfAlpha = reopened.at(100).getContext('2d').getImageData(400, 256, 1, 1).data[3];
+            const halfAlpha = reopened.at(100).getContext('2d').getImageData(260, 256, 1, 1).data[3];
             const layerRoot = document.createElement('dialog'); layerRoot.className = 'layer-editor-dialog';
             const wrap = document.createElement('div'); wrap.className = 'layer-canvas-wrap';
             const layerCanvas = document.createElement('canvas'); wrap.append(layerCanvas); layerRoot.append(wrap); document.body.append(layerRoot);
@@ -181,6 +268,6 @@ const result = await run(source);
         assert.equal(result.layerRedo, true, 'layer redo must restore the edited animated source');
         assert.equal(result.layerReopen, true, 'edited animations must survive composition export/reopen');
 
-document.getElementById('result').textContent = 'PASS: tool Apply/Cancel rollback, GIF/WebP/layer frame seeking and slow playback, image adjustments, all-frame cutouts, undo/redo, GIF and WebP export, transparency, isolated cancellation, animated layer apply/undo/redo/export/reopen.\n\n' + JSON.stringify(result, null, 2);
+document.getElementById('result').textContent = 'PASS: combined move/resize/rotate handles, animated transform export, hue/strength and all-frame color export, no enlargement, resize handles and aspect lock, tool Apply/Cancel rollback, GIF/WebP/layer frame seeking and slow playback, image adjustments, all-frame cutouts, undo/redo, GIF and WebP export, transparency, isolated cancellation, animated layer apply/undo/redo/export/reopen.\n\n' + JSON.stringify(result, null, 2);
 } catch (error) { document.getElementById('result').textContent = 'FAIL: ' + error.stack; }
 </script>

@@ -23,7 +23,7 @@ public partial class LayerEditorDialog
     private string name = "Layered sticker", libraryImageId = "", progress = "Opening layer editor…";
     private string? error;
     private string quickPanel = "";
-    private bool focusQuickPanel;
+    private bool focusQuickPanel, confirmQuickToolCancel;
     private Task TogglePreview() => Run("Updating preview…", async () =>
     {
         state.PreviewPlaying = !state.PreviewPlaying;
@@ -106,7 +106,7 @@ public partial class LayerEditorDialog
     private Task Action(string action) => Run("Updating layers…", async () => state = await controller!.InvokeAsync<LayerEditorState>("action", action));
     private Task ToggleTool(string tool) => Run("Opening layer tool…", async () =>
     {
-        if (quickPanel == tool) { await controller!.InvokeVoidAsync("commitTool"); quickPanel = ""; return; }
+        if (quickPanel == tool) { confirmQuickToolCancel = true; return; }
         await controller!.InvokeVoidAsync("beginTool");
         quickPanel = tool;
     });
@@ -116,12 +116,15 @@ public partial class LayerEditorDialog
     });
     private Task CancelQuickTool() => Run("Cancelling layer changes…", async () =>
     {
+        confirmQuickToolCancel = false;
         state = await controller!.InvokeAsync<LayerEditorState>("cancelTool"); quickPanel = "";
     });
     private Task SetRotation(double angle) => Run("Rotating layer…", async () => state = await controller!.InvokeAsync<LayerEditorState>("update", "rotation", ((angle + 180) % 360 + 360) % 360 - 180, false));
     private Task RotateBy(int degrees) => Run("Rotating layer…", async () => state = await controller!.InvokeAsync<LayerEditorState>("rotateBy", degrees));
     private Task SetOpacity(int percent) => Run("Updating opacity…", async () => state = await controller!.InvokeAsync<LayerEditorState>("update", "opacity", percent / 100d, false));
     private Task ToggleTint(ChangeEventArgs args) => Tint(args.Value is true ? "#80d4b0" : null);
+    private Task SetHue(double hue) => Run("Adjusting hue…", async () => state = await controller!.InvokeAsync<LayerEditorState>("update", "hue", hue));
+    private Task SetColorStrength(int strength) => Run("Adjusting color strength…", async () => state = await controller!.InvokeAsync<LayerEditorState>("update", "colorStrength", strength / 100d));
     private Task Tint(string? color) => Run("Updating color…", async () => state = await controller!.InvokeAsync<LayerEditorState>("update", "tint", color));
     private Task AddLibraryImage() => Run("Adding layer…", async () =>
     {

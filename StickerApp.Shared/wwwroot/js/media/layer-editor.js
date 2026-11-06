@@ -1,3 +1,5 @@
+import { rotationGrip } from './rotation-grip.js';
+import { applyColorEffect } from './color-effect.js';
 import { previewControls } from './animation-preview.js';
 import { openGif } from './layer-gifs.js';
 import { watchLayerOrder } from './layer-reorder.js';
@@ -22,8 +24,7 @@ export function create(canvas, reference) {
         button.className = `layer-handle${rotating ? ' layer-rotate-handle' : ''}`;
         button.setAttribute('aria-label', rotating ? 'Rotate selected layer' : `Resize layer ${name}`);
         button.dataset.tapFeedback = 'off';
-        const mark = document.createElement('span');
-        mark.textContent = rotating ? '↻' : '';
+        const mark = rotating ? rotationGrip() : document.createElement('span');
         mark.setAttribute('aria-hidden', 'true');
         button.append(mark);
         const handle = { button, name, x, y, rotating };
@@ -134,16 +135,15 @@ export function create(canvas, reference) {
                 const length = Math.max(20, (layer.trimEnd - layer.trimStart) * 1000);
                 source = gifs.get(layer.gifSource).reader.at(layer.trimStart * 1000 + elapsed() % length);
             }
-            if (layer.tint) {
+            if (layer.tint || layer.hue && layer.colorStrength !== 0) {
                 let cached = tints.get(layer.id);
-                if (!cached || cached.color !== layer.tint || cached.source !== layer.source || layer.gifSource) {
+                if (!cached || cached.color !== layer.tint || cached.source !== layer.source || cached.hue !== layer.hue || cached.strength !== layer.colorStrength || layer.gifSource) {
                     const tinted = document.createElement('canvas');
                     tinted.width = source.width; tinted.height = source.height;
                     const tintContext = tinted.getContext('2d');
                     tintContext.drawImage(source, 0, 0);
-                    tintContext.globalCompositeOperation = 'source-in';
-                    tintContext.fillStyle = layer.tint; tintContext.fillRect(0, 0, source.width, source.height);
-                    cached = { color: layer.tint, source: layer.source, image: tinted }; tints.set(layer.id, cached);
+                    applyColorEffect(tintContext, layer);
+                    cached = { color: layer.tint, hue: layer.hue, strength: layer.colorStrength, source: layer.source, image: tinted }; tints.set(layer.id, cached);
                 }
                 source = cached.image;
             }
@@ -279,7 +279,7 @@ export function create(canvas, reference) {
     }
     function update(property, value, keepRatio = true, record = true) {
         const layer = active(); if (!layer) return state();
-        const ranges = { x: [-2048, 2560], y: [-2048, 2560], width: [1, 2048], height: [1, 2048], rotation: [-180, 180], opacity: [0, 1] };
+        const ranges = { x: [-2048, 2560], y: [-2048, 2560], width: [1, 2048], height: [1, 2048], rotation: [-180, 180], opacity: [0, 1], hue: [-180, 180], colorStrength: [0, 1] };
         if (property === 'tint') {
             if (value !== null && !/^#[0-9a-f]{6}$/i.test(value)) throw new Error('Choose a valid tint color.');
             if (record) remember(); layer.tint = value;
@@ -292,7 +292,7 @@ export function create(canvas, reference) {
                 value = Math.min(value, 2048 / ratio);
                 layer[other] = Math.max(1, value * ratio);
             }
-            layer[property] = value;
+            layer[property] = value; if (property === 'hue') layer.tint = null;
         }
         render(); return state();
     }
@@ -327,20 +327,20 @@ export function create(canvas, reference) {
         if (!property || !active()) return;
         let value = property === 'tint' ? control.value : Number(control.value);
         if (control.value === '' || (property !== 'tint' && !Number.isFinite(value))) return;
-        if (property === 'opacity') value /= 100;
+        if (['opacity', 'colorStrength'].includes(property)) value /= 100;
         if (editingControl !== control) { remember(); editingControl = control; }
         update(property, value, proportions(), false);
         // Update linked fields locally; publish metadata once the adjustment ends.
         for (const field of root.querySelectorAll('[data-adjustment-scope="layer"] [data-layer-property]')) {
             if (field === control || field.dataset.layerProperty === 'tint') continue;
             const prop = field.dataset.layerProperty;
-            field.value = String(Math.round(active()[prop] * (prop === 'opacity' ? 100 : 1) * 100) / 100);
+            field.value = String(Math.round(active()[prop] * (['opacity', 'colorStrength'].includes(prop) ? 100 : 1) * 100) / 100);
         }
         clearTimeout(notifyTimer);
         notifyTimer = setTimeout(() => notify()?.catch(() => {}), 60);
         for (const readout of root.querySelectorAll('[data-adjustment-scope="layer"] [data-layer-readout]')) {
             const prop = readout.dataset.layerReadout;
-            readout.textContent = String(Math.round(active()[prop] * (prop === 'opacity' ? 100 : 1)));
+            readout.textContent = String(Math.round(active()[prop] * (['opacity', 'colorStrength'].includes(prop) ? 100 : 1)));
         }
     }
     function change(event) {
@@ -437,7 +437,7 @@ export function create(canvas, reference) {
                 for (const layer of composition.layers) {
                     const image = await decode(layer.source);
                     if (disposed) return;
-                    layers.push({ ...layer }); images.set(layer.source, image);
+                    layers.push({ hue: 0, colorStrength: 1, ...layer }); images.set(layer.source, image);
                     if (layer.gifSource && !gifs.has(layer.gifSource)) gifs.set(layer.gifSource, await openGif(layer.gifSource));
                 }
                 selected = layers.length - 1;
@@ -463,7 +463,7 @@ export function create(canvas, reference) {
             const id = `layer-${Date.now()}-${Math.random().toString(36).slice(2)}`;
             const layer = { id, name: name.slice(0, 128) || 'Image', source: png, x: 256, y: 256,
                 width: Math.max(1, Math.round(normalized.width * fit)), height: Math.max(1, Math.round(normalized.height * fit)),
-                rotation: 0, opacity: 1, flipX: false, tint: null, gifSource: gif ? source : null,
+                rotation: 0, opacity: 1, flipX: false, tint: null, hue: 0, colorStrength: 1, gifSource: gif ? source : null,
                 gifDuration: gif ? gif.reader.duration / 1000 : 0, trimStart: 0, trimEnd: gif ? Math.min(10, gif.reader.duration / 1000) : 0 };
             const still = await decode(png);
             remember(); layers.push(layer); images.set(png, still); if (gif) gifs.set(source, gif); selected = layers.length - 1;

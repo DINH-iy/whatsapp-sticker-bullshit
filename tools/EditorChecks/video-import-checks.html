@@ -1,0 +1,42 @@
+<!doctype html><meta charset="utf-8"><title>Video import checks</title><h1>Video import checks</h1><pre id="result">Running…</pre><a id="sample" hidden>Download synthetic test video</a><video muted playsinline></video><input type="file"><div id="root"></div>
+<script type="module">
+const result=document.querySelector('#result'),assert=(ok,message)=>{if(!ok)throw new Error(message);};
+try {
+    const canvas=document.createElement('canvas');canvas.width=64;canvas.height=48;
+    const ctx=canvas.getContext('2d'),stream=canvas.captureStream(20);
+    const mime=['video/mp4;codecs=avc1.42E01E','video/mp4','video/webm;codecs=vp8'].find(m=>MediaRecorder.isTypeSupported(m));
+    assert(mime,'A supported test video recorder is required');
+    const recorder=new MediaRecorder(stream,{mimeType:mime}),chunks=[];
+    recorder.ondataavailable=e=>chunks.push(e.data);
+    const stopped=new Promise(resolve=>recorder.onstop=resolve);
+    let frame=0;const paint=()=>{ctx.fillStyle=frame++<12?'#ff0000':'#0000ff';ctx.fillRect(0,0,64,48);};paint();
+    recorder.start();const interval=setInterval(paint,50);await new Promise(r=>setTimeout(r,1400));recorder.stop();await stopped;clearInterval(interval);stream.getTracks().forEach(t=>t.stop());
+    const file=new File(chunks,mime.includes('mp4')?'test-video.mp4':'test-video.webm',{type:mime.split(';')[0]});
+    const sample=document.querySelector('#sample');sample.href=URL.createObjectURL(file);sample.download=file.name;sample.hidden=false;
+    const sampleData=await new Promise(resolve=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.readAsDataURL(file);});sample.dataset.fixture=sampleData;
+    const {create}=await import('/_content/StickerApp.Shared/js/media/video-import.js');
+    const {openAnimation}=await import('/_content/StickerApp.Shared/js/media/animation-reader.js');
+    let info,error,progress=0,cancelOnProgress=false;
+    const controller=create(document.querySelector('video'),document.querySelector('input'),document.querySelector('#root'),{invokeMethodAsync:async(method,...args)=>{
+        if(method==='VideoReady')info=args[0];if(method==='VideoFailed')error=args[0];if(method==='VideoProgress'){progress=args[0];if(cancelOnProgress)controller.cancel();}
+    }});
+    await controller.loadFile(file);assert(info&&!error,'video metadata must load: '+error);
+    const sourceDuration=info.duration;
+    const bytes=await controller.convert(0,Math.min(sourceDuration,1.2),12);
+    const data=await new Promise(resolve=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.readAsDataURL(new Blob([bytes],{type:'image/gif'}));});
+    const animation=await openAnimation(data);
+    assert(animation.width===64&&animation.height===48,'video conversion must preserve aspect ratio without enlarging');
+    assert(animation.at(0).getContext('2d').getImageData(32,24,1,1).data[0]>200,'first GIF frame must come from the beginning of the video');
+    assert(animation.at(1000).getContext('2d').getImageData(32,24,1,1).data[2]>200,'last GIF frame must come from the later video');
+    assert(progress===100,'conversion must report completion');
+    const clip=await controller.convert(0.8,1.2,8);
+    const clipData=await new Promise(resolve=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.readAsDataURL(new Blob([clip],{type:'image/gif'}));});
+    const clipped=await openAnimation(clipData);assert(Math.abs(clipped.duration-400)<=20,'selected clip must retain its duration');assert(clipped.at(0).getContext('2d').getImageData(32,24,1,1).data[2]>200,'clip must start at the selected video position');
+    let rejected=false;try{await controller.convert(0,20,12);}catch{rejected=true;}assert(rejected,'invalid range must be rejected');
+    cancelOnProgress=true;let cancelled=false;try{await controller.convert(0,1.2,12);}catch(e){cancelled=e.name==='AbortError';}assert(cancelled,'conversion must be cancellable');
+    cancelOnProgress=false;await controller.convert(0,0.2,8);
+    await controller.loadFile(new File(['bad'],'bad.mp4',{type:'video/mp4'}));assert(error,'undecodable video must show an error');
+    controller.dispose();animation.dispose?.();clipped.dispose?.();
+    result.textContent='PASS: local video decoding, GIF encoding, aspect ratio/no enlargement, both video frames, selected clip start/duration, range validation, progress, cancellation/retry, invalid video handling and disposal.\nSource: '+mime+' · '+sourceDuration.toFixed(2)+' s · GIF '+bytes.size+' bytes';
+}catch(error){result.textContent='FAIL: '+error.stack;}
+</script>

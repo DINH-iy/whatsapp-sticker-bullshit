@@ -1,3 +1,4 @@
+import { applyColorEffect } from './color-effect.js';
 import { fit, encode, animation, dataUrl } from './sticker-converter.js';
 import { parseGIF, decompressFrame } from 'gifuct-js';
 import { openAnimation } from '../wwwroot/js/media/animation-reader.js';
@@ -244,10 +245,10 @@ async function compose(composition) {
                 context.clearRect(0, 0, 512, 512);
                 for (const layer of layers) {
                     let source = layer.gifSource ? readers.get(layer.id).at(layer.trimStart * 1000 + clock % ((layer.trimEnd - layer.trimStart) * 1000)) : stills.get(layer.id);
-                    if (layer.tint) {
+                    if (layer.tint || layer.hue && layer.colorStrength !== 0) {
                         tintCanvas.width = source.width; tintCanvas.height = source.height;
                         tintContext.globalCompositeOperation = 'source-over'; tintContext.drawImage(source, 0, 0);
-                        tintContext.globalCompositeOperation = 'source-in'; tintContext.fillStyle = layer.tint; tintContext.fillRect(0, 0, source.width, source.height);
+                        applyColorEffect(tintContext, layer);
                         source = tintCanvas;
                     }
                     context.save(); context.globalAlpha = layer.opacity; context.translate(layer.x, layer.y);

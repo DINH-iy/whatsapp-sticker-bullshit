@@ -47,7 +47,7 @@ function mediaUrl(value) {
     try {
         const url = new URL(value);
         const isKlipyMedia = /^static\d*\.klipy\.com$/i.test(url.hostname);
-        return url.protocol === 'https:' && isKlipyMedia ? value : '';
+        return url.protocol === 'https:' && !url.port && !url.username && !url.password && isKlipyMedia ? value : '';
     } catch {
         return '';
     }
@@ -145,4 +145,55 @@ export async function registerShare(slug, query) {
     } catch {
         // No retry queue: do not retain a history of the user's GIF selections.
     }
+}
+
+// Each visible search owns its import, so closing one search cannot cancel
+// another window's download. Files travel directly from KLIPY to the device.
+export function createImportSession() {
+    let active = null, disposed = false;
+    return {
+        async download(url, maxBytes = 10 * 1024 * 1024) {
+            if (disposed) throw new Error('This GIF search has closed.');
+            if (active) throw new Error('Wait for the current GIF import to finish.');
+            if (!mediaUrl(url)) throw new Error('This GIF does not have a supported KLIPY download URL.');
+            maxBytes = Math.min(10 * 1024 * 1024, maxBytes);
+            const controller = new AbortController(); active = controller;
+            const timeout = setTimeout(() => controller.abort(), 45000);
+            let reader;
+            try {
+                const response = await fetch(url, { signal: controller.signal, credentials: 'omit', cache: 'no-store', redirect: 'error' });
+                if (!response.ok) throw new Error('KLIPY could not deliver this GIF. Try another result.');
+                const length = Number(response.headers.get('content-length'));
+                if (length > maxBytes) throw new Error('This GIF exceeds the 10 MB import limit.');
+                if (!response.body) throw new Error('The GIF download was empty. Try another result.');
+                reader = response.body.getReader();
+                let bytes = 0; const chunks = [];
+                for (;;) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    bytes += value.byteLength;
+                    if (bytes > maxBytes) throw new Error('This GIF exceeds the 10 MB import limit.');
+                    chunks.push(value);
+                }
+                if (controller.signal.aborted || disposed) throw new DOMException('Cancelled', 'AbortError');
+                const blob = new Blob(chunks, { type: 'image/gif' });
+                const header = new Uint8Array(await blob.slice(0, 6).arrayBuffer());
+                const signature = String.fromCharCode(...header);
+                if (signature !== 'GIF87a' && signature !== 'GIF89a') throw new Error('KLIPY returned an invalid GIF file. Try another result.');
+                if (controller.signal.aborted || disposed) throw new DOMException('Cancelled', 'AbortError');
+                return blob;
+            } catch (error) {
+                if (error.name === 'AbortError') throw new Error('GIF import was cancelled or timed out.');
+                if (error instanceof TypeError) throw new Error('Could not download this GIF directly. Check your connection; KLIPY may be blocking downloads from this browser.');
+                throw error;
+            } finally {
+                clearTimeout(timeout);
+                if (reader) { try { await reader.cancel(); } catch { } reader.releaseLock(); }
+                controller.abort();
+                if (active === controller) active = null;
+            }
+        },
+        cancel() { active?.abort(); },
+        dispose() { disposed = true; active?.abort(); }
+    };
 }

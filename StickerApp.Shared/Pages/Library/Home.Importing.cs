@@ -13,6 +13,14 @@ public partial class Home
     private Guid? pendingImportPackId;
     private string? pendingImportNote;
     private int importPickerVersion;
+    private bool showVideoImport;
+    private async Task VideoImported(Guid id)
+    {
+        showVideoImport = false;
+        await Reload();
+        var image = library.Stickers.FirstOrDefault(s => s.Id == id);
+        if (image is not null) await Edit(image);
+    }
 
     private static async Task<byte[]> ReadFile(IBrowserFile file)
     {

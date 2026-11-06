@@ -24,14 +24,14 @@
     <div class="layer-workspace">
         <div class="layer-stage">
             <div class="layer-preview-dock" hidden="@(layerEditSource is not null)">
-                <div class="layer-preview-stage">
+                <div class="layer-preview-stage @(quickPanel == "opacity" ? "opacity-tool-stage" : "")">
                     <div class="layer-canvas-wrap"><canvas @ref="canvas" aria-label="Layer canvas. Drag to move; resize and rotation handles surround the selected layer." /></div>
                     @if (quickPanel != "" && Selected is { } adjustment)
                     {
-                        <EditorToolDock Title="@PanelTitle" Disabled="@working" OnApply="ApplyQuickTool" OnCancel="CancelQuickTool">
+                        <EditorToolDock Title="@PanelTitle" Disabled="@working" OnApply="ApplyQuickTool" OnCancel="() => confirmQuickToolCancel = true">
                             <fieldset disabled="@working" class="layer-adjustments">
                                 <EditorAdjustments Tool="@quickPanel" Value="@adjustment" Disabled="@working" @bind-KeepRatio="keepRatio"
-                                                   OnRotateBy="RotateBy" OnRotation="SetRotation" OnOpacity="SetOpacity" OnTint="Tint" />
+                                                   OnRotateBy="RotateBy" OnRotation="SetRotation" OnOpacity="SetOpacity" OnTint="Tint" OnHue="SetHue" OnColorStrength="SetColorStrength" />
                             </fieldset>
                         </EditorToolDock>
                     }
@@ -130,4 +130,8 @@
             <button class="button primary" type="button" @onclick="Save" disabled="@(working || layerEditSource is not null || state.Layers.Count == 0 || string.IsNullOrWhiteSpace(name))">Save sticker</button>
         </div>
     </div>
+    @if (confirmQuickToolCancel)
+    {
+        <ConfirmToolCancel OnKeep="() => confirmQuickToolCancel = false" OnDiscard="CancelQuickTool" />
+    }
 </dialog>

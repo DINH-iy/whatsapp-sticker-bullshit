@@ -1,6 +1,6 @@
 // Fit, rather than stretch or crop, so preparing a sticker preserves its artwork.
 export function fit(context, image, width, height) {
-    const scale = 512 / Math.max(width, height);
+    const scale = Math.min(1, 512 / Math.max(width, height));
     const w = Math.round(width * scale), h = Math.round(height * scale);
     context.clearRect(0, 0, 512, 512);
     context.drawImage(image, (512 - w) / 2, (512 - h) / 2, w, h);

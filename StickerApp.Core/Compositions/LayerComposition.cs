@@ -41,7 +41,7 @@ public sealed class LayerComposition
             }
             if (!Within(layer.X, -2048, 2560) || !Within(layer.Y, -2048, 2560) ||
                 !Within(layer.Width, 1, 2048) || !Within(layer.Height, 1, 2048) ||
-                !Within(layer.Rotation, -180, 180) || !Within(layer.Opacity, 0, 1) ||
+                !Within(layer.Rotation, -180, 180) || !Within(layer.Opacity, 0, 1) || !Within(layer.Hue, -180, 180) || !Within(layer.ColorStrength, 0, 1) ||
                 (layer.Tint is not null && (layer.Tint.Length != 7 || layer.Tint[0] != '#' || !layer.Tint.AsSpan(1).ToString().All(Uri.IsHexDigit))))
                 throw new InvalidDataException("A layer has invalid position, size, opacity, or color.");
         }
@@ -69,4 +69,6 @@ public sealed class CompositionLayer
     public double Opacity { get; set; } = 1;
     public bool FlipX { get; set; }
     public string? Tint { get; set; }
+    public double Hue { get; set; }
+    public double ColorStrength { get; set; } = 1;
 }

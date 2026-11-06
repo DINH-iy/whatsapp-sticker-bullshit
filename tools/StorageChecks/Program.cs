@@ -25,9 +25,10 @@ try
 {
     await Check("duplicates merge pack membership, order, favorites and tags", async store =>
     {
-        await store.ImportAsync("First.png", png);
+        var firstId = await store.ImportAsync("First.png", png);
         await store.ImportAsync("Second.png", png);
         var images = (await store.ReadAsync()).Stickers;
+        Require(images[0].Id == firstId, "Import must return the exact committed sticker ID.");
         await store.CreatePackWithStickerAsync("Pack A", images[0].Id);
         await store.CreatePackWithStickerAsync("Pack B", images[1].Id);
         var packs = (await store.ReadAsync()).Packs;
@@ -277,12 +278,13 @@ try
         var source = "data:image/webp;base64," + Convert.ToBase64String(animated);
         var composition = new LayerComposition { Layers = [new CompositionLayer {
             Id = "edited-animation", Name = "Cutout", Source = "data:image/png;base64," + Convert.ToBase64String(png),
-            GifSource = source, GifDuration = 1, TrimStart = 0, TrimEnd = 1, Opacity = 0.5
+            GifSource = source, GifDuration = 1, TrimStart = 0, TrimEnd = 1, Opacity = 0.5, Hue = 80, ColorStrength = 0.4
         }] };
         var id = await store.SaveCompositionAsync(null, "Animated cutout", animated, composition);
         var reopened = await new LibraryStore(store.DefaultRoot).ReadCompositionAsync(id);
         Require(reopened?.Layers.Single().GifSource == source, "Edited animation source changed on save");
         Require(reopened!.Layers.Single().Opacity == 0.5, "Layer opacity was lost");
+        Require(reopened.Layers.Single().Hue == 80 && reopened.Layers.Single().ColorStrength == 0.4, "Layer hue or strength was lost");
         Require(await store.ReadLayerAnimationAsync(id) == source, "Animated WebP cannot be reused as a layer");
         await store.ImportAsync("Original GIF", gif, keepOriginal: true);
         var imported = (await store.ReadAsync()).Stickers.Single(image => image.Name == "Original GIF");
@@ -293,6 +295,61 @@ try
         try { await store.SaveCompositionAsync(id, "Invalid still animation", animated, composition); }
         catch (InvalidDataException) { rejected = true; }
         Require(rejected, "A still WebP was accepted as an animation source");
+    });
+
+    await Check("KLIPY native download imports the original GIF into its destination pack", async store =>
+    {
+        await store.SetOriginalRetentionAsync(true, false);
+        var packId = await store.CreatePackAsync("KLIPY imports");
+        var url = "https://static1.klipy.com/example.gif?delivery=keep-this";
+        using var client = new HttpClient(new FixtureHttpHandler((request, token) =>
+        {
+            Require(request.RequestUri!.OriginalString == url, "Provider URL was changed");
+            return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new ByteArrayContent(gif) });
+        }));
+        var bytes = await KlipyGifDownloadClient.DownloadAsync(client, url);
+        Require(bytes.SequenceEqual(gif), "GIF bytes changed during download");
+        await store.ImportAsync("Imported GIF.gif", bytes, packId);
+        var library = await store.ReadAsync();
+        Require(library.Stickers.Count == 1 && library.Packs.Single().StickerIds.Single() == library.Stickers.Single().Id, "Import or pack membership missing");
+        Require(library.Stickers.Single().KeepOriginalOverride == false, "GIF retention default was ignored");
+    });
+
+    await Check("KLIPY native download rejects unsafe, invalid, oversized and cancelled responses", async store =>
+    {
+        var requests = 0;
+        using var client = new HttpClient(new FixtureHttpHandler((request, token) =>
+        {
+            requests++;
+            return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new ByteArrayContent(png) });
+        }));
+        foreach (var url in new[] { "http://static.klipy.com/a.gif", "https://evil.example/a.gif", "https://static.klipy.com.evil.example/a.gif", "https://user@static.klipy.com/a.gif", "https://static.klipy.com:8443/a.gif" })
+            await RejectDownload(() => KlipyGifDownloadClient.DownloadAsync(client, url));
+        Require(requests == 0, "Unsafe URLs reached the network");
+        await RejectDownload(() => KlipyGifDownloadClient.DownloadAsync(client, "https://static.klipy.com/not-a-gif"));
+        using var oversized = new HttpClient(new FixtureHttpHandler((request, token) =>
+        {
+            var content = new ByteArrayContent(gif); content.Headers.ContentLength = LibraryStore.MaxImportBytes + 1;
+            return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = content });
+        }));
+        await RejectDownload(() => KlipyGifDownloadClient.DownloadAsync(oversized, "https://static.klipy.com/too-large.gif"));
+        using var unknownSize = new HttpClient(new FixtureHttpHandler((request, token) =>
+        {
+            var content = new StreamContent(new MemoryStream(new byte[LibraryStore.MaxImportBytes + 1]));
+            content.Headers.ContentLength = null;
+            return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = content });
+        }));
+        await RejectDownload(() => KlipyGifDownloadClient.DownloadAsync(unknownSize, "https://static.klipy.com/unknown-size.gif"));
+        using var pending = new HttpClient(new FixtureHttpHandler(async (request, token) =>
+        {
+            await Task.Delay(Timeout.Infinite, token); throw new InvalidOperationException();
+        }));
+        using var cancellation = new CancellationTokenSource();
+        var operation = KlipyGifDownloadClient.DownloadAsync(pending, "https://static.klipy.com/cancel.gif", cancellation.Token);
+        cancellation.Cancel();
+        var cancelled = false;
+        try { await operation; } catch (OperationCanceledException) { cancelled = true; }
+        Require(cancelled && (await store.ReadAsync()).Stickers.Count == 0, "Cancelled download modified the library");
     });
 
     await Check("preferences persist and survive library relocation", async store =>
@@ -340,4 +397,15 @@ static async Task Throws(Func<Task> action)
     try { await action(); }
     catch (InvalidOperationException) { return; }
     throw new Exception("Expected operation to reject the unsafe or over-budget change");
+}
+
+static async Task RejectDownload(Func<Task<byte[]>> operation)
+{
+    try { await operation(); } catch (Exception error) when (error is InvalidDataException or HttpRequestException) { return; }
+    throw new Exception("Expected invalid GIF download to fail");
+}
+
+sealed class FixtureHttpHandler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> respond) : HttpMessageHandler
+{
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) => respond(request, cancellationToken);
 }

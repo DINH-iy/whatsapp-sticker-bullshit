@@ -1,0 +1,29 @@
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<dialog @ref="dialog" class="folder-dialog tool-cancel-dialog" aria-labelledby="tool-cancel-title" aria-describedby="tool-cancel-message" @onkeydown="HandleKey" @onkeydown:stopPropagation>
+    <h2 id="tool-cancel-title">Cancel tool changes?</h2>
+    <p id="tool-cancel-message">Changes made with the current tool will be discarded.</p>
+    <div class="dialog-actions">
+        <button class="button" type="button" @onclick="OnKeep">Keep editing</button>
+        <button class="button danger" type="button" @onclick="OnDiscard">Discard changes</button>
+    </div>
+</dialog>
+
+@code {
+    [Parameter] public EventCallback OnKeep { get; set; }
+    [Parameter] public EventCallback OnDiscard { get; set; }
+    private ElementReference dialog;
+    private IJSObjectReference? module;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/dialog.js");
+        await module.InvokeVoidAsync("open", dialog);
+    }
+    private Task HandleKey(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs args) => args.Key == "Escape" ? OnKeep.InvokeAsync() : Task.CompletedTask;
+    public async ValueTask DisposeAsync()
+    {
+        if (module is not null) { try { await module.DisposeAsync(); } catch (JSDisconnectedException) { } }
+    }
+}

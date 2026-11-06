@@ -8,6 +8,9 @@
     <Icon Name="image" /><span>GIF from device<small>Choose saved animated GIF files.</small></span>
     <InputFile OnChange="OnImport" accept="image/gif,.gif" multiple disabled="@Disabled" aria-label="Choose GIF files" />
 </label>
+<button class="toolbar-menu-option" type="button" @onclick="OnVideo" disabled="@Disabled">
+    <Icon Name="animation" /><span>Video from device<small>Turn a video clip into a GIF.</small></span>
+</button>
 <button class="toolbar-menu-option" type="button" @onclick="OnLayers" disabled="@Disabled">
     <Icon Name="edit" /><span>Layered image<small>Combine images in the layer editor.</small></span>
 </button>
@@ -15,5 +18,6 @@
 @code {
     [Parameter] public bool Disabled { get; set; }
     [Parameter] public EventCallback<InputFileChangeEventArgs> OnImport { get; set; }
+    [Parameter] public EventCallback OnVideo { get; set; }
     [Parameter] public EventCallback OnLayers { get; set; }
 }

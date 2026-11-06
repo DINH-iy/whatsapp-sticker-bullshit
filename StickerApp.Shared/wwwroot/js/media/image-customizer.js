@@ -1,3 +1,6 @@
+import { applyColorEffect } from './color-effect.js';
+import { createTransformHandles } from './image-transform.js';
+import { createResizeHandles } from './image-resize.js';
 import { previewControls } from './animation-preview.js';
 import { openAnimation } from './animation-reader.js';
 import { createRasterRenderer, eraseConnected } from './raster-edits.js';
@@ -5,11 +8,11 @@ import { createRasterRenderer, eraseConnected } from './raster-edits.js';
 export function create(canvas, dotnet) {
     const context = canvas.getContext('2d', { willReadFrequently: true });
     let tool = 'crop', points = [], start, snapshot, history = [], redo = [], original, busy = false, disposed = false;
-    let adjustmentBase = null, adjustment = { rotation: 0, opacity: 1, tint: null }, editingControl = null, maxSize = 4096;
-    let toolCheckpoint = null;
+    let adjustmentBase = null, adjustment = { rotation: 0, opacity: 1, tint: null, hue: 0, colorStrength: 1 }, editingControl = null, maxSize = 4096;
+    let toolCheckpoint = null, pendingControl = null;
     let operations = [], initialWidth = 0, initialHeight = 0, cutoutMask = null, animationReader = null, playback = null;
     const adjustmentEdit = () => ({ type: 'adjust', ...adjustment, maxSize });
-    const hasAdjustment = () => adjustmentBase && (adjustment.rotation !== 0 || adjustment.opacity !== 1 || adjustment.tint !== null);
+    const hasAdjustment = () => adjustmentBase && (adjustment.rotation !== 0 || adjustment.opacity !== 1 || adjustment.tint !== null || adjustment.hue !== 0 && adjustment.colorStrength > 0);
     const recipe = () => ({ width: initialWidth, height: initialHeight, edits: [...operations, ...(hasAdjustment() ? [adjustmentEdit()] : [])] });
     const stopPreview = () => {
         if (!playback) return;
@@ -20,18 +23,28 @@ export function create(canvas, dotnet) {
     };
     let previewRate = 1, previewTime = 0, seekVersion = 0;
     const root = canvas.closest('.image-customizer');
+    const syncPreview = () => {
+        if (!canvas.parentElement.classList.contains('customizer-canvas-wrap')) return;
+        canvas.style.width = `${canvas.width / 512 * 100}%`;
+        canvas.style.height = `${canvas.height / 512 * 100}%`;
+    };
+    const canvasObserver = new MutationObserver(syncPreview);
+    canvasObserver.observe(canvas, { attributes: true, attributeFilter: ['width', 'height'] });
+    const legacyResizer = createResizeHandles(canvas, root, (w, h) => dotnet.invokeMethodAsync('ResizeChanged', w, h).catch(() => {}), syncPreview);
+    const transformer = createTransformHandles(canvas, root, (w,h) => dotnet.invokeMethodAsync('ResizeChanged',w,h).catch(()=>{}), syncPreview);
+    let resizer = legacyResizer;
     const copyCanvas = source => {
         const copy = document.createElement('canvas'); copy.width = source.width; copy.height = source.height;
         copy.getContext('2d').drawImage(source, 0, 0); return copy;
     };
     const state = () => ({ source: canvas.toDataURL('image/png'), base: adjustmentBase?.toDataURL('image/png'), adjustment: { ...adjustment }, operations: [...operations] });
-    const publishAdjustments = () => disposed ? Promise.resolve() : dotnet.invokeMethodAsync('AdjustmentsChanged', adjustment.rotation, adjustment.opacity, adjustment.tint);
+    const publishAdjustments = () => disposed ? Promise.resolve() : dotnet.invokeMethodAsync('AdjustmentsChanged', adjustment.rotation, adjustment.opacity, adjustment.tint, adjustment.hue, adjustment.colorStrength);
     const commitAdjustments = () => {
         if (hasAdjustment()) operations.push(adjustmentEdit());
-        adjustmentBase = null; adjustment = { rotation: 0, opacity: 1, tint: null }; editingControl = null;
+        adjustmentBase = null; adjustment = { rotation: 0, opacity: 1, tint: null, hue: 0, colorStrength: 1 }; editingControl = null;
         return publishAdjustments();
     };
-    let tolerance = 36, brush = 30;
+    let tolerance = 36, brush = 40;
     const notify = () => disposed ? Promise.resolve() : dotnet.invokeMethodAsync('ImageChanged', canvas.toDataURL('image/png'), canvas.width, canvas.height, recipe());
     const remember = () => { history.push(state()); redo = []; if (history.length > 8) history.shift(); };
     const load = async (source, limit = 0) => {
@@ -74,7 +87,7 @@ export function create(canvas, dotnet) {
         if (edit) operations.push(edit);
     };
     const down = event => {
-        if (disposed || busy || start || !tool || tool === 'adjust') return;
+        if (disposed || busy || start || !tool || tool === 'adjust' || tool === 'resize') return;
         stopPreview(); event.preventDefault(); clearSelection(); canvas.setPointerCapture(event.pointerId);
         start = position(event);
         if (tool === 'erase' || tool === 'wand') remember();
@@ -119,17 +132,15 @@ export function create(canvas, dotnet) {
         const h = Math.abs(base.width * Math.sin(angle)) + Math.abs(base.height * Math.cos(angle));
         const scale = Math.min(1, maxSize / Math.max(w, h));
         canvas.width = Math.max(1, Math.ceil(w * scale - 1e-8)); canvas.height = Math.max(1, Math.ceil(h * scale - 1e-8));
-        let source = base;
-        if (adjustment.tint) {
-            source = copyCanvas(base); const tint = source.getContext('2d');
-            tint.globalCompositeOperation = 'source-in'; tint.fillStyle = adjustment.tint; tint.fillRect(0, 0, source.width, source.height);
-        }
+        const source = base;
         context.save(); context.globalAlpha = adjustment.opacity;
         context.translate(canvas.width / 2, canvas.height / 2); context.rotate(angle); context.scale(scale, scale);
         context.drawImage(source, -base.width / 2, -base.height / 2); context.restore();
+        applyColorEffect(context, adjustment);
+        syncPreview();
         for (const readout of root.querySelectorAll('[data-layer-readout]')) {
             const property = readout.dataset.layerReadout;
-            readout.textContent = String(Math.round(adjustment[property] * (property === 'opacity' ? 100 : 1)));
+            readout.textContent = String(Math.round(adjustment[property] * (['opacity', 'colorStrength'].includes(property) ? 100 : 1)));
         }
         const dial = root.querySelector('[data-layer-dial]');
         dial?.setAttribute('aria-valuenow', String(adjustment.rotation));
@@ -139,13 +150,14 @@ export function create(canvas, dotnet) {
         if (property === 'tint' ? value !== null && !/^#[0-9a-f]{6}$/i.test(value) : !Number.isFinite(value))
             throw new Error('Choose a valid image adjustment.');
         beginAdjustments(); if (record) remember();
-        adjustment[property] = property === 'rotation' ? ((value + 180) % 360 + 360) % 360 - 180
-            : property === 'opacity' ? Math.max(0, Math.min(1, value)) : value;
+        if (property === 'hue') adjustment.tint = null;
+        adjustment[property] = property === 'hue' ? Math.max(-180, Math.min(180, value)) : property === 'rotation' ? ((value + 180) % 360 + 360) % 360 - 180
+            : ['opacity', 'colorStrength'].includes(property) ? Math.max(0, Math.min(1, value)) : value;
         renderAdjustments();
         if (publish) { await publishAdjustments(); await notify(); }
     };
     async function seekPreview(seconds) {
-        if (!animationReader || disposed || busy) return;
+        if (!animationReader || disposed || busy || resizer.active) return;
         stopPreview(); clearSelection();
         const version = ++seekVersion;
         await commitAdjustments();
@@ -169,7 +181,8 @@ export function create(canvas, dotnet) {
     });
     const input = event => {
         const control = event.target;
-        if (busy || !control.closest('[data-adjustment-scope="image"]')) return;
+        if (!control.closest('[data-adjustment-scope="image"]')) return;
+        if (busy) { pendingControl = control; return; }
         const property = control.dataset.layerProperty;
         if (!property) return;
         const value = property === 'tint' ? control.value : Number(control.value);
@@ -183,14 +196,20 @@ export function create(canvas, dotnet) {
         }
         if (editingControl !== control) { beginAdjustments(); remember(); editingControl = control; }
         // No interop roundtrip for live slider previews; publish when the gesture ends.
-        adjust(property, property === 'opacity' ? value / 100 : value, false, false);
+        adjust(property, ['opacity', 'colorStrength'].includes(property) ? value / 100 : value, false, false);
     };
     const change = async event => {
-        if (!event.target.closest('[data-adjustment-scope="image"]') || !event.target.dataset.layerProperty || busy) return;
+        if (!event.target.closest('[data-adjustment-scope="image"]') || !event.target.dataset.layerProperty) return;
+        if (busy) { pendingControl = event.target; return; }
         if (['width', 'height'].includes(event.target.dataset.layerProperty)) return;
         editingControl = null; busy = true;
-        try { await publishAdjustments(); await notify(); } finally { busy = false; }
+        try { await publishAdjustments(); await notify(); } finally { busy = false; await flushPendingControl(); }
     };
+    async function flushPendingControl() {
+        const control = pendingControl; pendingControl = null;
+        if (!control?.isConnected || disposed) return;
+        input({ target: control }); await change({ target: control });
+    }
     // The numeric slider and presets remain available alongside the desktop dial.
     let dialDrag;
     const dialAngle = (event, element) => {
@@ -226,16 +245,17 @@ export function create(canvas, dotnet) {
     canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
     const controller = {
         async open(source, initialLimit = 2048, maximumSize = 4096, animated = false) {
-            stopPreview(); ++seekVersion; previewTime = 0; animationReader?.dispose?.(); animationReader = null;
+            resizer.end(); stopPreview(); ++seekVersion; previewTime = 0; animationReader?.dispose?.(); animationReader = null;
             if (animated) animationReader = await openAnimation(source);
             if (disposed) { animationReader?.dispose?.(); animationReader = null; return { width: 0, height: 0, recipe: {} }; }
-            maxSize = maximumSize; await load(animationReader ? animationReader.at(0) : source, initialLimit); history = []; redo = [];
+            maxSize = maximumSize; await load(animationReader ? animationReader.at(0) : source, Math.min(512, initialLimit)); history = []; redo = [];
             adjustmentBase = null; operations = []; toolCheckpoint = null; initialWidth = canvas.width; initialHeight = canvas.height;
             original = canvas.toDataURL('image/png'); await commitAdjustments();
             return { width: canvas.width, height: canvas.height, recipe: recipe() };
         },
         async preview(start = 0, end = null) {
             if (playback) { stopPreview(); return; }
+            if (resizer.active) await controller.resizeAdjustment();
             if (!animationReader) return;
             clearSelection();
             const renderer = await createRasterRenderer(recipe()), still = copyCanvas(canvas);
@@ -261,17 +281,25 @@ export function create(canvas, dotnet) {
         seek: seekPreview,
         beginAdjustments, adjust,
         adjustBy(degrees) { return adjust('rotation', adjustment.rotation + degrees); },
+        beginTransform() { stopPreview(); clearSelection(); tool = 'resize'; resizer = transformer; resizer.begin(); },
+        beginResize() { resizer = legacyResizer; stopPreview(); clearSelection(); tool = 'resize'; resizer.begin(Math.min(512, maxSize)); },
         async resizeAdjustment() {
-            const width = Number(root.querySelector('[data-layer-property="width"]').value);
-            const height = Number(root.querySelector('[data-layer-property="height"]').value);
-            if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 || width > maxSize || height > maxSize)
-                throw new Error(`Choose dimensions between 1 and ${maxSize} pixels.`);
-            stopPreview(); clearSelection(); remember();
-            const copy = copyCanvas(canvas); canvas.width = width; canvas.height = height;
-            context.drawImage(copy, 0, 0, width, height); await commitAdjustments(); operations.push({ type: 'resize', width, height }); await notify();
+            const resized = resizer.end(); if (!resized) return;
+            const { width, height, source } = resized;
+            remember(); await commitAdjustments();
+            if (resized.edit) {
+                const renderer = await createRasterRenderer({width:source.width,height:source.height,edits:[resized.edit]});
+                try { const result=renderer.render(source); canvas.width=result.width; canvas.height=result.height; context.drawImage(result,0,0); } finally { renderer.dispose(); }
+                operations.push(resized.edit); syncPreview(); await notify(); return;
+            }
+            canvas.width = width; canvas.height = height;
+            context.drawImage(source, 0, 0, width, height);
+            operations.push({ type: 'resize', width, height }); await notify();
         },
         async beginTool(value) {
-            stopPreview(); clearSelection(); ++seekVersion; await commitAdjustments();
+            stopPreview(); clearSelection(); ++seekVersion;
+            if (resizer.active) await controller.resizeAdjustment();
+            await commitAdjustments();
             // Switching tools keeps the previous tool's visible edits. Cancel
             // only rolls back work done since the current tool was selected.
             toolCheckpoint = { image: state(), undo: [...history], redo: [...redo] };
@@ -284,7 +312,7 @@ export function create(canvas, dotnet) {
             toolCheckpoint = null; tool = '';
         },
         async cancelTool() {
-            stopPreview(); clearSelection(); ++seekVersion;
+            stopPreview(); clearSelection(); ++seekVersion; resizer.end();
             if (toolCheckpoint) {
                 const saved = toolCheckpoint; toolCheckpoint = null;
                 tool = 'adjust'; await restore(saved.image); history = saved.undo; redo = saved.redo;
@@ -312,6 +340,7 @@ export function create(canvas, dotnet) {
             await notify();
         },
         async transform(action, width, height) {
+            if (resizer.active) await controller.resizeAdjustment();
             stopPreview(); clearSelection();
             if (action === 'resize' && (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 || width > 4096 || height > 4096))
                 throw new Error('Choose dimensions between 1 and 4096 pixels.');
@@ -326,11 +355,11 @@ export function create(canvas, dotnet) {
             context.drawImage(copy, 0, 0, action === 'resize' ? width : copy.width, action === 'resize' ? height : copy.height); context.restore();
             await notify();
         },
-        async undo() { stopPreview(); clearSelection(); if (history.length) { redo.push(state()); await restore(history.pop()); } },
-        async redo() { stopPreview(); clearSelection(); if (redo.length) { history.push(state()); await restore(redo.pop()); } },
-        async reset() { stopPreview(); clearSelection(); remember(); await load(original); adjustmentBase = null; operations = []; await commitAdjustments(); await notify(); },
+        async undo() { resizer.end(); stopPreview(); clearSelection(); if (history.length) { redo.push(state()); await restore(history.pop()); } },
+        async redo() { resizer.end(); stopPreview(); clearSelection(); if (redo.length) { history.push(state()); await restore(redo.pop()); } },
+        async reset() { resizer.end(); stopPreview(); clearSelection(); remember(); await load(original); adjustmentBase = null; operations = []; await commitAdjustments(); await notify(); },
         dispose() {
-            disposed = true; ++seekVersion; controls.dispose(); stopPreview(); animationReader?.dispose?.(); animationReader = null;
+            disposed = true; ++seekVersion; legacyResizer.dispose(); transformer.dispose(); canvasObserver.disconnect(); controls.dispose(); stopPreview(); animationReader?.dispose?.(); animationReader = null;
             root.removeEventListener('input', input); root.removeEventListener('change', change);
             root.removeEventListener('pointerdown', dialDown); root.removeEventListener('pointermove', dialMove);
             root.removeEventListener('pointerup', dialUp); root.removeEventListener('pointercancel', dialUp); root.removeEventListener('keydown', dialKey);

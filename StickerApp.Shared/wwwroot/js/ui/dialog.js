@@ -36,3 +36,24 @@ export function open(dialog) {
     });
     observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['open'] });
 }
+
+// Native <dialog> makes the background inert but does not stop scroll chaining
+// in every WebView. Lock the document until the last nested dialog is gone.
+let scrollLock = null;
+function syncScrollLock() {
+    const hasDialog = document.querySelector('dialog[open]');
+    const body = document.body, html = document.documentElement;
+    if (hasDialog && !scrollLock) {
+        scrollLock = { x: window.scrollX, y: window.scrollY, position: body.style.position, top: body.style.top,
+            left: body.style.left, width: body.style.width, overflow: body.style.overflow, htmlOverflow: html.style.overflow };
+        Object.assign(body.style, { position: 'fixed', top: `${-scrollLock.y}px`, left: `${-scrollLock.x}px`, width: '100%', overflow: 'hidden' });
+        html.style.overflow = 'hidden';
+    } else if (!hasDialog && scrollLock) {
+        const saved = scrollLock; scrollLock = null;
+        Object.assign(body.style, { position: saved.position, top: saved.top, left: saved.left, width: saved.width, overflow: saved.overflow });
+        html.style.overflow = saved.htmlOverflow; window.scrollTo(saved.x, saved.y);
+    }
+}
+const scrollLockObserver = new MutationObserver(syncScrollLock);
+scrollLockObserver.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['open'] });
+syncScrollLock();

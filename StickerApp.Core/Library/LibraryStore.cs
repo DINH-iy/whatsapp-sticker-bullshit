@@ -233,7 +233,7 @@ public sealed partial class LibraryStore
         await SaveLibrarySnapshotAsync(state);
     }
 
-    public async Task ImportAsync(string name, byte[] bytes, Guid? packId = null, bool? keepOriginal = null)
+    public async Task<Guid> ImportAsync(string name, byte[] bytes, Guid? packId = null, bool? keepOriginal = null)
     {
         await gate.WaitAsync();
         try
@@ -279,6 +279,7 @@ public sealed partial class LibraryStore
                 File.Delete(path);
                 throw;
             }
+            return s.Id;
         }
         finally
         {

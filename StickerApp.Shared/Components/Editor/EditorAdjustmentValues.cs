@@ -10,4 +10,6 @@ public class EditorAdjustmentValues
     public double Rotation { get; set; }
     public double Opacity { get; set; } = 1;
     public string? Tint { get; set; }
+    public double Hue { get; set; }
+    public double ColorStrength { get; set; } = 1;
 }

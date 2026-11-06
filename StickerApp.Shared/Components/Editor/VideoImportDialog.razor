@@ -1,0 +1,97 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject LibraryStore Store
+@inject AppLog Log
+
+<dialog @ref="dialog" class="folder-dialog video-import-dialog" aria-labelledby="video-import-title" @onkeydown="HandleKey" @onkeydown:stopPropagation>
+    <div class="folder-dialog-heading">
+        <h2 id="video-import-title">Video to GIF</h2>
+        <button class="button icon-button" type="button" aria-label="Close video import" @onclick="Close" disabled="@saving"><Icon Name="close" /></button>
+    </div>
+    <label class="button file-button"><Icon Name="animation" />Choose video
+        <input @ref="fileInput" type="file" accept="video/*,.mp4,.mov,.webm,.m4v" aria-label="Choose video file" disabled="@converting" />
+    </label>
+    <div @ref="editorRoot" class="video-import-editor" aria-busy="@(converting ? "true" : "false")">
+        <video @ref="video" class="video-import-preview" controls="@(!converting)" playsinline muted preload="auto" aria-label="Video clip preview" hidden="@(!ready)" />
+        @if (loading) { <p role="status">Loading video…</p> }
+        @if (ready)
+        {
+            <AnimationTimeline Duration="@duration" Start="@start" End="@end" Thumbnails="@thumbnails" StartChanged="ChangeStart" EndChanged="ChangeEnd" Disabled="@converting" />
+            <button class="button" type="button" @onclick="Preview" disabled="@converting"><Icon Name="@(playing ? "pause" : "play")" />@(playing ? "Pause clip" : "Preview clip")</button>
+            <div class="video-import-options">
+                <label>GIF name<input @bind="name" maxlength="128" disabled="@converting" /></label>
+                <label>Frames per second<select @bind="fps" disabled="@converting"><option value="8">8 · smaller file</option><option value="12">12</option><option value="20">20 · smoother</option></select></label>
+            </div>
+            <HelpDisclosure Summary="Video import help"><p class="helper">Choose all or part of the video, up to 10 seconds. Conversion happens on your device, without sound. Videos up to 100 MB are supported when your device can play their format. The GIF fits within 512 × 512 without enlargement.</p></HelpDisclosure>
+        }
+        @if (converting) { <p role="status">@(saving ? "Adding GIF…" : $"Creating GIF… {progress}%")</p><progress max="100" value="@progress" aria-label="GIF conversion progress"></progress> }
+        @if (error is not null) { <p class="notice notice-error" role="alert">@error</p> }
+    </div>
+    <div class="dialog-actions">
+        <button class="button" type="button" @onclick="Close" disabled="@saving">Cancel</button>
+        <button class="button primary" type="button" @onclick="Convert" disabled="@(!ready || converting || string.IsNullOrWhiteSpace(name))"><Icon Name="check" />Create GIF</button>
+    </div>
+</dialog>
+
+@code {
+    [Parameter] public Guid? PackId { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<Guid> OnImported { get; set; }
+    private ElementReference dialog, video, fileInput, editorRoot;
+    private IJSObjectReference? helper, module, controller;
+    private DotNetObjectReference<VideoImportDialog>? reference;
+    private bool ready, loading, converting, saving, playing, disposed;
+    private double duration, start, end;
+    private string name = "Video clip";
+    private string? error;
+    private int fps = 12, progress;
+    private string[] thumbnails = [];
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        helper = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/dialog.js");
+        await helper.InvokeVoidAsync("open", dialog);
+        module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/media/video-import.js");
+        reference = DotNetObjectReference.Create(this);
+        controller = await module.InvokeAsync<IJSObjectReference>("create", video, fileInput, editorRoot, reference);
+    }
+    public sealed class VideoInfo { public string Name { get; set; } = "Video clip"; public double Duration { get; set; } public string[] Thumbnails { get; set; } = []; }
+    [JSInvokable] public void VideoLoading() { ready = false; loading = true; error = null; StateHasChanged(); }
+    [JSInvokable] public void VideoReady(VideoInfo info) { name = info.Name.Length > 128 ? info.Name[..128] : info.Name; duration = info.Duration; start = 0; end = Math.Min(10, duration); thumbnails = info.Thumbnails; ready = true; loading = false; StateHasChanged(); }
+    [JSInvokable] public void VideoFailed(string message) { error = message; loading = false; StateHasChanged(); }
+    [JSInvokable] public void VideoPlayback(bool value) { playing = value; StateHasChanged(); }
+    [JSInvokable] public void VideoProgress(int value) { progress = value; StateHasChanged(); }
+    private async Task ChangeStart(double value) { start = Math.Clamp(value, 0, Math.Max(0, duration - 0.1)); end = Math.Clamp(end, start + 0.1, Math.Min(duration, start + 10)); await controller!.InvokeVoidAsync("setRange", start, end); }
+    private async Task ChangeEnd(double value) { end = Math.Clamp(value, 0.1, duration); start = Math.Clamp(start, Math.Max(0, end - 10), end - 0.1); await controller!.InvokeVoidAsync("setRange", start, end); }
+    private async Task Preview() { try { await controller!.InvokeVoidAsync("preview", start, end); } catch (JSException) { error = "Could not play this video on this device."; } }
+    private async Task Convert()
+    {
+        if (controller is null || converting || !ready) return;
+        converting = true; error = null; progress = 0;
+        try
+        {
+            await using var result = await controller.InvokeAsync<IJSStreamReference>("convert", TimeSpan.FromMinutes(5), start, end, fps);
+            if (disposed) return;
+            await using var stream = await result.OpenReadStreamAsync(LibraryStore.MaxImportBytes);
+            using var memory = new MemoryStream(); await stream.CopyToAsync(memory);
+            if (disposed) return;
+            saving = true; StateHasChanged();
+            var stickerId = await Store.ImportAsync(name.Trim() + ".gif", memory.ToArray(), PackId);
+            await OnImported.InvokeAsync(stickerId);
+        }
+        catch (Exception ex) when (ex is JSException or IOException or InvalidOperationException or NotSupportedException or OperationCanceledException)
+        {
+            if (!disposed) { Log.Error("Video import", ex); error = ex is JSException ? ex.Message.Split('\n')[0] : ex.Message; }
+        }
+        finally { converting = saving = false; }
+    }
+    private async Task Close() { if (saving) return; if (controller is not null) await controller.InvokeVoidAsync("cancel"); await OnClose.InvokeAsync(); }
+    private Task HandleKey(KeyboardEventArgs args) => args.Key == "Escape" ? Close() : Task.CompletedTask;
+    public async ValueTask DisposeAsync()
+    {
+        disposed = true;
+        try { if (controller is not null) { await controller.InvokeVoidAsync("dispose"); await controller.DisposeAsync(); } if (module is not null) await module.DisposeAsync(); if (helper is not null) await helper.DisposeAsync(); }
+        catch (JSDisconnectedException) { }
+        reference?.Dispose();
+    }
+}

@@ -1,10 +1,21 @@
 using Microsoft.JSInterop;
+using Microsoft.AspNetCore.Components;
+using StickerApp.Core;
 
 namespace StickerApp.Shared.Pages.Gifs;
 
 public partial class GifSearch
 {
-    [Microsoft.AspNetCore.Components.Parameter] public bool Embedded { get; set; }
+    [Parameter] public bool Embedded { get; set; }
+    [Parameter] public Guid? PackId { get; set; }
+    [Parameter] public EventCallback OnImported { get; set; }
+    private IJSObjectReference? importSession;
+    private HttpClient? nativeDownloadClient;
+    private CancellationTokenSource? importCancellation;
+    private readonly HashSet<string> importedUrls = [];
+    private string? importingUrl, importNotice, importError;
+    private bool importCommitting;
+    private bool IsImporting => importCancellation is not null;
     private readonly List<GifResult> results = [];
     private IJSObjectReference? client;
     private string query = "";
@@ -59,7 +70,7 @@ public partial class GifSearch
 
     private async Task StartSearch()
     {
-        if (isLoading || string.IsNullOrWhiteSpace(query))
+        if (isLoading || IsImporting || string.IsNullOrWhiteSpace(query))
             return;
 
         hasSearched = true;
@@ -77,7 +88,7 @@ public partial class GifSearch
 
     private async Task FetchPage(int page)
     {
-        if (isLoading || client is null)
+        if (isLoading || IsImporting || client is null)
             return;
 
         isLoading = true;
@@ -131,14 +142,94 @@ public partial class GifSearch
         }
     }
 
+    private async Task ImportGif(GifResult gif)
+    {
+        if (client is null || IsImporting || isDisposed || importedUrls.Contains(gif.ShareUrl)) return;
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(90));
+        importCancellation = cancellation;
+        importingUrl = gif.ShareUrl; importNotice = importError = null;
+        try
+        {
+            var token = cancellation.Token;
+            byte[] bytes;
+            if (FormFactor.GetFormFactor() == "Web" || OperatingSystem.IsBrowser())
+            {
+                importSession ??= await client.InvokeAsync<IJSObjectReference>("createImportSession");
+                await using var reference = await importSession.InvokeAsync<IJSStreamReference>("download", token, gif.ShareUrl, LibraryStore.MaxImportBytes);
+                await using var input = await reference.OpenReadStreamAsync(LibraryStore.MaxImportBytes, token);
+                using var memory = new MemoryStream();
+                await input.CopyToAsync(memory, token);
+                bytes = memory.ToArray();
+            }
+            else
+            {
+                nativeDownloadClient ??= new HttpClient(new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false }) { Timeout = TimeSpan.FromSeconds(45) };
+                bytes = await KlipyGifDownloadClient.DownloadAsync(nativeDownloadClient, gif.ShareUrl, token);
+            }
+            if (MediaInspector.Inspect(bytes).MimeType != "image/gif")
+                throw new InvalidDataException("The downloaded file is not a valid GIF.");
+            token.ThrowIfCancellationRequested();
+            if (isDisposed) return;
+            // The atomic library write finishes once started; cancellation only
+            // applies before this point, never to a partially committed sticker.
+            importCommitting = true;
+            StateHasChanged();
+            await Store.ImportAsync(ImportFileName(gif), bytes, PackId);
+            importedUrls.Add(gif.ShareUrl);
+            if (isDisposed) return;
+            importNotice = PackId is null ? "GIF imported into All images." : "GIF imported into this pack.";
+            await OnImported.InvokeAsync();
+            await client.InvokeVoidAsync("registerShare", gif.Slug, activeQuery);
+        }
+        catch (OperationCanceledException) { if (!isDisposed) importNotice = "GIF import cancelled."; }
+        catch (Exception exception) when (exception is JSException or IOException or InvalidOperationException or UnauthorizedAccessException or TimeoutException or HttpRequestException)
+        {
+            if (!isDisposed)
+            {
+                if (cancellation.IsCancellationRequested && !importCommitting) importNotice = "GIF import cancelled.";
+                else
+                {
+                    Log.Error("KLIPY GIF import", exception);
+                    importError = exception is HttpRequestException ? "Could not download this GIF. Check your connection and try again." : exception.Message.Split('\n')[0];
+                }
+            }
+        }
+        finally
+        {
+            importCancellation = null; importingUrl = null; importCommitting = false;
+            if (!isDisposed) StateHasChanged();
+        }
+    }
+
+    private static string ImportFileName(GifResult gif)
+    {
+        var name = new string(gif.Title.Where(c => !char.IsControl(c) && !"/\\:*?\"<>|".Contains(c)).Take(120).ToArray()).Trim().Trim('.');
+        return (string.IsNullOrWhiteSpace(name) ? "KLIPY GIF" : name) + ".gif";
+    }
+
+    private async Task CancelImport()
+    {
+        if (importCommitting || importCancellation is null) return;
+        importCancellation.Cancel();
+        if (importSession is not null)
+            try { await importSession.InvokeVoidAsync("cancel"); } catch (JSDisconnectedException) { }
+    }
+
     public async ValueTask DisposeAsync()
     {
         isDisposed = true;
+        if (!importCommitting) importCancellation?.Cancel();
+        nativeDownloadClient?.Dispose();
         if (client is null)
             return;
 
         try
         {
+            if (importSession is not null)
+            {
+                await importSession.InvokeVoidAsync("dispose");
+                await importSession.DisposeAsync();
+            }
             await client.InvokeVoidAsync("cancelSearch");
             await client.DisposeAsync();
         }
