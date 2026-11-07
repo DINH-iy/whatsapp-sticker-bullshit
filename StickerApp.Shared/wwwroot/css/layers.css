@@ -208,7 +208,7 @@
 @media (max-width: 700px) {
     .layer-workspace { grid-template-rows: auto minmax(0,1fr); }
     .layer-preview-dock:has(.animation-timeline) .layer-preview-stage:not(:has(.editor-tool-dock)) { --editor-preview-size: min(512px,20dvh,calc(100cqw - 8px)); }
-    .layer-preview-dock .animation-preview-button { min-height: 36px; height: 36px; padding-block: 4px; }
+    .layer-preview-dock .animation-preview-button { min-height: 34px; height: 34px; padding-block: 4px; }
     .layer-preview-dock .animation-trim-readout { line-height: calc(16px * var(--app-font-scale, 1) * var(--app-line-spacing, 1)); }
     .layer-footer .layer-save-actions { gap: 6px; }
     .layer-footer .layer-save-actions > .button:not(.icon-button) { font-size: calc(12px * var(--app-font-scale, 1)); padding-inline: 10px; }

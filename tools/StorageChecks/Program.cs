@@ -36,12 +36,14 @@ try
         await store.EditStickerAsync(images[0].Id, "First", "cats");
         await store.EditStickerAsync(images[1].Id, "Second", "funny");
         await store.FavoriteAsync(images[1].Id);
+        await store.SetStickerNsfwAsync(images[1].Id, true);
         var scan = await store.ScanLibraryAsync();
         Require(scan.Duplicates.Count == 1, "Expected one duplicate group");
         var selection = new DuplicateSelection(scan.Duplicates[0].Fingerprint, images[0].Id, [images[1].Id]);
         Require(await store.RemoveDuplicatesAsync([selection]) == 1, "Expected one removed image");
         var saved = await store.ReadAsync();
         Require(saved.Stickers.Count == 1 && saved.Stickers[0].Favorite, "Favorite was lost");
+        Require(saved.Stickers[0].Nsfw, "A duplicate's NSFW tag was lost");
         Require(saved.Stickers[0].Tags == "cats; funny", "Tags were lost");
         Require(saved.Packs.All(pack => pack.StickerIds.SequenceEqual([images[0].Id])), "Pack references were lost or repeated");
         Require(Directory.GetFiles(Path.Combine(store.Root, "media")).Length == 1, "Removed duplicate file remains");
@@ -314,7 +316,8 @@ try
         Require(!scan.UnusedFiles.Any(f => f.EndsWith(".font")), "Imported fonts must be protected from cleanup");
         var text = new TextLayerOptions {Content="TOP TEXT 😎",Font=font.Id,FontData=font.Data,Gradient=true,Bold=true,Underline=true};
         var composition = new LayerComposition {Layers=[new(){Id="caption",Name="Caption",Source="data:image/png;base64,"+Convert.ToBase64String(png),Text=text,Rotation=30}]};
-        var id = await store.SaveCompositionAsync(null,"Text sticker",webp,composition);
+        var id = await store.SaveCompositionAsync(null,"Text sticker",webp,composition, nsfw: true);
+        Require((await reopened.ReadAsync()).Stickers.Single(s => s.Id == id).Nsfw, "The layered sticker spoiler tag was lost");
         var caption = (await reopened.ReadCompositionAsync(id))!.Layers.Single();
         Require(caption.Text!.Content == text.Content && caption.Text.FontData == font.Data && caption.Text.Gradient && caption.Text.Underline && caption.Rotation == 30, "Editable text, emoji, formatting, font or transform was lost");
         var rejected=false;try{await store.ImportFontAsync("Bad.ttf",png);}catch(InvalidDataException){rejected=true;}
@@ -325,6 +328,43 @@ try
         rejected=false;try{await store.ImportFontAsync("Over budget.ttf",big);}catch(InvalidOperationException){rejected=true;}
         Require(rejected && (await store.ReadAsync()).Fonts.Count == count,"An over-budget font import must leave no library entry");
         Require(Directory.GetFiles(Path.Combine(store.Root,"media"),"*.font").Length == count,"An over-budget font must leave no file");
+    });
+
+    await Check("NSFW tags, pack inheritance, editable backups and blur preferences persist independently", async store =>
+    {
+        Require(store.BlurNsfwPreviews, "NSFW blurring must default on");
+        var id = await store.ImportAsync("Tagged image", png);
+        var other = await store.ImportAsync("Other image", png);
+        await store.CreatePackWithStickerAsync("Spoiler pack", id);
+        var packId = (await store.ReadAsync()).Packs.Single().Id;
+        await store.SetPackNsfwAsync(packId, true);
+        var library = await store.ReadAsync();
+        Require(library.IsNsfw(library.Stickers.Single(s => s.Id == id)) && !library.IsNsfw(library.Stickers.Single(s => s.Id == other)), "Pack NSFW must apply only to its members");
+        await store.SetPackNsfwAsync(packId, false);
+        await store.SetStickerNsfwAsync(id, true);
+        library = await store.ReadAsync();
+        Require(library.IsNsfw(library.Packs.Single()), "An NSFW sticker must protect its pack's preview");
+        await store.SetPackNsfwAsync(packId, true);
+        library = await store.ReadAsync();
+        using var archive = new MemoryStream();
+        await PackArchive.WriteAsync(archive, library.Packs.Single(), [library.Stickers.Single(s => s.Id == id)], sticker => File.OpenRead(Path.Combine(store.Root, "media", sticker.FileName)));
+        archive.Position = 0;
+        var imported = await PackArchive.ReadAsync(archive);
+        Require(imported.Nsfw && imported.Images.Single().Nsfw, "Editable backups lost spoiler tags");
+        archive.Position = 0;
+        var importedId = await store.ImportPackAsync(archive);
+        library = await store.ReadAsync();
+        Require(library.Packs.Single(p => p.Id == importedId).Nsfw, "Restoring an editable backup lost the pack tag");
+        await store.SetBlurNsfwPreviewsAsync(false);
+        await store.SetOriginalRetentionAsync(true, true);
+        await store.SetAskForOriginalOnImportAsync(false);
+        await store.SetDonutStorageChartAsync(true);
+        await store.SetDecimalStorageUnitsAsync(true);
+        await store.SetStorageLimitAsync(1024 * 1024);
+        var reopened = new LibraryStore(store.DefaultRoot);
+        Require(!reopened.BlurNsfwPreviews && (await reopened.ReadAsync()).Stickers.Single(s => s.Id == id).Nsfw, "Other preferences or a restart removed the blur preference or tag");
+        await reopened.SetBlurNsfwPreviewsAsync(true);
+        Require(new LibraryStore(store.DefaultRoot).BlurNsfwPreviews, "Re-enabling blur was not saved");
     });
 
     await Check("Pinterest progress counts completed downloads, estimates remaining time and separates saving", async store =>

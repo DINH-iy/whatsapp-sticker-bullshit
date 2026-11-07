@@ -66,17 +66,21 @@
     @foreach (var pack in visiblePacks)
     {
         <article class="image-card pack-card" @key="pack.Id">
+            <SpoilerPreview IsSpoiler="@library.IsNsfw(pack)" Name="@pack.Name">
             <a class="pack-card-link" href="@($"packs/{pack.Id}")" aria-label="@($"Open {pack.Name}")">
                 <div class="pack-cover">
                     @if (covers.TryGetValue(pack.Id, out var cover))
                     {
-                        <img src="@cover" alt="" loading="lazy" />
+                        <img class="spoiler-artwork" src="@cover" alt="" loading="lazy" />
                     }
                     else
                     {
                         <Icon Name="image" />
                     }
                 </div>
+            </a>
+            </SpoilerPreview>
+            <a class="pack-card-link" href="@($"packs/{pack.Id}")">
                 <strong>@pack.Name</strong>
                 <small class="pack-card-publisher" title="@pack.Publisher">By @pack.Publisher</small>
                 <small>@pack.StickerIds.Count @(pack.StickerIds.Count == 1 ? "sticker" : "stickers") · @PackTypeLabel(pack)</small>

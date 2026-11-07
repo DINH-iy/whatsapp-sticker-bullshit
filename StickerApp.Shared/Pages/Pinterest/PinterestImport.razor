@@ -41,7 +41,7 @@
 }
 @if (busy)
 {
-    <OperationProgressDialog Title="@status" Detail="@ProgressDetail" Progress="@ProgressPercent" ProgressLabel="Pinterest image download progress" Estimate="@TimeEstimate" CanCancel="@(operation?.IsCancellationRequested == false)" OnCancel="Cancel" />
+    <OperationProgressDialog Title="@status" Detail="@ProgressDetail" Progress="@ProgressPercent" ProgressLabel="Pinterest media import progress" Estimate="@TimeEstimate" CanCancel="@(operation?.IsCancellationRequested == false)" OnCancel="Cancel" />
 }
 @if (selection is not null)
 {
@@ -67,7 +67,7 @@
                 </label>
                 @if (Store.AskForOriginalOnImport)
                 {
-                    <label class="toggle-row pinterest-original-choice"><input type="checkbox" @bind="keepOriginals[image.PinId]" disabled="@(busy || !selected.Contains(image.PinId))" /> Keep original</label>
+                    <label class="toggle-row pinterest-original-choice"><input type="checkbox" @bind="keepOriginals[image.PinId]" disabled="@(busy || !selected.Contains(image.PinId))" /> @(image.IsVideo ? "Keep GIF clip" : "Keep original")</label>
                 }
                 </div>
             }
@@ -100,6 +100,7 @@
             <p class="error" role="alert">@CapacityError</p>
         }
         <p class="helper">Choose Keep original for each selected image, or use your saved Settings defaults when per-file choices are disabled. Discarding originals saves space after preparation succeeds; previous full-size images cannot be recovered without your own copy. GIF and animated WebP stickers can both be trimmed and edited. Editable layer sources are separate.</p>
+        @if (selection.Images.Any(image => image.IsVideo)) { <p class="helper">Keep GIF clip retains the converted animation; downloaded MP4 files are temporary.</p> }
     </section>
 }
 @if (videoInput is not null && videoMedia is not null)

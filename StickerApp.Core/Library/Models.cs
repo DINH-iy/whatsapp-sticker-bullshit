@@ -4,6 +4,7 @@ public sealed class Sticker
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Name { get; set; } = "";
+    public bool Nsfw { get; set; }
     public string FileName { get; set; } = "";
     public string? OriginalFileName { get; set; }
     public bool OriginalDiscarded { get; set; }
@@ -25,6 +26,7 @@ public sealed class StickerPack
     public string Publisher { get; set; } = "Sticker Studio";
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Name { get; set; } = "";
+    public bool Nsfw { get; set; }
     public bool Animated { get; set; }
     public string Version { get; set; } = Guid.NewGuid().ToString("N");
     public List<Guid> StickerIds { get; set; } = [];
@@ -37,6 +39,8 @@ public sealed class StickerLibrary
     public List<Sticker> Stickers { get; set; } = [];
     public List<StickerPack> Packs { get; set; } = [];
     public List<CustomFont> Fonts { get; set; } = [];
+    public bool IsNsfw(Sticker sticker) => sticker.Nsfw || Packs.Any(pack => pack.Nsfw && pack.StickerIds.Contains(sticker.Id));
+    public bool IsNsfw(StickerPack pack) => pack.Nsfw || Stickers.Any(sticker => pack.StickerIds.Contains(sticker.Id) && IsNsfw(sticker));
 }
 
 public interface IWhatsAppExporter

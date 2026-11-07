@@ -19,6 +19,7 @@ public sealed partial class LibraryStore
     public bool DecimalStorageUnits { get; private set; }
     public bool DonutStorageChart { get; private set; }
     public bool AskForOriginalOnImport { get; private set; } = true;
+    public bool BlurNsfwPreviews { get; private set; } = true;
     private readonly string settingsFile;
     private string Index => Path.Combine(Root, "library.json");
     public LibraryStore(string root)
@@ -36,6 +37,7 @@ public sealed partial class LibraryStore
         DecimalStorageUnits = saved?.DecimalStorageUnits ?? false;
         DonutStorageChart = saved?.DonutStorageChart ?? false;
         AskForOriginalOnImport = saved?.AskForOriginalOnImport ?? true;
+        BlurNsfwPreviews = saved?.BlurNsfwPreviews ?? true;
         if (saved is not null && !Directory.Exists(Root))
             throw new DirectoryNotFoundException($"The sticker folder is unavailable: {Root}. Reconnect it before starting the app.");
         Directory.CreateDirectory(Path.Combine(Root, "media"));
@@ -43,7 +45,7 @@ public sealed partial class LibraryStore
 
     private sealed record StorageSettings(string LibraryRoot, bool KeepOriginalStillImages = false,
         bool KeepOriginalAnimations = true, long? StorageLimitBytes = null, bool DecimalStorageUnits = false,
-        bool DonutStorageChart = false, bool AskForOriginalOnImport = true);
+        bool DonutStorageChart = false, bool AskForOriginalOnImport = true, bool BlurNsfwPreviews = true);
 
     public async Task SetAskForOriginalOnImportAsync(bool ask)
     {
@@ -51,7 +53,7 @@ public sealed partial class LibraryStore
         try
         {
             await File.WriteAllTextAsync(settingsFile + ".tmp", JsonSerializer.Serialize(
-                new StorageSettings(Root, KeepOriginalStillImages, KeepOriginalAnimations, StorageLimitBytes, DecimalStorageUnits, DonutStorageChart, ask), Json));
+                new StorageSettings(Root, KeepOriginalStillImages, KeepOriginalAnimations, StorageLimitBytes, DecimalStorageUnits, DonutStorageChart, ask, BlurNsfwPreviews), Json));
             File.Move(settingsFile + ".tmp", settingsFile, true);
             AskForOriginalOnImport = ask;
         }
@@ -64,7 +66,7 @@ public sealed partial class LibraryStore
         try
         {
             await File.WriteAllTextAsync(settingsFile + ".tmp", JsonSerializer.Serialize(
-                new StorageSettings(Root, KeepOriginalStillImages, KeepOriginalAnimations, StorageLimitBytes, DecimalStorageUnits, useDonut, AskForOriginalOnImport), Json));
+                new StorageSettings(Root, KeepOriginalStillImages, KeepOriginalAnimations, StorageLimitBytes, DecimalStorageUnits, useDonut, AskForOriginalOnImport, BlurNsfwPreviews), Json));
             File.Move(settingsFile + ".tmp", settingsFile, true);
             DonutStorageChart = useDonut;
         }
@@ -77,7 +79,7 @@ public sealed partial class LibraryStore
         try
         {
             await File.WriteAllTextAsync(settingsFile + ".tmp", JsonSerializer.Serialize(
-                new StorageSettings(Root, KeepOriginalStillImages, KeepOriginalAnimations, StorageLimitBytes, useDecimal, DonutStorageChart, AskForOriginalOnImport), Json));
+                new StorageSettings(Root, KeepOriginalStillImages, KeepOriginalAnimations, StorageLimitBytes, useDecimal, DonutStorageChart, AskForOriginalOnImport, BlurNsfwPreviews), Json));
             File.Move(settingsFile + ".tmp", settingsFile, true);
             DecimalStorageUnits = useDecimal;
         }
@@ -89,7 +91,7 @@ public sealed partial class LibraryStore
         await gate.WaitAsync();
         try
         {
-            await File.WriteAllTextAsync(settingsFile + ".tmp", JsonSerializer.Serialize(new StorageSettings(Root, keepStills, keepAnimations, StorageLimitBytes, DecimalStorageUnits, DonutStorageChart, AskForOriginalOnImport), Json));
+            await File.WriteAllTextAsync(settingsFile + ".tmp", JsonSerializer.Serialize(new StorageSettings(Root, keepStills, keepAnimations, StorageLimitBytes, DecimalStorageUnits, DonutStorageChart, AskForOriginalOnImport, BlurNsfwPreviews), Json));
             File.Move(settingsFile + ".tmp", settingsFile, true);
             KeepOriginalStillImages = keepStills;
             KeepOriginalAnimations = keepAnimations;
@@ -105,7 +107,7 @@ public sealed partial class LibraryStore
         try
         {
             await File.WriteAllTextAsync(settingsFile + ".tmp", JsonSerializer.Serialize(
-                new StorageSettings(Root, KeepOriginalStillImages, KeepOriginalAnimations, limitBytes, DecimalStorageUnits, DonutStorageChart, AskForOriginalOnImport), Json));
+                new StorageSettings(Root, KeepOriginalStillImages, KeepOriginalAnimations, limitBytes, DecimalStorageUnits, DonutStorageChart, AskForOriginalOnImport, BlurNsfwPreviews), Json));
             File.Move(settingsFile + ".tmp", settingsFile, true);
             StorageLimitBytes = limitBytes;
         }
@@ -150,7 +152,7 @@ public sealed partial class LibraryStore
                     created.Add(index);
                     await JsonSerializer.SerializeAsync(output, await ReadInternalAsync(), Json);
                 }
-                await File.WriteAllTextAsync(settingsFile + ".tmp", JsonSerializer.Serialize(new StorageSettings(target, KeepOriginalStillImages, KeepOriginalAnimations, StorageLimitBytes, DecimalStorageUnits, DonutStorageChart, AskForOriginalOnImport), Json));
+                await File.WriteAllTextAsync(settingsFile + ".tmp", JsonSerializer.Serialize(new StorageSettings(target, KeepOriginalStillImages, KeepOriginalAnimations, StorageLimitBytes, DecimalStorageUnits, DonutStorageChart, AskForOriginalOnImport, BlurNsfwPreviews), Json));
                 File.Move(settingsFile + ".tmp", settingsFile, true);
                 Root = target;
             }
@@ -374,9 +376,9 @@ public sealed partial class LibraryStore
         finally { gate.Release(); }
     }
 
-    public async Task<Guid> CreatePackAsync(string name, string publisher = "Sticker Studio")
+    public async Task<Guid> CreatePackAsync(string name, string publisher = "Sticker Studio", bool nsfw = false)
     {
-        var pack = new StickerPack { Name = CleanName(name), Publisher = CleanPublisher(publisher) };
+        var pack = new StickerPack { Name = CleanName(name), Publisher = CleanPublisher(publisher), Nsfw = nsfw };
         await MutateAsync(l =>
         {
             if (l.Packs.Count >= 10)
@@ -417,20 +419,22 @@ public sealed partial class LibraryStore
     });
 
     public Task RenamePackAsync(Guid id, string name) => MutateAsync(l => { var p = l.Packs.Single(p => p.Id == id); p.Name = CleanName(name); Touch(p); });
-    public Task UpdatePackDetailsAsync(Guid id, string name, string publisher) => MutateAsync(library =>
+    public Task UpdatePackDetailsAsync(Guid id, string name, string publisher, bool? nsfw = null) => MutateAsync(library =>
     {
         var pack = library.Packs.FirstOrDefault(pack => pack.Id == id)
             ?? throw new InvalidOperationException("This pack no longer exists.");
         pack.Name = CleanName(name);
         pack.Publisher = CleanPublisher(publisher);
+        if (nsfw.HasValue) pack.Nsfw = nsfw.Value;
         Touch(pack);
     });
     public Task DeletePackAsync(Guid id) => MutateAsync(l => l.Packs.RemoveAll(p => p.Id == id));
     public Task FavoriteAsync(Guid id) => MutateAsync(l => { var s = l.Stickers.Single(s => s.Id == id); s.Favorite = !s.Favorite; });
-    public Task EditStickerAsync(Guid id, string name, string tags) => MutateAsync(l =>
+    public Task EditStickerAsync(Guid id, string name, string tags, bool? nsfw = null) => MutateAsync(l =>
     {
         var s = l.Stickers.Single(s => s.Id == id);
         s.Name = CleanName(name);
+        if (nsfw.HasValue) s.Nsfw = nsfw.Value;
         s.Tags = tags.Trim()[..Math.Min(tags.Trim().Length, 256)];
         foreach (var p in l.Packs.Where(p => p.StickerIds.Contains(id)))
             Touch(p);
@@ -590,7 +594,7 @@ public sealed partial class LibraryStore
             if (library.Packs.Count >= 10)
                 throw new InvalidOperationException("This build supports up to 10 packs.");
 
-            var pack = new StickerPack { Name = imported.Name, Animated = imported.Animated, CoverImage = imported.CoverImage, Publisher = imported.Publisher };
+            var pack = new StickerPack { Name = imported.Name, Animated = imported.Animated, CoverImage = imported.CoverImage, Publisher = imported.Publisher, Nsfw = imported.Nsfw };
             var images = new List<Sticker>();
             foreach (var image in imported.Images)
             {
@@ -598,6 +602,7 @@ public sealed partial class LibraryStore
                 {
                     Name = image.Name,
                     Tags = image.Tags,
+                    Nsfw = image.Nsfw,
                     MimeType = image.Info.MimeType,
                     Width = image.Info.Width,
                     Height = image.Info.Height,

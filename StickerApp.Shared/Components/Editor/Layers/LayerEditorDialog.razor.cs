@@ -14,6 +14,8 @@ public partial class LayerEditorDialog
     [Parameter] public bool StartWithText { get; set; }
     [Parameter] public string? InitialSource { get; set; }
     [Parameter] public string? InitialName { get; set; }
+    [Parameter] public bool? InitialNsfw { get; set; }
+    private bool nsfw;
     private List<CustomFont> fonts = [];
     private TextLayerEditor? textEditor;
     [Parameter] public IReadOnlyList<Sticker> Images { get; set; } = [];
@@ -59,6 +61,7 @@ public partial class LayerEditorDialog
             module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/media/layer-editor.js");
             reference = DotNetObjectReference.Create(this);
             controller = await module.InvokeAsync<IJSObjectReference>("create", canvas, reference);
+            nsfw = InitialNsfw ?? Images.FirstOrDefault(image => image.Id == StickerId)?.Nsfw ?? false;
             LayerComposition? composition = null;
             if (StickerId is { } id)
             {
@@ -225,7 +228,7 @@ public partial class LayerEditorDialog
         var export = await controller!.InvokeAsync<LayerExport>("export", TimeSpan.FromMinutes(4));
         if (!export.Png.StartsWith("data:image/png;base64,", StringComparison.Ordinal) && !export.Png.StartsWith("data:image/webp;base64,", StringComparison.Ordinal)) throw new InvalidDataException("Could not export this sticker.");
         var bytes = Convert.FromBase64String(export.Png[(export.Png.IndexOf(',') + 1)..]);
-        var id = await Store.SaveCompositionAsync(StickerId, name, bytes, export.Document, PackId);
+        var id = await Store.SaveCompositionAsync(StickerId, name, bytes, export.Document, PackId, nsfw);
         await OnSaved.InvokeAsync(id);
     }, showProgress: true);
     private async Task Run(string message, Func<Task> action, bool showProgress = false)

@@ -15,7 +15,7 @@
     <div class="page-title">
         @if (PackHeaderCover is { } cover)
         {
-            <img class="pack-title-cover" src="@cover" alt="Pack cover" />
+            <SpoilerPreview IsSpoiler="@(CurrentPack is { } coverPack && library.IsNsfw(coverPack))" Name="@(CurrentPack?.Name ?? "Pack cover")"><img class="pack-title-cover spoiler-artwork" src="@cover" alt="Pack cover" /></SpoilerPreview>
         }
         else if (CurrentPack is not null)
         {
@@ -28,25 +28,7 @@
     </div>
     <div class="header-actions sticker-toolbar">
         <ActionMenu Label="Add stickers" IconName="plus" Primary="true" Disabled="@busy">
-            <p class="toolbar-menu-heading">@(CurrentPack is null ? "Add to your library" : $"Add to {CurrentPack.Name}")</p>
-            <AddStickerChoices @key="importPickerVersion" Disabled="@(busy || CurrentPack?.StickerIds.Count >= 30)" OnImport="Import" OnLayers="NewComposition" OnVideo="() => showVideoImport = true" />
-            <button class="toolbar-menu-option" type="button" @onclick="() => showGifSearch = true" disabled="@busy">
-                <Icon Name="search" /><span>Find a GIF<small>Search and preview GIFs in a popup.</small></span>
-            </button>
-            <a class="toolbar-menu-option" href="@(CurrentPack is { } pinterestPack ? $"pinterest?pack={pinterestPack.Id}" : "pinterest")">
-                <Icon Name="link" /><span>Import a Pinterest selection<small>Paste a shared link and choose its images.</small></span>
-            </a>
-            @if (BulkImporter.IsAvailable)
-            {
-                <button class="toolbar-menu-option" type="button" @onclick="ImportFolder" disabled="@busy">
-                    <Icon Name="folder-import" /><span>@BulkImporter.ActionLabel<small>Add supported images from a device folder.</small></span>
-                </button>
-            }
-            <div class="toolbar-menu-divider"></div>
-            <label class="toolbar-menu-option file-button">
-                <Icon Name="folder-import" /><span>Import a pack file<small>Open a .wastickers or ZIP file as a new pack.</small></span>
-                <InputFile OnChange="ImportPack" accept=".zip,.wastickers" disabled="@busy" aria-label="Import pack file" />
-            </label>
+            @StickerImportChoices
         </ActionMenu>
         @if (CurrentPack is not null)
         {
@@ -55,6 +37,9 @@
                     <Icon Name="edit" /><span>Edit pack details<small>Change this pack's name and publisher.</small></span>
                 </button>
                 <PackCoverPicker Pack="@CurrentPack" OnChanged="Reload" MenuStyle="true" />
+                <button class="toolbar-menu-option" type="button" disabled="@busy" aria-pressed="@CurrentPack.Nsfw" @onclick="() => Run(() => Store.SetPackNsfwAsync(CurrentPack.Id, !CurrentPack.Nsfw))">
+                    <Icon Name="eye-off" /><span>@(CurrentPack.Nsfw ? "Remove NSFW tag" : "Mark pack as NSFW")<small>Blur previews for every sticker in this pack.</small></span>
+                </button>
                 <button class="toolbar-menu-option" type="button" @onclick="() => packToShare = CurrentPack" disabled="@busy">
                     <Icon Name="share" /><span>Share or export<small>Save a pack file or create a sharing link.</small></span>
                 </button>
@@ -194,9 +179,9 @@ else
     <div class="image-grid @(CurrentPack is not null ? "pack-stickers" : "")">
         @if (CurrentPack is { } currentPack)
         {
-            <ActionMenu Label="Add sticker" TileStyle="true" Disabled="@(busy || currentPack.StickerIds.Count >= 30)">
+            <ActionMenu Label="Add sticker" TileStyle="true" Disabled="@busy">
                 <TriggerContent><AddTileLabel Title="Add sticker" Hint="@(currentPack.StickerIds.Count >= 30 ? "Pack full · 30/30 stickers" : "Image, GIF, or layered image")" /></TriggerContent>
-                <ChildContent><AddStickerChoices @key="importPickerVersion" Disabled="@(busy || currentPack.StickerIds.Count >= 30)" OnImport="Import" OnLayers="NewComposition" OnVideo="() => showVideoImport = true" /></ChildContent>
+                <ChildContent>@StickerImportChoices</ChildContent>
             </ActionMenu>
         }
         @foreach (var image in visibleImages)
@@ -204,9 +189,11 @@ else
             <article class="image-card" @key="image.Id" @onclick="() => Edit(image)">
                 <input type="checkbox" class="image-select" @onclick:stopPropagation aria-label="Select @image.Name"
                        checked="@selected.Contains(image.Id)" @onchange="() => Toggle(image.Id)" />
+                <SpoilerPreview IsSpoiler="@library.IsNsfw(image)" Name="@image.Name">
                 <button class="image-preview" @onclick:stopPropagation aria-label="Edit @image.Name" @onclick="() => Edit(image)">
-                    <img src="@previews[image.Id]" alt="@image.Name" loading="lazy" />
+                    <img class="spoiler-artwork" src="@previews[image.Id]" alt="@image.Name" loading="lazy" />
                 </button>
+                </SpoilerPreview>
                 <strong>@image.Name</strong>
                 <small class="image-file-summary">@image.Width × @image.Height · @(image.Animated ? "Animated" : "Still")</small>
                 <small class="image-file-summary">File @Size(ImageSize(image).FileBytes) · Stored @Size(ImageSize(image).TotalBytes)</small>
@@ -224,7 +211,7 @@ else
                         <button class="button icon-button" @onclick="() => Edit(image)" title="Edit image" aria-label="Edit @image.Name">
                             <Icon Name="edit" />
                         </button>
-                        <button class="button icon-button danger" @onclick="() => pendingRemoval = image" title="Remove image" aria-label="Remove @image.Name">
+                        <button class="button icon-button danger" @onclick="() => pendingRemoval = image" title="Remove sticker" aria-label="Remove @image.Name">
                             <Icon Name="trash" />
                         </button>
                     </div>
@@ -246,7 +233,7 @@ else
 
 @if (showLayerEditor)
 {
-    <LayerEditorDialog StickerId="@compositionStickerId" PackId="@activePack" StartWithText="@compositionStartWithText" InitialSource="@compositionInitialSource" InitialName="@compositionInitialName" Images="@library.Stickers" Previews="@previews"
+    <LayerEditorDialog StickerId="@compositionStickerId" PackId="@activePack" StartWithText="@compositionStartWithText" InitialSource="@compositionInitialSource" InitialName="@compositionInitialName" InitialNsfw="@compositionInitialNsfw" Images="@library.Stickers" Previews="@previews"
                        OnCancel="() => showLayerEditor = false" OnSaved="CompositionSaved" />
 }
 
@@ -258,7 +245,13 @@ else
 @if (editing is not null)
 {
     <dialog @ref="editDialog" class="folder-dialog image-edit-dialog" aria-labelledby="edit-title" aria-busy="@(busy || EditorOpening ? "true" : "false")" @onkeydown="EditorKeyDown">
-        <h2 id="edit-title">@(IsGif ? "Edit GIF" : editing.Animated || replacementAnimated ? "Edit animated image" : "Edit image")</h2>
+        <div class="editor-dialog-heading">
+            <h2 id="edit-title">@(IsGif ? "Edit GIF" : editing.Animated || replacementAnimated ? "Edit animated image" : "Edit image")</h2>
+            <div class="editor-header-actions">
+                <button class="button icon-button" type="button" @onclick="CancelEditing" disabled="@((busy && !editorLoading) || (customizing && !editorToolsLoading))" aria-label="Cancel" title="Cancel editing"><Icon Name="close" /></button>
+                @if (!EditorOpening) { <button class="button primary icon-button" type="button" @onclick="Save" disabled="@(busy || customizing)" aria-label="Save" title="Save sticker"><Icon Name="check" /></button> }
+            </div>
+        </div>
         @if (EditorOpening)
         {
             <div class="editor-loading" role="status" aria-live="polite">
@@ -270,11 +263,13 @@ else
             @if (EditingStill || EditingAnimation)
             {
                 <ImageCustomizer @key="editSource" Source="@editSource" OnReady="EditorToolsReady" OnAddText="AddTextToEdited" OnMakeLayered="MakeEditedLayered" Animated="@EditingAnimation" TrimStart="@trimStart" TrimEnd="@(gifDuration > 0 ? trimEnd : null)" OnEditsChanged="recipe => editRecipe = recipe" OnChanged="CustomizeImage" OnBusyChanged="value => customizing = value">
-                    <Timeline>
+                    <Timeline Context="playback">
                         @if (EditingAnimation && gifDuration > 0)
                         {
                             <AnimationTimeline Thumbnails="@gifThumbnails" Duration="@gifDuration" Start="@trimStart" End="@trimEnd"
-                                               StartChanged="ChangeEditorTrimStart" EndChanged="ChangeEditorTrimEnd" Disabled="@(busy || customizing)" />
+                                               StartChanged="ChangeEditorTrimStart" EndChanged="ChangeEditorTrimEnd" Disabled="@(busy || customizing)">
+                                <PlaybackControl><button class="button animation-preview-button" type="button" @onclick="playback.Toggle" disabled="@playback.Disabled" aria-label="@(playback.Playing ? "Stop preview" : "Preview animation")"><Icon Name="@(playback.Playing ? "pause" : "play")" />@(playback.Playing ? "Pause" : "Preview")</button></PlaybackControl>
+                            </AnimationTimeline>
                         }
                     </Timeline>
                     <Options>
@@ -297,6 +292,7 @@ else
                         }
                         <details class="editor-details">
                             <summary>Name &amp; file options</summary>
+                            <label class="toggle-row editor-spoiler-toggle"><input type="checkbox" @bind="editNsfw" disabled="@(busy || customizing)" />NSFW spoiler</label>
                             <label>Name <input @bind="editName" @bind:event="oninput" maxlength="128" disabled="@busy" /></label>
                             <div class="edit-tools">
                                 <label class="button file-button"><Icon Name="image" /> Replace image
@@ -324,13 +320,6 @@ else
             }
         </div>
         @if (editError is not null) { <p class="error" role="alert">@editError</p> }
-        <div class="dialog-actions">
-            <button class="button" @onclick="CancelEditing" disabled="@((busy && !editorLoading) || (customizing && !editorToolsLoading))">Cancel</button>
-            @if (!EditorOpening)
-            {
-                <button class="button primary" @onclick="Save" disabled="@(busy || customizing)">Save</button>
-            }
-        </div>
     </dialog>
 }
 
@@ -338,8 +327,8 @@ else
 {
     <div class="modal-backdrop">
         <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="remove-title">
-            <h2 id="remove-title">@(deletePack ? "Delete pack?" : "Remove image?")</h2>
-            <p>@(deletePack ? "Images remain in the library." : pendingRemoval!.Name)</p>
+            <h2 id="remove-title">@(deletePack ? "Delete pack?" : "Remove sticker?")</h2>
+            <p>@(deletePack ? "Stickers remain in the library." : pendingRemoval!.Name)</p>
             <div class="dialog-actions">
                 <button class="button" @onclick="CancelRemoval">Cancel</button>
                 <button class="button danger" @onclick="ConfirmRemoval" disabled="@busy"><Icon Name="trash" /> Remove</button>
@@ -370,4 +359,12 @@ else
 @if (showVideoImport)
 {
     <VideoImportDialog PackId="@activePack" OnClose="() => showVideoImport = false" OnImported="VideoImported" />
+}
+
+@code {
+    private RenderFragment StickerImportChoices => @<AddStickerChoices @key="importPickerVersion"
+        Disabled="@busy" AtCapacity="@(CurrentPack?.StickerIds.Count >= 30)" PackId="@CurrentPack?.Id" PackName="@CurrentPack?.Name"
+        CanImportFolder="@BulkImporter.IsAvailable" FolderImportLabel="@BulkImporter.ActionLabel"
+        OnImport="Import" OnLayers="NewComposition" OnVideo="() => showVideoImport = true"
+        OnGifSearch="() => showGifSearch = true" OnImportFolder="ImportFolder" OnImportPack="ImportPack" />;
 }

@@ -1,27 +1,31 @@
 @using System.Globalization
 
 <fieldset class="animation-timeline" aria-label="Animation trim range" disabled="@Disabled">
-    <div class="trim-timeline">
-        <div class="timeline-frames" aria-hidden="true">
-            @foreach (var frame in Thumbnails) { <img src="@frame" alt="" /> }
+    <div class="animation-timeline-details" hidden="@(!showTimeline)">
+        <div class="trim-timeline">
+            <div class="timeline-frames" aria-hidden="true">
+                @foreach (var frame in Thumbnails) { <img src="@frame" alt="" /> }
+            </div>
+            <div class="timeline-mask left" style="width:@Number(Left)%"></div>
+            <div class="timeline-mask right" style="width:@Number(Right)%"></div>
+            <div class="timeline-selection" style="left:@Number(Left)%;right:@Number(Right)%"></div>
+            <input class="trim-handle start" aria-label="Trim start" type="range" min="0" max="@Number(Duration)" step="0.01"
+                   value="@Number(Start)" data-gif-bound="@(LayerControls ? "start" : null)" @oninput="StartInput" />
+            <input class="trim-handle end" aria-label="Trim end" type="range" min="0" max="@Number(Duration)" step="0.01"
+                   value="@Number(End)" data-gif-bound="@(LayerControls ? "end" : null)" @oninput="EndInput" />
+            <span class="timeline-playhead-line" aria-hidden="true"></span>
+            <input class="frame-playhead" type="range" aria-label="Preview frame" min="0" max="@Number(Duration)" step="0.001" value="@Number(Start)" data-animation-seek />
         </div>
-        <div class="timeline-mask left" style="width:@Number(Left)%"></div>
-        <div class="timeline-mask right" style="width:@Number(Right)%"></div>
-        <div class="timeline-selection" style="left:@Number(Left)%;right:@Number(Right)%"></div>
-        <input class="trim-handle start" aria-label="Trim start" type="range" min="0" max="@Number(Duration)" step="0.01"
-               value="@Number(Start)" data-gif-bound="@(LayerControls ? "start" : null)" @oninput="StartInput" />
-        <input class="trim-handle end" aria-label="Trim end" type="range" min="0" max="@Number(Duration)" step="0.01"
-               value="@Number(End)" data-gif-bound="@(LayerControls ? "end" : null)" @oninput="EndInput" />
-        <span class="timeline-playhead-line" aria-hidden="true"></span>
-        <input class="frame-playhead" type="range" aria-label="Preview frame" min="0" max="@Number(Duration)" step="0.001" value="@Number(Start)" data-animation-seek />
-    </div>
-    <div class="animation-trim-readout" aria-live="off">
-        <span>@Number(Start)–@Number(End) s</span>
-        <span>@Number(Math.Max(0, End - Start)) s selected</span>
+        <div class="animation-trim-readout" aria-live="off">
+            <span>@Number(Start)–@Number(End) s</span>
+            <span class="animation-frame-time">Frame <output data-animation-time>@Number(Start) s</output></span>
+            <span>@Number(Math.Max(0, End - Start)) s selected</span>
+        </div>
     </div>
     <div class="animation-playback-tools">
-        <span class="animation-frame-time">Frame <output data-animation-time>@Number(Start) s</output></span>
-        <label class="animation-speed">Preview speed
+        <button class="button icon-button timeline-toggle" type="button" aria-label="@(showTimeline ? "Hide timeline" : "Show timeline")" aria-expanded="@showTimeline" title="@(showTimeline ? "Hide timeline" : "Show timeline")" @onclick="() => showTimeline = !showTimeline"><Icon Name="animation" /></button>
+        @PlaybackControl
+        <label class="animation-speed"><span class="visually-hidden">Preview speed</span>
             <select aria-label="Preview speed" data-animation-speed>
                 <option value="0.1">0.1×</option><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option>
             </select>
@@ -35,6 +39,8 @@
     [Parameter] public double Start { get; set; }
     [Parameter] public double End { get; set; }
     [Parameter] public bool Disabled { get; set; }
+    [Parameter] public RenderFragment? PlaybackControl { get; set; }
+    private bool showTimeline = true;
     [Parameter] public bool LayerControls { get; set; }
     [Parameter] public EventCallback<double> StartChanged { get; set; }
     [Parameter] public EventCallback<double> EndChanged { get; set; }

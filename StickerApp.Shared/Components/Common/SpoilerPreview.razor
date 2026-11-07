@@ -1,0 +1,34 @@
+@implements IDisposable
+@inject LibraryStore Store
+
+<div class="spoiler-preview @(Hidden ? "spoiler-hidden" : "")">
+    <div class="spoiler-preview-content" inert="@(Hidden ? "" : null)" aria-hidden="@(Hidden ? "true" : null)">@ChildContent</div>
+    @if (Hidden)
+    {
+        <button class="spoiler-shield" type="button" tabindex="-1" aria-hidden="true" @onclick="Toggle" @onclick:stopPropagation></button>
+    }
+    @if (IsSpoiler && Store.BlurNsfwPreviews)
+    {
+        <button class="button icon-button spoiler-eye" type="button" @onclick="Toggle" @onclick:stopPropagation
+                aria-label="@($"{(Hidden ? "Show" : "Hide")} NSFW preview for {Name}")" aria-pressed="@(!Hidden)" title="@(Hidden ? "Show preview" : "Hide preview")"><Icon Name="@(Hidden ? "eye" : "eye-off")" /></button>
+    }
+</div>
+
+@code {
+    [Parameter] public bool IsSpoiler { get; set; }
+    [Parameter] public string Name { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    private bool revealed, previousSpoiler, previousBlur, disposed;
+    private bool Hidden => IsSpoiler && Store.BlurNsfwPreviews && !revealed;
+    protected override void OnInitialized() { previousBlur = Store.BlurNsfwPreviews; Store.Changed += SettingsChanged; }
+    protected override void OnParametersSet() { if (previousSpoiler != IsSpoiler) revealed = false; previousSpoiler = IsSpoiler; }
+    private void Toggle() => revealed = !revealed;
+    private void SettingsChanged() => _ = InvokeAsync(() =>
+    {
+        if (disposed) return;
+        if (previousBlur != Store.BlurNsfwPreviews) revealed = false;
+        previousBlur = Store.BlurNsfwPreviews;
+        StateHasChanged();
+    });
+    public void Dispose() { disposed = true; Store.Changed -= SettingsChanged; }
+}

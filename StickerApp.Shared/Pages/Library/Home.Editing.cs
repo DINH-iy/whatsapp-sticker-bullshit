@@ -41,7 +41,7 @@ public partial class Home
         if (image.CompositionFileName is not null)
         {
             compositionStickerId = image.Id;
-            compositionStartWithText = false; compositionInitialSource = compositionInitialName = null;
+            compositionStartWithText = false; compositionInitialSource = compositionInitialName = null; compositionInitialNsfw = null;
             showLayerEditor = true;
             return;
         }
@@ -51,6 +51,7 @@ public partial class Home
         editing = image;
         keepEditOriginal = image.KeepOriginalOverride ?? (image.Animated ? Store.KeepOriginalAnimations : Store.KeepOriginalStillImages);
         editName = image.Name;
+        editNsfw = image.Nsfw;
         editSource = editPreview = previews[image.Id];
         replacement = null;
         transformed = false;
@@ -210,7 +211,7 @@ public partial class Home
                 if (!await Store.ReplaceImageAsync(editing.Id, bytes, editing.FileName, keepOriginal: keepEditOriginal))
                     throw new InvalidOperationException("This image changed while you were editing. Reopen it before saving.");
             }
-            await Store.EditStickerAsync(editing.Id, editName, editing.Tags);
+            await Store.EditStickerAsync(editing.Id, editName, editing.Tags, editNsfw);
             await Reload();
             editing = null;
         }

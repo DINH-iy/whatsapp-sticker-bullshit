@@ -1943,3 +1943,42 @@ html[data-app-bold="true"] body, html[data-app-bold="true"] body :where(p,span,l
 
 .operation-progress-detail, .operation-progress-estimate { margin: 0; overflow-wrap: anywhere; }
 .operation-progress-estimate { color: var(--muted); font-size: calc(13px * var(--app-font-scale, 1)); }
+
+.spoiler-preview { position: relative; overflow: hidden; border-radius: 8px; min-width: 0; }
+.spoiler-hidden .spoiler-artwork { filter: blur(16px); transform: scale(1.08); }
+.spoiler-preview-content[inert] { pointer-events: none; user-select: none; }
+.spoiler-shield { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; border: 0; background: transparent; color: var(--text); cursor: pointer; display: grid; place-items: center; }
+.spoiler-eye.button { position: absolute; top: 6px; right: 6px; z-index: 3; width: 34px; height: 34px; min-height: 34px; padding: 6px; background: var(--surface); box-shadow: 0 2px 8px #0003; }
+.spoiler-eye .app-icon { width: 20px; height: 20px; }
+.pack-card > .spoiler-preview { flex-shrink: 0; }
+.spoiler-preview .pack-cover { margin-bottom: 0; }
+.image-select { z-index: 4; }
+.page-title > .spoiler-preview { flex-shrink: 0; }
+
+.editor-spoiler-toggle { display: flex; align-items: center; gap: 8px; margin: 8px 0 12px; min-height: 32px; flex-shrink: 0; }
+
+/* Compact editors keep actions beside the title and playback on one row. */
+.image-edit-dialog[open] { padding: 12px; gap: 6px; }
+.editor-dialog-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-shrink: 0; }
+.editor-dialog-heading h2 { margin: 0; min-width: 0; font-size: calc(18px * var(--app-font-scale, 1)); line-height: 1.25; }
+.editor-header-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.editor-header-actions .button { width: 38px; height: 36px; min-height: 36px; padding: 7px; border-radius: 8px; }
+.animation-timeline-details[hidden] { display: none; }
+.animation-timeline .animation-playback-tools { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+.animation-playback-tools .timeline-toggle { width: 34px; height: 34px; min-height: 34px; padding: 6px; flex: 0 0 34px; }
+.animation-playback-tools .animation-preview-button { flex: 1; width: auto; min-width: 0; min-height: 34px; height: 34px; margin: 0; padding: 5px 10px; gap: 6px; }
+.animation-playback-tools .animation-speed { flex: 0 0 auto; margin: 0; }
+.animation-playback-tools .animation-speed select { width: 72px; min-height: 34px; height: 34px; margin: 0; padding: 4px 6px; }
+.animation-timeline .trim-timeline { height: 76px; margin-top: 0; }
+.animation-timeline .frame-playhead { top: 0; }
+.animation-timeline .timeline-frames { top: 32px; height: 36px; }
+.animation-timeline .timeline-mask { top: 32px; height: 36px; }
+.animation-timeline .timeline-selection { top: 30px; height: 40px; }
+.animation-timeline .trim-handle { top: 28px; height: 44px; }
+.animation-timeline .trim-handle::-webkit-slider-runnable-track { height: 44px; }
+.animation-timeline .trim-handle::-webkit-slider-thumb { height: 44px; }
+.animation-timeline .trim-handle::-moz-range-track, .animation-timeline .trim-handle::-moz-range-thumb { height: 44px; }
+.animation-timeline .timeline-playhead-line { top: 28px; bottom: 4px; }
+.animation-trim-readout { padding: 0 2px; gap: 2px 6px; font-size: calc(10px * var(--app-font-scale, 1)); line-height: 16px; }
+.customizer-controls > .customizer-tools { margin-block: 5px; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }

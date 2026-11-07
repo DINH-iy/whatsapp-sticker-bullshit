@@ -16,11 +16,12 @@ public partial class NewPackDialog
     private string name = "";
     private string publisher = "";
     private string? error;
-    private bool saving;
+    private bool saving, nsfw;
 
     protected override void OnInitialized()
     {
         name = Pack?.Name ?? "";
+        nsfw = Pack?.Nsfw ?? false;
         publisher = Pack?.Publisher ?? "";
     }
 
@@ -40,12 +41,12 @@ public partial class NewPackDialog
         {
             if (Pack is { } pack)
             {
-                await Store.UpdatePackDetailsAsync(pack.Id, name, publisher);
+                await Store.UpdatePackDetailsAsync(pack.Id, name, publisher, nsfw);
                 await OnSaved.InvokeAsync(pack.Id);
             }
             else
             {
-                var id = await Store.CreatePackAsync(name, publisher);
+                var id = await Store.CreatePackAsync(name, publisher, nsfw);
                 await OnCreated.InvokeAsync(id);
             }
         }

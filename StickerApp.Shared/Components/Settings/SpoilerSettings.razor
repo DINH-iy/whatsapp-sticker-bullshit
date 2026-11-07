@@ -1,0 +1,18 @@
+@inject LibraryStore Store
+<section class="settings-card" aria-labelledby="spoiler-settings-title">
+    <h2 id="spoiler-settings-title">NSFW spoilers</h2>
+    <label class="toggle-row"><input type="checkbox" checked="@Store.BlurNsfwPreviews" @onchange="Change" disabled="@saving" />Blur NSFW previews</label>
+    <p class="helper">Blur tagged packs and stickers. Use the eye on a preview to reveal or hide it temporarily. Turning this off shows all previews without removing their NSFW tags.</p>
+    @if (error is not null) { <p class="error" role="alert">@error</p> }
+</section>
+@code {
+    private bool saving;
+    private string? error;
+    private async Task Change(ChangeEventArgs args)
+    {
+        saving = true; error = null;
+        try { await Store.SetBlurNsfwPreviewsAsync(args.Value is true); }
+        catch (Exception ex) when (ex is IOException or InvalidOperationException or UnauthorizedAccessException) { error = ex.Message; }
+        finally { saving = false; }
+    }
+}

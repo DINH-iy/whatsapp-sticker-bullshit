@@ -26,6 +26,7 @@ public partial class Home
 
     // The editor keeps the source separate from its preview so Reset can restore it.
     private string editName = "";
+    private bool editNsfw;
     private string editPreview = "";
     private string editSource = "";
     private bool busy;

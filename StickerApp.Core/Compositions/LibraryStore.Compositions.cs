@@ -42,7 +42,7 @@ public sealed partial class LibraryStore
     // Publish the image and editable source together. Sources contain normalized PNGs and original GIFs,
     // so removing a source sticker later does not damage an existing composition.
     public async Task<Guid> SaveCompositionAsync(Guid? stickerId, string name, byte[] png,
-        LayerComposition composition, Guid? packId = null)
+        LayerComposition composition, Guid? packId = null, bool? nsfw = null)
     {
         name = CleanName(name);
         composition.Validate();
@@ -82,6 +82,7 @@ public sealed partial class LibraryStore
                 replacedFiles = new[] { image.FileName, image.OriginalFileName, image.CompositionFileName }
                     .OfType<string>().Where(file => file.Length > 0).Distinct().ToList();
                 image.Name = name;
+                if (nsfw.HasValue) image.Nsfw = nsfw.Value;
                 image.FileName = imageFile;
                 image.OriginalFileName = null;
                 image.OriginalDiscarded = false;

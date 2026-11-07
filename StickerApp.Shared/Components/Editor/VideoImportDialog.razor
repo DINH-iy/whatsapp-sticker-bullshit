@@ -19,8 +19,9 @@
         @if (loading) { <p role="status">Loading video…</p> }
         @if (ready)
         {
-            <AnimationTimeline Duration="@duration" Start="@start" End="@end" Thumbnails="@thumbnails" StartChanged="ChangeStart" EndChanged="ChangeEnd" Disabled="@converting" />
-            <button class="button" type="button" @onclick="Preview" disabled="@converting"><Icon Name="@(playing ? "pause" : "play")" />@(playing ? "Pause clip" : "Preview clip")</button>
+            <AnimationTimeline Duration="@duration" Start="@start" End="@end" Thumbnails="@thumbnails" StartChanged="ChangeStart" EndChanged="ChangeEnd" Disabled="@converting">
+                <PlaybackControl><button class="button animation-preview-button" type="button" @onclick="Preview" disabled="@converting" aria-label="@(playing ? "Pause clip" : "Preview clip")"><Icon Name="@(playing ? "pause" : "play")" />@(playing ? "Pause" : "Preview")</button></PlaybackControl>
+            </AnimationTimeline>
             <div class="video-import-options">
                 @if (!ClipReview) { <label>GIF name<input @bind="name" maxlength="128" disabled="@converting" /></label> }
                 <label>Frames per second<select @bind="fps" disabled="@converting"><option value="8">8 · smaller file</option><option value="12">12</option><option value="20">20 · smoother</option></select></label>

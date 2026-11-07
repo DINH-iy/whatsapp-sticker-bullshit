@@ -5,6 +5,7 @@ public partial class Home
     private bool showLayerEditor;
     private Guid? compositionStickerId;
     private bool compositionStartWithText;
+    private bool? compositionInitialNsfw;
     private string? compositionInitialSource, compositionInitialName;
     private Task AddTextToEdited() => OpenEditedLayers(startWithText: true);
     private Task MakeEditedLayered() => OpenEditedLayers(startWithText: false);
@@ -18,6 +19,7 @@ public partial class Home
             compositionStickerId = editing.Id;
             compositionInitialSource = source; compositionInitialName = editName;
             compositionStartWithText = startWithText;
+            compositionInitialNsfw = editNsfw;
             busy = false; await CancelEditing();
             showLayerEditor = true;
         }
@@ -29,7 +31,7 @@ public partial class Home
     private void NewComposition()
     {
         compositionStickerId = null;
-        compositionStartWithText = false; compositionInitialSource = compositionInitialName = null;
+        compositionStartWithText = false; compositionInitialSource = compositionInitialName = null; compositionInitialNsfw = null;
         showLayerEditor = true;
     }
 

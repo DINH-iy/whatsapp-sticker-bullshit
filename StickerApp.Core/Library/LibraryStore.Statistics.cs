@@ -75,6 +75,7 @@ public sealed partial class LibraryStore
                     throw new InvalidOperationException("These copies have too many combined tags. Shorten their tags before merging.");
                 keeper.Tags = tags;
                 keeper.Favorite = images.Any(image => image.Favorite);
+                keeper.Nsfw = images.Any(image => image.Nsfw);
                 var groupRemovals = selection.RemoveIds.ToHashSet();
                 foreach (var pack in library.Packs.Where(pack => pack.StickerIds.Any(groupRemovals.Contains)))
                 {

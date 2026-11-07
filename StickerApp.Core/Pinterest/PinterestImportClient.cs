@@ -116,6 +116,7 @@ public sealed class PinterestImportClient : IDisposable
             List<BatchImportFile> files = [];
             TimeSpan downloadTime = TimeSpan.Zero;
             long downloadedBytes = 0;
+            long preparedBytes = 0;
             progress?.Report(new(0, images.Count));
             foreach (var image in images)
             {
@@ -144,7 +145,9 @@ public sealed class PinterestImportClient : IDisposable
                     await File.WriteAllBytesAsync(path, converted, timeout.Token);
                 }
                 else MediaInspector.Inspect(await File.ReadAllBytesAsync(path, timeout.Token));
-                var title = string.IsNullOrWhiteSpace(image.Title) ? $"Pinterest {image.PinId}" : image.Title.Trim();
+                preparedBytes += new FileInfo(path).Length;
+                if (preparedBytes > MaxBatchBytes) throw new InvalidDataException("The prepared batch exceeds 250 MB. Select fewer items or shorter video clips.");
+                var title = string.IsNullOrWhiteSpace(image.Title) ? $"Pinterest {(image.IsVideo ? "video" : "image")} {files.Count + 1}" : image.Title.Trim();
                 files.Add(new(title[..Math.Min(128, title.Length)], path,
                     keepOriginals is not null && keepOriginals.TryGetValue(image.PinId, out var keep) ? keep : null));
                 // Wait for two completed downloads before extrapolating; the estimate

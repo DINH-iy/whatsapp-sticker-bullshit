@@ -39,8 +39,8 @@
                 </EditorToolDock>
             }
         </div>
-        @Timeline
-        @if (Animated)
+        @if (Timeline is not null) { @Timeline(new PlaybackControlState(() => Run("preview", TrimStart, TrimEnd), previewing, working || adjustmentTool == "transform")) }
+        @if (Animated && Timeline is null)
         {
             <button class="button animation-preview-button" @onclick='() => Run("preview", TrimStart, TrimEnd)' disabled="@(working || adjustmentTool == "transform")"><Icon Name="@(previewing ? "pause" : "play")" />@(previewing ? "Stop preview" : "Preview animation")</button>
         }
@@ -93,7 +93,8 @@
     [Parameter] public EventCallback OnAddText { get; set; }
     [Parameter] public EventCallback OnMakeLayered { get; set; }
     [Parameter] public RenderFragment? Options { get; set; }
-    [Parameter] public RenderFragment? Timeline { get; set; }
+    [Parameter] public RenderFragment<PlaybackControlState>? Timeline { get; set; }
+    public sealed record PlaybackControlState(Func<Task> Toggle, bool Playing, bool Disabled);
     [Parameter] public bool Animated { get; set; }
     [Parameter] public string InitialTool { get; set; } = "crop";
     [Parameter] public double TrimStart { get; set; }

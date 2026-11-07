@@ -13,6 +13,7 @@
         <input id="new-pack-name" class="new-pack-name" @bind="name" @bind:event="oninput" maxlength="128" required autofocus placeholder="e.g. Everyday reactions" disabled="@saving" />
         <label for="new-pack-publisher" class="settings-field-label">Publisher</label>
         <input id="new-pack-publisher" class="new-pack-name" @bind="publisher" @bind:event="oninput" maxlength="128" required placeholder="Your name or brand" disabled="@saving" />
+        <label class="toggle-row editor-spoiler-toggle"><input type="checkbox" @bind="nsfw" disabled="@saving" />NSFW spoiler</label>
         @if (error is not null)
         {
             <p class="error" role="alert">@error</p>
