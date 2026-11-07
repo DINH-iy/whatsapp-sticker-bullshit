@@ -1,3 +1,4 @@
+import { renderText, defaultText, validateTextFont } from './text-layers.js';
 import { rotationGrip } from './rotation-grip.js';
 import { applyColorEffect } from './color-effect.js';
 import { previewControls } from './animation-preview.js';
@@ -46,7 +47,7 @@ export function create(canvas, reference) {
     const elapsed = () => paused ? pausedTime : playbackOffset + (performance.now() - playbackOrigin) * playbackRate;
     const controls = previewControls(root, {
         seek(seconds) {
-            const layer = active(); if (!layer?.gifSource) return;
+            const layer = active()?.gifSource ? active() : layers.find(layer => layer.gifSource); if (!layer) return;
             pausedTime = Math.max(0, (clamp(seconds, layer.trimStart, layer.trimEnd - 0.001) - layer.trimStart) * 1000);
             paused = true; cancelAnimationFrame(animationFrame); animationFrame = undefined;
             render(); reference.invokeMethodAsync('PreviewChanged', false).catch(() => {});
@@ -64,7 +65,8 @@ export function create(canvas, reference) {
         animationFrame = requestAnimationFrame(play);
     }
     function animate() { if (!animationFrame && !disposed && !exporting) animationFrame = requestAnimationFrame(play); }
-    const sourceSize = layer => layer.source.length + (layer.gifSource?.length ?? 0);
+    const fontRegistry = new Map();
+    const sourceSize = layer => layer.source.length + (layer.gifSource?.length ?? 0) + (layer.text?.fontData?.length ?? 0);
     const snapshot = () => ({ layers: layers.map(layer => ({ ...layer })), selected });
     const remember = () => {
         undo.push(snapshot()); if (undo.length > 20) undo.shift(); redo = [];
@@ -89,7 +91,7 @@ export function create(canvas, reference) {
         }
         return thumbnails.get(image);
     }
-    const state = () => ({ layers: layers.map(({ source, gifSource, ...layer }) => ({ ...layer, isGif: !!gifSource, gifThumbnails: gifs.get(gifSource)?.thumbnails ?? [], thumbnail: thumbnail(layer) })),
+    const state = () => ({ layers: layers.map(({ source, gifSource, ...layer }) => ({ ...layer, text: layer.text ? {...layer.text,fontData:null} : null, isGif: !!gifSource, gifThumbnails: gifs.get(gifSource)?.thumbnails ?? [], thumbnail: thumbnail(layer) })),
         selected, canUndo: undo.length > 0, canRedo: redo.length > 0, previewPlaying: !paused });
     const notify = () => { if (!disposed) return reference.invokeMethodAsync('LayersChanged', state()); };
     const decode = async source => { const image = new Image(); image.src = source; await image.decode(); return image; };
@@ -155,7 +157,8 @@ export function create(canvas, reference) {
             context.restore();
         }
         const layer = active();
-        if (layer?.gifSource) controls.update(layer.trimStart + elapsed() % Math.max(20, (layer.trimEnd - layer.trimStart) * 1000) / 1000);
+        const clip = layer?.gifSource ? layer : layers.find(item => item.gifSource);
+        if (clip) controls.update(clip.trimStart + elapsed() % Math.max(20, (clip.trimEnd - clip.trimStart) * 1000) / 1000);
         placeHandles(layer, selection);
         if (layer) {
             const dial = root.querySelector('[data-adjustment-scope="layer"] [data-layer-dial]');
@@ -300,10 +303,11 @@ export function create(canvas, reference) {
         const control = event.target;
         if (!control.closest('[data-adjustment-scope="layer"]') && !control.dataset?.gifBound) return;
         const property = control.dataset?.layerProperty;
-        if (control.dataset?.gifBound && active()?.gifSource) {
+        const clip = active()?.gifSource ? active() : layers.find(item => item.gifSource);
+        if (control.dataset?.gifBound && clip) {
             let value = Number(control.value); if (!Number.isFinite(value)) return;
             if (editingControl !== control) { remember(); editingControl = control; }
-            const layer = active();
+            const layer = clip;
             if (control.dataset.gifBound === 'start') {
                 layer.trimStart = clamp(value, 0, layer.trimEnd - 0.02);
                 if (layer.trimEnd - layer.trimStart > 10) layer.trimEnd = layer.trimStart + 10;
@@ -414,7 +418,37 @@ export function create(canvas, reference) {
     root.addEventListener('change', change);
     canvas.addEventListener('pointerdown', down); canvas.addEventListener('pointermove', move);
     canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
+    async function textArtwork(options,replaced=null) {
+        const data=fontRegistry.get(options.font)?.data ?? options.fontData;
+        const artwork=await renderText({...options,fontData:options.font.startsWith('custom-')?data:null});
+        if(layers.reduce((sum,item)=>sum+sourceSize(item),0)-(replaced?sourceSize(replaced):0)+artwork.source.length+(data?.length??0)>maxSources)
+            throw new Error('Text and embedded fonts exceed the 24 MB composition limit.');
+        return artwork;
+    }
+    function positionText(layer,placement) {
+        if(placement==='free')return;
+        layer.x=256; layer.y=placement==='top'?16+layer.height/2:placement==='bottom'?496-layer.height/2:256;
+    }
     return {
+        setFonts(fonts) { for(const font of fonts)fontRegistry.set(font.id,font); },
+        validateFont(id,data) { return validateTextFont(data); },
+        async addText(placement='random') {
+            if(layers.length>=maxLayers)throw new Error('A composition supports up to 10 layers.');
+            if(placement==='random')placement=Math.random()<0.5?'top':'bottom';
+            const content=placement==='top'?'TOP TEXT':placement==='bottom'?'BOTTOM TEXT':'YOUR TEXT';
+            const artwork=await textArtwork({...defaultText(),content});const scale=Math.min(1,480/artwork.width,480/artwork.height);
+            const layer={id:`text-${Date.now()}-${Math.random().toString(36).slice(2)}`,name:'Text: '+content,source:artwork.source,text:artwork.text,x:256,y:256,width:artwork.width*scale,height:artwork.height*scale,rotation:0,opacity:1,flipX:false,tint:null,hue:0,colorStrength:1};
+            remember();positionText(layer,placement);layers.push(layer);images.set(layer.source,artwork.image);selected=layers.length-1;render();return state();
+        },
+        async updateText(options) {
+            const layer=active();if(!layer?.text)throw new Error('Select a text layer.');
+            const artwork=await textArtwork({...options,fontData:options.font===layer.text.font?layer.text.fontData:null},layer);
+            const scaleX=layer.width/images.get(layer.source).width,scaleY=layer.height/images.get(layer.source).height;
+            remember();layer.source=artwork.source;layer.text=artwork.text;layer.name='Text: '+(options.content.trim().slice(0,100)||'Empty');
+            layer.width=clamp(artwork.width*scaleX,1,2048);layer.height=clamp(artwork.height*scaleY,1,2048);
+            images.set(layer.source,artwork.image);tints.delete(layer.id);render();return state();
+        },
+        placeText(placement) { if(active()?.text){remember();positionText(active(),placement);render();}return state(); },
         preview(playing) {
             if (playing && paused) { playbackOffset = pausedTime; playbackOrigin = performance.now(); paused = false; animate(); }
             else if (!playing && !paused) { pausedTime = elapsed(); paused = true; cancelAnimationFrame(animationFrame); animationFrame = undefined; render(false); }
@@ -444,7 +478,7 @@ export function create(canvas, reference) {
             }
             playbackOffset = pausedTime = 0; playbackOrigin = performance.now(); paused = false; render(); animate(); return state();
         },
-        async add(name, source) {
+        async add(name, source, fitLimit=400) {
             if (layers.length >= maxLayers) throw new Error('A composition supports up to 10 layers.');
             const gif = source.startsWith('data:image/gif;base64,') || source.startsWith('data:image/webp;base64,') ? await openGif(source) : null;
             const image = gif ? gif.reader.at(0) : await decode(source);
@@ -459,7 +493,7 @@ export function create(canvas, reference) {
             const png = normalized.toDataURL('image/png');
             if (layers.reduce((sum, layer) => sum + sourceSize(layer), png.length + (gif ? source.length : 0)) > maxSources)
                 throw new Error('Layer images exceed 24 MB. Use smaller or fewer images.');
-            const fit = Math.min(1, 400 / Math.max(normalized.width, normalized.height));
+            const fit = Math.min(1, fitLimit / Math.max(normalized.width, normalized.height));
             const id = `layer-${Date.now()}-${Math.random().toString(36).slice(2)}`;
             const layer = { id, name: name.slice(0, 128) || 'Image', source: png, x: 256, y: 256,
                 width: Math.max(1, Math.round(normalized.width * fit)), height: Math.max(1, Math.round(normalized.height * fit)),
@@ -485,7 +519,7 @@ export function create(canvas, reference) {
             const scaleX = layer.width / oldImage.width, scaleY = layer.height / oldImage.height;
             layer.width = clamp(image.width * scaleX, 1, 2048);
             layer.height = clamp(image.height * scaleY, 1, 2048);
-            layer.source = source; images.set(source, image); tints.delete(layer.id);
+            layer.source = source; layer.text = null; images.set(source, image); tints.delete(layer.id);
             layer.gifSource = animationSource;
             if (animation) {
                 gifs.set(animationSource, animation); layer.gifDuration = animation.reader.duration / 1000;

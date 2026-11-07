@@ -5,12 +5,15 @@
 
 <dialog @ref="dialog" class="folder-dialog video-import-dialog" aria-labelledby="video-import-title" @onkeydown="HandleKey" @onkeydown:stopPropagation>
     <div class="folder-dialog-heading">
-        <h2 id="video-import-title">Video to GIF</h2>
+        <h2 id="video-import-title">@(ClipReview ? "Trim Pinterest video" : "Video to GIF")</h2>
         <button class="button icon-button" type="button" aria-label="Close video import" @onclick="Close" disabled="@saving"><Icon Name="close" /></button>
     </div>
+    <div hidden="@(InitialVideo is not null)">
     <label class="button file-button"><Icon Name="animation" />Choose video
         <input @ref="fileInput" type="file" accept="video/*,.mp4,.mov,.webm,.m4v" aria-label="Choose video file" disabled="@converting" />
     </label>
+    </div>
+    @if (ClipReview) { <p class="helper">Choose up to 10 seconds for this video. Cancel stops the whole Pinterest import; nothing has been saved yet.</p> }
     <div @ref="editorRoot" class="video-import-editor" aria-busy="@(converting ? "true" : "false")">
         <video @ref="video" class="video-import-preview" controls="@(!converting)" playsinline muted preload="auto" aria-label="Video clip preview" hidden="@(!ready)" />
         @if (loading) { <p role="status">Loading video…</p> }
@@ -19,24 +22,31 @@
             <AnimationTimeline Duration="@duration" Start="@start" End="@end" Thumbnails="@thumbnails" StartChanged="ChangeStart" EndChanged="ChangeEnd" Disabled="@converting" />
             <button class="button" type="button" @onclick="Preview" disabled="@converting"><Icon Name="@(playing ? "pause" : "play")" />@(playing ? "Pause clip" : "Preview clip")</button>
             <div class="video-import-options">
-                <label>GIF name<input @bind="name" maxlength="128" disabled="@converting" /></label>
+                @if (!ClipReview) { <label>GIF name<input @bind="name" maxlength="128" disabled="@converting" /></label> }
                 <label>Frames per second<select @bind="fps" disabled="@converting"><option value="8">8 · smaller file</option><option value="12">12</option><option value="20">20 · smoother</option></select></label>
             </div>
             <HelpDisclosure Summary="Video import help"><p class="helper">Choose all or part of the video, up to 10 seconds. Conversion happens on your device, without sound. Videos up to 100 MB are supported when your device can play their format. The GIF fits within 512 × 512 without enlargement.</p></HelpDisclosure>
         }
-        @if (converting) { <p role="status">@(saving ? "Adding GIF…" : $"Creating GIF… {progress}%")</p><progress max="100" value="@progress" aria-label="GIF conversion progress"></progress> }
         @if (error is not null) { <p class="notice notice-error" role="alert">@error</p> }
     </div>
     <div class="dialog-actions">
         <button class="button" type="button" @onclick="Close" disabled="@saving">Cancel</button>
-        <button class="button primary" type="button" @onclick="Convert" disabled="@(!ready || converting || string.IsNullOrWhiteSpace(name))"><Icon Name="check" />Create GIF</button>
+        <button class="button primary" type="button" @onclick="Convert" disabled="@(!ready || converting || string.IsNullOrWhiteSpace(name))"><Icon Name="check" />@(ClipReview ? "Use clip" : "Create GIF")</button>
     </div>
 </dialog>
+@if (converting)
+{
+    <OperationProgressDialog Title="@(saving && !ClipReview ? "Adding GIF…" : "Creating GIF…")" Progress="@progress" ProgressLabel="GIF conversion progress" CanCancel="@(!saving)" OnCancel="Close" />
+}
 
 @code {
     [Parameter] public Guid? PackId { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public EventCallback<Guid> OnImported { get; set; }
+    [Parameter] public Stream? InitialVideo { get; set; }
+    [Parameter] public string? InitialName { get; set; }
+    [Parameter] public EventCallback<byte[]> OnConverted { get; set; }
+    private bool ClipReview => OnConverted.HasDelegate;
     private ElementReference dialog, video, fileInput, editorRoot;
     private IJSObjectReference? helper, module, controller;
     private DotNetObjectReference<VideoImportDialog>? reference;
@@ -54,6 +64,15 @@
         module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/media/video-import.js");
         reference = DotNetObjectReference.Create(this);
         controller = await module.InvokeAsync<IJSObjectReference>("create", video, fileInput, editorRoot, reference);
+        if (InitialVideo is not null)
+        {
+            try
+            {
+                using var stream = new DotNetStreamReference(InitialVideo, leaveOpen: true);
+                await controller.InvokeVoidAsync("loadStream", TimeSpan.FromMinutes(3), stream, (InitialName ?? "Pinterest video") + ".mp4");
+            }
+            catch (JSException exception) { if (!disposed) { error = exception.Message.Split('\n')[0]; loading = false; StateHasChanged(); } }
+        }
     }
     public sealed class VideoInfo { public string Name { get; set; } = "Video clip"; public double Duration { get; set; } public string[] Thumbnails { get; set; } = []; }
     [JSInvokable] public void VideoLoading() { ready = false; loading = true; error = null; StateHasChanged(); }
@@ -76,8 +95,12 @@
             using var memory = new MemoryStream(); await stream.CopyToAsync(memory);
             if (disposed) return;
             saving = true; StateHasChanged();
-            var stickerId = await Store.ImportAsync(name.Trim() + ".gif", memory.ToArray(), PackId);
-            await OnImported.InvokeAsync(stickerId);
+            if (ClipReview) await OnConverted.InvokeAsync(memory.ToArray());
+            else
+            {
+                var stickerId = await Store.ImportAsync(name.Trim() + ".gif", memory.ToArray(), PackId);
+                await OnImported.InvokeAsync(stickerId);
+            }
         }
         catch (Exception ex) when (ex is JSException or IOException or InvalidOperationException or NotSupportedException or OperationCanceledException)
         {

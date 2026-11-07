@@ -30,6 +30,7 @@ public partial class LibraryStatisticsSettings
     private string progress = "Loading statistics…";
     private int DuplicateCount => scan?.Duplicates.Sum(group => group.Images.Count - 1) ?? 0;
 
+    public Task RefreshAsync() => Refresh();
     protected override Task OnInitializedAsync() => Refresh();
 
     private async Task Refresh() => await Run("Measuring library storage…", async () =>

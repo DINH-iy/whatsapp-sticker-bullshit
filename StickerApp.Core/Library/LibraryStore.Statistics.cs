@@ -5,7 +5,12 @@ namespace StickerApp.Core;
 public sealed record LibraryStatistics(int Images, int AnimatedImages, int Packs, long CurrentBytes,
     long OriginalBytes, long LayerBytes, long UnusedBytes, int UnusedFiles, long IndexBytes,
     long MediaBytes, string Root, long RemovableOriginalBytes, int RemovableOriginals,
-    IReadOnlyList<PackStorageStatistics> PackStorage, IReadOnlyList<LibraryStorageSegment> StorageSegments);
+    IReadOnlyList<PackStorageStatistics> PackStorage, IReadOnlyList<LibraryStorageSegment> StorageSegments)
+{
+    public long FontBytes { get; init; }
+    public IReadOnlyList<FontStorageStatistics> Fonts { get; init; } = [];
+}
+public sealed record FontStorageStatistics(string Name, long Bytes);
 public sealed record PackStorageStatistics(Guid Id, string Name, int Images, long StickerBytes, long SourceBytes);
 public sealed record LibraryStorageSegment(string Label, long Bytes, string ColorClass);
 public sealed record DuplicateImage(Guid Id, string Name, long Bytes, bool Animated);
@@ -82,7 +87,7 @@ public sealed partial class LibraryStore
             var removedFiles = library.Stickers.Where(image => removals.Contains(image.Id)).SelectMany(ImageFiles).ToHashSet();
             library.Stickers.RemoveAll(image => removals.Contains(image.Id));
             await SaveLibrarySnapshotAsync(library);
-            var retainedFiles = library.Stickers.SelectMany(ImageFiles).ToHashSet();
+            var retainedFiles = library.Stickers.SelectMany(ImageFiles).Concat(library.Fonts.Select(f => f.FileName)).ToHashSet();
             foreach (var file in removedFiles.Except(retainedFiles)) TryDeleteMedia(file);
             return removals.Count;
         }
@@ -129,7 +134,7 @@ public sealed partial class LibraryStore
             }
             if (affected.Count == 0) return 0;
             await SaveLibrarySnapshotAsync(library);
-            var retained = library.Stickers.SelectMany(ImageFiles).ToHashSet();
+            var retained = library.Stickers.SelectMany(ImageFiles).Concat(library.Fonts.Select(f => f.FileName)).ToHashSet();
             long freed = 0;
             foreach (var file in files.Except(retained))
             {
@@ -173,12 +178,12 @@ public sealed partial class LibraryStore
                 memberships.Add(packIndex);
             }
         }
-        var referenced = library.Stickers.SelectMany(ImageFiles).ToHashSet();
+        var referenced = library.Stickers.SelectMany(ImageFiles).Concat(library.Fonts.Select(f => f.FileName)).ToHashSet();
         var unusedSet = unused.ToHashSet();
         var segmentBytes = new Dictionary<int, long>();
         foreach (var file in files)
         {
-            var category = owners.TryGetValue(file.Key, out var memberships) && memberships.Count > 0
+            var category = library.Fonts.Any(font => font.FileName == file.Key) ? -5 : owners.TryGetValue(file.Key, out var memberships) && memberships.Count > 0
                 ? memberships.Count == 1 ? memberships.Single() : -1
                 : referenced.Contains(file.Key) ? -2 : unusedSet.Contains(file.Key) ? -3 : -4;
             segmentBytes[category] = segmentBytes.GetValueOrDefault(category) + file.Value;
@@ -188,6 +193,7 @@ public sealed partial class LibraryStore
         {
             var (label, color) = pair.Key switch
             {
+                -5 => ("Custom fonts", "storage-color-fonts"),
                 -1 => ("Shared between packs", "storage-color-shared"),
                 -2 => ("Not in a pack", "storage-color-unpacked"),
                 -3 => ("Unused edit files", "storage-color-unused"),
@@ -200,12 +206,12 @@ public sealed partial class LibraryStore
         if (indexBytes > 0) segments.Add(new("Library index", indexBytes, "storage-color-index"));
         return new(library.Stickers.Count, library.Stickers.Count(image => image.Animated), library.Packs.Count,
             Size(current), Size(originals), Size(layers), Size(unused), unused.Count,
-            indexBytes, files.Values.Sum(), Root, Size(removable), removable.Count, packs, segments);
+            indexBytes, files.Values.Sum(), Root, Size(removable), removable.Count, packs, segments) { FontBytes = Size(library.Fonts.Select(f => f.FileName)), Fonts = library.Fonts.Select(f => new FontStorageStatistics(f.Name, files.GetValueOrDefault(f.FileName))).ToList() };
     }
 
     private List<string> FindUnusedFiles(StickerLibrary library)
     {
-        var referenced = library.Stickers.SelectMany(ImageFiles).ToHashSet();
+        var referenced = library.Stickers.SelectMany(ImageFiles).Concat(library.Fonts.Select(f => f.FileName)).ToHashSet();
         return Directory.EnumerateFiles(Path.Combine(Root, "media")).Select(Path.GetFileName).OfType<string>()
             .Where(file => !referenced.Contains(file) && IsGeneratedMediaFile(file)).ToList();
     }
@@ -243,8 +249,8 @@ public sealed partial class LibraryStore
         if (StorageLimitBytes is { } limit)
         {
             var previous = await ReadInternalAsync();
-            var oldFiles = previous.Stickers.SelectMany(ImageFiles).ToHashSet();
-            var newFiles = library.Stickers.SelectMany(ImageFiles).ToHashSet();
+            var oldFiles = previous.Stickers.SelectMany(ImageFiles).Concat(previous.Fonts.Select(f => f.FileName)).ToHashSet();
+            var newFiles = library.Stickers.SelectMany(ImageFiles).Concat(library.Fonts.Select(f => f.FileName)).ToHashSet();
             var media = Directory.EnumerateFiles(Path.Combine(Root, "media")).Select(path => new FileInfo(path))
                 .ToDictionary(file => file.Name, file => file.Length);
             long Size(IEnumerable<string> names) => names.Sum(name => media.GetValueOrDefault(name));

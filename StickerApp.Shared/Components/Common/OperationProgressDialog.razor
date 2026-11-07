@@ -1,0 +1,44 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<dialog @ref="dialog" class="operation-progress-overlay" aria-labelledby="@titleId" @oncancel="Cancel" @oncancel:preventDefault @onkeydown:stopPropagation>
+    <div class="operation-progress-card">
+        <span class="feedback-spinner" aria-hidden="true"></span>
+        <h2 id="@titleId" role="status">@Title</h2>
+        @if (!string.IsNullOrWhiteSpace(Detail)) { <p class="operation-progress-detail" role="status">@Detail</p> }
+        @if (Progress is { } percent)
+        {
+            <div class="operation-progress-meter">
+                <progress max="100" value="@percent" aria-label="@ProgressLabel"></progress>
+                <span aria-hidden="true">@percent%</span>
+            </div>
+        }
+        @if (!string.IsNullOrWhiteSpace(Estimate)) { <p class="operation-progress-estimate">@Estimate</p> }
+        <button class="button" type="button" @onclick="Cancel" disabled="@(!CanCancel)">Cancel</button>
+    </div>
+</dialog>
+
+@code {
+    [Parameter] public string Title { get; set; } = "Loading…";
+    [Parameter] public string? Detail { get; set; }
+    [Parameter] public string? Estimate { get; set; }
+    [Parameter] public int? Progress { get; set; }
+    [Parameter] public string ProgressLabel { get; set; } = "Progress";
+    [Parameter] public bool CanCancel { get; set; } = true;
+    private readonly string titleId = "operation-progress-" + Guid.NewGuid().ToString("N");
+    [Parameter] public EventCallback OnCancel { get; set; }
+    private ElementReference dialog;
+    private IJSObjectReference? helper;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        helper = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/dialog.js");
+        await helper.InvokeVoidAsync("open", dialog);
+    }
+    private Task Cancel() => CanCancel ? OnCancel.InvokeAsync() : Task.CompletedTask;
+    public async ValueTask DisposeAsync()
+    {
+        if (helper is null) return;
+        try { await helper.DisposeAsync(); } catch (JSDisconnectedException) { }
+    }
+}

@@ -53,6 +53,14 @@
             <button class="button @(tool == "wand" ? "selected-tool" : "")" @onclick='() => SelectTool("wand")' disabled="@working"><Icon Name="wand" /><span>Magic wand</span></button>
         </div>
         <div class="customizer-tools" role="group" aria-label="Image adjustments">
+            @if (OnAddText.HasDelegate)
+            {
+                <button class="button" type="button" @onclick="OnAddText" disabled="@working"><Icon Name="text" /><span>Add text</span></button>
+            }
+            @if (OnMakeLayered.HasDelegate)
+            {
+                <button class="button" type="button" @onclick="OnMakeLayered" disabled="@working"><Icon Name="layers" /><span>Make layered</span></button>
+            }
             <button class="button @(adjustmentTool == "opacity" ? "selected-tool" : "")" @onclick='() => SelectAdjustment("opacity")' disabled="@working"><Icon Name="opacity" /><span>Opacity</span></button>
             <button class="button @(adjustmentTool == "tint" ? "selected-tool" : "")" @onclick='() => SelectAdjustment("tint")' disabled="@working"><Icon Name="palette" /><span>Color</span></button>
             <button class="button @(adjustmentTool == "transform" ? "selected-tool" : "")" @onclick='() => SelectAdjustment("transform")' disabled="@working"><Icon Name="crop" /><span>Transform</span></button>
@@ -82,6 +90,8 @@
 @code {
     [Parameter, EditorRequired] public string Source { get; set; } = "";
     [Parameter] public EventCallback OnReady { get; set; }
+    [Parameter] public EventCallback OnAddText { get; set; }
+    [Parameter] public EventCallback OnMakeLayered { get; set; }
     [Parameter] public RenderFragment? Options { get; set; }
     [Parameter] public RenderFragment? Timeline { get; set; }
     [Parameter] public bool Animated { get; set; }

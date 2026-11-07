@@ -23,6 +23,25 @@ public partial class PinterestImport
     private bool busy;
     private bool disposed;
     private CancellationTokenSource? operation;
+    private PinterestImportProgress? importProgress;
+    private Stream? videoInput;
+    private PinterestImage? videoMedia;
+    private TaskCompletionSource<byte[]>? videoResult;
+    private int? ProgressPercent => importProgress is { IsSaving: false, Total: > 0 } progress
+        ? progress.Completed * 100 / progress.Total : null;
+    private string? ProgressDetail => importProgress is { } progress
+        ? $"{progress.Completed} of {progress.Total} items ready · {progress.Total - progress.Completed} left"
+        : "Finding images in your shared selection…";
+    private string? TimeEstimate => importProgress switch
+    {
+        { IsSaving: true } => "Finishing the import to your library…",
+        { IsConvertingVideo: true } => "Choose a clip for the current video. Your whole batch will be saved together.",
+        { EstimatedRemaining: { } remaining } => remaining.TotalSeconds < 60
+            ? $"About {Math.Max(1, (int)Math.Ceiling(remaining.TotalSeconds))} s left to download"
+            : $"About {(int)Math.Ceiling(remaining.TotalMinutes)} min left to download",
+        not null => "Estimating download time…",
+        _ => null
+    };
 
     private Guid? DestinationId => Guid.TryParse(destination, out var id) ? id : null;
     private bool CreatingPack => destination == "new";
@@ -89,10 +108,10 @@ public partial class PinterestImport
         selected.Clear();
         await Run(async token =>
         {
-            status = "Loading the shared selection from Pinterest…";
+            status = "Loading Pinterest images…";
             selection = await Importer.LoadAsync(text, token);
             keepOriginals.Clear();
-            foreach (var image in selection.Images) keepOriginals[image.PinId] = Store.KeepOriginalStillImages;
+            foreach (var image in selection.Images) keepOriginals[image.PinId] = image.IsVideo ? Store.KeepOriginalAnimations : Store.KeepOriginalStillImages;
             SelectAll();
             library = await Store.ReadAsync();
         });
@@ -108,16 +127,18 @@ public partial class PinterestImport
         var publisher = CreatingPack ? newPackPublisher.Trim() : null;
         await Run(async token =>
         {
-            status = $"Downloading 0 of {images.Count} images…";
+            status = "Downloading media…";
+            importProgress = new(0, images.Count);
             var progress = new Progress<PinterestImportProgress>(value => _ = InvokeAsync(() =>
             {
-                if (disposed || !busy) return;
-                status = value.Completed == value.Total ? "Saving images…" : $"Downloading {value.Completed} of {value.Total} images…";
+                if (disposed || !busy || operation is null || operation.Token != token || token.IsCancellationRequested) return;
+                importProgress = value;
+                status = value.IsSaving ? "Saving media…" : value.IsConvertingVideo ? "Reviewing video clip…" : "Downloading media…";
                 StateHasChanged();
             }));
             var importedPack = await Importer.ImportAsync(Store, images, pack, progress, token, name,
-                Store.AskForOriginalOnImport ? keepOriginals : null, publisher);
-            success = name is null ? $"Imported {images.Count} images." : $"Created “{name}” with {images.Count} images.";
+                Store.AskForOriginalOnImport ? keepOriginals : null, publisher, ReviewVideo);
+            success = name is null ? $"Imported {images.Count} items." : $"Created “{name}” with {images.Count} items.";
             destinationLink = importedPack is { } id ? $"packs/{id}" : "library";
             destination = importedPack?.ToString() ?? "";
             newPackName = "";
@@ -134,9 +155,32 @@ public partial class PinterestImport
         });
     }
 
+    private async Task<byte[]> ReviewVideo(PinterestImage media, string path, CancellationToken token)
+    {
+        await using var input = File.OpenRead(path);
+        var completion = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
+        await InvokeAsync(() =>
+        {
+            videoInput = input; videoMedia = media; videoResult = completion;
+            if (!disposed) StateHasChanged();
+        });
+        try { return await completion.Task.WaitAsync(token); }
+        finally
+        {
+            await InvokeAsync(() =>
+            {
+                if (videoResult == completion) { videoInput = null; videoMedia = null; videoResult = null; }
+                if (!disposed) StateHasChanged();
+            });
+        }
+    }
+    private void VideoClipReady(byte[] bytes) => videoResult?.TrySetResult(bytes);
+    private void CancelVideoClip() { Cancel(); videoResult?.TrySetCanceled(); }
+
     private async Task Run(Func<CancellationToken, Task> action)
     {
         busy = true;
+        importProgress = null;
         error = null;
         success = null;
         using var cancellation = new CancellationTokenSource();
@@ -149,7 +193,7 @@ public partial class PinterestImport
         }
         catch (OperationCanceledException)
         {
-            error = cancellation.IsCancellationRequested ? "Cancelled. No images were imported." : "The request timed out. Try again.";
+            error = cancellation.IsCancellationRequested ? "Cancelled. No media was imported." : "The request timed out. Try again.";
         }
         catch (Exception exception) when (exception is HttpRequestException or IOException or InvalidOperationException or UnauthorizedAccessException)
         {
@@ -169,7 +213,11 @@ public partial class PinterestImport
     private void Toggle(string id) { if (!selected.Add(id)) selected.Remove(id); }
     private void SelectAll() { if (selection is not null) selected.UnionWith(selection.Images.Select(image => image.PinId)); }
     private void ClearSelection() => selected.Clear();
-    private void Cancel() => operation?.Cancel();
+    private void Cancel()
+    {
+        operation?.Cancel();
+        status = "Cancelling…";
+    }
 
     public void Dispose()
     {

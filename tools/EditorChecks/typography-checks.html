@@ -1,0 +1,32 @@
+<!doctype html><meta charset="utf-8"><title>Interface typography checks</title><script src="/_content/StickerApp.Shared/js/ui/theme.js"></script><link rel="stylesheet" href="/_content/StickerApp.Shared/css/themes.css"><link rel="stylesheet" href="/_content/StickerApp.Shared/css/app.css"><h1>Interface typography checks</h1><pre id="result">Running…</pre><p class="helper" id="sample">Font size sample</p>
+<script type="module">
+const assert=(ok,message)=>{if(!ok)throw new Error(message);};
+try{
+    const api=window.stickerTypography;
+    if(location.search.includes('restore')){
+        await new Promise((resolve,reject)=>{if(document.documentElement.style.getPropertyValue('--app-font-family')==='StikInterfaceCustom')return resolve();const observer=new MutationObserver(()=>{if(document.documentElement.style.getPropertyValue('--app-font-family')==='StikInterfaceCustom'){observer.disconnect();clearTimeout(timeout);resolve();}});const timeout=setTimeout(()=>{observer.disconnect();reject(new Error('Saved interface font was not loaded after reload'));},10000);observer.observe(document.documentElement,{attributes:true});});
+        assert(api.get().font.startsWith('custom-'),'custom font choice must persist');
+        assert(api.get().scale===110&&api.get().spacing===0.5,'custom typography values must persist');
+        assert(document.fonts.check('16px StikInterfaceCustom'),'custom font must load from the device cache');
+        await api.reset();assert(api.get().font==='system'&&api.get().scale===100,'reset must restore defaults');
+        document.querySelector('#result').textContent='PASS: app font family, pixel font scaling, bold, line/letter spacing, custom font decoding/cache, persistence across reload, reset, and independent sticker typography.';
+    }else{
+        const {renderText,defaultText}=await import('/_content/StickerApp.Shared/js/media/text-layers.js');
+        await api.reset();
+        const baseSize=parseFloat(getComputedStyle(document.querySelector('#sample')).fontSize);
+        const before=(await renderText({...defaultText(),content:'UNCHANGED 😎'})).source;
+        await api.set({font:'serif',scale:125,bold:true,spacing:0.8,lineSpacing:120});
+        assert(getComputedStyle(document.body).fontFamily.includes('serif'),'app must use the selected font');
+        assert(Math.abs(parseFloat(getComputedStyle(document.querySelector('#sample')).fontSize)-baseSize*1.25)<0.1,'existing pixel font sizes must scale app-wide');
+        assert(getComputedStyle(document.querySelector('#sample')).fontWeight==='700','bold must apply to app text');
+        assert(document.documentElement.style.getPropertyValue('--app-line-spacing')==='1.2','line spacing must apply');
+        assert(getComputedStyle(document.body).letterSpacing==='0.8px','letter spacing must apply');
+        assert((await renderText({...defaultText(),content:'UNCHANGED 😎'})).source===before,'interface font settings must not change sticker text pixels');
+        const blob=await(await fetch('/_content/StickerApp.Shared/fonts/Anton-Regular.ttf')).blob();const data=await new Promise(resolve=>{const reader=new FileReader();reader.onload=()=>resolve('data:font/ttf;base64,'+reader.result.split(',')[1]);reader.readAsDataURL(blob);});
+        await api.validateFont(data);
+        await api.set({font:'custom-0123456789abcdef0123456789abcdef',scale:110,bold:false,spacing:0.5,lineSpacing:110},data);
+        assert(getComputedStyle(document.body).fontFamily.includes('StikInterfaceCustom'),'custom interface font must apply');
+        location.replace(location.pathname+'?restore=1');
+    }
+}catch(error){document.querySelector('#result').textContent='FAIL: '+error.stack;}
+</script>

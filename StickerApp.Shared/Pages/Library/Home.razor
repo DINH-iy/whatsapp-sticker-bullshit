@@ -246,7 +246,7 @@ else
 
 @if (showLayerEditor)
 {
-    <LayerEditorDialog StickerId="@compositionStickerId" PackId="@activePack" Images="@library.Stickers" Previews="@previews"
+    <LayerEditorDialog StickerId="@compositionStickerId" PackId="@activePack" StartWithText="@compositionStartWithText" InitialSource="@compositionInitialSource" InitialName="@compositionInitialName" Images="@library.Stickers" Previews="@previews"
                        OnCancel="() => showLayerEditor = false" OnSaved="CompositionSaved" />
 }
 
@@ -269,7 +269,7 @@ else
         <div class="editor-dialog-body" hidden="@EditorOpening">
             @if (EditingStill || EditingAnimation)
             {
-                <ImageCustomizer @key="editSource" Source="@editSource" OnReady="EditorToolsReady" Animated="@EditingAnimation" TrimStart="@trimStart" TrimEnd="@(gifDuration > 0 ? trimEnd : null)" OnEditsChanged="recipe => editRecipe = recipe" OnChanged="CustomizeImage" OnBusyChanged="value => customizing = value">
+                <ImageCustomizer @key="editSource" Source="@editSource" OnReady="EditorToolsReady" OnAddText="AddTextToEdited" OnMakeLayered="MakeEditedLayered" Animated="@EditingAnimation" TrimStart="@trimStart" TrimEnd="@(gifDuration > 0 ? trimEnd : null)" OnEditsChanged="recipe => editRecipe = recipe" OnChanged="CustomizeImage" OnBusyChanged="value => customizing = value">
                     <Timeline>
                         @if (EditingAnimation && gifDuration > 0)
                         {

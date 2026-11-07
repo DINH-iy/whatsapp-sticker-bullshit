@@ -4,10 +4,32 @@ public partial class Home
 {
     private bool showLayerEditor;
     private Guid? compositionStickerId;
+    private bool compositionStartWithText;
+    private string? compositionInitialSource, compositionInitialName;
+    private Task AddTextToEdited() => OpenEditedLayers(startWithText: true);
+    private Task MakeEditedLayered() => OpenEditedLayers(startWithText: false);
+    private async Task OpenEditedLayers(bool startWithText)
+    {
+        if (busy || customizing || editing is null) return;
+        try
+        {
+            busy = true;
+            var source = EditingAnimation && (HasTrim || transformed) ? await BuildTrim() : EditingAnimation ? editSource : editPreview;
+            compositionStickerId = editing.Id;
+            compositionInitialSource = source; compositionInitialName = editName;
+            compositionStartWithText = startWithText;
+            busy = false; await CancelEditing();
+            showLayerEditor = true;
+        }
+        catch (Exception exception) when (exception is Microsoft.JSInterop.JSException or InvalidOperationException or IOException)
+        { editError = exception.Message.Split('\n')[0]; }
+        finally { busy = false; }
+    }
 
     private void NewComposition()
     {
         compositionStickerId = null;
+        compositionStartWithText = false; compositionInitialSource = compositionInitialName = null;
         showLayerEditor = true;
     }
 

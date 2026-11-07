@@ -16,6 +16,7 @@ public sealed class LayerPreview : EditorAdjustmentValues
     public string Id { get; set; } = "";
     public string Name { get; set; } = "";
     public string Thumbnail { get; set; } = "";
+    public StickerApp.Core.TextLayerOptions? Text { get; set; }
     public bool IsGif { get; set; }
     public double GifDuration { get; set; }
     public double TrimStart { get; set; }

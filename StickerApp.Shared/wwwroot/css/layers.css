@@ -8,15 +8,15 @@
 .layer-canvas-wrap canvas { display: block; width: 100%; height: auto; aspect-ratio: 1; touch-action: none; cursor: move; }
 .layer-history { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .layer-history .helper { flex-basis: 100%; margin: 0; }
-.layer-panel h3 { margin: 0 0 10px; font-size: 15px; }
-.layer-panel h3 small { color: var(--muted); font-size: 12px; font-weight: 400; }
+.layer-panel h3 { margin: 0 0 10px; font-size: calc(15px * var(--app-font-scale, 1)); }
+.layer-panel h3 small { color: var(--muted); font-size: calc(12px * var(--app-font-scale, 1)); font-weight: 400; }
 .layer-stack { display: flex; flex-direction: column; gap: 6px; max-height: 180px; overflow-y: auto; margin-bottom: 16px; }
 .layer-stack-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 40px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
 .layer-stack-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
 .layer-stack-item small { color: var(--muted); }
 .layer-stack-item[aria-pressed="true"] { border-color: var(--accent); background: var(--soft); }
 .layer-adjustments { border: 0; padding: 0; margin: 0; min-width: 0; }
-.layer-adjustments legend { font-size: 13px; font-weight: 600; padding: 0 0 12px; overflow-wrap: anywhere; }
+.layer-adjustments legend { font-size: calc(13px * var(--app-font-scale, 1)); font-weight: 600; padding: 0 0 12px; overflow-wrap: anywhere; }
 .layer-adjustments > label { margin: 12px 0; }
 .layer-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .layer-pair input { width: 100%; min-width: 0; }
@@ -25,14 +25,14 @@
 .layer-tint { display: flex; align-items: center; gap: 12px; margin: 12px 0; }
 .layer-tint input[type="color"] { width: 48px; min-height: 36px; padding: 3px; }
 .layer-operations { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.layer-operations .button { min-width: 0; font-size: 12px; padding: 0 8px; white-space: normal; line-height: 1.3; }
+.layer-operations .button { min-width: 0; font-size: calc(12px * var(--app-font-scale, 1)); padding: 0 8px; white-space: normal; line-height: calc(1.3 * var(--app-line-spacing, 1)); }
 .layer-footer { position: sticky; bottom: -24px; background: var(--surface); padding: 12px 0; margin-bottom: 0; flex-wrap: wrap; }
 @media (max-width: 700px) {
     .layer-workspace { grid-template-columns: minmax(0, 1fr); }
     .layer-canvas-wrap { max-width: 400px; margin: 0 auto; }
     .layer-add-tools { gap: 6px; }
-    .layer-add-tools .button { padding-inline: 8px; gap: 5px; font-size: 12px; }
-    .layer-add-tools select { padding-inline: 8px; font-size: 12px; }
+    .layer-add-tools .button { padding-inline: 8px; gap: 5px; font-size: calc(12px * var(--app-font-scale, 1)); }
+    .layer-add-tools select { padding-inline: 8px; font-size: calc(12px * var(--app-font-scale, 1)); }
     .layer-add-tools .app-icon { width: 17px; height: 17px; }
     .layer-editor-dialog { padding: 16px; }
     .layer-footer { bottom: -16px; }
@@ -48,20 +48,20 @@
 .layer-handle:hover span, .layer-handle:active span { background: var(--accent); }
 .layer-handle:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
 .layer-rotate-handle { cursor: grab; }
-.layer-rotate-handle span { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; font-size: 18px; line-height: 1; color: #fff; }
+.layer-rotate-handle span { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; font-size: calc(18px * var(--app-font-scale, 1)); line-height: calc(1 * var(--app-line-spacing, 1)); color: #fff; }
 
 .layer-thumbnail { width: 44px; height: 44px; flex: 0 0 44px; object-fit: contain; border: 1px solid var(--line); border-radius: 6px; background: repeating-conic-gradient(var(--checker) 0% 25%, var(--surface) 0% 50%) 50% / 10px 10px; }
 .layer-stack-item { min-height: 60px; }
 .layer-selected-preview { display: flex; align-items: center; gap: 12px; padding: 10px; margin: 0 0 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); }
 .layer-selected-preview img { width: 88px; height: 88px; flex: 0 0 88px; object-fit: contain; border: 1px solid var(--line); border-radius: 6px; background: repeating-conic-gradient(var(--checker) 0% 25%, var(--surface) 0% 50%) 50% / 12px 12px; }
 .layer-selected-preview div { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
-.layer-selected-preview strong { overflow-wrap: anywhere; font-size: 13px; }
-.layer-selected-preview small { color: var(--muted); font-size: 12px; }
+.layer-selected-preview strong { overflow-wrap: anywhere; font-size: calc(13px * var(--app-font-scale, 1)); }
+.layer-selected-preview small { color: var(--muted); font-size: calc(12px * var(--app-font-scale, 1)); }
 
 /* Only the compact save row stays pinned; tools take up their own layout space. */
 .layer-editor-dialog .layer-footer { display: block; z-index: 5; border-top: 1px solid var(--line); }
 .layer-quick-tools { display: grid; grid-template-columns: repeat(auto-fit, minmax(58px, 1fr)); gap: 6px; }
-.layer-quick-tools .button { min-width: 0; min-height: 44px; height: 44px; flex-direction: column; gap: 3px; padding: 4px 2px; font-size: 10px; line-height: 1.1; white-space: normal; }
+.layer-quick-tools .button { min-width: 0; min-height: 44px; height: 44px; flex-direction: column; gap: 3px; padding: 4px 2px; font-size: calc(10px * var(--app-font-scale, 1)); line-height: calc(1.1 * var(--app-line-spacing, 1)); white-space: normal; }
 .layer-quick-tools .app-icon { width: 17px; height: 17px; flex-shrink: 0; }
 .layer-save-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
 @media (max-width: 700px) {
@@ -71,10 +71,10 @@
 
 .layer-tool-panel { position: relative; width: 100%; margin: 12px 0; padding: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
 .layer-tool-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
-.layer-tool-heading h3 { margin: 0; font-size: 15px; }
+.layer-tool-heading h3 { margin: 0; font-size: calc(15px * var(--app-font-scale, 1)); }
 .layer-tool-heading .button { width: 32px; height: 32px; min-height: 32px; padding: 0; }
 .layer-presets { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; margin-top: 10px; }
-.layer-presets .button { min-width: 0; padding: 0 4px; font-size: 12px; }
+.layer-presets .button { min-width: 0; padding: 0 4px; font-size: calc(12px * var(--app-font-scale, 1)); }
 .layer-rotation-dial { display: block; width: 140px; height: 140px; margin: 0 auto 8px; touch-action: none; cursor: grab; }
 .layer-rotation-dial:active { cursor: grabbing; }
 .layer-rotation-dial * { pointer-events: none; }
@@ -135,10 +135,10 @@
 .layer-source-editor { display: flex; flex-direction: column; height: min(760px, calc(var(--dialog-viewport-height, 100vh) - 140px)); min-height: 0; box-sizing: border-box; }
 .layer-source-editor > h3, .layer-source-editor > .layer-save-actions { flex: 0 0 auto; }
 .layer-source-editor > .image-customizer { flex: 1 1 auto; }
-.layer-source-editor > .layer-save-actions .button { padding-inline: 10px; font-size: 12px; }
+.layer-source-editor > .layer-save-actions .button { padding-inline: 10px; font-size: calc(12px * var(--app-font-scale, 1)); }
 .layer-quick-tools[hidden] { display: none; }
 .layer-stage .layer-quick-tools { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.layer-stage .layer-quick-tools .button { height: auto; min-height: 60px; font-size: 12px; gap: 5px; padding: 8px 3px; }
+.layer-stage .layer-quick-tools .button { height: auto; min-height: 60px; font-size: calc(12px * var(--app-font-scale, 1)); gap: 5px; padding: 8px 3px; }
 .layer-stage .layer-quick-tools .app-icon { width: 20px; height: 20px; }
 .layer-preview-dock { position: sticky; top: 0; z-index: 4; background: var(--surface); }
 /* Artwork editing uses the whole dialog instead of nesting a second long page. */
@@ -150,9 +150,9 @@
 .layer-editor-dialog:has(.layer-source-editor) .layer-stage > .helper { display: none; }
 .layer-editor-dialog .layer-source-editor { height: 100%; margin: 0; padding: 8px; }
 .layer-source-editor .customizer-canvas-wrap canvas { max-height: 22dvh; }
-.layer-source-editor > h3 { font-size: 14px; margin-bottom: 6px; }
+.layer-source-editor > h3 { font-size: calc(14px * var(--app-font-scale, 1)); margin-bottom: 6px; }
 .layer-editor-dialog > .folder-dialog-heading { flex: 0 0 auto; margin-bottom: 14px; }
-.layer-editor-dialog > .folder-dialog-heading h2 { margin: 0; line-height: 1.3; }
+.layer-editor-dialog > .folder-dialog-heading h2 { margin: 0; line-height: calc(1.3 * var(--app-line-spacing, 1)); }
 .layer-editor-dialog:has(.layer-source-editor) .layer-source-editor { border: 0; padding: 0; }
 .layer-source-editor > h3 { margin: 0 0 10px; }
 .layer-preview-stage .layer-canvas-wrap { flex: 0 1 28dvh; min-width: 0; margin: 0; }
@@ -166,3 +166,51 @@
 }
 .layer-preview-stage .layer-canvas-wrap { width: var(--editor-preview-size); height: var(--editor-preview-size); margin: 0; }
 .layer-preview-stage .editor-tool-dock { width: 92px; height: var(--editor-preview-size); max-height: var(--editor-preview-size); margin: 0; border: 1px solid var(--line); background: var(--surface); overflow: hidden; }
+/* Keep the artwork visible while the inspector or action list scrolls. */
+.layer-editor-dialog[open] { display: flex; flex-direction: column; height: min(900px, calc(var(--dialog-viewport-height, 100dvh) - 24px)); overflow: hidden; }
+.layer-editor-dialog > .layer-add-tools { flex: 0 0 auto; grid-template-columns: auto auto minmax(0,1fr) auto; margin: 0 0 12px; }
+.layer-editor-dialog > .layer-workspace { flex: 1; min-height: 0; overflow: hidden; align-items: stretch; }
+.layer-stage { display: flex; flex-direction: column; min-height: 0; }
+.layer-preview-dock { flex: 0 0 auto; }
+.layer-stage .layer-quick-tools { flex: 1; min-height: 60px; overflow-y: auto; overscroll-behavior: contain; align-content: start; scrollbar-gutter: stable; }
+.layer-stage > .helper { display: none; }
+.layer-panel { overflow-y: auto; overscroll-behavior: contain; min-height: 0; scrollbar-gutter: stable; padding-right: 4px; }
+.layer-editor-dialog > .layer-footer { position: static; flex: 0 0 auto; margin: 10px 0 0; padding: 10px 0 0; }
+.text-layer-selected [data-layer-pixel-tool] { display: none; }
+.text-style-toggles label { flex-direction: row; border: 1px solid var(--line); border-radius: 6px; padding: 5px 7px; font-size: calc(12px * var(--app-font-scale, 1)); }
+@media (max-width: 700px) {
+    .layer-editor-dialog > .layer-add-tools { grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 6px; margin-bottom: 8px; }
+    .layer-workspace { display: grid; grid-template-columns: minmax(0,1fr); grid-template-rows: auto minmax(70px,1fr) 76px; gap: 8px; }
+    .layer-stage { display: contents; }
+    .layer-preview-dock { grid-row: 1; }
+    .layer-panel { grid-row: 2; }
+    .layer-stage .layer-quick-tools { grid-row: 3; min-height: 0; margin-top: 0; }
+    .layer-editor-dialog > .folder-dialog-heading { margin-bottom: 8px; }
+    .text-layer-editor { padding: 8px; }
+    .layer-panel .layer-selected-preview { display: none; }
+}
+@media (max-height: 650px) and (max-width: 700px) {
+    .layer-editor-dialog { --editor-preview-size: min(512px,24dvh,calc(100cqw - 140px)); }
+}
+.layer-preview-stage:not(:has(.editor-tool-dock)) { --editor-preview-size: min(512px,28dvh,calc(100cqw - 8px)); grid-template-columns: var(--editor-preview-size); height: var(--editor-preview-size); min-height: var(--editor-preview-size); padding-bottom: 0; }
+@media (max-width: 700px) {
+    .layer-editor-dialog > .layer-add-tools .file-button { grid-column: auto; justify-self: stretch; }
+}
+@media (max-height: 650px) and (max-width: 700px) {
+    .layer-preview-stage:not(:has(.editor-tool-dock)) { --editor-preview-size: min(512px,22dvh,calc(100cqw - 8px)); }
+}
+.layer-more-actions { margin: 10px 0 14px; }
+.layer-more-actions > summary { cursor: pointer; color: var(--muted); margin-bottom: 8px; }
+.layer-more-actions .layer-quick-tools { grid-template-columns: repeat(4,minmax(0,1fr)); margin: 0; }
+.layer-more-actions .layer-quick-tools .button { min-height: 50px; height: auto; font-size: calc(11px * var(--app-font-scale, 1)); }
+.layer-footer .layer-save-actions { align-items: center; flex-wrap: nowrap; }
+.layer-footer .layer-save-actions > .icon-button { width: 36px; min-width: 36px; height: 40px; min-height: 40px; padding: 6px; }
+@media (max-width: 700px) {
+    .layer-workspace { grid-template-rows: auto minmax(0,1fr); }
+    .layer-preview-dock:has(.animation-timeline) .layer-preview-stage:not(:has(.editor-tool-dock)) { --editor-preview-size: min(512px,20dvh,calc(100cqw - 8px)); }
+    .layer-preview-dock .animation-preview-button { min-height: 36px; height: 36px; padding-block: 4px; }
+    .layer-preview-dock .animation-trim-readout { line-height: calc(16px * var(--app-font-scale, 1) * var(--app-line-spacing, 1)); }
+    .layer-footer .layer-save-actions { gap: 6px; }
+    .layer-footer .layer-save-actions > .button:not(.icon-button) { font-size: calc(12px * var(--app-font-scale, 1)); padding-inline: 10px; }
+}
+.layer-rotation-dial text { font-family: var(--app-font-family,system-ui); }

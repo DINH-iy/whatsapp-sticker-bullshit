@@ -1,0 +1,65 @@
+<!doctype html><meta charset="utf-8"><title>Text layer checks</title><style>body{font:16px system-ui}pre{white-space:pre-wrap}dialog{display:block;position:relative}canvas{width:512px;height:512px}</style><h1>Text layer checks</h1><pre id="result">Running…</pre>
+<script type="module">
+const assert=(ok,message)=>{if(!ok)throw new Error(message);};
+const base='/_content/StickerApp.Shared/js/media/';
+try{
+    const {renderText,defaultText}=await import(base+'text-layers.js');
+    const {create}=await import(base+'layer-editor.js');
+    const {openAnimation}=await import(base+'animation-reader.js');
+    const caption=await renderText({...defaultText(),content:'TOP TEXT 😎\nBOTTOM TEXT'});
+    assert(caption.width<=1024&&caption.height>100,'multiline meme text and emoji must render');
+    const plain=await renderText({...defaultText(),font:'sans',fontSize:80,content:'MMMM',outlineWidth:0,color:'#ff0000'});
+    const decorated=await renderText({...defaultText(),font:'sans',fontSize:80,content:'MMMM',outlineWidth:0,bold:true,italic:true,underline:true,strike:true,shadow:true,background:true});
+    assert(plain.source!==decorated.source,'text formatting must change the raster');
+    const gradient=await renderText({...defaultText(),font:'sans',fontSize:80,content:'MMMM',outlineWidth:0,color:'#ff0000',gradient:true,gradientColor:'#0000ff',gradientAngle:0});
+    const pixels=gradient.image.getContext('2d').getImageData(0,0,gradient.width,gradient.height).data;
+    let leftR=0,leftB=0,rightR=0,rightB=0;
+    for(let i=0;i<pixels.length;i+=4){if(pixels[i+3]<250)continue;const x=(i/4)%gradient.width;if(x<gradient.width/3){leftR+=pixels[i];leftB+=pixels[i+2];}if(x>gradient.width*2/3){rightR+=pixels[i];rightB+=pixels[i+2];}}
+    assert(leftR>leftB&&rightB>rightR,'text fill must interpolate both gradient colors');
+    const emoji=await renderText({...defaultText(),content:'😎👩🏽‍💻❤️',fontSize:60});
+    assert(emoji.width>80&&emoji.source.length>1000,'emoji and joined sequences must survive rendering');
+    const dialog=document.createElement('dialog'),wrap=document.createElement('div'),canvas=document.createElement('canvas');wrap.className='layer-canvas-wrap';wrap.append(canvas);dialog.append(wrap);document.body.append(dialog);
+    const c=create(canvas,{invokeMethodAsync:async()=>{}});await c.open(null);
+    const randomLayer=(await c.addText()).layers[0];
+    const isTop=randomLayer.text.content==='TOP TEXT';
+    assert(isTop||randomLayer.text.content==='BOTTOM TEXT','new text must use a top/bottom meme caption');
+    assert(Math.abs(isTop?randomLayer.y-randomLayer.height/2-16:randomLayer.y+randomLayer.height/2-496)<0.001,'random placement must match its caption');
+    c.action('undo');
+    const bottomLayer=(await c.addText('bottom')).layers[0];
+    assert(bottomLayer.text.content==='BOTTOM TEXT'&&Math.abs(bottomLayer.y+bottomLayer.height/2-496)<0.001,'bottom caption must match its position');
+    c.action('undo');
+    let state=await c.addText('top');const textId=state.layers[0].id;
+    assert(state.layers[0].text.content==='TOP TEXT','top caption must match its position');
+    assert(state.layers[0].y-state.layers[0].height/2===16,'top preset must use the top margin');
+    state=await c.updateText({...defaultText(),content:'MEME 😎',gradient:true,gradientColor:'#00ccff',underline:true});
+    const before=(await c.export()).document;
+    state=c.placeText('bottom');assert(Math.abs(state.layers[0].y+state.layers[0].height/2-496)<0.001,'bottom preset must use the bottom margin');
+    c.action('undo');assert((await c.export()).document.layers[0].y===before.layers[0].y,'text preset must be undoable');
+    c.action('redo');c.update('rotation',35);c.update('x',300);
+    const fontResponse=await fetch('/_content/StickerApp.Shared/fonts/Anton-Regular.ttf');assert(fontResponse.ok,'bundled meme font must ship offline');
+    const fontBlob=await fontResponse.blob();const fontData=await new Promise(resolve=>{const r=new FileReader();r.onload=()=>resolve('data:font/ttf;base64,'+r.result.split(',')[1]);r.readAsDataURL(fontBlob);});
+    const customId='custom-0123456789abcdef0123456789abcdef';c.setFonts([{id:customId,name:'Custom Anton',data:fontData}]);
+    state=await c.updateText({...state.layers[0].text,font:customId});assert(!state.layers[0].text.fontData,'UI state must not send entire font files repeatedly');
+    const saved=await c.export();assert(saved.document.layers[0].text.fontData===fontData,'editable documents must embed custom font data');
+    assert(saved.document.layers[0].rotation===35&&saved.document.layers[0].x===300,'text transformations must persist');
+    await c.open(saved.document);state=await c.updateText({...state.layers[0].text,font:customId,content:'REOPENED 😎'});
+    assert(state.layers[0].text.content==='REOPENED 😎','saved custom text must remain editable after reopen');
+    c.action('duplicate');state=c.action('undo');assert(state.layers.length===1,'text duplication must be undoable');
+    c.dispose();dialog.remove();
+    const gifFixture=await (await fetch('/editor-checks.html')).text();
+    const match=gifFixture.match(/data:image\/gif;base64,[A-Za-z0-9+/=]+/);assert(match,'animated fixture must exist');
+    const d=document.createElement('dialog'),w=document.createElement('div'),cv=document.createElement('canvas');w.append(cv);d.append(w);document.body.append(d);
+    const animated=create(cv,{invokeMethodAsync:async()=>{}});await animated.open(null);await animated.add('GIF',match[0],512);await animated.addText('top');
+    await animated.updateText({...defaultText(),content:'GIF TEXT',fontSize:40});
+    const seek=document.createElement('input');seek.type='range';seek.min='0';seek.max='0.2';seek.step='0.001';seek.dataset.animationSeek='';d.append(seek);
+    seek.value='0.15';seek.dispatchEvent(new Event('input',{bubbles:true}));
+    assert(cv.getContext('2d').getImageData(256,256,1,1).data[2]>200,'GIF scrubbing must work while a text layer is selected');
+    const exported=await animated.export(),reader=await openAnimation(exported.png);
+    const first=reader.at(0).getContext('2d').getImageData(256,256,1,1).data,last=reader.at(100).getContext('2d').getImageData(256,256,1,1).data;
+    assert(first[0]>200&&last[2]>200,'adding text must preserve all GIF frames');
+    let topVisible=0;const frame=reader.at(100).getContext('2d').getImageData(0,0,512,100).data;for(let i=3;i<frame.length;i+=4)if(frame[i]>0)topVisible++;
+    assert(topVisible>200,'animated export must include the caption');
+    reader.dispose?.();animated.dispose();d.remove();
+    document.querySelector('#result').textContent='PASS: bundled meme font, multiline wrapping, emoji, gradient pixel colors, bold/italic/underline/strike/shadow/background, top/bottom placement, undo/redo, move/rotate, embedded custom fonts, editable save/reopen, duplication, and caption export on every GIF frame.';
+}catch(error){document.querySelector('#result').textContent='FAIL: '+error.stack;}
+</script>

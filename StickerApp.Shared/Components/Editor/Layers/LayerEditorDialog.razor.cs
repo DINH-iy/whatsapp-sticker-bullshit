@@ -11,6 +11,11 @@ public partial class LayerEditorDialog
 {
     [Parameter] public Guid? StickerId { get; set; }
     [Parameter] public Guid? PackId { get; set; }
+    [Parameter] public bool StartWithText { get; set; }
+    [Parameter] public string? InitialSource { get; set; }
+    [Parameter] public string? InitialName { get; set; }
+    private List<CustomFont> fonts = [];
+    private TextLayerEditor? textEditor;
     [Parameter] public IReadOnlyList<Sticker> Images { get; set; } = [];
     [Parameter] public IReadOnlyDictionary<Guid, string> Previews { get; set; } = new Dictionary<Guid, string>();
     [Parameter] public EventCallback OnCancel { get; set; }
@@ -31,6 +36,7 @@ public partial class LayerEditorDialog
     });
     private string PanelTitle => quickPanel switch { "rotate" => "Rotate layer", "opacity" => "Layer opacity", "tint" => "Layer color", _ => "Size & position" };
     private LayerPreview? Selected => state.Selected >= 0 && state.Selected < state.Layers.Count ? state.Layers[state.Selected] : null;
+    private LayerPreview? TimelineLayer => Selected?.IsGif == true ? Selected : state.Layers.FirstOrDefault(layer => layer.IsGif);
     private static string Number(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
 
     public sealed class LayerExport
@@ -60,6 +66,18 @@ public partial class LayerEditorDialog
                 composition = await Store.ReadCompositionAsync(id);
             }
             state = await controller.InvokeAsync<LayerEditorState>("open", composition);
+            fonts = (await Store.ReadAsync()).Fonts;
+            if (composition is null && (InitialSource is not null || StickerId is not null))
+            {
+                var image = Images.FirstOrDefault(image => image.Id == StickerId);
+                var source = InitialSource ?? (image?.Animated == true ? await Store.ReadLayerAnimationAsync(image.Id) : image is not null ? await Store.PreviewAsync(image) : null);
+                if (source is not null)
+                {
+                    name = InitialName ?? image?.Name ?? name;
+                    state = await controller.InvokeAsync<LayerEditorState>("add", name, source, 512);
+                }
+            }
+            if (StartWithText) state = await controller.InvokeAsync<LayerEditorState>("addText");
         }
         catch (Exception exception) when (IsExpected(exception)) { Report("Open layer editor", exception); }
         finally { working = loading = false; StateHasChanged(); }
@@ -87,6 +105,12 @@ public partial class LayerEditorDialog
     });
     private void LayerImageChanged(string png) => layerEditResult = png;
     private void CancelLayerImage() => layerEditSource = layerEditResult = layerEditId = null;
+    private async Task AddTextToLayerImage()
+    {
+        if (editingLayerBusy || working) return;
+        await ApplyLayerImage();
+        if (layerEditSource is null) await AddText();
+    }
     private Task ApplyLayerImage() => Run("Updating layer artwork…", async () =>
     {
         if (layerEditResult is null || layerEditId is null) return;
@@ -102,8 +126,55 @@ public partial class LayerEditorDialog
         CancelLayerImage();
     });
 
-    private Task Select(int index) => Run("Selecting layer…", async () => state = await controller!.InvokeAsync<LayerEditorState>("select", index));
-    private Task Action(string action) => Run("Updating layers…", async () => state = await controller!.InvokeAsync<LayerEditorState>("action", action));
+    private async Task FlushText()
+    {
+        if (Selected?.Text is not null && textEditor is not null) await textEditor.FlushAsync();
+        if (queuedText is { } next)
+        {
+            queuedText = null;
+            if (next.Font.StartsWith("custom-") && next.Font != Selected?.Text?.Font)
+                await controller!.InvokeVoidAsync("setFonts", (object)new[] { await Store.ReadFontAsync(next.Font) });
+            state = await controller!.InvokeAsync<LayerEditorState>("updateText", next);
+        }
+    }
+    private Task AddText() => Run("Adding text…", async () => { await FlushText(); state = await controller!.InvokeAsync<LayerEditorState>("addText"); quickPanel = ""; });
+    private TextLayerOptions? queuedText;
+    private async Task UpdateText(TextLayerOptions text)
+    {
+        queuedText = text;
+        if (working) return;
+        while (queuedText is { } next)
+        {
+            queuedText = null;
+            await Run("Updating text…", async () =>
+            {
+                if (next.Font.StartsWith("custom-") && next.Font != Selected?.Text?.Font)
+                    await controller!.InvokeVoidAsync("setFonts", (object)new[] { await Store.ReadFontAsync(next.Font) });
+                state = await controller!.InvokeAsync<LayerEditorState>("updateText", next);
+            });
+        }
+    }
+    private Task PlaceText(string placement) => Run("Positioning text…", async () => state = await controller!.InvokeAsync<LayerEditorState>("placeText", placement));
+    private Task ImportFont(InputFileChangeEventArgs args) => Run("Loading font…", async () =>
+    {
+        await FlushText();
+        await using var stream = args.File.OpenReadStream(LibraryStore.MaxFontBytes);
+        using var memory = new MemoryStream(); await stream.CopyToAsync(memory);
+        var bytes = memory.ToArray(); LibraryStore.ValidateFont(bytes);
+        var data = "data:font/ttf;base64," + Convert.ToBase64String(bytes);
+        await controller!.InvokeVoidAsync("validateFont", "custom-" + Guid.NewGuid().ToString("N"), data);
+        var font = await Store.ImportFontAsync(args.File.Name, bytes);
+        fonts = (await Store.ReadAsync()).Fonts; await controller!.InvokeVoidAsync("setFonts", (object)new[] { font });
+        if (Selected?.Text is { } text)
+        {
+            text = System.Text.Json.JsonSerializer.Deserialize<TextLayerOptions>(System.Text.Json.JsonSerializer.Serialize(text))!;
+            text.Font = font.Id;
+            state = await controller!.InvokeAsync<LayerEditorState>("updateText", text);
+        }
+    });
+
+    private Task Select(int index) => Run("Selecting layer…", async () => { await FlushText(); state = await controller!.InvokeAsync<LayerEditorState>("select", index); });
+    private Task Action(string action) => Run("Updating layers…", async () => { await FlushText(); state = await controller!.InvokeAsync<LayerEditorState>("action", action); });
     private Task ToggleTool(string tool) => Run("Opening layer tool…", async () =>
     {
         if (quickPanel == tool) { confirmQuickToolCancel = true; return; }
@@ -150,6 +221,7 @@ public partial class LayerEditorDialog
     }, showProgress: true);
     private Task Save() => Run("Rendering sticker and saving layers…", async () =>
     {
+        await FlushText();
         var export = await controller!.InvokeAsync<LayerExport>("export", TimeSpan.FromMinutes(4));
         if (!export.Png.StartsWith("data:image/png;base64,", StringComparison.Ordinal) && !export.Png.StartsWith("data:image/webp;base64,", StringComparison.Ordinal)) throw new InvalidDataException("Could not export this sticker.");
         var bytes = Convert.FromBase64String(export.Png[(export.Png.IndexOf(',') + 1)..]);

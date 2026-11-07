@@ -27,10 +27,11 @@ public partial class LibraryStatisticsSettings
         new("used", "Total used", "storage", Size(stats.MediaBytes + stats.IndexBytes)),
         new("current", "Current images", "image", Size(stats.CurrentBytes)),
         new("originals", "Preserved originals", "archive", Size(stats.OriginalBytes)),
+        new("fonts", "Custom fonts", "text", Size(stats.FontBytes), $"({stats.Fonts.Count} fonts)"),
         new("layers", "Editable layers", "layers", Size(stats.LayerBytes)),
         new("unused", "Unused files", "trash", Size(stats.UnusedBytes), $"({stats.UnusedFiles} files)"),
         new("index", "Library index", "file", Size(stats.IndexBytes)),
-        new("other", "Other files", "file", Size(Math.Max(0, stats.MediaBytes - stats.CurrentBytes - stats.OriginalBytes - stats.LayerBytes - stats.UnusedBytes)))
+        new("other", "Other files", "file", Size(Math.Max(0, stats.MediaBytes - stats.CurrentBytes - stats.OriginalBytes - stats.LayerBytes - stats.FontBytes - stats.UnusedBytes)))
     ];
     private IReadOnlyList<LibraryStatistic> QuickStats => quickStats
         .Select(id => AllStats.FirstOrDefault(stat => stat.Id == id)).OfType<LibraryStatistic>().ToList();

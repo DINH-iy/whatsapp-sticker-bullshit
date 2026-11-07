@@ -52,6 +52,12 @@ export function create(video,input,root,dotnet) {
     return {
         // Also used by the browser regression fixture with a synthetic local video.
         loadFile,
+        async loadStream(stream,name='Pinterest video.mp4') {
+            const bytes=await stream.arrayBuffer();
+            if(disposed)return;
+            if(bytes.byteLength>MAX_VIDEO_BYTES)throw new Error('Choose a video smaller than 100 MB.');
+            await loadFile(new File([bytes],name,{type:'video/mp4'}));
+        },
         setRange(start,end){rangeEnd=end;if(!converting&&(video.currentTime<start||video.currentTime>end))queueSeek(start).catch(fail);},
         async preview(start,end){rangeEnd=end;if(!video.paused){video.pause();return;}await seekWork;if(video.currentTime<start||video.currentTime>=end)await seekFrame(video,start,fileAbort?.signal);await video.play();},
         async convert(start,end,fps=12){

@@ -36,6 +36,7 @@ public sealed class StickerLibrary
     public int SchemaVersion { get; set; } = 1;
     public List<Sticker> Stickers { get; set; } = [];
     public List<StickerPack> Packs { get; set; } = [];
+    public List<CustomFont> Fonts { get; set; } = [];
 }
 
 public interface IWhatsAppExporter

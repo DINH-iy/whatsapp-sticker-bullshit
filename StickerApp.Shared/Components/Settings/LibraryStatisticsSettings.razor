@@ -87,6 +87,12 @@
             </div>
             </div>
         </div>
+        @if (stats.Fonts.Count > 0)
+        {
+            <details><summary>Custom fonts · @Size(stats.FontBytes)</summary>
+                @foreach (var font in stats.Fonts) { <p class="font-storage-row"><span>@font.Name</span><span>@Size(font.Bytes)</span></p> }
+            </details>
+        }
         @if (stats.PackStorage.Count == 0)
         {
             <p class="helper">Create a pack to see its storage here.</p>

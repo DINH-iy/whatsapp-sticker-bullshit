@@ -1,0 +1,91 @@
+@implements IDisposable
+
+<section class="text-layer-editor" aria-label="Text formatting">
+    <h3>Text</h3>
+    <label>Caption<textarea aria-label="Text content" rows="3" maxlength="1000" @bind="draft.Content" @bind:event="oninput" @bind:after="Changed" placeholder="Type text or paste emoji…"></textarea></label>
+    <div class="text-placement-tools" role="group" aria-label="Text placement">
+        @foreach (var place in new[] { "top", "center", "bottom" })
+        {
+            <button type="button" class="button" @onclick="() => Place(place)" disabled="@Disabled">@place</button>
+        }
+        <small class="helper">Drag the text on the canvas for free placement.</small>
+    </div>
+    <label>Font<select aria-label="Text font" @bind="draft.Font" @bind:after="Changed">
+        <option value="meme">Meme · Anton</option><option value="sans">Sans serif</option><option value="serif">Serif</option><option value="mono">Monospace</option>
+        @foreach (var font in Fonts) { <option value="@font.Id">@font.Name</option> }
+    </select></label>
+    <label class="button file-button"><Icon Name="plus" /><span>Upload font</span>
+        <InputFile OnChange="OnImportFont" accept=".ttf,.otf,.woff,.woff2" disabled="@Disabled" aria-label="Upload custom font" />
+    </label>
+    <div class="text-format-grid">
+        <label>Font size<input type="number" aria-label="Text font size" min="8" max="256" @bind="draft.FontSize" @bind:after="Changed" /></label>
+        <label>Wrap width<input type="number" aria-label="Text wrap width" min="32" max="1000" @bind="draft.MaxWidth" @bind:after="Changed" /></label>
+        <label>Line spacing<input type="number" min="0.8" max="3" step="0.05" @bind="draft.LineHeight" @bind:after="Changed" /></label>
+        <label>Alignment<select aria-label="Text alignment" @bind="draft.Align" @bind:after="Changed"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select></label>
+    </div>
+    <div class="text-style-toggles">
+        <label><input type="checkbox" @bind="draft.Bold" @bind:after="Changed" />Bold</label>
+        <label><input type="checkbox" @bind="draft.Italic" @bind:after="Changed" />Italic</label>
+        <label><input type="checkbox" @bind="draft.Underline" @bind:after="Changed" />Underline</label>
+        <label><input type="checkbox" @bind="draft.Strike" @bind:after="Changed" />Strikethrough</label>
+        <label><input type="checkbox" @bind="draft.Uppercase" @bind:after="Changed" />UPPERCASE</label>
+    </div>
+    <details open>
+        <summary>Color &amp; gradient</summary>
+        <div class="text-format-grid">
+            <label>Text color<input type="color" aria-label="Text color" @bind="draft.Color" @bind:after="Changed" /></label>
+            <label><input type="checkbox" @bind="draft.Gradient" @bind:after="Changed" />Gradient</label>
+            @if (draft.Gradient)
+            {
+                <label>Second color<input type="color" aria-label="Second text color" @bind="draft.GradientColor" @bind:after="Changed" /></label>
+                <label>Gradient angle<input type="range" aria-label="Text gradient angle" min="-180" max="180" @bind="draft.GradientAngle" @bind:event="oninput" @bind:after="Changed" /></label>
+            }
+        </div>
+    </details>
+    <details>
+        <summary>Outline, shadow &amp; background</summary>
+        <div class="text-format-grid">
+            <label>Outline width<input type="number" min="0" max="16" @bind="draft.OutlineWidth" @bind:after="Changed" /></label>
+            <label>Outline color<input type="color" @bind="draft.OutlineColor" @bind:after="Changed" /></label>
+            <label><input type="checkbox" @bind="draft.Shadow" @bind:after="Changed" />Shadow</label>
+            <label>Shadow color<input type="color" @bind="draft.ShadowColor" @bind:after="Changed" /></label>
+            <label><input type="checkbox" @bind="draft.Background" @bind:after="Changed" />Background</label>
+            <label>Background color<input type="color" @bind="draft.BackgroundColor" @bind:after="Changed" /></label>
+        </div>
+    </details>
+    <p class="helper">Use the canvas handles to resize and rotate. Emoji appearance follows your device.</p>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public TextLayerOptions Value { get; set; } = new();
+    [Parameter] public IReadOnlyList<CustomFont> Fonts { get; set; } = [];
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public EventCallback<TextLayerOptions> OnChanged { get; set; }
+    [Parameter] public EventCallback<string> OnPlace { get; set; }
+    [Parameter] public EventCallback<InputFileChangeEventArgs> OnImportFont { get; set; }
+    private TextLayerOptions draft = new();
+    private TextLayerOptions? previous;
+    private CancellationTokenSource? debounce;
+    private bool dirty, disposed;
+    private static TextLayerOptions Copy(TextLayerOptions value) => System.Text.Json.JsonSerializer.Deserialize<TextLayerOptions>(System.Text.Json.JsonSerializer.Serialize(value))!;
+    protected override void OnParametersSet()
+    {
+        if (!ReferenceEquals(previous, Value) && !dirty) draft = Copy(Value);
+        previous = Value;
+    }
+    private async Task Changed()
+    {
+        dirty = true; debounce?.Cancel(); var current = debounce = new();
+        try { await Task.Delay(250, current.Token); if (disposed) return; await OnChanged.InvokeAsync(Copy(draft)); if (debounce == current) dirty = false; }
+        catch (OperationCanceledException) { }
+        finally { if (debounce == current) debounce = null; current.Dispose(); }
+    }
+    public async Task FlushAsync()
+    {
+        if (!dirty || disposed) return;
+        debounce?.Cancel(); dirty = false;
+        await OnChanged.InvokeAsync(Copy(draft));
+    }
+    private async Task Place(string placement) { await FlushAsync(); await OnPlace.InvokeAsync(placement); }
+    public void Dispose() { disposed = true; debounce?.Cancel(); }
+}

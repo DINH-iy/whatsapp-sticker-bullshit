@@ -6,6 +6,8 @@ namespace StickerApp.Shared.Pages.Settings;
 
 public partial class Settings
 {
+    private StickerApp.Shared.Components.Settings.LibraryStatisticsSettings? fontStatistics;
+    private Task RefreshFontStats() => fontStatistics?.RefreshAsync() ?? Task.CompletedTask;
     private string theme = "system";
     private string color = "green";
     private string folder = "";

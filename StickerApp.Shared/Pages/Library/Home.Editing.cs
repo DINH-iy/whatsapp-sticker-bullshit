@@ -41,6 +41,7 @@ public partial class Home
         if (image.CompositionFileName is not null)
         {
             compositionStickerId = image.Id;
+            compositionStartWithText = false; compositionInitialSource = compositionInitialName = null;
             showLayerEditor = true;
             return;
         }

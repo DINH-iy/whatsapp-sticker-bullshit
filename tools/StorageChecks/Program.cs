@@ -297,6 +297,142 @@ try
         Require(rejected, "A still WebP was accepted as an animation source");
     });
 
+    await Check("custom fonts persist, deduplicate, count toward storage, and survive cleanup", async store =>
+    {
+        var bytes = await File.ReadAllBytesAsync("StickerApp.Shared/wwwroot/fonts/Anton-Regular.ttf");
+        var font = await store.ImportFontAsync("My meme font.ttf", bytes);
+        var duplicate = await store.ImportFontAsync("Duplicate.ttf", bytes);
+        Require(font.Id == duplicate.Id, "Identical fonts must not consume storage twice");
+        var reopened = new LibraryStore(store.DefaultRoot);
+        var fonts = await reopened.ReadFontsAsync();
+        Require(fonts.Count == 1 && fonts[0].Data == font.Data, "Imported font changed after reopening");
+        var stats = await store.GetStatisticsAsync();
+        Require(stats.FontBytes == bytes.Length && stats.Fonts.Single().Bytes == bytes.Length, "Font sizes must be reported exactly");
+        Require(stats.StorageSegments.Single(s => s.Label == "Custom fonts").Bytes == bytes.Length, "Fonts need their own storage segment");
+        Require(stats.StorageSegments.Sum(s => s.Bytes) == stats.MediaBytes + stats.IndexBytes, "Font storage must not be counted twice");
+        var scan = await store.ScanLibraryAsync();
+        Require(!scan.UnusedFiles.Any(f => f.EndsWith(".font")), "Imported fonts must be protected from cleanup");
+        var text = new TextLayerOptions {Content="TOP TEXT 😎",Font=font.Id,FontData=font.Data,Gradient=true,Bold=true,Underline=true};
+        var composition = new LayerComposition {Layers=[new(){Id="caption",Name="Caption",Source="data:image/png;base64,"+Convert.ToBase64String(png),Text=text,Rotation=30}]};
+        var id = await store.SaveCompositionAsync(null,"Text sticker",webp,composition);
+        var caption = (await reopened.ReadCompositionAsync(id))!.Layers.Single();
+        Require(caption.Text!.Content == text.Content && caption.Text.FontData == font.Data && caption.Text.Gradient && caption.Text.Underline && caption.Rotation == 30, "Editable text, emoji, formatting, font or transform was lost");
+        var rejected=false;try{await store.ImportFontAsync("Bad.ttf",png);}catch(InvalidDataException){rejected=true;}
+        Require(rejected,"Non-font data must be rejected");
+        var count=(await store.ReadAsync()).Fonts.Count;
+        await store.SetStorageLimitAsync(1024*1024);
+        var big = new byte[2*1024*1024];bytes.CopyTo(big,0);
+        rejected=false;try{await store.ImportFontAsync("Over budget.ttf",big);}catch(InvalidOperationException){rejected=true;}
+        Require(rejected && (await store.ReadAsync()).Fonts.Count == count,"An over-budget font import must leave no library entry");
+        Require(Directory.GetFiles(Path.Combine(store.Root,"media"),"*.font").Length == count,"An over-budget font must leave no file");
+    });
+
+    await Check("Pinterest progress counts completed downloads, estimates remaining time and separates saving", async store =>
+    {
+        using var http = new HttpClient(new FixtureHttpHandler((request, token) =>
+            Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new ByteArrayContent(png) })));
+        using var importer = new PinterestImportClient(http);
+        var images = Enumerable.Range(1, 4).Select(i => new PinterestImage(i.ToString(), "", $"Pin {i}",
+            $"https://i.pinimg.com/{i}.png", $"https://i.pinimg.com/{i}.png")).ToList();
+        List<PinterestImportProgress> updates = [];
+        await importer.ImportAsync(store, images, progress: new FixtureProgress<PinterestImportProgress>(updates.Add));
+        Require(updates.Select(p => p.Completed).SequenceEqual([0, 1, 2, 3, 4]), "Download progress must advance once per validated, staged image");
+        Require(updates.All(p => p.Total == 4), "The batch total changed");
+        Require(updates.Take(2).All(p => p.EstimatedRemaining is null), "ETA must wait for two downloads");
+        Require(updates[2].EstimatedRemaining is { Ticks: > 0 } && updates[3].EstimatedRemaining is { Ticks: > 0 }, "Active downloads must estimate remaining time");
+        Require(updates.Take(4).All(p => !p.IsSaving) && updates[^1].IsSaving && updates[^1].EstimatedRemaining is null, "Saving must be separate from the download estimate");
+        Require((await store.ReadAsync()).Stickers.Count == 4, "The complete batch was not saved");
+    });
+
+    await Check("cancelled Pinterest downloads stop progress and leave no partial library import", async store =>
+    {
+        using var http = new HttpClient(new FixtureHttpHandler((request, token) =>
+            Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new ByteArrayContent(png) })));
+        using var importer = new PinterestImportClient(http);
+        using var cancellation = new CancellationTokenSource();
+        var images = Enumerable.Range(1, 4).Select(i => new PinterestImage(i.ToString(), "", $"Pin {i}",
+            $"https://i.pinimg.com/{i}.png", $"https://i.pinimg.com/{i}.png")).ToList();
+        List<PinterestImportProgress> updates = [];
+        var cancelled = false;
+        try
+        {
+            await importer.ImportAsync(store, images, progress: new FixtureProgress<PinterestImportProgress>(value =>
+            { updates.Add(value); if (value.Completed == 2) cancellation.Cancel(); }), cancellationToken: cancellation.Token);
+        }
+        catch (OperationCanceledException) { cancelled = true; }
+        Require(cancelled && updates[^1].Completed == 2 && !updates[^1].IsSaving, "Cancellation must stop before completing the batch");
+        Require((await store.ReadAsync()).Stickers.Count == 0, "A cancelled batch left partial imports");
+    });
+
+    await Check("Pinterest board preflight enforces full size, complete pagination and explicit unavailable counts", async store =>
+    {
+        Require(PinterestShareLink.TryParse("https://www.pinterest.com/user/crochet/", out _), "Public board URLs must be accepted");
+        foreach (var url in new[] { "https://www.pinterest.com/pin/123/", "https://evil.test/user/board/", "https://www.pinterest.com:8443/user/board/", "https://user:pass@www.pinterest.com/user/board/" })
+            Require(!PinterestShareLink.TryParse(url, out _), "Unsafe or non-board URL accepted");
+        var image = new PinterestImage("e1_fixture-123", "", "Photo", "https://i.pinimg.com/a.png", "https://i.pinimg.com/a.png");
+        var preview = new PinterestSelection("https://www.pinterest.com/user/crochet/", 2, 1, [image])
+        { SourceKind = "board", CollectionComplete = true, UnavailableCount = 1 };
+        PinterestImportClient.ValidateSelection(preview);
+        foreach (var invalid in new[] { preview with { ExpectedCount = 101, UnavailableCount = 100 }, preview with { CollectionComplete = false }, preview with { UnavailableCount = 0 }, preview with { SourceKind = "selection" } })
+        {
+            var rejected = false; try { PinterestImportClient.ValidateSelection(invalid); } catch (InvalidDataException) { rejected = true; }
+            Require(rejected, "Oversized, incomplete or silently partial preview was accepted");
+        }
+        foreach (var videoUrl in new[] { "https://evil.test/a.mp4", "http://v1.pinimg.com/a.mp4", "https://v1.pinimg.com/a.m3u8", "https://user:pass@v1.pinimg.com/a.mp4", "https://v1.pinimg.com:8443/a.mp4" })
+        {
+            var rejected = false; try { PinterestImportClient.ValidateSelection(preview with { Images = [image with { MediaType = "video", VideoUrl = videoUrl }] }); } catch (InvalidDataException) { rejected = true; }
+            Require(rejected, "An unsafe video URL was accepted");
+        }
+        await Task.CompletedTask;
+    });
+
+    await Check("mixed Pinterest batches review video clips before one atomic image/animation commit", async store =>
+    {
+        var mp4 = new byte[24]; "ftyp"u8.CopyTo(mp4.AsSpan(4));
+        using var http = new HttpClient(new FixtureHttpHandler((request, token) =>
+            Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+            { Content = new ByteArrayContent(request.RequestUri!.Host == "v1.pinimg.com" ? mp4 : png) })));
+        using var importer = new PinterestImportClient(http);
+        var image = new PinterestImage("1", "", "Photo", "https://i.pinimg.com/a.png", "https://i.pinimg.com/a.png");
+        var video = new PinterestImage("e1_video", "", "Video", "https://i.pinimg.com/b.jpg", "https://i.pinimg.com/b.jpg")
+        { MediaType = "video", VideoUrl = "https://v1.pinimg.com/a.mp4" };
+        List<PinterestImportProgress> updates = [];
+        var reviewed = false;
+        await importer.ImportAsync(store, [image, video], progress: new FixtureProgress<PinterestImportProgress>(updates.Add), convertVideo: async (item, path, token) =>
+        {
+            Require(item.IsVideo && File.Exists(path), "The video must be staged before review");
+            Require((await store.ReadAsync()).Stickers.Count == 0, "Photos were saved before video review completed");
+            reviewed = true; return animated;
+        });
+        var library = await store.ReadAsync();
+        Require(reviewed && library.Stickers.Count == 2 && library.Stickers.Count(s => s.Animated) == 1, "The mixed batch lost its image or animation");
+        Require(updates.Any(p => p.IsConvertingVideo && p.Completed == 1) && updates[^1].IsSaving, "Video-review and save stages must be reported separately");
+    });
+
+    await Check("Pinterest video size limits and cancelled review leave no partial imports", async store =>
+    {
+        var mp4 = new byte[24]; "ftyp"u8.CopyTo(mp4.AsSpan(4));
+        var image = new PinterestImage("1", "", "Photo", "https://i.pinimg.com/a.png", "https://i.pinimg.com/a.png");
+        var video = new PinterestImage("2", "", "Video", "https://i.pinimg.com/b.jpg", "https://i.pinimg.com/b.jpg")
+        { MediaType = "video", VideoUrl = "https://v1.pinimg.com/a.mp4" };
+        var oversized = true; var reviews = 0;
+        using var http = new HttpClient(new FixtureHttpHandler((request, token) =>
+        {
+            var content = new ByteArrayContent(request.RequestUri!.Host == "v1.pinimg.com" ? mp4 : png);
+            if (oversized && request.RequestUri.Host == "v1.pinimg.com") content.Headers.ContentLength = PinterestImportClient.MaxVideoBytes + 1;
+            return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = content });
+        }));
+        using var importer = new PinterestImportClient(http);
+        var rejected = false;
+        try { await importer.ImportAsync(store, [image, video], convertVideo: (_, _, _) => { reviews++; return Task.FromResult(animated); }); }
+        catch (InvalidDataException) { rejected = true; }
+        Require(rejected && reviews == 0 && (await store.ReadAsync()).Stickers.Count == 0, "An oversized video must reject before review and commit");
+        oversized = false; var cancelled = false;
+        try { await importer.ImportAsync(store, [image, video], convertVideo: (_, _, _) => Task.FromCanceled<byte[]>(new CancellationToken(true))); }
+        catch (OperationCanceledException) { cancelled = true; }
+        Require(cancelled && (await store.ReadAsync()).Stickers.Count == 0, "Cancelling clip review left partial photos");
+    });
+
     await Check("KLIPY native download imports the original GIF into its destination pack", async store =>
     {
         await store.SetOriginalRetentionAsync(true, false);
@@ -408,4 +544,9 @@ static async Task RejectDownload(Func<Task<byte[]>> operation)
 sealed class FixtureHttpHandler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> respond) : HttpMessageHandler
 {
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) => respond(request, cancellationToken);
+}
+
+sealed class FixtureProgress<T>(Action<T> report) : IProgress<T>
+{
+    public void Report(T value) => report(value);
 }

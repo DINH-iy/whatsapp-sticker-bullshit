@@ -45,8 +45,9 @@
             <p class="error" role="alert">@themeError</p>
         }
     </section>
+    <InterfaceFontSettings OnFontsChanged="RefreshFontStats" />
     <TapFeedbackSettings />
-    <LibraryStatisticsSettings />
+    <LibraryStatisticsSettings @ref="fontStatistics" />
     <section class="settings-card faq" id="faq" aria-labelledby="faq-title">
         <h2 id="faq-title">Help &amp; FAQ</h2>
         <details>
@@ -72,6 +73,7 @@
         </details>
         <details>
             <summary>How do I combine images with layers?</summary>
+            <p>While editing any image or GIF, choose Make layered to use the current artwork as a layer, or Add text to open layers with a caption already added. Applied image edits and animation trims carry over. You can also add text while editing an individual layer image. Save sticker keeps the result and its editable layers.</p>
             <p>In a pack or All images, choose Add stickers → Layered image. Add images from your device or library, then drag a layer on the canvas. Drag its corner or edge handles to resize, and the round arrow handle to rotate. Turn off Keep proportions to stretch. Position, size, rotation, opacity, and tint controls also provide precise adjustments. The top of the layer list is the front. Each layer has a thumbnail, and selecting one shows a larger preview so similar filenames are easier to distinguish. Quick buttons stay pinned at the bottom. Size/position, Rotate, Opacity, and Color open compact adjustment panels above the toolbar. Rotate includes a dial, the original slider, ±45°/±90° presets, and reset; opacity has a slider and percentage presets. Flip, duplicate, reorder, center, remove, undo, and redo are also directly available.</p>
             <p>Save creates a sticker and keeps its editable layers locally. Tap that sticker’s pencil button to reopen its layers. Compositions support up to 10 layers on a transparent 512 × 512 canvas; GIFs stay animated: select a GIF layer to trim its clip directly beneath its row. Shorter clips loop alongside longer layers. Drag a layer’s grip to change its order. Animated compositions save as animated WebP for WhatsApp; still-only compositions receive identical frames on WhatsApp export. Exported pack files contain the flattened image, not the editable layers.</p>
         </details>

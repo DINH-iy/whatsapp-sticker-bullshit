@@ -31,12 +31,12 @@ public static partial class PinterestShareLink
     }
 
     public static Uri Parse(string? text) => TryParse(text, out var url) ? url
-        : throw new InvalidDataException("Paste a public Pinterest selection link (pin.it or pinterest.com/multi-pin-share). In Pinterest, select pins on a public board and share the selection.");
+        : throw new InvalidDataException("Paste a public Pinterest board or selection link (pin.it or pinterest.com).");
 
     [GeneratedRegex("https://[^\\s<>\"']+", RegexOptions.IgnoreCase)]
     private static partial Regex Links();
     [GeneratedRegex("^/[A-Za-z0-9_-]+/?$")]
     private static partial Regex ShortPath();
-    [GeneratedRegex("^/multi-pin-share/[A-Za-z0-9_-]+/?$")]
+    [GeneratedRegex("^/(?:multi-pin-share/[A-Za-z0-9_-]+|(?!(?:pin|ideas|search|settings|login|signup|business|resource)/)[A-Za-z0-9_-]+/[A-Za-z0-9_-]+)/?$")]
     private static partial Regex SelectionPath();
 }

@@ -19,8 +19,10 @@ public sealed class LayerComposition
                 string.IsNullOrWhiteSpace(layer.Name) || layer.Name.Length > 128 ||
                 layer.Source is null || !layer.Source.StartsWith("data:image/png;base64,", StringComparison.Ordinal))
                 throw new InvalidDataException("A layer has invalid image data or metadata.");
-            characters += layer.Source.Length + (layer.GifSource?.Length ?? 0);
-            if (characters > MaxSourceCharacters) throw new InvalidDataException("Layer images exceed the 24 MB composition limit.");
+            layer.Text?.Validate();
+            if (layer.Text is not null && layer.GifSource is not null) throw new InvalidDataException("A text layer cannot also be an animation source.");
+            characters += layer.Source.Length + (layer.GifSource?.Length ?? 0) + (layer.Text?.FontData?.Length ?? 0);
+            if (characters > MaxSourceCharacters) throw new InvalidDataException("Layer artwork and fonts exceed the 24 MB composition limit.");
             byte[] bytes;
             try { bytes = Convert.FromBase64String(layer.Source[22..]); }
             catch (FormatException) { throw new InvalidDataException("A layer image is damaged."); }
@@ -55,6 +57,7 @@ public sealed class CompositionLayer
     public string Id { get; set; } = "";
     public string Name { get; set; } = "";
     public string Source { get; set; } = "";
+    public TextLayerOptions? Text { get; set; }
     // Keep the serialized field name for existing projects; edited animations may be WebP.
     public string? GifSource { get; set; }
     public double GifDuration { get; set; }
