@@ -1,0 +1,34 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+<div class="theme-custom-picker">
+    <div class="theme-color-wheel" @ref="wheel" role="slider" aria-label="Custom theme color wheel. Left/right changes hue; up/down changes saturation." aria-valuemin="0" aria-valuemax="359" aria-valuenow="0" tabindex="0"><span class="theme-color-knob"></span></div>
+    <div class="theme-rgba-fields" role="group" aria-label="Highlight RGBA values">
+        <label>R<input type="number" min="0" max="255" value="@Channel(0)" @oninput="e => ChangeChannel(0, e)" aria-label="Highlight red" /></label>
+        <label>G<input type="number" min="0" max="255" value="@Channel(1)" @oninput="e => ChangeChannel(1, e)" aria-label="Highlight green" /></label>
+        <label>B<input type="number" min="0" max="255" value="@Channel(2)" @oninput="e => ChangeChannel(2, e)" aria-label="Highlight blue" /></label>
+        <label>A · %<input type="number" min="0" max="100" value="@Math.Round(Channel(3) / 2.55)" @oninput="e => ChangeChannel(3, e)" aria-label="Highlight alpha percent" /></label>
+    </div>
+    <p class="helper">Choose a color on the wheel or enter RGBA values. A controls opacity. Shades adapt for readable text.</p>
+</div>
+@code {
+    [Parameter] public string Value { get; set; } = "#32875f";
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    private ElementReference wheel;
+    private IJSObjectReference? module, controller;
+    private DotNetObjectReference<ThemeColorPicker>? reference;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if(firstRender) { module = await JS.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/ui/theme-color-wheel.js"); reference = DotNetObjectReference.Create(this); controller = await module.InvokeAsync<IJSObjectReference>("create",wheel,reference); }
+        if(controller is not null) await controller.InvokeVoidAsync("set",Value);
+    }
+    private int Channel(int index) => index == 3 && Value.Length == 7 ? 255 : Convert.ToInt32(Value.Substring(1 + index * 2, 2), 16);
+    [JSInvokable] public Task WheelColorChanged(string value) => ValueChanged.InvokeAsync(value + Channel(3).ToString("x2"));
+    private Task ChangeChannel(int index, ChangeEventArgs args)
+    {
+        if (!int.TryParse(args.Value?.ToString(), out var number)) return Task.CompletedTask;
+        var channels = Enumerable.Range(0, 4).Select(Channel).ToArray();
+        channels[index] = index == 3 ? (int)Math.Round(Math.Clamp(number, 0, 100) * 255.0 / 100) : Math.Clamp(number, 0, 255);
+        return ValueChanged.InvokeAsync("#" + string.Concat(channels.Select(value => value.ToString("x2"))));
+    }
+    public async ValueTask DisposeAsync() { try { if(controller is not null) {await controller.InvokeVoidAsync("dispose");await controller.DisposeAsync();} if(module is not null)await module.DisposeAsync();}catch(JSDisconnectedException){} reference?.Dispose(); }
+}

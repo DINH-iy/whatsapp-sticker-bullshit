@@ -4,6 +4,7 @@ export function editorView(canvas,root){
     let zoom=1,x=0,y=0,pan=false,drag=null;
     function sync(){
         wrap.style.transform=`translate(${x}px,${y}px) scale(${zoom})`;
+        for(const label of root.querySelectorAll('[data-view-zoom-label]'))label.textContent=String(Math.round(zoom*100))+'%';
         for(const input of root.querySelectorAll('[data-view-zoom]'))input.value=String(Math.round(zoom*100));
         for(const button of root.querySelectorAll('[data-view-pan]'))button.setAttribute('aria-pressed',String(pan));
         viewport.classList.toggle('pan-preview',pan);

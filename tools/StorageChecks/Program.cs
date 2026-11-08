@@ -637,6 +637,39 @@ try
         await store.ChangeFolderAsync(store.Root + "-activity-moved");
         Require((await new LibraryStore(store.DefaultRoot).ReadProfileOverviewAsync()).PackActivity.Single().Updates == 6, "Relocation lost update counts");
     });
+    await Check("factory reset clears app data and relocated copies, restores defaults and preserves external files", async store =>
+    {
+        var stickerId = await store.ImportAsync("Keep source.png", png, keepOriginal: true);
+        var font = await store.ImportFontAsync("Custom.ttf", await File.ReadAllBytesAsync("StickerApp.Shared/wwwroot/fonts/Anton-Regular.ttf"));
+        await store.CreatePackWithStickerAsync("Reset pack", stickerId);
+        await store.SaveProfileAsync(new("Test user", "Private", PackCover.FromBytes(png), true));
+        var identity = (await store.ReadProfileOverviewAsync()).Identity.Id;
+        await store.SetBlurNsfwPreviewsAsync(false);
+        await store.SetOriginalRetentionAsync(true, false);
+        await store.SetAskForOriginalOnImportAsync(false);
+        var originalRoot = store.Root;
+        var external = Path.Combine(originalRoot, "personal-backup.zip");
+        await File.WriteAllTextAsync(external, "outside app data");
+        var unknown = Path.Combine(originalRoot, "media", "personal-note.txt");
+        await File.WriteAllTextAsync(unknown, "not an app file");
+        var orphan = Path.Combine(originalRoot, "media", Guid.NewGuid().ToString("N") + ".png");
+        await File.WriteAllBytesAsync(orphan, png);
+        await store.ChangeFolderAsync(originalRoot + "-reset-moved");
+        var movedRoot = store.Root;
+        var generatedFiles = Directory.EnumerateFiles(Path.Combine(movedRoot, "media")).Where(path => Path.GetFileName(path) != "personal-note.txt").ToArray();
+        await store.FactoryResetAsync();
+        var fresh = new LibraryStore(originalRoot);
+        var library = await fresh.ReadAsync();
+        Require(library.Stickers.Count == 0 && library.Packs.Count == 0 && library.Fonts.Count == 0, "Reset left library content");
+        Require(!(await fresh.ReadProfileAsync()).SetupComplete, "Reset did not restore first-launch setup");
+        Require(fresh.Root == originalRoot && !fresh.KeepOriginalStillImages && fresh.KeepOriginalAnimations && fresh.AskForOriginalOnImport && fresh.BlurNsfwPreviews, "Reset did not restore storage defaults");
+        Require(generatedFiles.All(file => !File.Exists(file)) && !File.Exists(orphan) && !File.Exists(Path.Combine(movedRoot, "library.json")), "Reset left generated files or a relocated library index");
+        Require(File.Exists(external) && File.Exists(unknown), "Reset deleted an external backup or unrelated file");
+        Require((await fresh.ReadProfileOverviewAsync()).Identity.Id != identity, "Reset retained the old profile identity");
+        var logFolder = Path.Combine(originalRoot, "test-logs"); var log = new AppLog(logFolder);
+        log.Info("fixture", "test only"); log.Clear();
+        Require(!Directory.EnumerateFiles(logFolder).Any(), "Reset log cleanup left diagnostic files");
+    });
     Console.WriteLine($"Passed {checks} storage checks.");
 }
 finally

@@ -1,0 +1,22 @@
+@page "/editor-preview"
+@using StickerApp.Shared.Components.Editor.DesignPreview
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+<PageTitle>Editor preview · Stik-er-in</PageTitle>
+<header class="page-header demo-page-heading"><div><h1>Editor preview</h1><small class="helper">Interactive layout example · sample artwork</small></div><a class="button" href="settings#editor-layout"><Icon Name="settings" />Layout settings</a></header>
+@if (error is not null) { <p class="error" role="alert">@error</p> }
+<EditorDesignPreview Preferences="preferences" />
+<p class="helper demo-preview-note">Try the categories and tools. This is a design preview; it does not edit or save library stickers. Control positions are changed in Settings.</p>
+@code {
+    private EditorLayoutPreferences preferences = new();
+    private IJSObjectReference? module;
+    private string? error;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try { module = await JS.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/ui/editor-layout.js"); preferences = await module.InvokeAsync<EditorLayoutPreferences>("read"); }
+        catch (JSException) { error = "Could not read layout settings. Showing the default preview."; }
+        StateHasChanged();
+    }
+    public async ValueTask DisposeAsync() { if(module is not null) { try { await module.DisposeAsync(); } catch(JSDisconnectedException) { } } }
+}

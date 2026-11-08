@@ -2,8 +2,8 @@
 @implements IAsyncDisposable
 @inject LibraryStore Store
 @inject IJSRuntime JS
-<PageTitle>Discord favourites · Stik-er-in</PageTitle>
-<header class="page-header"><h1>Discord favourites</h1></header>
+<PageTitle>Import from Discord · Stik-er-in</PageTitle>
+<header class="page-header"><h1>Import from Discord</h1></header>
 <section class="settings-card">
     <h2>Bring your saved GIFs</h2>
     <p>Your Discord ZIP is read on your device. Only the favourites list is passed to the app; messages, account details and the full ZIP are never uploaded.</p>
@@ -57,7 +57,7 @@
     </section>
     <section class="settings-card">
         <h2>Import @selected.Count selected</h2>
-        <label>Destination<select @bind="destination" disabled="@busy"><option value="">All images</option>@foreach (var pack in packs) { <option value="@pack.Id">@pack.Name (@pack.StickerIds.Count/30)</option> }<option value="new">Create a new pack</option></select></label>
+        <label>Destination<select @bind="destination" disabled="@busy"><option value="">My Library</option>@foreach (var pack in packs) { <option value="@pack.Id">@pack.Name (@pack.StickerIds.Count/30)</option> }<option value="new">Create a new pack</option></select></label>
         @if (destination == "new")
         {
             <label>Pack name<input @bind="newPackName" maxlength="128" disabled="@busy" /></label>

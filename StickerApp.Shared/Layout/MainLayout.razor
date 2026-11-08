@@ -25,13 +25,13 @@
     <ProfileButton />
     </div>
     <nav id="main-navigation" class="app-nav @(menuOpen ? "navigation-open" : "")" aria-label="Main navigation" @onclick="CloseMenu">
-        <NavLink href="" Match="NavLinkMatch.All" class="@(Navigation.ToBaseRelativePath(Navigation.Uri).StartsWith("packs/") ? "active" : null)">Packs</NavLink>
-        <NavLink href="library">All images</NavLink>
+        <NavLink href="" Match="NavLinkMatch.All" class="@(Navigation.ToBaseRelativePath(Navigation.Uri).StartsWith("packs/") ? "active" : null)">My Packs</NavLink>
+        <NavLink href="library">My Library</NavLink>
         <NavLink href="gifs">GIF search</NavLink>
-        <NavLink href="pinterest">Pinterest</NavLink>
-        <NavLink href="imgur">Imgur</NavLink>
-        <NavLink href="discord">Discord</NavLink>
-        <NavLink href="settings">Settings</NavLink>
+        <NavLink href="pinterest">Import from Pinterest</NavLink>
+        <NavLink href="imgur">Import from Imgur</NavLink>
+        <NavLink href="discord">Import from Discord</NavLink>
+        <NavLink class="navigation-settings-link" href="settings">Settings</NavLink>
     </nav>
     @if (menuOpen)
     {

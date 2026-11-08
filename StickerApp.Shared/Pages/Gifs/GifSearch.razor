@@ -34,7 +34,7 @@ else
     </form></OnlineOnly>
 
     <HelpDisclosure Summary="About importing GIFs">
-        <p class="helper">Choose Import to save a GIF to your library, then choose a pack or keep it in All images. Imports use your GIF original-file setting; sticker preparation runs automatically. Maximum file size: 10 MB.</p>
+        <p class="helper">Choose Import to save a GIF to your library, then choose a pack or keep it in My Library. Imports use your GIF original-file setting; sticker preparation runs automatically. Maximum file size: 10 MB.</p>
     </HelpDisclosure>
     @if (IsImporting)
     {
@@ -118,6 +118,6 @@ else
 @if (importedImage is not null)
 {
     <AddToPackDialog Image="@importedImage" Title="Add imported GIF to a pack?" CancelLabel="Keep in library"
-                     Description="Your GIF is saved. Choose a pack below, or keep it in All images."
+                     Description="Your GIF is saved. Choose a pack below, or keep it in My Library."
                      OnAdded="ImportAddedToPack" OnCancel="KeepImportedInLibrary" />
 }

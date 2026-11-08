@@ -1,0 +1,27 @@
+@inject NavigationManager Navigation
+<details class="settings-accordion" open="@expanded">
+    <summary @onclick="Toggle" @onclick:preventDefault><h2>@Title</h2><Icon Name="down" /></summary>
+    <div class="settings-accordion-body">@ChildContent</div>
+</details>
+
+@code {
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string? Anchor { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [CascadingParameter] public SettingsExpansion? Expansion { get; set; }
+    private bool expanded;
+    private int revision = -1;
+    private string? previousFragment;
+    protected override void OnParametersSet()
+    {
+        if (Expansion is not null && revision != Expansion.Revision)
+        {
+            revision = Expansion.Revision;
+            expanded = Expansion.Expanded;
+        }
+        var fragment = new Uri(Navigation.Uri).Fragment;
+        if (fragment != previousFragment && fragment == "#" + Anchor) expanded = true;
+        previousFragment = fragment;
+    }
+    private void Toggle() => expanded = !expanded;
+}

@@ -146,3 +146,7 @@
     --info-background: #1b2a40;
     --info-border: #486c9c;
 }
+
+/* Position-aware shades are applied to individual controls by rainbow-theme.js. */
+:root[data-color="rainbow"] { --accent: #a72b2b; --button-background: #943333; }
+:root[data-theme="dark"][data-color="rainbow"] { --accent: #f89e9e; --button-background: #943333; }

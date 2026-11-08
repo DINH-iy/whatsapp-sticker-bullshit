@@ -6,6 +6,9 @@ namespace StickerApp.Shared.Pages.Settings;
 
 public partial class Settings
 {
+    private StickerApp.Shared.Components.Settings.SettingsExpansion expansion = new(0, false);
+    private void ExpandSections(bool expand) => expansion = new(expansion.Revision + 1, expand);
+
     private StickerApp.Shared.Components.Settings.LibraryStatisticsSettings? fontStatistics;
     private Task RefreshFontStats() => fontStatistics?.RefreshAsync() ?? Task.CompletedTask;
     private string theme = "system";
@@ -17,8 +20,12 @@ public partial class Settings
         ("blue", "Blue", "#447de0"),
         ("purple", "Purple", "#9564cd"),
         ("rose", "Rose", "#d05c89"),
-        ("amber", "Amber", "#d89b2b")
+        ("amber", "Amber", "#d89b2b"),
+        ("rainbow", "Rainbow", "linear-gradient(135deg,#ed5858,#edc858,#66bd78,#66a9ed,#a379eb)"),
+        ("custom", "Custom color", "#32875f")
     ];
+    private string customColor = "#32875f";
+    private bool rainbowMotion;
     private bool ready;
     private bool saving;
     private bool showFolderPicker;
@@ -74,6 +81,8 @@ public partial class Settings
         {
             theme = await JS.InvokeAsync<string>("stickerTheme.get");
             color = await JS.InvokeAsync<string>("stickerTheme.getColor");
+            rainbowMotion = await JS.InvokeAsync<bool>("stickerTheme.getRainbowMotion");
+            customColor = await JS.InvokeAsync<string>("stickerTheme.getCustomColor");
             ready = true;
             ReadTab();
         }
@@ -83,6 +92,27 @@ public partial class Settings
             themeError = "Theme settings could not be loaded. Reload the app to try again.";
         }
         StateHasChanged();
+    }
+
+    private async Task ChangeCustomColor(string value)
+    {
+        try
+        {
+            if(await JS.InvokeAsync<bool>("stickerTheme.setCustomColor",value)) { customColor=value; themeError=null; }
+            else themeError="Choose a valid RGBA color.";
+        }
+        catch(JSException) { themeError="Could not save your custom color."; }
+    }
+
+    private async Task ChangeRainbowMotion(ChangeEventArgs args)
+    {
+        try
+        {
+            var value = args.Value is true;
+            if (await JS.InvokeAsync<bool>("stickerTheme.setRainbowMotion", value)) { rainbowMotion = value; themeError = null; }
+            else themeError = "Could not save the Rainbow setting.";
+        }
+        catch (JSException) { themeError = "Could not save the Rainbow setting."; }
     }
 
     private async Task ChangeTheme(ChangeEventArgs e)

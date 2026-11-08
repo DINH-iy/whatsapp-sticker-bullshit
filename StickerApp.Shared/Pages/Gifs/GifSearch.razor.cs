@@ -124,7 +124,7 @@ public partial class GifSearch
     private void KeepImportedInLibrary()
     {
         importedImage = null;
-        importNotice = "GIF saved in All images.";
+        importNotice = "GIF saved in My Library.";
     }
 
     private async Task ImportGif(GifResult gif)
@@ -163,7 +163,7 @@ public partial class GifSearch
             importedUrls.Add(gif.ShareUrl);
             if (isDisposed) return;
             importedImage = (await Store.ReadAsync()).Stickers.Single(image => image.Id == stickerId);
-            importNotice = "GIF imported into All images.";
+            importNotice = "GIF imported into My Library.";
             await OnImported.InvokeAsync();
             await client.InvokeVoidAsync("registerShare", gif.Slug, activeQuery);
         }

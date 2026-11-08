@@ -32,6 +32,10 @@ public partial class LayerEditorDialog
     private string name = "Layered sticker", libraryImageId = "", progress = "Opening layer editor…";
     private string? error;
     private string quickPanel = "";
+    private string layerCategory = "adjust";
+    private EditorLayoutPreferences layout = new();
+    private IJSObjectReference? layoutModule;
+    private bool layerImageToolActive;
     private bool focusQuickPanel, confirmQuickToolCancel;
     private Task TogglePreview() => Run("Updating preview…", async () =>
     {
@@ -58,6 +62,8 @@ public partial class LayerEditorDialog
         }
         try
         {
+            layoutModule = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/editor-layout.js");
+            layout = await layoutModule.InvokeAsync<EditorLayoutPreferences>("read");
             dialogs = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/dialog.js");
             await dialogs.InvokeVoidAsync("open", dialog);
             module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/media/layers/layer-editor.js");
@@ -83,6 +89,7 @@ public partial class LayerEditorDialog
                 }
             }
             if (StartWithText) state = await controller.InvokeAsync<LayerEditorState>("addText");
+            if (Selected?.Text is not null) layerCategory = "text";
         }
         catch (Exception exception) when (IsExpected(exception)) { Report("Open layer editor", exception); }
         finally { working = loading = false; StateHasChanged(); }
@@ -142,7 +149,7 @@ public partial class LayerEditorDialog
             state = await controller!.InvokeAsync<LayerEditorState>("updateText", next);
         }
     }
-    private Task AddText() => Run("Adding text…", async () => { showAddMenu = false; await FlushText(); state = await controller!.InvokeAsync<LayerEditorState>("addText"); quickPanel = ""; });
+    private Task AddText() => Run("Adding text…", async () => { showAddMenu = false; await FlushText(); state = await controller!.InvokeAsync<LayerEditorState>("addText"); quickPanel = ""; layerCategory = "text"; });
     private TextLayerOptions? queuedText;
     private async Task UpdateText(TextLayerOptions text)
     {
@@ -178,7 +185,7 @@ public partial class LayerEditorDialog
         }
     });
 
-    private Task Select(int index) => Run("Selecting layer…", async () => { await FlushText(); state = await controller!.InvokeAsync<LayerEditorState>("select", index); });
+    private Task Select(int index) => Run("Selecting layer…", async () => { await FlushText(); state = await controller!.InvokeAsync<LayerEditorState>("select", index); if (Selected?.Text is not null) layerCategory = "text"; });
     private Task Action(string action) => Run("Updating layers…", async () => { await FlushText(); state = await controller!.InvokeAsync<LayerEditorState>("action", action); });
     private Task ToggleTool(string tool) => Run("Opening layer tool…", async () =>
     {
@@ -265,6 +272,7 @@ public partial class LayerEditorDialog
             if (gifSession is not null) { await gifSession.InvokeVoidAsync("dispose"); await gifSession.DisposeAsync(); }
             if (gifTools is not null) await gifTools.DisposeAsync();
             if (module is not null) await module.DisposeAsync();
+            if (layoutModule is not null) await layoutModule.DisposeAsync();
             if (dialogs is not null) await dialogs.DisposeAsync();
         }
         catch (JSDisconnectedException) { }

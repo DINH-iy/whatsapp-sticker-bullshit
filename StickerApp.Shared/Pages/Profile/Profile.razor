@@ -15,7 +15,7 @@
         </div>
         <button class="button" @onclick="() => editing = !editing" aria-expanded="@editing"><Icon Name="edit" />@(editing ? "Close editor" : "Edit profile")</button>
     </section>
-    @if (editing) { <ProfileEditor OnFinished="ReloadProfile" /> }
+    @if (editing) { <ProfileEditor ShowOverviewLink="false" OnFinished="ReloadProfile" /> }
     <section class="settings-card" aria-labelledby="profile-statistics-title">
         <div class="storage-section-header"><h2 id="profile-statistics-title">Your stats</h2><button class="button icon-button" @onclick="Load" aria-label="Refresh profile statistics" title="Refresh statistics"><Icon Name="rotate" /></button></div>
         <p class="helper">Your current library. Stickers count once, even when used in multiple packs.</p>
@@ -55,7 +55,7 @@
             <p>A stable local profile ID is ready for linking this installation later. It is an identifier, not a login or proof of identity. Nothing on this page is sent to a server.</p>
             <dl class="sticker-detail-list"><dt>Local profile ID</dt><dd>@current.Identity.Id</dd></dl>
         </details>
-        <a class="button" href=""><Icon Name="layers" />Your packs</a>
+        <a class="button" href=""><Icon Name="layers" />My Packs</a>
     </section>
     </div>
 }

@@ -1,0 +1,47 @@
+<EditorPopup Title="Editing help" IconName="help" IconOnly="true">
+    <section class="editor-help-section"><h3>Canvas &amp; history</h3><dl>
+        <dt>Workspace</dt><dd>The canvas is always 512 × 512 units. Small images keep their size; checkerboard areas are transparent.</dd>
+        <dt>Zoom &amp; pan</dt><dd>Open the percentage menu to zoom, type a percentage or enable Pan. Fit resets the view. Zooming does not change exported pixels.</dd>
+        <dt>Undo &amp; redo</dt><dd>Step back or forward through applied changes. Apply or cancel the current tool first.</dd>
+    </dl></section>
+    <section class="editor-help-section"><h3>Cutout tools</h3><dl>
+        <dt>Crop</dt><dd>Drag a rectangle around the area to keep, then Apply.</dd>
+        <dt>Trace cutout</dt><dd>Draw around the object to keep, then Apply. The magnified preview helps you see under your finger.</dd>
+        <dt>Eraser</dt><dd>Choose a brush size and drag across areas to remove.</dd>
+        <dt>Magic wand</dt><dd>Tap a connected background to remove it. Tolerance controls how similar nearby colors must be.</dd>
+    </dl></section>
+    <section class="editor-help-section"><h3>Draw, text &amp; adjustments</h3><dl>
+        <dt>Draw</dt><dd>Choose Size and a color, then draw on the image.</dd>
+        <dt>Text</dt><dd>Add text as an editable layer. Choose a font, size, style, color or gradient; emoji and uploaded fonts are supported.</dd>
+        <dt>Transform</dt><dd>Drag to move, drag edges/corners to resize, or use the rotation handle. Keep proportions prevents stretching. Number fields allow exact values.</dd>
+        <dt>Opacity</dt><dd>Set how transparent the image or layer is.</dd>
+        <dt>Color</dt><dd>Hue shifts colors around the color wheel. Strength blends the adjustment with the original.</dd>
+        <dt>Border &amp; flip</dt><dd>Border adds an outline/frame with thickness and color. Layer object borders follow transparency. Flip mirrors the artwork.</dd>
+    </dl></section>
+    @if (Animated)
+    {
+        <section class="editor-help-section"><h3>Animation</h3><dl>
+            <dt>Trim &amp; frame selection</dt><dd>Drag the end handles to select a clip. Slide the frame handle above the strip to inspect a particular frame.</dd>
+            <dt>Playback</dt><dd>Play or pause the preview and choose a slower preview speed for precise editing. Preview speed does not change the saved animation speed.</dd>
+            <dt>Timeline</dt><dd>The timeline button shows or hides the frame strip. Set its default visibility in Settings.</dd>
+            <dt>Edits across frames</dt><dd>Drawing, trace and eraser marks stay fixed across frames. Magic wand removes the selected connected color on each frame. Preview the animation before saving.</dd>
+        </dl></section>
+    }
+    @if (Layers)
+    {
+        <section class="editor-help-section"><h3>Layers</h3><dl>
+            <dt>Add &amp; select</dt><dd>Add images or text with Add. Open the layer list to select a layer; the top of the list is the front.</dd>
+            <dt>Arrange</dt><dd>Duplicate, bring forward, send backward, center, flip or remove the selected layer. Drag the list handles to reorder layers.</dd>
+            <dt>Pixel tools</dt><dd>Crop, cutout, eraser and drawing open the selected image/GIF in its own editor. Apply to layer returns the result to the composition.</dd>
+        </dl></section>
+    }
+    <section class="editor-help-section"><h3>Keep or discard changes</h3><dl>
+        <dt>Apply / Cancel</dt><dd>Apply keeps the active tool’s changes in this editing session. Cancel restores the state from before that tool.</dd>
+        <dt>Save / Options</dt><dd>Save commits the sticker. Options contains its name, spoiler and file choices; resetting an image restores its starting artwork for this session.</dd>
+        <dt>Layout</dt><dd>Change tool/control placement, button size and category order in Settings → Editor layout. Those choices apply when an editor opens.</dd>
+    </dl></section>
+</EditorPopup>
+@code {
+    [Parameter] public bool Animated { get; set; }
+    [Parameter] public bool Layers { get; set; }
+}

@@ -61,7 +61,7 @@ public sealed class DiscordImportClient : IDisposable
             var pack = library.Packs.FirstOrDefault(p => p.Id == id) ?? throw new InvalidDataException("This pack no longer exists.");
             if (pack.StickerIds.Count + favorites.Count > 30) throw new InvalidDataException($"This pack has room for {30 - pack.StickerIds.Count} more stickers.");
         }
-        if (newPackName is not null && library.Packs.Count >= 10) throw new InvalidDataException("This library already has 10 packs. Choose an existing pack or All images.");
+        if (newPackName is not null && library.Packs.Count >= 10) throw new InvalidDataException("This library already has 10 packs. Choose an existing pack or My Library.");
         var folder = Path.Combine(Path.GetTempPath(), "stik-discord-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(folder);
         long downloaded = 0, staged = 0; var completed = 0; var files = new List<BatchImportFile>();

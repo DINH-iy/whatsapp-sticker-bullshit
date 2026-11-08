@@ -52,13 +52,13 @@ public partial class PinterestImport
             if (CreatingPack)
             {
                 if (library.Packs.Count >= 10) return "This build supports up to 10 packs. Choose an existing pack or the library.";
-                return selected.Count > 30 ? "A pack can contain at most 30 stickers. Select fewer images or choose All images." : null;
+                return selected.Count > 30 ? "A pack can contain at most 30 stickers. Select fewer images or choose My Library." : null;
             }
             if (DestinationId is not { } id) return null;
             var pack = library.Packs.FirstOrDefault(p => p.Id == id);
             if (pack is null) return "This pack no longer exists. Choose another destination.";
             var remaining = 30 - pack.StickerIds.Count;
-            return selected.Count > remaining ? $"This pack has room for {remaining} more stickers. Select fewer images or choose All images." : null;
+            return selected.Count > remaining ? $"This pack has room for {remaining} more stickers. Select fewer images or choose My Library." : null;
         }
     }
 

@@ -7,7 +7,13 @@
 @inject StickerApp.Shared.Services.IFormFactor FormFactor
 
 <PageTitle>Settings · Stik-er-in</PageTitle>
-<header class="page-header"><h1>Settings</h1></header>
+<CascadingValue Value="expansion">
+<header class="page-header settings-page-header"><h1>Settings</h1>
+<div class="settings-section-actions" role="group" aria-label="Settings sections">
+    <button class="button" type="button" @onclick="() => ExpandSections(false)">Collapse all</button>
+    <button class="button" type="button" @onclick="() => ExpandSections(true)">Expand all</button>
+</div>
+</header>
 <div class="settings-tabs" role="tablist" aria-label="Settings categories" @onkeydown="HandleTabKey">
     <button type="button" role="tab" id="general-settings-tab" aria-controls="general-settings-panel"
             aria-selected="@(selectedTab == "general" ? "true" : "false")" tabindex="@(selectedTab == "general" ? 0 : -1)"
@@ -18,40 +24,8 @@
 </div>
 <section role="tabpanel" id="general-settings-panel" aria-labelledby="general-settings-tab" hidden="@(selectedTab != "general")" tabindex="0">
 <div class="settings-stack">
-    @if (FormFactor.GetFormFactor() == "Web") { <WebAppSettings /> }
-    <section class="settings-card" aria-labelledby="appearance-title">
-        <h2 id="appearance-title">Appearance</h2>
-        <label for="theme">Theme</label>
-        <select id="theme" value="@theme" @onchange="ChangeTheme" disabled="@(!ready)">
-            <option value="system">Use system setting</option>
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-        </select>
-        <p class="helper">Choose a theme, or follow your device. Your choice is saved on this device.</p>
-        <h3 class="settings-subheading">Color theme</h3>
-        <div class="color-options" role="group" aria-label="Color theme">
-            @foreach (var option in ColorOptions)
-            {
-                <button class="color-option" type="button" aria-pressed="@(color == option.Id ? "true" : "false")"
-                        disabled="@(!ready)" @onclick="() => ChangeColor(option.Id)">
-                    <span class="color-swatch" style="--swatch: @option.Swatch" aria-hidden="true"></span>
-                    @option.Label
-                </button>
-            }
-        </div>
-        <p class="helper">Your color theme is remembered when you close and reopen the app.</p>
-        @if (themeError is not null)
-        {
-            <p class="error" role="alert">@themeError</p>
-        }
-    </section>
-    <ProfileEditor />
-    <SpoilerSettings />
-    <LayerWarningSettings />
-    <InterfaceFontSettings OnFontsChanged="RefreshFontStats" />
-    <TapFeedbackSettings />
-    <LibraryStatisticsSettings @ref="fontStatistics" />
-    <section class="settings-card faq" id="faq" aria-labelledby="faq-title">
+    <SettingsSection Title="Help &amp; FAQ" Anchor="faq">
+<section class="settings-card faq" id="faq" aria-labelledby="faq-title">
         <h2 id="faq-title">Help &amp; FAQ</h2>
         <details>
             <summary>How do I import Discord favourite GIFs on my phone?</summary>
@@ -72,7 +46,7 @@
         </details>
         <details>
             <summary>Can I add GIFs and other images?</summary>
-            <p>Yes. Choose Add stickers → Image from device or GIF from device. The Add sticker tile in a pack offers the same choices, including Layered image to combine pictures. Image and GIF file pickers use separate filters. The Add sticker tile inside a pack imports images straight into that pack. Open Packs to see all your collections, create one with the New pack tile, or choose its cover. You can store and share these files before they meet WhatsApp's requirements.</p>
+            <p>Yes. Choose Add stickers → Image from device or GIF from device. The Add sticker tile in a pack offers the same choices, including Layered image to combine pictures. Image and GIF file pickers use separate filters. The Add sticker tile inside a pack imports images straight into that pack. Open My Packs to see all your collections, create one with the New pack tile, or choose its cover. You can store and share these files before they meet WhatsApp's requirements.</p>
             <p>Images and GIFs are prepared automatically in the background: converted to WebP, fitted into 512 × 512 pixels without stretching, and compressed. Choose whether to keep originals in Library statistics &amp; storage or when saving an edit. Still-image originals are off by default; animation sources are on by default to preserve the full original. Discarding a source saves storage but you cannot recover the previous version without reimporting your own saved copy. Prepared animated WebP stickers can still be trimmed and edited. Open a sticker’s info button to see its details and status. GIFs longer than 10 seconds or too large to compress need a shorter selection in Edit; preparation resumes after you save.</p>
         </details>
         <details>
@@ -83,7 +57,7 @@
         <details>
             <summary>How do I combine images with layers?</summary>
             <p>While editing any image or GIF, choose Make layered to use the current artwork as a layer, or Add text to open layers with a caption already added. Applied image edits and animation trims carry over. You can also add text while editing an individual layer image. Save sticker keeps the result and its editable layers.</p>
-            <p>In a pack or All images, choose Add stickers → Layered image. Add images from your device or library, then drag a layer on the canvas. Drag its corner or edge handles to resize, and the round arrow handle to rotate. Turn off Keep proportions to stretch. Position, size, rotation, opacity, and tint controls also provide precise adjustments. The top of the layer list is the front. Each layer has a thumbnail, and selecting one shows a larger preview so similar filenames are easier to distinguish. Quick buttons stay pinned at the bottom. Size/position, Rotate, Opacity, and Color open compact adjustment panels above the toolbar. Rotate includes a dial, the original slider, ±45°/±90° presets, and reset; opacity has a slider and percentage presets. Flip, duplicate, reorder, center, remove, undo, and redo are also directly available.</p>
+            <p>In a pack or My Library, choose Add stickers → Layered image. Add images from your device or library, then drag a layer on the canvas. Drag its corner or edge handles to resize, and the round arrow handle to rotate. Turn off Keep proportions to stretch. Position, size, rotation, opacity, and tint controls also provide precise adjustments. The top of the layer list is the front. Each layer has a thumbnail, and selecting one shows a larger preview so similar filenames are easier to distinguish. Quick buttons stay pinned at the bottom. Size/position, Rotate, Opacity, and Color open compact adjustment panels above the toolbar. Rotate includes a dial, the original slider, ±45°/±90° presets, and reset; opacity has a slider and percentage presets. Flip, duplicate, reorder, center, remove, undo, and redo are also directly available.</p>
             <p>Save creates a sticker and keeps its editable layers locally. Tap that sticker’s pencil button to reopen its layers. Compositions support up to 10 layers on a transparent 512 × 512 canvas; GIFs stay animated: select a GIF layer to trim its clip directly beneath its row. Shorter clips loop alongside longer layers. Drag a layer’s grip to change its order. Animated compositions save as animated WebP for WhatsApp; still-only compositions receive identical frames on WhatsApp export. Exported pack files contain the flattened image, not the editable layers.</p>
         </details>
         <details>
@@ -115,14 +89,59 @@
             <p>Each installed Android/iPhone app keeps its own library. The browser and Home Screen web app use the library on the computer hosting Stik-er-in and need a connection to it. Use pack files or sharing links to move packs between native apps. Automatic syncing and separate browser libraries for each friend are planned for later.</p>
         </details>
     </section>
+</SettingsSection>
+    @if (FormFactor.GetFormFactor() == "Web") { <SettingsSection Title="Home Screen app"><WebAppSettings /></SettingsSection> }
+    <SettingsSection Title="Appearance">
+<section class="settings-card" aria-labelledby="appearance-title">
+        <h2 id="appearance-title">Appearance</h2>
+        <label for="theme">Theme</label>
+        <select id="theme" value="@theme" @onchange="ChangeTheme" disabled="@(!ready)">
+            <option value="system">Use system setting</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+        </select>
+        <p class="helper">Choose a theme, or follow your device. Your choice is saved on this device.</p>
+        <h3 class="settings-subheading">Color theme</h3>
+        <div class="color-options" role="group" aria-label="Color theme">
+            @foreach (var option in ColorOptions)
+            {
+                <button class="color-option" type="button" aria-pressed="@(color == option.Id ? "true" : "false")"
+                        disabled="@(!ready)" @onclick="() => ChangeColor(option.Id)">
+                    <span class="color-swatch" style="--swatch: @(option.Id == "custom" ? customColor : option.Swatch)" aria-hidden="true"></span>
+                    @option.Label
+                </button>
+            }
+        </div>
+        <p class="helper">Your color theme is remembered when you close and reopen the app.</p>
+        @if (color == "custom") { <ThemeColorPicker Value="@customColor" ValueChanged="ChangeCustomColor" /> }
+        @if (color == "rainbow")
+        {
+            <label class="toggle-row"><input type="checkbox" checked="@rainbowMotion" @onchange="ChangeRainbowMotion" disabled="@(!ready)" />Colors follow scrolling</label>
+            <p class="helper">Off: each element gets a fixed color from its position on the page, red at the top through violet at the bottom. On: colors change as controls move through the screen.</p>
+        }
+        @if (themeError is not null)
+        {
+            <p class="error" role="alert">@themeError</p>
+        }
+    </section>
+</SettingsSection>
+    <SettingsSection Title="Your profile"><ProfileEditor /></SettingsSection>
+    <SettingsSection Title="NSFW spoilers"><SpoilerSettings /></SettingsSection>
+    <SettingsSection Title="Editing"><LayerWarningSettings /></SettingsSection>
+    <SettingsSection Title="Editor layout" Anchor="editor-layout"><EditorLayoutSettings /></SettingsSection>
+    <SettingsSection Title="App font"><InterfaceFontSettings OnFontsChanged="RefreshFontStats" /></SettingsSection>
+    <SettingsSection Title="Touch feedback" Anchor="touch-feedback"><TapFeedbackSettings /></SettingsSection>
+    <SettingsSection Title="Library statistics &amp; storage"><LibraryStatisticsSettings @ref="fontStatistics" /></SettingsSection>
+
 </div>
 </section>
 <section role="tabpanel" id="developer-settings-panel" aria-labelledby="developer-settings-tab" hidden="@(selectedTab != "developer")" tabindex="0">
 <div class="settings-stack">
-    <DiagnosticsSettings />
-    <GifSearchSettings />
-    <PackSharingSettings />
-        <section class="settings-card" id="storage" aria-labelledby="storage-title">
+    <SettingsSection Title="Diagnostics &amp; error logs" Anchor="diagnostics"><DiagnosticsSettings /></SettingsSection>
+    <SettingsSection Title="GIF search" Anchor="gif-search"><GifSearchSettings /></SettingsSection>
+    <SettingsSection Title="Pack sharing" Anchor="pack-sharing"><PackSharingSettings /></SettingsSection>
+        <SettingsSection Title="Sticker storage" Anchor="storage">
+<section class="settings-card" id="storage" aria-labelledby="storage-title">
             <h2 id="storage-title">Sticker storage</h2>
             <p class="helper">Your sticker images, edits, and packs are saved together.</p>
             <dl class="storage-location">
@@ -148,7 +167,9 @@
                 <p class="settings-success" role="status">@notice</p>
             }
         </section>
-    <section class="settings-card" id="cloud" aria-labelledby="cloud-title">
+</SettingsSection>
+    <SettingsSection Title="OneDrive &amp; Google Drive" Anchor="cloud">
+<section class="settings-card" id="cloud" aria-labelledby="cloud-title">
         <h2 id="cloud-title">OneDrive &amp; Google Drive</h2>
         @if (FormFactor.GetFormFactor() == "Web")
         {
@@ -162,7 +183,8 @@
         }
         <p class="helper">This app does not sign in to cloud accounts or monitor sync status.</p>
     </section>
-    <SurpriseSettings />
+</SettingsSection>
+    <SettingsSection Title="Easter eggs"><SurpriseSettings /></SettingsSection>
 </div>
 </section>
 
@@ -170,3 +192,7 @@
 {
     <StickerApp.Shared.Components.Settings.FolderPicker InitialFolder="@Store.Root" OnSelected="FolderSelected" OnCancel="() => showFolderPicker = false" />
 }
+
+<div class="settings-stack settings-reset-footer"><SettingsSection Title="Factory reset"><FactoryResetSettings /></SettingsSection></div>
+
+</CascadingValue>

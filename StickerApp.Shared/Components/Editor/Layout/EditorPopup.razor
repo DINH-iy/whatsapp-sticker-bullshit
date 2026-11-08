@@ -1,0 +1,33 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+<button class="button @(IconOnly ? "icon-button" : "") editor-popup-trigger" type="button" disabled="@Disabled" @onclick="Open" aria-haspopup="dialog" aria-label="@Title" title="@Title"><Icon Name="@IconName" />@if (!IconOnly) { <span>@Label</span> }</button>
+@if (show)
+{
+    <dialog @ref="dialog" class="folder-dialog editor-popup-dialog" aria-labelledby="@titleId" @oncancel="Close" @oncancel:preventDefault @onkeydown:stopPropagation>
+        <div class="folder-dialog-heading"><h2 id="@titleId">@Title</h2><button class="button icon-button" type="button" @onclick="Close" aria-label="Close @Title"><Icon Name="close" /></button></div>
+        <div class="editor-popup-body">@ChildContent</div>
+        <div class="dialog-actions"><button class="button" type="button" @onclick="Close">Back to editor</button></div>
+    </dialog>
+}
+@code {
+    [Parameter] public string Title { get; set; } = "Sticker options";
+    [Parameter] public string Label { get; set; } = "Options";
+    [Parameter] public string IconName { get; set; } = "more";
+    [Parameter] public bool IconOnly { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    private readonly string titleId = "editor-popup-" + Guid.NewGuid().ToString("N");
+    private bool show, opening;
+    private ElementReference dialog;
+    private IJSObjectReference? module;
+    private void Open() { show = opening = true; }
+    private void Close() { show = opening = false; }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!opening) return;
+        opening = false;
+        module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/dialog.js");
+        await module.InvokeVoidAsync("open", dialog);
+    }
+    public async ValueTask DisposeAsync() { if (module is not null) { try { await module.DisposeAsync(); } catch (JSDisconnectedException) { } } }
+}

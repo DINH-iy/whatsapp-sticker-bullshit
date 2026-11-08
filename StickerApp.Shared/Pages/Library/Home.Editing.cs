@@ -7,6 +7,7 @@ namespace StickerApp.Shared.Pages.Library;
 
 public partial class Home
 {
+    private bool editorToolActive;
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (editing is null) return;
@@ -46,6 +47,7 @@ public partial class Home
             showLayerEditor = true;
             return;
         }
+        editorToolActive = false;
         var session = ++editorSession;
         busy = editorLoading = editorToolsLoading = true;
         busyText = image.Animated ? "Loading animation…" : "Loading image…";

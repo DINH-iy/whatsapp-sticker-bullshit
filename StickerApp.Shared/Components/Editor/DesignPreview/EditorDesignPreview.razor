@@ -1,0 +1,120 @@
+@namespace StickerApp.Shared.Components.Editor.DesignPreview
+<div class="editor-design-preview demo-tools-@Preferences.ToolsPosition demo-controls-@Preferences.ControlsPosition demo-size-@Preferences.ButtonSize" aria-label="Interactive editor design preview" style="--demo-speed:@speed">
+    <div class="demo-titlebar">
+        <strong>@(animated ? "Edit GIF" : "Edit image")</strong>
+        <button class="button icon-button" @onclick="Undo" disabled="@(history.Count == 0)" aria-label="Undo preview adjustment" title="Undo"><Icon Name="undo" /></button>
+        <button class="button demo-options-button" @onclick="() => options = !options" aria-expanded="@options">Options</button>
+        @if (activeTool is null) { <button class="button primary" @onclick='() => notice = "Preview complete. No sticker files were changed."'>Done</button> }
+    </div>
+    @if (options)
+    {
+        <div class="demo-options">
+            <label class="toggle-row"><input type="checkbox" @bind="animated" />GIF example</label>
+            <p class="helper">Name, spoiler and file options would live here.</p>
+        </div>
+    }
+    <div class="demo-workspace">
+        <div class="demo-artboard" aria-label="Sample sticker on a fixed square canvas">
+            <svg viewBox="0 0 512 512" role="img" aria-label="A cheerful green sticker character with top text">
+                <defs><clipPath id="demo-crop"><rect x="@inset" y="@inset" width="@(512-inset*2)" height="@(512-inset*2)" /></clipPath></defs>
+                <g clip-path="url(#demo-crop)">
+                    <g style="@ArtworkStyle">
+                        <g class="@(animated && playing ? "demo-mascot-playing" : "")">
+                            <path d="M110 224C80 142 148 106 207 132C264 92 334 116 346 165C416 173 435 247 395 288C410 360 336 406 280 380C211 427 136 389 137 335C76 328 65 259 110 224Z" fill="#82d6ae" stroke="white" stroke-width="12" />
+                            <ellipse cx="203" cy="223" rx="19" ry="24" fill="#152c25"/><ellipse cx="307" cy="223" rx="19" ry="24" fill="#152c25"/>
+                            <circle cx="209" cy="216" r="6" fill="white"/><circle cx="313" cy="216" r="6" fill="white"/>
+                            <path d="M219 277Q254 310 291 277" fill="none" stroke="#152c25" stroke-width="12" stroke-linecap="round"/>
+                            <ellipse cx="165" cy="268" rx="22" ry="12" fill="#f398a7"/><ellipse cx="345" cy="268" rx="22" ry="12" fill="#f398a7"/>
+                        </g>
+                        <text x="256" y="87" text-anchor="middle" font-family="Impact, sans-serif" font-weight="900" font-size="54" fill="white" stroke="#17231f" stroke-width="5" paint-order="stroke">TOP TEXT</text>
+                    </g>
+                </g>
+                @if (activeTool == "Crop") { <rect x="@inset" y="@inset" width="@(512-inset*2)" height="@(512-inset*2)" fill="none" stroke="white" stroke-width="3" stroke-dasharray="10 6" /> }
+                @if (activeTool is "Draw" or "Eraser") { <circle cx="374" cy="352" r="@(amount / 2)" fill="@brushColor" opacity=".7" stroke="white" stroke-width="2" /> }
+            </svg>
+            <button class="demo-fit" @onclick='() => notice = "The preview canvas stays square and fits the available space."'>Fit</button>
+        </div>
+        @if (activeTool is not null)
+        {
+            <aside class="demo-control-panel" aria-label="@($"{activeTool} controls")">
+                <strong>@activeTool</strong>
+                @if (activeTool is "Draw" or "Eraser" or "Magic wand" or "Opacity" or "Color" or "Transform" or "Border" or "Crop")
+                {
+                    @if (activeTool is "Draw" or "Eraser")
+                    {
+                        <label class="demo-value-label">Size<select aria-label="Preview brush size" @bind="amount" @bind:after="Adjust">@foreach (var size in new[] { 2, 4, 8, 12, 20, 30, 50, 75, 100 }) { <option value="@size">@size</option> }</select></label>
+                    }
+                    else
+                    {
+                        <label class="demo-value-label">@ValueLabel<input type="number" aria-label="Preview tool value" min="@Minimum" max="@Maximum" @bind="amount" @bind:event="oninput" @bind:after="Adjust" /></label>
+                        <input type="range" aria-label="Preview tool slider" min="@Minimum" max="@Maximum" @bind="amount" @bind:event="oninput" @bind:after="Adjust" />
+                    }
+                    @if (activeTool is "Draw" or "Color" or "Border") { <input type="color" aria-label="Preview tool color" @bind="brushColor" /> }
+                }
+                else { <p class="helper">@activeTool options appear only while this tool is selected.</p> }
+                <div class="demo-tool-actions"><button class="button" @onclick="CancelTool">Cancel</button><button class="button primary" @onclick="Apply">Apply</button></div>
+            </aside>
+        }
+    </div>
+    @if (animated)
+    {
+        <div class="demo-playback">
+            <button class="button icon-button" @onclick="() => playing = !playing" aria-label="@(playing ? "Pause example animation" : "Play example animation")"><Icon Name="@(playing ? "pause" : "play")" /></button>
+            <span>Frame @frame</span>
+            <select aria-label="Example playback speed" @bind="speed"><option value="1">1×</option><option value="2">0.5×</option><option value="4">0.25×</option></select>
+            <button class="button icon-button" @onclick="() => timeline = !timeline" aria-label="Toggle example timeline" aria-expanded="@timeline"><Icon Name="animation" /></button>
+        </div>
+        @if (timeline) { <div class="demo-timeline"><div class="demo-filmstrip" aria-hidden="true">@for (var i=0;i<8;i++) { <span>●</span> }</div><input type="range" aria-label="Example animation frame" min="0" max="7" @bind="frame" @bind:event="oninput" /></div> }
+    }
+    <div class="demo-tool-browser">
+        @if (activeTool is null)
+        {
+            <div class="demo-tool-choices" role="group" aria-label="@($"{Label(category)} tools")">
+                @foreach (var tool in Tools)
+                {
+                    <button class="button" @onclick="() => SelectTool(tool.Label)"><Icon Name="@tool.Icon" /><span>@tool.Label</span></button>
+                }
+            </div>
+        }
+        <div class="demo-category-tabs" role="group" aria-label="Editing categories">
+            @foreach (var id in Preferences.Categories)
+            {
+                <button class="button @(category == id ? "demo-category-active" : "")" aria-pressed="@(category == id)" disabled="@(activeTool is not null)" @onclick="() => category = id"><Icon Name="@CategoryIcon(id)" /><span>@Label(id)</span></button>
+            }
+        </div>
+    </div>
+    @if (notice is not null) { <p class="demo-notice" role="status">@notice</p> }
+</div>
+@code {
+    [Parameter] public EditorLayoutPreferences Preferences { get; set; } = new();
+    private string category = "cutout", brushColor = "#ff7b9a";
+    private string? activeTool, notice;
+    private bool options, animated = true, playing, timeline = true;
+    private int amount = 30, frame, speed = 1, inset;
+    private double opacity = 1, rotation, hue;
+    private (double Opacity, double Rotation, double Hue, int Inset) before;
+    private readonly Stack<(double Opacity, double Rotation, double Hue, int Inset)> history = new();
+    private bool? lastTimeline;
+    protected override void OnParametersSet() { if (lastTimeline != Preferences.ShowTimeline) { timeline = Preferences.ShowTimeline; lastTimeline = timeline; } }
+    private string ArtworkStyle => FormattableString.Invariant($"opacity:{opacity}; transform:rotate({rotation}deg); transform-origin:256px 256px; filter:hue-rotate({hue}deg)");
+    private int Minimum => activeTool == "Transform" ? -180 : 0;
+    private int Maximum => activeTool switch { "Transform" => 180, "Color" => 360, "Crop" => 100, _ => 100 };
+    private string ValueLabel => activeTool switch { "Crop" => "Inset", "Opacity" => "Opacity %", "Magic wand" => "Tolerance", "Color" => "Hue", "Transform" => "Rotation", "Border" => "Width", _ => "Size" };
+    private (string Label, string Icon)[] Tools => category switch {
+        "draw" => [("Draw","edit"),("Eraser","eraser"),("Border","image")],
+        "text" => [("Add text","text"),("Font","text"),("Color","palette")],
+        "adjust" => [("Transform","crop"),("Opacity","opacity"),("Color","palette"),("Flip","flip")],
+        "layers" => [("Add layer","layers"),("Arrange","layers"),("Duplicate","copy")],
+        _ => [("Crop","crop"),("Trace cutout","lasso"),("Eraser","eraser"),("Magic wand","wand")] };
+    public static string Label(string id) => id switch { "cutout" => "Cutout", "draw" => "Draw", "text" => "Text", "adjust" => "Adjust", _ => "Layers" };
+    private static string CategoryIcon(string id) => id switch { "cutout" => "lasso", "draw" => "edit", "text" => "text", "adjust" => "opacity", _ => "layers" };
+    private void SelectTool(string tool)
+    {
+        before = (opacity, rotation, hue, inset); notice = null; activeTool = tool;
+        amount = tool switch { "Opacity" => (int)(opacity*100), "Transform" => (int)rotation, "Color" => (int)hue, "Crop" => inset, _ => 30 };
+    }
+    private void Adjust() { amount = Math.Clamp(amount, Minimum, Maximum); switch(activeTool) { case "Opacity":opacity=amount/100d;break;case "Transform":rotation=amount;break;case "Color":hue=amount;break;case "Crop":inset=amount;break;} }
+    private void Apply() { history.Push(before); activeTool = null; }
+    private void CancelTool() { (opacity, rotation, hue, inset) = before; activeTool = null; }
+    private void Undo() { if(history.TryPop(out var state)) (opacity, rotation, hue, inset) = state; }
+}

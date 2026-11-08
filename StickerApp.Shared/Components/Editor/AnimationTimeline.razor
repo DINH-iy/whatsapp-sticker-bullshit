@@ -1,3 +1,5 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
 @using System.Globalization
 
 <fieldset class="animation-timeline" aria-label="Animation trim range" disabled="@Disabled">
@@ -41,6 +43,18 @@
     [Parameter] public bool Disabled { get; set; }
     [Parameter] public RenderFragment? PlaybackControl { get; set; }
     private bool showTimeline = true;
+    private IJSObjectReference? layoutModule;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        layoutModule = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/editor-layout.js");
+        showTimeline = (await layoutModule.InvokeAsync<EditorLayoutPreferences>("read")).ShowTimeline;
+        StateHasChanged();
+    }
+    public async ValueTask DisposeAsync()
+    {
+        if (layoutModule is not null) { try { await layoutModule.DisposeAsync(); } catch (JSDisconnectedException) { } }
+    }
     [Parameter] public bool LayerControls { get; set; }
     [Parameter] public EventCallback<double> StartChanged { get; set; }
     [Parameter] public EventCallback<double> EndChanged { get; set; }

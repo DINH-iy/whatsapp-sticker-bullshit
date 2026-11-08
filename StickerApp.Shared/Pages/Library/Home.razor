@@ -9,7 +9,7 @@
 @inject NavigationManager Navigation
 @inject StickerApp.Shared.Services.StickerPreparationService Preparation
 
-<PageTitle>@(CurrentPack?.Name ?? "Packs") · Stik-er-in</PageTitle>
+<PageTitle>@(CurrentPack?.Name ?? "My Library") · Stik-er-in</PageTitle>
 
 <header class="page-header">
     <div class="page-title">
@@ -23,7 +23,7 @@
         }
         <div class="pack-heading-text">
             <div class="pack-heading-name">
-                <h1>@(CurrentPack?.Name ?? "All images")</h1>
+                <h1>@(CurrentPack?.Name ?? "My Library")</h1>
                 @if (CurrentPack is { } visibilityPack)
                 {
                     <span class="pack-visibility-indicator" role="img" aria-label="@(visibilityPack.Public ? "Public pack" : "Private pack")" title="@(visibilityPack.Public ? "Public pack" : "Private pack")">
@@ -257,7 +257,7 @@ else
     <dialog @ref="editDialog" class="folder-dialog image-edit-dialog" aria-labelledby="edit-title" aria-busy="@(busy || EditorOpening ? "true" : "false")" @onkeydown="EditorKeyDown">
         <div class="editor-dialog-heading">
             <h2 id="edit-title">@(IsGif ? "Edit GIF" : editing.Animated || replacementAnimated ? "Edit animated image" : "Edit image")</h2>
-            <div class="editor-header-actions">
+            <div class="editor-header-actions" hidden="@editorToolActive">
                 <button class="button icon-button" type="button" @onclick="CancelEditing" disabled="@((busy && !editorLoading) || (customizing && !editorToolsLoading))" aria-label="Cancel" title="Cancel editing"><Icon Name="close" /></button>
                 @if (!EditorOpening) { <button class="button primary icon-button" type="button" @onclick="Save" disabled="@(busy || customizing)" aria-label="Save" title="Save sticker"><Icon Name="check" /></button> }
             </div>
@@ -272,7 +272,7 @@ else
         <div class="editor-dialog-body" hidden="@EditorOpening">
             @if (EditingStill || EditingAnimation)
             {
-                <ImageCustomizer @key="editSource" Source="@editSource" OnReady="EditorToolsReady" OnAddText="RequestAddText" OnMakeLayered="MakeEditedLayered" Animated="@EditingAnimation" TrimStart="@trimStart" TrimEnd="@(gifDuration > 0 ? trimEnd : null)" OnEditsChanged="recipe => editRecipe = recipe" OnChanged="CustomizeImage" OnBusyChanged="value => customizing = value">
+                <ImageCustomizer @key="editSource" Source="@editSource" OnReady="EditorToolsReady" OnAddText="RequestAddText" OnMakeLayered="MakeEditedLayered" Animated="@EditingAnimation" TrimStart="@trimStart" TrimEnd="@(gifDuration > 0 ? trimEnd : null)" OnEditsChanged="recipe => editRecipe = recipe" OnChanged="CustomizeImage" OnBusyChanged="value => customizing = value" OnToolActiveChanged="value => editorToolActive = value">
                     <Timeline Context="playback">
                         @if (EditingAnimation && gifDuration > 0)
                         {
@@ -283,8 +283,6 @@ else
                         }
                     </Timeline>
                     <Options>
-                        <details class="editor-details">
-                            <summary>Sticker options</summary>
                             <label class="toggle-row editor-spoiler-toggle"><input type="checkbox" @bind="editNsfw" disabled="@(busy || customizing)" />NSFW spoiler</label>
                             <label>Name <input @bind="editName" @bind:event="oninput" maxlength="128" disabled="@busy" /></label>
                             <div class="edit-tools">
@@ -320,7 +318,6 @@ else
                             <HelpDisclosure Summary="About original files">
                                 <p class="helper">Keeping a source uses more storage. This choice applies when saving a trim, replacement, or image edit. Cancel keeps everything unchanged. Prepared animated WebP stickers can still be trimmed and edited; editable layer projects keep their own sources.</p>
                             </HelpDisclosure>
-                        </details>
                     </Options>
                 </ImageCustomizer>
             }

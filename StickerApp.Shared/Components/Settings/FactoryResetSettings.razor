@@ -1,0 +1,70 @@
+@implements IAsyncDisposable
+@inject LibraryStore Store
+@inject AppLog Log
+@inject IJSRuntime JS
+@inject IServiceProvider Services
+@inject StickerApp.Shared.Services.IFormFactor FormFactor
+<section class="settings-card factory-reset-settings" aria-labelledby="factory-reset-title">
+    <h2 id="factory-reset-title">Factory reset</h2>
+    <p>Erase your profile, packs, stickers, original files, editable layers, uploaded fonts, saved app settings and local diagnostics. The app will start with first-launch setup again.</p>
+    <p class="error"><strong>This cannot be undone.</strong> Files you exported or backed up outside app storage are not erased.</p>
+    @if (FormFactor.GetFormFactor() == "Web") { <p class="helper">This browser host uses a shared library. Reset erases that library for every browser connected to this host.</p> }
+    <button class="button danger" @onclick="Begin"><Icon Name="trash" />Factory reset…</button>
+</section>
+@if (stage > 0)
+{
+    <dialog @ref="dialog" class="folder-dialog factory-reset-dialog" aria-labelledby="reset-confirm-title" @oncancel="Cancel" @oncancel:preventDefault>
+        <h2 id="reset-confirm-title">@(stage == 1 ? "Erase all app data?" : "Final confirmation")</h2>
+        @if (stage == 1)
+        {
+            <p>This permanently deletes your profile, packs, stickers, originals, layers, fonts and settings.</p>
+            <p class="error"><strong>This cannot be undone.</strong> Export any packs you want to keep before continuing.</p>
+            <div class="dialog-actions"><button class="button" @onclick="Cancel">Cancel</button><button class="button danger" @onclick="() => stage = 2">Continue to final confirmation</button></div>
+        }
+        else
+        {
+            <p>Everything listed will be erased. <strong>There is no undo or recovery inside the app.</strong></p>
+            <label for="factory-reset-confirm">Type RESET to confirm</label><input id="factory-reset-confirm" autocomplete="off" spellcheck="false" @bind="confirmation" @bind:event="oninput" disabled="@working" />
+            @if (error is not null) { <p class="error" role="alert">@error</p> }
+            <div class="dialog-actions"><button class="button" @onclick="Cancel" disabled="@working">Cancel</button><button class="button danger" @onclick="Reset" disabled="@(working || confirmation != "RESET")"><Icon Name="trash" />@(working ? "Erasing…" : "Erase everything permanently")</button></div>
+        }
+    </dialog>
+}
+@code {
+    private int stage;
+    private string confirmation = "";
+    private string? error;
+    private bool working, openDialog;
+    private ElementReference dialog;
+    private IJSObjectReference? dialogHelper;
+    private void Begin() { stage = 1; confirmation = ""; error = null; openDialog = true; }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!openDialog) return;
+        openDialog = false;
+        dialogHelper ??= await JS.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/ui/dialog.js");
+        await dialogHelper.InvokeVoidAsync("open",dialog);
+    }
+    private void Cancel() { if(!working) { stage = 0; confirmation = ""; } }
+    private async Task Reset()
+    {
+        if(working || stage != 2 || confirmation != "RESET") return;
+        working = true; error = null;
+        var erased = false;
+        try
+        {
+            await using var module = await JS.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/ui/factory-reset.js");
+            await Store.FactoryResetAsync(); erased = true;
+            await module.InvokeVoidAsync("clearPreferences");
+            (Services.GetService(typeof(StickerApp.Shared.Services.ITapFeedback)) as StickerApp.Shared.Services.ITapFeedback)?.Configure(true,25);
+            Log.Clear();
+            await module.InvokeVoidAsync("restart");
+        }
+        catch(Exception ex) when(ex is IOException or UnauthorizedAccessException or InvalidOperationException or JSException or System.Text.Json.JsonException)
+        {
+            error = erased ? "Library data was erased, but resetting preferences did not finish. Close other app tabs, then try again. " + ex.Message : "Reset did not finish. Some files may already have been erased. " + ex.Message;
+            working = false;
+        }
+    }
+    public async ValueTask DisposeAsync() { if(dialogHelper is not null) { try { await dialogHelper.DisposeAsync(); } catch(JSDisconnectedException) { } } }
+}

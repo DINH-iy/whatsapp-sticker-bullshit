@@ -2,9 +2,11 @@
 (() => {
     const appearanceKey = 'stickers.theme';
     const colorKey = 'stickers.color';
+    const rainbowKey = 'stickers.rainbowMotion';
+    const customKey = 'stickers.customColor';
     const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
     const appearances = ['system', 'light', 'dark'];
-    const colors = ['green', 'blue', 'purple', 'rose', 'amber'];
+    const colors = ['green', 'blue', 'purple', 'rose', 'amber', 'rainbow', 'custom'];
 
     function readPreference(key, allowedValues, fallback) {
         try {
@@ -17,11 +19,23 @@
 
     let appearance = readPreference(appearanceKey, appearances, 'system');
     let color = readPreference(colorKey, colors, 'green');
+    let rainbowMotion = readPreference(rainbowKey, ['true','false'], 'false') === 'true';
 
+    function readCustom(){try{const value=localStorage.getItem(customKey)||'';return /^#[0-9a-f]{6}([0-9a-f]{2})?$/i.test(value)?value:'#32875f';}catch{return '#32875f';}}
+    let customColor = readCustom();
+    let customLoaded = false;
+    let rainbowLoaded = false;
     function applyPreferences() {
         const resolvedAppearance = systemTheme.matches ? 'dark' : 'light';
         document.documentElement.dataset.theme = appearance === 'system' ? resolvedAppearance : appearance;
         document.documentElement.dataset.color = color;
+        document.documentElement.dataset.customColor = customColor;
+        if(color === 'custom' || customLoaded) { customLoaded = true; void import('./custom-theme.js').then(module=>module.apply()).catch(()=>{}); }
+        document.documentElement.dataset.rainbowMode = rainbowMotion ? "scroll" : "fixed";
+        if(color === 'rainbow' || rainbowLoaded) {
+            rainbowLoaded = true;
+            void import('./rainbow-theme.js').then(module=>module.sync()).catch(()=>{});
+        }
     }
 
     function savePreference(key, value, allowedValues) {
@@ -38,6 +52,17 @@
     window.stickerTheme = {
         get: () => appearance,
         getColor: () => color,
+        getCustomColor: () => customColor,
+        setCustomColor(value) {
+            if(!/^#[0-9a-f]{6}([0-9a-f]{2})?$/i.test(value)) return false;
+            try {localStorage.setItem(customKey,value.toLowerCase());}catch{return false;}
+            customColor=value.toLowerCase();applyPreferences();return true;
+        },
+        getRainbowMotion: () => rainbowMotion,
+        setRainbowMotion(value) {
+            if(!savePreference(rainbowKey,String(!!value),['true','false'])) return false;
+            rainbowMotion=!!value;applyPreferences();return true;
+        },
         set(value) {
             if (!savePreference(appearanceKey, value, appearances)) return false;
             appearance = value;
@@ -54,9 +79,11 @@
 
     systemTheme.addEventListener('change', applyPreferences);
     window.addEventListener('storage', event => {
-        if (event.key !== appearanceKey && event.key !== colorKey && event.key !== null) return;
+        if (event.key !== appearanceKey && event.key !== colorKey && event.key !== rainbowKey && event.key !== customKey && event.key !== null) return;
         appearance = readPreference(appearanceKey, appearances, 'system');
         color = readPreference(colorKey, colors, 'green');
+        rainbowMotion = readPreference(rainbowKey, ['true','false'], 'false') === 'true';
+        customColor = readCustom();
         applyPreferences();
     });
 

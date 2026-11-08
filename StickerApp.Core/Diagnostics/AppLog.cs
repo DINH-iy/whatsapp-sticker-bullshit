@@ -63,6 +63,15 @@ public sealed class AppLog(string directory)
         }
     }
 
+    public void Clear()
+    {
+        lock (gate)
+        {
+            for (var i = 0; i <= Archives; i++) File.Delete(FileName(i));
+            StorageError = null;
+        }
+    }
+
     public string Report() => $"Stik-er-in diagnostic log\nExported: {DateTimeOffset.UtcNow:O}\n" +
         "Entries use UTC timestamps. Logs stay on this device until you export them.\n" +
         "URLs, embedded image data, and common credential fields are redacted. Review before sharing.\n\n" + Read();
