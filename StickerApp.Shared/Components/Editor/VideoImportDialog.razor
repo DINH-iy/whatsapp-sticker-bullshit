@@ -31,7 +31,7 @@
         @if (error is not null) { <p class="notice notice-error" role="alert">@error</p> }
     </div>
     <div class="dialog-actions">
-        <button class="button" type="button" @onclick="Close" disabled="@saving">Cancel</button>
+        <button class="button" type="button" @onclick="Close" disabled="@saving">@L["Cancel"]</button>
         <button class="button primary" type="button" @onclick="Convert" disabled="@(!ready || converting || string.IsNullOrWhiteSpace(name))"><Icon Name="check" />@(ClipReview ? "Use clip" : "Create GIF")</button>
     </div>
 </dialog>

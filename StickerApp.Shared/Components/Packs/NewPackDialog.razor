@@ -9,9 +9,9 @@
     </div>
     <p class="helper">The publisher appears with your pack in exports and WhatsApp.</p>
     <form @onsubmit="CreatePack" @onsubmit:preventDefault>
-        <label for="new-pack-name">Pack name</label>
+        <label for="new-pack-name">@L["Pack name"]</label>
         <input id="new-pack-name" class="new-pack-name" @bind="name" @bind:event="oninput" maxlength="128" required autofocus placeholder="e.g. Everyday reactions" disabled="@(saving || preparingCover)" />
-        <label for="new-pack-publisher" class="settings-field-label">Publisher</label>
+        <label for="new-pack-publisher" class="settings-field-label">@L["Publisher"]</label>
         <input id="new-pack-publisher" class="new-pack-name" @bind="publisher" @bind:event="oninput" maxlength="128" required placeholder="Your name or brand" disabled="@(saving || preparingCover)" />
         @if (Pack is not null)
         {
@@ -34,13 +34,13 @@
                 <small class="helper">Without a custom cover, the first sticker is used.</small>
             </section>
         }
-        <label class="toggle-row editor-spoiler-toggle"><input type="checkbox" @bind="nsfw" disabled="@(saving || preparingCover)" />NSFW spoiler</label>
+        <label class="toggle-row editor-spoiler-toggle"><input type="checkbox" @bind="nsfw" disabled="@(saving || preparingCover)" />@L["NSFW spoiler"]</label>
         @if (error is not null)
         {
             <p class="error" role="alert">@error</p>
         }
         <div class="dialog-actions">
-            <button class="button" type="button" @onclick="Cancel" disabled="@(saving || preparingCover)">Cancel</button>
+            <button class="button" type="button" @onclick="Cancel" disabled="@(saving || preparingCover)">@L["Cancel"]</button>
             <button class="button primary" type="submit" disabled="@(saving || preparingCover || string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(publisher))">@(saving ? "Saving…" : Pack is null ? "Create pack" : "Save details")</button>
         </div>
     </form>

@@ -5,7 +5,7 @@
 
 <section @ref="statisticsElement" class="settings-card library-statistics-card @(customizingStats ? "quick-stats-editing" : "")" aria-labelledby="library-statistics-title" aria-busy="@(busy || layoutSaving ? "true" : "false")">
     <div class="storage-section-header">
-        <h2 id="library-statistics-title">Library statistics &amp; storage</h2>
+        <h2 id="library-statistics-title">@L["Library statistics & storage"]</h2>
         <button type="button" class="button icon-button" disabled="@busy" @onclick="Refresh" title="Refresh statistics" aria-label="Refresh statistics"><Icon Name="rotate" /></button>
     </div>
     <p class="helper">Library space on this device or host computer.</p>
@@ -27,7 +27,7 @@
             }
         </dl>
         @if (quickStats.Count == 0) { <p class="helper">No quick stats selected. Use Customize stats to choose them.</p> }
-        <AppDisclosure Class="storage-section" Open="@customizingStats"><Header>Library details <small>Images, originals &amp; layers</small></Header><ChildContent>
+        <AppDisclosure Class="storage-section" Open="@customizingStats"><Header>@L["Library details"] <small>Images, originals &amp; layers</small></Header><ChildContent>
         <div class="storage-section-body">
         <dl class="library-statistics-grid" data-stat-zone="library">
             @foreach (var stat in AllStats)
@@ -118,7 +118,7 @@
         }
     }
     <div class="storage-options-grid">
-    <AppDisclosure Class="storage-section"><Header>Display units <small>@LimitUnit</small></Header><ChildContent>
+    <AppDisclosure Class="storage-section"><Header>@L["Display units"] <small>@LimitUnit</small></Header><ChildContent>
         <div class="storage-section-body">
             <label for="storage-display-units">Storage units</label>
             <select id="storage-display-units" value="@(decimalUnits ? "decimal" : "binary")" @onchange="ChangeUnits" disabled="@busy">
@@ -128,7 +128,7 @@
             <p class="helper">Applies to totals, pack sizes, cleanup estimates, and the limit input. Switching units keeps your actual storage limit unchanged. This preference is remembered.</p>
         </div>
     </ChildContent></AppDisclosure>
-    <AppDisclosure Class="storage-section"><Header>Storage limit <small>@(Store.StorageLimitBytes is { } cap ? Size(cap) : "No limit")</small></Header><ChildContent>
+    <AppDisclosure Class="storage-section"><Header>@L["Storage limit"] <small>@(Store.StorageLimitBytes is { } cap ? Size(cap) : "No limit")</small></Header><ChildContent>
     <div class="storage-section-body">
     @if (statistics is { } usage && Store.StorageLimitBytes is { } budget)
     {
@@ -144,7 +144,7 @@
     <p class="helper">@(decimalUnits ? "1,000 MB = 1 GB." : "1,024 MiB = 1 GiB.") This limits the saved library, including sources, layers, unused media, and its index. It does not reserve device space or guarantee that much free space. Temporary imports and conversions need extra room. Logs, exported packs, and other apps are outside this budget. Cleanup and saves that reduce usage are allowed even above the limit.</p>
     </div>
     </ChildContent></AppDisclosure>
-    <AppDisclosure Class="storage-section"><Header>Original file defaults <small>@(askOnImport ? "Ask per file" : "Use defaults")</small></Header><ChildContent>
+    <AppDisclosure Class="storage-section"><Header>@L["Original file defaults"] <small>@(askOnImport ? "Ask per file" : "Use defaults")</small></Header><ChildContent>
     <div class="storage-section-body">
     <label class="toggle-row"><input type="checkbox" checked="@(!askOnImport)" @onchange="ChangeImportPrompts" disabled="@busy" /> Always use these defaults; skip per-file import choices</label>
     <label class="toggle-row"><input type="checkbox" checked="@keepStills" @onchange="ChangeStillRetention" disabled="@busy" /> Keep originals for new still images</label>
@@ -159,10 +159,10 @@
     @if (busy) { <p class="helper" role="status">@progress</p> }
     @if (error is not null) { <p class="error" role="alert">@error</p> }
     @if (notice is not null) { <p class="settings-success" role="status">@notice</p> }
-    <AppDisclosure Class="storage-section storage-cleanup"><Header>Cleanup &amp; duplicates <small>@(statistics is { UnusedFiles: > 0 } measured ? $"{measured.UnusedFiles} unused files" : "Review before removing")</small></Header><ChildContent>
+    <AppDisclosure Class="storage-section storage-cleanup"><Header>@L["Cleanup & duplicates"] <small>@(statistics is { UnusedFiles: > 0 } measured ? $"{measured.UnusedFiles} unused files" : "Review before removing")</small></Header><ChildContent>
     <div class="storage-section-body">
     <p class="helper">Scan first, then review what to remove. Originals and editable layers are kept unless you explicitly choose to remove originals.</p>
-    <button type="button" class="button" disabled="@busy" @onclick="Scan">Find duplicates &amp; unused files</button>
+    <button type="button" class="button" disabled="@busy" @onclick="Scan">@L["Find duplicates & unused files"]</button>
     @if (scan is not null)
     {
         <h3 class="settings-subheading">Review cleanup</h3>
@@ -197,13 +197,13 @@
             <label class="toggle-row"><input type="checkbox" @bind="confirmDuplicates" disabled="@busy" /> I reviewed the copies and want to remove them.</label>
             <button type="button" class="button danger" disabled="@(busy || !confirmDuplicates)" @onclick="RemoveDuplicates">Remove @DuplicateCount duplicate copies</button>
         }
-        <h3 class="settings-subheading">Remove retained originals</h3>
+        <h3 class="settings-subheading">@L["Remove retained originals"]</h3>
         <p>@scan.Statistics.RemovableOriginals source files · @Size(scan.Statistics.RemovableOriginalBytes) reclaimable</p>
         <p class="helper">Keeps prepared stickers. Removes the saved source images and GIFs for stickers that are ready. Editable layer sources stay. You cannot restore previous images or uncut GIFs; trimmed-away frames require reimporting your own saved file. This cannot be undone.</p>
         @if (scan.Statistics.RemovableOriginals > 0)
         {
             <label class="toggle-row"><input type="checkbox" @bind="confirmOriginals" disabled="@busy" /> I have saved any originals I need and accept losing the previous versions.</label>
-            <button type="button" class="button danger" disabled="@(busy || !confirmOriginals)" @onclick="RemoveOriginals">Remove retained originals</button>
+            <button type="button" class="button danger" disabled="@(busy || !confirmOriginals)" @onclick="RemoveOriginals">@L["Remove retained originals"]</button>
         }
         <h3 class="settings-subheading">Unused edit files</h3>
         <p>@scan.Statistics.UnusedFiles unused files · @Size(scan.Statistics.UnusedBytes)</p>

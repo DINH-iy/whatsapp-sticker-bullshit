@@ -1,7 +1,7 @@
 @inject IServiceProvider Services
 
 <section id="touch-feedback" class="settings-card" aria-labelledby="tap-feedback-title" data-tap-feedback="off">
-    <h2 id="tap-feedback-title">Touch feedback</h2>
+    <h2 id="tap-feedback-title">@L["Touch feedback"]</h2>
     <label class="tap-feedback-toggle">
         <input type="checkbox" checked="@enabled" @onchange="Toggle" disabled="@(feedback is null)" />
         Vibration

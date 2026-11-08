@@ -56,6 +56,7 @@ public static class MauiProgram
 #endif
         builder.Services.AddScoped<IPackFileSaver, NativePackFileSaver>();
         builder.Services.AddScoped<PackSharingService>();
+        builder.Services.AddScoped<StickerApp.Shared.Services.AppLanguage>();
         builder.Services.AddSingleton(_ => new PinterestImportClient());
         builder.Services.AddSingleton<PinterestShareState>();
         builder.Services.AddScoped<StickerPreparationService>();

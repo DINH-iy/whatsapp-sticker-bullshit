@@ -2,13 +2,26 @@
 @inject IJSRuntime JS
 <div class="theme-custom-picker">
     <div class="theme-color-wheel" @ref="wheel" role="slider" aria-label="Custom theme color wheel. Left/right changes hue; up/down changes saturation." aria-valuemin="0" aria-valuemax="359" aria-valuenow="0" tabindex="0"><span class="theme-color-knob"></span></div>
+    <div class="theme-color-format" role="group" aria-label="Color input format">
+        <button class="button" type="button" aria-pressed="@(!hexMode)" @onclick="() => SetFormat(false)">RGBA</button>
+        <button class="button" type="button" aria-pressed="@hexMode" @onclick="() => SetFormat(true)">HEX</button>
+    </div>
+    @if (hexMode)
+    {
+        <label class="theme-hex-field">@L["HEX color"]<input type="text" aria-label="Highlight hex color" value="@hexDraft" @oninput="e => hexDraft = e.Value?.ToString() ?? string.Empty" @onblur="ApplyHex" @onkeydown="HexKey" maxlength="9" spellcheck="false" autocapitalize="off" autocomplete="off" aria-invalid="@(hexError is not null)" aria-describedby="theme-hex-help" /></label>
+        <p id="theme-hex-help" class="helper">Use #RRGGBB or #RRGGBBAA. The last two digits set opacity; six digits keep the current opacity.</p>
+        @if (hexError is not null) { <p class="error" role="alert">@hexError</p> }
+    }
+    else
+    {
     <div class="theme-rgba-fields" role="group" aria-label="Highlight RGBA values">
         <label>R<input type="number" min="0" max="255" value="@Channel(0)" @oninput="e => ChangeChannel(0, e)" aria-label="Highlight red" /></label>
         <label>G<input type="number" min="0" max="255" value="@Channel(1)" @oninput="e => ChangeChannel(1, e)" aria-label="Highlight green" /></label>
         <label>B<input type="number" min="0" max="255" value="@Channel(2)" @oninput="e => ChangeChannel(2, e)" aria-label="Highlight blue" /></label>
         <label>A · %<input type="number" min="0" max="100" value="@Math.Round(Channel(3) / 2.55)" @oninput="e => ChangeChannel(3, e)" aria-label="Highlight alpha percent" /></label>
     </div>
-    <p class="helper">Choose a color on the wheel or enter RGBA values. A controls opacity. Shades adapt for readable text.</p>
+    }
+    <p class="helper">Choose a color on the wheel or enter @(hexMode ? "HEX" : "RGBA") values. Shades adapt for readable text.</p>
 </div>
 @code {
     [Parameter] public string Value { get; set; } = "#32875f";
@@ -16,6 +29,31 @@
     private ElementReference wheel;
     private IJSObjectReference? module, controller;
     private DotNetObjectReference<ThemeColorPicker>? reference;
+    private bool hexMode;
+    private string hexDraft = "", previousValue = "";
+    private string? hexError;
+    protected override void OnParametersSet()
+    {
+        if (Value == previousValue) return;
+        previousValue = hexDraft = Value;
+        hexError = null;
+    }
+    private void SetFormat(bool useHex) { hexMode = useHex; hexDraft = Value; hexError = null; }
+    private Task HexKey(KeyboardEventArgs args)=>args.Key=="Enter"?ApplyHex():Task.CompletedTask;
+    private async Task ApplyHex()
+    {
+        var input = hexDraft.Trim();
+        if (!input.StartsWith('#')) input = "#" + input;
+        if (!System.Text.RegularExpressions.Regex.IsMatch(input, "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"))
+        {
+            hexError = "Enter 6 hex digits, or 8 including opacity.";
+            return;
+        }
+        if (input.Length == 7) input += Channel(3).ToString("x2");
+        hexError = null;
+        hexDraft = input.ToLowerInvariant();
+        await ValueChanged.InvokeAsync(hexDraft);
+    }
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if(firstRender) { module = await JS.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/ui/theme-color-wheel.js"); reference = DotNetObjectReference.Create(this); controller = await module.InvokeAsync<IJSObjectReference>("create",wheel,reference); }

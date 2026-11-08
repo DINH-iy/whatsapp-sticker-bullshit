@@ -5,8 +5,12 @@
 @inject AppLog Log
 
 <PageTitle>Friends’ packs · Stik-er-in</PageTitle>
-<header class="page-header"><h1>Friends’ packs</h1>
-@if (connected) { <div class="settings-actions"><OnlineOnly><button class="button" @onclick="Load" disabled="@busy"><Icon Name="rotate" />Refresh</button><button class="button primary" @onclick="Sync" disabled="@busy"><Icon Name="upload" />Sync my public packs</button></OnlineOnly></div> }
+@if(FriendsFeature.UnderMaintenance){<FriendsMaintenance />}
+else
+{
+
+<header class="page-header"><h1>@L["Friends’ packs"]</h1>
+@if (connected) { <div class="settings-actions"><OnlineOnly><button class="button" @onclick="Load" disabled="@busy"><Icon Name="rotate" />@L["Refresh"]</button><button class="button primary" @onclick="Sync" disabled="@busy"><Icon Name="upload" />Sync my public packs</button></OnlineOnly></div> }
 </header>
 @if (!string.IsNullOrEmpty(error)) { <p class="error" role="alert">@error</p> }
 @if (!string.IsNullOrEmpty(notice)) { <p class="settings-success" role="status">@notice</p> }
@@ -15,7 +19,7 @@
     <p>Public packs are shared only with invited members of this group. Private packs stay out of the overview. Sync uploads editable layers and embedded fonts too.</p>
     @if (!connected)
     {
-        <label>Invite link or code<input @ref="inviteInput" type="password" placeholder="Paste your invitation" autocomplete="off" autocapitalize="none" spellcheck="false" disabled="@busy" /></label>
+        <label class="friends-invite-field">Invite link or code<input @ref="inviteInput" type="password" placeholder="Paste your invitation" autocomplete="off" autocapitalize="none" spellcheck="false" disabled="@busy" /></label>
         <AppDisclosure><Header>Owner setup &amp; server address</Header><ChildContent>
             <label>Friends server<input @ref="serverInput" type="url" value="@serverUrl" placeholder="https://stickers.dinnyvanhuizen.com" autocomplete="url" disabled="@busy" /></label>
             <p class="helper">Invite links include the server address. Only the group owner needs the initial server setup code.</p>
@@ -73,8 +77,10 @@
             @if (pack.Nsfw && Store.BlurNsfwPreviews) { <button class="button icon-button" @onclick="() => Reveal(Key(pack))" aria-label="@(revealed.Contains(Key(pack)) ? "Hide NSFW preview" : "Reveal NSFW preview")"><Icon Name="@(revealed.Contains(Key(pack)) ? "eye-off" : "eye")" /></button> }
         </div>
         <h2>@pack.Name</h2><p>By @pack.Username · @pack.Count @(pack.Count == 1 ? "sticker" : "stickers")</p><p class="helper">@(pack.Animated ? "Animated" : "Still") · Updated @pack.UpdatedAt.ToLocalTime().ToString("g")</p>
-        <OnlineOnly><button class="button" @onclick="() => Import(pack)" disabled="@busy"><Icon Name="folder-import" />Import pack</button></OnlineOnly>
+        <OnlineOnly><button class="button" @onclick="() => Import(pack)" disabled="@busy"><Icon Name="folder-import" />@L["Import pack"]</button></OnlineOnly>
     </article>
 }
 </div>
-@if (connected && total > 12) { <div class="settings-actions"><button class="button" @onclick="Previous" disabled="@(busy || offset == 0)">Previous</button><span>@(offset+1)–@Math.Min(offset+12,total) of @total</span><button class="button" @onclick="Next" disabled="@(busy || offset+12 >= total)">Next</button></div> }
+@if (connected && total > 12) { <div class="settings-actions"><button class="button" @onclick="Previous" disabled="@(busy || offset == 0)">@L["Previous"]</button><span>@(offset+1)–@Math.Min(offset+12,total) of @total</span><button class="button" @onclick="Next" disabled="@(busy || offset+12 >= total)">@L["Next"]</button></div> }
+
+}

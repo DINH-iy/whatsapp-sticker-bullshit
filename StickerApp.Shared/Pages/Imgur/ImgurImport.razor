@@ -3,12 +3,12 @@
 @inject LibraryStore Store
 @inject IJSRuntime JS
 <PageTitle>Imgur · Stik-er-in</PageTitle>
-<header class="page-header"><h1>Import from Imgur</h1></header>
+<header class="page-header"><h1>@L["Import from Imgur"]</h1></header>
 <section class="settings-card">
     <h2>Paste an Imgur link</h2>
     <OnlineOnly><form @onsubmit="Preview" @onsubmit:preventDefault>
         <label>Image, GIF, video or album link<input type="url" @bind="link" required disabled="@busy" placeholder="https://i.imgur.com/…" /></label>
-        <button class="button primary" type="submit" disabled="@busy">Preview media</button>
+        <button class="button primary" type="submit" disabled="@busy">@L["Preview media"]</button>
     </form></OnlineOnly>
     <AppDisclosure Class="editor-details"><Header>Post and album access</Header><ChildContent>
         <p class="helper">Direct i.imgur.com links work without setup. For post and album links, enter your Imgur Client ID. This is a public app identifier; no account password or client secret is needed.</p>
@@ -17,13 +17,13 @@
     </ChildContent></AppDisclosure>
 </section>
 @if(error is not null){<p class="notice notice-error" role="alert">@error</p>}
-@if(notice is not null){<p class="notice" role="status">@notice <a href="library">Open library</a></p>}
+@if(notice is not null){<p class="notice" role="status">@notice <a href="library">@L["Open library"]</a></p>}
 @if(items.Count>0){
 <section class="settings-card">
     <h2>Choose media</h2>
     <p class="helper">Images up to 10 MB; videos up to 100 MB. Review video clips before saving. The batch is limited to 250 MB and 30 selected items.</p>
-    @foreach(var item in items){<label class="toggle-row"><input type="checkbox" checked="@selected.Contains(item)" @onchange="()=>Toggle(item)" disabled="@busy" />@item.Name · @(item.Video?"Video":"Image / GIF") <a href="@item.Url" target="_blank" rel="noopener noreferrer">Open</a></label>}
-    <label>Destination<select @bind="destination" disabled="@busy"><option value="">My Library</option>@foreach(var pack in packs){<option value="@pack.Id">@pack.Name (@pack.StickerIds.Count/30)</option>}</select></label>
+    @foreach(var item in items){<label class="toggle-row"><input type="checkbox" checked="@selected.Contains(item)" @onchange="()=>Toggle(item)" disabled="@busy" />@item.Name · @(item.Video?"Video":"Image / GIF") <a href="@item.Url" target="_blank" rel="noopener noreferrer">@L["Open"]</a></label>}
+    <label>@L["Destination"]<select @bind="destination" disabled="@busy"><option value="">@L["My Library"]</option>@foreach(var pack in packs){<option value="@pack.Id">@pack.Name (@pack.StickerIds.Count/30)</option>}</select></label>
     <OnlineOnly><button class="button primary" @onclick="Import" disabled="@(busy||selected.Count==0||selected.Count>30)">Import @selected.Count items</button></OnlineOnly>
 </section>
 }

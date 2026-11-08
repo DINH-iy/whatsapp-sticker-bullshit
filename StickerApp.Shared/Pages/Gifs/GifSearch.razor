@@ -9,7 +9,7 @@
 @if (!Embedded)
 {
     <PageTitle>GIF search · Stik-er-in</PageTitle>
-    <header class="page-header"><h1>GIF search</h1></header>
+    <header class="page-header"><h1>@L["GIF search"]</h1></header>
 }
 
 @if (!isReady)
@@ -30,7 +30,7 @@ else
         <label class="visually-hidden" for="gif-query">Search KLIPY GIFs</label>
         <input id="gif-query" class="search" @bind="query" @bind:event="oninput"
                placeholder="Search KLIPY" maxlength="200" disabled="@(isLoading || IsImporting)" autofocus="@Embedded" />
-        <button class="button primary" type="submit" disabled="@(isLoading || IsImporting || string.IsNullOrWhiteSpace(query))">Search</button>
+        <button class="button primary" type="submit" disabled="@(isLoading || IsImporting || string.IsNullOrWhiteSpace(query))">@L["Search"]</button>
     </form></OnlineOnly>
 
     <HelpDisclosure Summary="About importing GIFs">
@@ -110,7 +110,7 @@ else
         <span>@error</span>
         @if (isConfigured)
         {
-            <OnlineOnly><button class="button" type="button" @onclick="RetrySearch" disabled="@(isLoading || IsImporting)">Try again</button></OnlineOnly>
+            <OnlineOnly><button class="button" type="button" @onclick="RetrySearch" disabled="@(isLoading || IsImporting)">@L["Try again"]</button></OnlineOnly>
         }
     </div>
 }

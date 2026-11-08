@@ -2,7 +2,7 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 <section class="settings-card" id="editor-layout" aria-labelledby="editor-layout-title">
-    <h2 id="editor-layout-title">Editor layout</h2>
+    <h2 id="editor-layout-title">@L["Editor layout"]</h2>
     <p class="helper">Customize the image, GIF and layer editors. Changes apply the next time you open an editor and are remembered on this device.</p>
     <div class="editor-layout-setting-fields">
         <label>Tool categories<select @bind="preferences.ToolsPosition" @bind:after="Save" disabled="@(!ready)"><option value="bottom">Below the image</option><option value="top">Above the image</option></select></label>

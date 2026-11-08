@@ -9,6 +9,7 @@
     protected override void OnInitialized()=>GroupInviteInbox.Changed+=Received;
     protected override Task OnAfterRenderAsync(bool firstRender)
     {
+        if(FriendsFeature.UnderMaintenance)return Task.CompletedTask;
         if(firstRender && GroupInviteInbox.Peek() is not null && Navigation.ToBaseRelativePath(Navigation.Uri) is "" or "friends") Navigation.NavigateTo("friends");
         else if(firstRender) Received();
         return Task.CompletedTask;

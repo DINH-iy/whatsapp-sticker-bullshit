@@ -137,6 +137,23 @@
     loadFont(current,null,revision).catch(()=>{});
     window.stickerTypography={
         get:()=>({...current}),
+        async preview(element,value,fontData=null){
+            const next=normalize(value);
+            const request=element.__fontPreviewRevision=(element.__fontPreviewRevision||0)+1;
+            let family=families[next.font];
+            if(!family){
+                const media=await import(mediaModule);
+                await media.loadTextFont(next.font,fontData);
+                family=`"${next.font}"`;
+            }else if(next.font==='meme')await (await import(mediaModule)).loadTextFont('meme');
+            if(element.__fontPreviewRevision!==request)return;
+            element.style.fontFamily=family;
+            element.style.fontSize=`${16*next.scale/100}px`;
+            element.style.fontWeight=next.bold?'700':'400';
+            element.style.setProperty('--preview-font-weight',next.bold?'700':'400');
+            element.style.letterSpacing=`${next.spacing}px`;
+            element.style.lineHeight=String(1.5*next.lineSpacing/100);
+        },
         nextPreview(count){
             if(!Number.isInteger(count)||count<1)return 0;
             try{const saved=Number(localStorage.getItem('stickers.font-preview-next'));if(Number.isInteger(saved)&&saved>=0)previewIndex=saved%count;}catch{}

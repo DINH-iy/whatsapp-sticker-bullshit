@@ -18,6 +18,7 @@ public partial class Collection
     private static readonly string[] emojiChoices=["🔥","❤️","😂","👍","😮","💀"];
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if(StickerApp.Core.FriendsFeature.UnderMaintenance)return;
         if(!firstRender)return;module=await JS.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/ui/friends.js");await Refresh();
     }
     protected override Task OnParametersSetAsync()=>module is null?Task.CompletedTask:Refresh();

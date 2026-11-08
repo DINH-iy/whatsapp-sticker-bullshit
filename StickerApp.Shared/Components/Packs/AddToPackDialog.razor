@@ -5,7 +5,7 @@
 <dialog @ref="dialog" class="folder-dialog" aria-labelledby="add-to-pack-title" @onkeydown="HandleKey" @onkeydown:stopPropagation>
     <div class="folder-dialog-heading">
         <h2 id="add-to-pack-title">@Title</h2>
-        <button class="button icon-button" type="button" title="Close" aria-label="Close pack picker" @onclick="Cancel">
+        <button class="button icon-button" type="button" title="@L["Close"]" aria-label="Close pack picker" @onclick="Cancel">
             <Icon Name="close" />
         </button>
     </div>
@@ -40,9 +40,9 @@
             <label for="quick-pack-name">Or create a new pack</label>
             <div class="folder-input-row">
                 <input id="quick-pack-name" @bind="newPackName" @bind:event="oninput" maxlength="128"
-                       placeholder="Pack name" disabled="@isSaving" />
+                       placeholder="@L["Pack name"]" disabled="@isSaving" />
             </div>
-            <label for="quick-pack-publisher" class="settings-field-label">Publisher</label>
+            <label for="quick-pack-publisher" class="settings-field-label">@L["Publisher"]</label>
             <input id="quick-pack-publisher" class="folder-input" @bind="newPackPublisher" @bind:event="oninput" maxlength="128"
                    placeholder="Your name or brand" disabled="@isSaving" required />
             <div class="settings-actions">

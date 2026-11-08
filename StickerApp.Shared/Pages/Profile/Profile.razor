@@ -1,13 +1,13 @@
 @page "/profile"
 @inject LibraryStore Store
 <PageTitle>Your profile · Stik-er-in</PageTitle>
-<header class="page-header"><h1>Your profile</h1><a class="button" href="settings"><Icon Name="settings" />Settings</a></header>
-@if (error is not null) { <p class="notice notice-error" role="alert">@error</p><button class="button" @onclick="Load">Try again</button> }
+<header class="page-header"><h1>@L["Your profile"]</h1><a class="button" href="settings"><Icon Name="settings" />@L["Settings"]</a></header>
+@if (error is not null) { <p class="notice notice-error" role="alert">@error</p><button class="button" @onclick="Load">@L["Try again"]</button> }
 @if (overview is { } current)
 {
     <div class="profile-sections">
     <section class="settings-card profile-summary" aria-label="Profile overview">
-        <div class="profile-avatar">@if (current.Profile.Picture is { } picture) { <img src="@picture" alt="Your profile picture" /> } else { <Icon Name="user" /> }</div>
+        <div class="profile-avatar">@if (current.Profile.Picture is { } picture) { <ProfilePicture Source="@picture" Alt="Your profile picture" /> } else { <Icon Name="user" /> }</div>
         <div class="profile-summary-text">
             <h2>@(string.IsNullOrWhiteSpace(current.Profile.Username) ? "Your local profile" : current.Profile.Username)</h2>
             @if (!string.IsNullOrWhiteSpace(current.Profile.FirstName)) { <p>@current.Profile.FirstName</p> }
@@ -17,20 +17,20 @@
     </section>
     @if (editing) { <ProfileEditor ShowOverviewLink="false" OnFinished="ReloadProfile" /> }
     <section class="settings-card" aria-labelledby="profile-statistics-title">
-        <div class="storage-section-header"><h2 id="profile-statistics-title">Your stats</h2><button class="button icon-button" @onclick="Load" aria-label="Refresh profile statistics" title="Refresh statistics"><Icon Name="rotate" /></button></div>
+        <div class="storage-section-header"><h2 id="profile-statistics-title">@L["Your stats"]</h2><button class="button icon-button" @onclick="Load" aria-label="Refresh profile statistics" title="Refresh statistics"><Icon Name="rotate" /></button></div>
         <p class="helper">Your current library. Stickers count once, even when used in multiple packs.</p>
         <dl class="profile-statistics-grid">
-            <div><dt>Stickers</dt><dd>@current.Statistics.Stickers</dd></div>
-            <div><dt>Still images</dt><dd>@current.Statistics.StillImages</dd></div>
-            <div><dt>Animated</dt><dd>@current.Statistics.AnimatedImages</dd></div>
-            <div><dt>Layered</dt><dd>@current.Statistics.LayeredStickers</dd></div>
-            <div><dt>Favourites</dt><dd>@current.Statistics.Favorites</dd></div>
-            <div><dt>Packs</dt><dd>@current.Statistics.Packs</dd></div>
-            <div><dt>Public packs</dt><dd>@current.Statistics.PublicPacks</dd></div>
-            <div><dt>Private packs</dt><dd>@current.Statistics.PrivatePacks</dd></div>
-            <div><dt>Pack updates</dt><dd>@current.Statistics.PackUpdates</dd></div>
-            <div><dt>Custom fonts</dt><dd>@current.Statistics.Fonts<small>@Size(current.Statistics.FontBytes)</small></dd></div>
-            <div><dt>Library storage</dt><dd>@Size(current.Statistics.StorageBytes)</dd></div>
+            <div><dt>@L["Stickers"]</dt><dd>@current.Statistics.Stickers</dd></div>
+            <div><dt>@L["Still images"]</dt><dd>@current.Statistics.StillImages</dd></div>
+            <div><dt>@L["Animated"]</dt><dd>@current.Statistics.AnimatedImages</dd></div>
+            <div><dt>@L["Layered"]</dt><dd>@current.Statistics.LayeredStickers</dd></div>
+            <div><dt>@L["Favourites"]</dt><dd>@current.Statistics.Favorites</dd></div>
+            <div><dt>@L["Packs"]</dt><dd>@current.Statistics.Packs</dd></div>
+            <div><dt>@L["Public packs"]</dt><dd>@current.Statistics.PublicPacks</dd></div>
+            <div><dt>@L["Private packs"]</dt><dd>@current.Statistics.PrivatePacks</dd></div>
+            <div><dt>@L["Pack updates"]</dt><dd>@current.Statistics.PackUpdates</dd></div>
+            <div><dt>@L["Custom fonts"]</dt><dd>@current.Statistics.Fonts<small>@Size(current.Statistics.FontBytes)</small></dd></div>
+            <div><dt>@L["Library storage"]</dt><dd>@Size(current.Statistics.StorageBytes)</dd></div>
         </dl>
         @if (current.PackActivity.Count > 0)
         {
@@ -47,14 +47,14 @@
         <a href="settings#general-settings-panel">Storage and app settings</a>
     </section>
     <section class="settings-card" aria-labelledby="profile-sharing-title">
-        <h2 id="profile-sharing-title">Sharing &amp; sync</h2>
+        <h2 id="profile-sharing-title">@L["Sharing & sync"]</h2>
         <p>Your profile and stats are stored locally. Friends’ packs shares your chosen username and the public packs you sync. Admin syncing is not connected.</p>
         <AppDisclosure Class="editor-details"><Header>What is shared?</Header><ChildContent>
             <p>Joining a friends group shares your username. Sync uploads your public packs, including their editable artwork. Your profile photo, first name, private packs, device details and storage stats are not uploaded.</p>
             <p>A stable local profile ID is ready for linking this installation later. It is an identifier, not a login or proof of identity. Nothing on this page is sent to a server.</p>
             <dl class="sticker-detail-list"><dt>Local profile ID</dt><dd>@current.Identity.Id</dd></dl>
         </ChildContent></AppDisclosure>
-        <a class="button" href="friends"><Icon Name="layers" />Friends’ packs</a>
+        <a class="button" href="friends"><Icon Name="layers" />@L["Friends’ packs"]</a>
     </section>
     </div>
 }

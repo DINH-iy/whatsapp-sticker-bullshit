@@ -1,21 +1,21 @@
-<EditorPopup Title="Editing help" IconName="help" IconOnly="true">
+<EditorPopup Title="@L["Editing help"]" IconName="help" IconOnly="true">
     <section class="editor-help-section"><h3>Canvas &amp; history</h3><dl>
         <dt>Workspace</dt><dd>The canvas is always 512 × 512 units. Small images keep their size; checkerboard areas are transparent.</dd>
         <dt>Zoom &amp; pan</dt><dd>Open the percentage menu to zoom, type a percentage or enable Pan. Fit resets the view. Zooming does not change exported pixels.</dd>
         <dt>Undo &amp; redo</dt><dd>Step back or forward through applied changes. Apply or cancel the current tool first.</dd>
     </dl></section>
-    <section class="editor-help-section"><h3>Cutout tools</h3><dl>
-        <dt>Crop</dt><dd>Drag a rectangle around the area to keep, then Apply.</dd>
-        <dt>Trace cutout</dt><dd>Draw around the object to keep, then Apply. The magnified preview helps you see under your finger.</dd>
-        <dt>Eraser</dt><dd>Choose a brush size and drag across areas to remove.</dd>
-        <dt>Magic wand</dt><dd>Tap a connected background to remove it. Tolerance controls how similar nearby colors must be.</dd>
+    <section class="editor-help-section"><h3>@L["Cutout tools"]</h3><dl>
+        <dt>@L["Crop"]</dt><dd>Drag a rectangle around the area to keep, then Apply.</dd>
+        <dt>@L["Trace cutout"]</dt><dd>Draw around the object to keep, then Apply. The magnified preview helps you see under your finger.</dd>
+        <dt>@L["Eraser"]</dt><dd>Choose a brush size and drag across areas to remove.</dd>
+        <dt>@L["Magic wand"]</dt><dd>Tap a connected background to remove it. Tolerance controls how similar nearby colors must be.</dd>
     </dl></section>
     <section class="editor-help-section"><h3>Draw, text &amp; adjustments</h3><dl>
-        <dt>Draw</dt><dd>Choose Size and a color, then draw on the image.</dd>
-        <dt>Text</dt><dd>Add text as an editable layer. Choose a font, size, style, color or gradient; emoji and uploaded fonts are supported.</dd>
-        <dt>Transform</dt><dd>Drag to move, drag edges/corners to resize, or use the rotation handle. Keep proportions prevents stretching. Number fields allow exact values.</dd>
-        <dt>Opacity</dt><dd>Set how transparent the image or layer is.</dd>
-        <dt>Color</dt><dd>Hue shifts colors around the color wheel. Strength blends the adjustment with the original.</dd>
+        <dt>@L["Draw"]</dt><dd>Choose Size and a color, then draw on the image.</dd>
+        <dt>@L["Text"]</dt><dd>Add text as an editable layer. Choose a font, size, style, color or gradient; emoji and uploaded fonts are supported.</dd>
+        <dt>@L["Transform"]</dt><dd>Drag to move, drag edges/corners to resize, or use the rotation handle. Keep proportions prevents stretching. Number fields allow exact values.</dd>
+        <dt>@L["Opacity"]</dt><dd>Set how transparent the image or layer is.</dd>
+        <dt>@L["Color"]</dt><dd>Hue shifts colors around the color wheel. Strength blends the adjustment with the original.</dd>
         <dt>Border &amp; flip</dt><dd>Border adds an outline/frame with thickness and color. Layer object borders follow transparency. Flip mirrors the artwork.</dd>
     </dl></section>
     @if (Animated)
@@ -29,7 +29,7 @@
     }
     @if (Layers)
     {
-        <section class="editor-help-section"><h3>Layers</h3><dl>
+        <section class="editor-help-section"><h3>@L["Layers"]</h3><dl>
             <dt>Add &amp; select</dt><dd>Add images or text with Add. Open the layer list to select a layer; the top of the list is the front.</dd>
             <dt>Arrange</dt><dd>Duplicate, bring forward, send backward, center, flip or remove the selected layer. Drag the list handles to reorder layers.</dd>
             <dt>Pixel tools</dt><dd>Crop, cutout, eraser and drawing open the selected image/GIF in its own editor. Apply to layer returns the result to the composition.</dd>

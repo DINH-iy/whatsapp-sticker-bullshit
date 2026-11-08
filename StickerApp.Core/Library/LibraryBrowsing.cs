@@ -6,7 +6,7 @@ public sealed record LibraryBrowseSnapshot(StickerLibrary Library, IReadOnlyDict
 public sealed record ImageBrowseOptions(string Search = "", string Type = "all", string Format = "all",
     string Dimensions = "all", string Storage = "all", string Sort = "default");
 public sealed record PackBrowseOptions(string Search = "", string Type = "all", string Count = "all",
-    string Storage = "all", string Sort = "default");
+    string Storage = "all", string Sort = "default", string Ownership = "all");
 
 public sealed partial class LibraryStore
 {
@@ -76,6 +76,7 @@ public static class LibraryBrowsing
         var matches = snapshot.Library.Packs.Where(pack => (pack.Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
                 pack.Publisher.Contains(search, StringComparison.OrdinalIgnoreCase)) &&
             (options.Type == "all" || PackType(pack, snapshot.Library.Stickers) == options.Type) &&
+            (options.Ownership switch { "group" => pack.Collection is not null, "solo" => pack.Collection is null, _ => true }) &&
             (options.Count switch { "empty" => pack.StickerIds.Count == 0, "few" => pack.StickerIds.Count is > 0 and < 3,
                 "ready" => pack.StickerIds.Count is >= 3 and <= 30, "full" => pack.StickerIds.Count == 30, _ => true }) &&
             MatchesStorage(PackBytes(snapshot, pack.Id), options.Storage, decimalUnits, true));
@@ -84,6 +85,8 @@ public static class LibraryBrowsing
             "name-asc" => matches.OrderBy(pack => pack.Name, StringComparer.OrdinalIgnoreCase),
             "name-desc" => matches.OrderByDescending(pack => pack.Name, StringComparer.OrdinalIgnoreCase),
             "publisher" => matches.OrderBy(pack => pack.Publisher, StringComparer.OrdinalIgnoreCase).ThenBy(pack => pack.Name, StringComparer.OrdinalIgnoreCase),
+            "group-first" => matches.OrderByDescending(pack => pack.Collection is not null).ThenBy(pack => pack.Name, StringComparer.OrdinalIgnoreCase),
+            "solo-first" => matches.OrderBy(pack => pack.Collection is not null).ThenBy(pack => pack.Name, StringComparer.OrdinalIgnoreCase),
             "count-desc" => matches.OrderByDescending(pack => pack.StickerIds.Count),
             "count-asc" => matches.OrderBy(pack => pack.StickerIds.Count),
             "file-desc" => matches.OrderByDescending(pack => snapshot.PackSizes.GetValueOrDefault(pack.Id)?.StickerBytes ?? 0),

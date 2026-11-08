@@ -7,6 +7,7 @@ public sealed class FriendsPackService(LibraryStore store, IJSRuntime js)
 {
     public async Task<int> SyncPublicPacksAsync(Action<string> progress)
     {
+        if(FriendsFeature.UnderMaintenance)throw new InvalidOperationException("Friends’ packs is under maintenance and will be added later.");
         await using var module = await js.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/friends.js");
         var library = await store.ReadAsync();
         var publicPacks = library.Packs.Where(pack => pack.Public && pack.StickerIds.Count > 0).ToList();
@@ -28,6 +29,7 @@ public sealed class FriendsPackService(LibraryStore store, IJSRuntime js)
     }
     public async Task UpdateCollectionAsync(Guid packId)
     {
+        if(FriendsFeature.UnderMaintenance)throw new InvalidOperationException("Group updates are under maintenance. Your local edits remain saved.");
         var pack=(await store.ReadAsync()).Packs.Single(pack=>pack.Id==packId);
         var link=pack.Collection??throw new InvalidOperationException("This pack is not a group working copy.");
         var path=Path.Combine(Path.GetTempPath(),$"collection-{Guid.NewGuid():N}.zip");

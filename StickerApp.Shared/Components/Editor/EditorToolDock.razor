@@ -1,12 +1,12 @@
 <aside class="editor-tool-dock @(ActionsOnly ? "actions-only" : "")" aria-label="@($"{Title} controls")">
-    <strong class="editor-tool-title">@Title</strong>
+    <strong class="editor-tool-title">@L[Title]</strong>
     @if (!ActionsOnly)
     {
         <div class="editor-tool-values">@ChildContent</div>
     }
     <div class="editor-tool-actions">
-        <button class="button" type="button" aria-label="Cancel tool changes" title="Cancel tool changes" @onclick="OnCancel" disabled="@Disabled"><Icon Name="close" /><span>Cancel</span></button>
-        <button class="button primary" type="button" aria-label="Apply tool changes" title="Apply tool changes" @onclick="OnApply" disabled="@Disabled"><Icon Name="check" /><span>Apply</span></button>
+        <button class="button" type="button" aria-label="@L["Cancel tool changes"]" title="@L["Cancel tool changes"]" @onclick="OnCancel" disabled="@Disabled"><Icon Name="close" /><span>@L["Cancel"]</span></button>
+        <button class="button primary" type="button" aria-label="@L["Apply tool changes"]" title="@L["Apply tool changes"]" @onclick="OnApply" disabled="@Disabled"><Icon Name="check" /><span>@L["Apply"]</span></button>
     </div>
 </aside>
 

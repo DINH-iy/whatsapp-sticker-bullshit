@@ -5,10 +5,14 @@
 @inject NavigationManager Navigation
 
 <PageTitle>Group collection · Stik-er-in</PageTitle>
+@if(FriendsFeature.UnderMaintenance){<FriendsMaintenance />}
+else
+{
+
 <a href="friends">← Friends’ packs</a>
 @if (detail is not null)
 {
-    <header class="page-header"><h1>@detail.Collection.Name</h1><div class="settings-actions"><OnlineOnly><button class="button primary" @onclick="Edit" disabled="@busy"><Icon Name="edit" />Edit collection</button><button class="button" @onclick="Refresh" disabled="@busy"><Icon Name="rotate" />Refresh</button></OnlineOnly></div></header>
+    <header class="page-header"><h1>@detail.Collection.Name</h1><div class="settings-actions"><OnlineOnly><button class="button primary" @onclick="Edit" disabled="@busy"><Icon Name="edit" />Edit collection</button><button class="button" @onclick="Refresh" disabled="@busy"><Icon Name="rotate" />@L["Refresh"]</button></OnlineOnly></div></header>
     <p class="helper">Everyone in this group can add and edit stickers. Started by @detail.Collection.CreatedBy · Last updated by @detail.Collection.EditedBy · Revision @detail.Collection.Revision</p>
     <AppDisclosure><Header>How shared editing works</Header><ChildContent><ol class="disclosure-steps"><li>Choose Edit collection to open a private working copy in My Packs.</li><li>Add or edit stickers with the usual editor.</li><li>Choose Pack options → Update group collection to share your changes.</li></ol><p class="helper">If someone updates it first, your local edits stay safe. Open the latest version and merge your changes before updating.</p></ChildContent></AppDisclosure>
 }
@@ -42,4 +46,6 @@
         @if (!confirmDelete) { <button class="button danger" @onclick="() => confirmDelete = true">Delete collection…</button> }
         else { <p>This removes the shared collection for everyone and cannot be undone. Private working copies stay in My Packs.</p><div class="settings-actions"><button class="button" @onclick="() => confirmDelete = false">Keep collection</button><button class="button danger" @onclick="Delete" disabled="@busy">Delete for everyone</button></div> }
     </ChildContent></AppDisclosure>
+}
+
 }

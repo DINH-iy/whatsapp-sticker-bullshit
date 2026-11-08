@@ -24,7 +24,7 @@
         <p class="helper">This import will use your image/GIF defaults instead of the choices above. You can turn these choices back on in Settings → General → Keep original files.</p>
     }
     <div class="dialog-actions">
-        <button class="button" type="button" @onclick="() => OnCancel.InvokeAsync()">Cancel</button>
+        <button class="button" type="button" @onclick="() => OnCancel.InvokeAsync()">@L["Cancel"]</button>
         <button class="button primary" type="button" @onclick="() => OnConfirm.InvokeAsync(useDefaults)"><Icon Name="plus" /> Add @Items.Count files</button>
     </div>
 </dialog>

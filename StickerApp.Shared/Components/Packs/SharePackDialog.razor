@@ -7,7 +7,7 @@
         @onkeydown="HandleKey" @onkeydown:preventDefault="isWorking">
     <div class="folder-dialog-heading">
         <h2 id="share-pack-title">Share pack</h2>
-        <button class="button icon-button" type="button" @onclick="Close" disabled="@isWorking" title="Close" aria-label="Close sharing">
+        <button class="button icon-button" type="button" @onclick="Close" disabled="@isWorking" title="@L["Close"]" aria-label="Close sharing">
             <Icon Name="close" />
         </button>
     </div>

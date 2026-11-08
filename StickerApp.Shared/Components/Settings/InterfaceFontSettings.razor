@@ -2,27 +2,28 @@
 @inject IJSRuntime JS
 
 <section class="settings-card" aria-labelledby="interface-font-title">
-    <h2 id="interface-font-title">App font</h2>
-    <label>Interface font<select aria-label="App interface font" @bind="value.Font" @bind:after="Save" disabled="@(!ready || saving)">
-        <option value="system">System default</option><option value="sans">Sans serif</option><option value="serif">Serif</option><option value="mono">Monospace</option><option value="meme">Meme · Anton</option>
-        @if(value.Font.StartsWith("custom-") && !fonts.Any(font => font.Id == value.Font)) { <option value="@value.Font">Saved custom font</option> }
+    <h2 id="interface-font-title">@L["App font"]</h2>
+    <label>@L["Interface font"]<select aria-label="App interface font" @bind="value.Font" @bind:after="Preview" disabled="@(!ready || saving)">
+        <option value="system">@L["System default"]</option><option value="sans">@L["Sans serif"]</option><option value="serif">@L["Serif"]</option><option value="mono">@L["Monospace"]</option><option value="meme">@L["Meme · Anton"]</option>
+        @if(value.Font.StartsWith("custom-") && !fonts.Any(font => font.Id == value.Font)) { <option value="@value.Font">@L["Saved custom font"]</option> }
         @foreach(var font in fonts){<option value="@font.Id">@font.Name</option>}
     </select></label>
     <div class="interface-font-grid">
-        <label>Text size · @value.Scale%<span class="font-default-slider" style="--default-position:23.076923%"><input aria-label="App text size" type="range" min="85" max="150" step="5" @bind="value.Scale" @bind:after="Save" disabled="@(!ready || saving)" /><span class="font-default-track" aria-hidden="true"><span class="font-default-marker" title="Default: 100%"><svg viewBox="0 0 10 8"><path d="M1 6 5 2 9 6" /></svg></span></span></span></label>
-        <label>Line spacing · @value.LineSpacing%<span class="font-default-slider" style="--default-position:16.666667%"><input aria-label="App line spacing" type="range" min="90" max="150" step="5" @bind="value.LineSpacing" @bind:after="Save" disabled="@(!ready || saving)" /><span class="font-default-track" aria-hidden="true"><span class="font-default-marker" title="Default: 100%"><svg viewBox="0 0 10 8"><path d="M1 6 5 2 9 6" /></svg></span></span></span></label>
-        <label>Letter spacing · @value.Spacing.ToString("0.##") px<span class="font-default-slider" style="--default-position:20%"><input aria-label="App letter spacing" type="range" min="-0.5" max="2" step="0.1" @bind="value.Spacing" @bind:after="Save" disabled="@(!ready || saving)" /><span class="font-default-track" aria-hidden="true"><span class="font-default-marker" title="Default: 0 px"><svg viewBox="0 0 10 8"><path d="M1 6 5 2 9 6" /></svg></span></span></span></label>
-        <label class="toggle-row"><input aria-label="Bold app text" type="checkbox" @bind="value.Bold" @bind:after="Save" disabled="@(!ready || saving)" />Bold text</label>
+        <label>Text size · @value.Scale%<span class="font-default-slider" style="--default-position:23.076923%"><input aria-label="App text size" type="range" min="85" max="150" step="5" @bind="value.Scale" @bind:event="oninput" @bind:after="Preview" disabled="@(!ready || saving)" /><span class="font-default-track" aria-hidden="true"><span class="font-default-marker" title="Default: 100%"><svg viewBox="0 0 10 8"><path d="M1 6 5 2 9 6" /></svg></span></span></span></label>
+        <label>Line spacing · @value.LineSpacing%<span class="font-default-slider" style="--default-position:16.666667%"><input aria-label="App line spacing" type="range" min="90" max="150" step="5" @bind="value.LineSpacing" @bind:event="oninput" @bind:after="Preview" disabled="@(!ready || saving)" /><span class="font-default-track" aria-hidden="true"><span class="font-default-marker" title="Default: 100%"><svg viewBox="0 0 10 8"><path d="M1 6 5 2 9 6" /></svg></span></span></span></label>
+        <label>Letter spacing · @value.Spacing.ToString("0.##") px<span class="font-default-slider" style="--default-position:20%"><input aria-label="App letter spacing" type="range" min="-0.5" max="2" step="0.1" @bind="value.Spacing" @bind:event="oninput" @bind:after="Preview" disabled="@(!ready || saving)" /><span class="font-default-track" aria-hidden="true"><span class="font-default-marker" title="Default: 0 px"><svg viewBox="0 0 10 8"><path d="M1 6 5 2 9 6" /></svg></span></span></span></label>
+        <label class="toggle-row"><input aria-label="Bold app text" type="checkbox" @bind="value.Bold" @bind:after="Preview" disabled="@(!ready || saving)" />@L["Bold text"]</label>
     </div>
-    <p id="interface-font-preview-label" class="interface-font-preview-label">Preview text</p>
-    <p class="interface-font-preview" lang="nl" aria-labelledby="interface-font-preview-label">@preview</p>
-    <div class="settings-actions">
-        <label class="button file-button"><Icon Name="plus" />Upload font
+    <p id="interface-font-preview-label" class="interface-font-preview-label">@L["Preview text"]</p>
+    <p @ref="previewElement" class="interface-font-preview" lang="nl" aria-labelledby="interface-font-preview-label">@preview</p>
+    <div class="settings-actions interface-font-actions">
+        <button class="button primary" type="button" @onclick="Save" disabled="@(!ready || saving)">@L["Apply font settings"]</button>
+        <label class="button file-button"><Icon Name="plus" />@L["Upload font"]
             <InputFile OnChange="Upload" accept=".ttf,.otf,.woff,.woff2" aria-label="Upload app font" disabled="@(!ready || saving)" />
         </label>
-        <button class="button" type="button" @onclick="Reset" disabled="@(!ready || saving)">Reset font settings</button>
+        <button class="button" type="button" @onclick="Reset" disabled="@(!ready || saving)">@L["Reset font settings"]</button>
     </div>
-    <p class="helper">Changes apply across the interface and are remembered on this device. Sticker text keeps its own formatting. Uploaded fonts are also available in the sticker editor and counted in storage statistics.</p>
+    <p class="helper">Changes appear in the preview first. Press Apply font settings to use them across the app and remember them on this device. Sticker text keeps its own formatting. Uploaded fonts are also available in the sticker editor and counted in storage statistics.</p>
     @if(error is not null){<p class="error" role="alert">@error</p>}
 </section>
 
@@ -37,6 +38,7 @@
         public int LineSpacing { get; set; } = 100;
     }
     private Preferences value = new();
+    private ElementReference previewElement;
     private List<CustomFont> fonts = [];
     private bool ready, saving;
     private string previousFont = "system";
@@ -49,13 +51,20 @@
         "Menno is zo oud, hij heeft de Dode Zee nog levend gekend. Hij zegt nog steeds dat het vroeger een gezellig meer was. Fossiel van een vent 🧓 🌊 👴",
         "Menno is zo tering oud, hij heeft de piramides nog als nieuwbouw gezien. Vond de buurt toen al achteruitgaan. Die man is ouder dan de fundering 👴 🏜️ 👵",
         "Menno is zo oud, hij heeft Noach nog geholpen met verhuizen. Twee van alles, zei hij, behalve kaarsjes voor Menno. Daar was die boot te klein voor 🧓 🚢 👴",
-        "Menno is zo bizar oud, zijn geboortedatum staat op een kleitablet. De gemeente noemt zijn dossier een archeologische vindplaats. Biljaarde man is het ook 👴 🪨 👵"
+        "Menno is zo bizar oud, zijn geboortedatum staat op een kleitablet. De gemeente noemt zijn dossier een archeologische vindplaats. Biljaarde man is het ook 👴 🪨 👵",
+        "Godverdomme Menno, je bent geen jaartje ouder. Je bent een fucking geologisch tijdperk verder. 🪨 👴",
+        "De koolstofdatering van Menno is mislukt. Het laboratorium stuurde alleen ‘tering’ terug. 🧪 🧓",
+        "Menno hoeft geen identiteitsbewijs te laten zien. Eén kuch en de hele kroeg ruikt de middeleeuwen. Tering ouwe. 👴 🍺",
+        "‘Vroeger was alles beter,’ zegt Menno. Ja lul, toen was het heelal nog een proefversie. 🌌 🧓",
+        "Kaarsjes op Menno’s taart? De brandweer heeft die shit tot natuurbrand verklaard. 🎂 🔥 👴",
+        "Menno’s eerste dickpic staat als grottekening in een museum. Cultureel erfgoed, godverdomme. 🪨 🧓",
+        "De dood kwam Menno halen, maar herkende hem van de basisschool. ‘Leef jij nog, ouwe klootzak?’ 💀 👴"
     ];
     private string preview = Previews[0];
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if(!firstRender)return;
-        try{preview=Previews[await JS.InvokeAsync<int>("stickerTypography.nextPreview",Previews.Length)];fonts=(await Store.ReadAsync()).Fonts;value=await JS.InvokeAsync<Preferences>("stickerTypography.get");previousFont=value.Font;ready=true;}
+        try{preview=Previews[await JS.InvokeAsync<int>("stickerTypography.nextPreview",Previews.Length)];fonts=(await Store.ReadAsync()).Fonts;value=await JS.InvokeAsync<Preferences>("stickerTypography.get");previousFont=value.Font;ready=true;await Preview();}
         catch(Exception ex) when(ex is JSException or IOException or InvalidOperationException){error=ex.Message.Split('\n')[0];}
         StateHasChanged();
     }
@@ -76,16 +85,18 @@
             var bytes=memory.ToArray();LibraryStore.ValidateFont(bytes);
             var data="data:font/ttf;base64,"+Convert.ToBase64String(bytes);await JS.InvokeVoidAsync("stickerTypography.validateFont",data);
             var font=await Store.ImportFontAsync(args.File.Name,bytes);fonts=(await Store.ReadAsync()).Fonts;
-            value.Font=font.Id;await JS.InvokeVoidAsync("stickerTypography.set",value,font.Data);previousFont=value.Font;
+            value.Font=font.Id;await JS.InvokeVoidAsync("stickerTypography.preview",previewElement,value,font.Data);
             await OnFontsChanged.InvokeAsync();
         }catch(Exception ex) when(ex is JSException or IOException or InvalidOperationException){error=ex.Message.Split('\n')[0];}
         finally{saving=false;}
     }
-    private async Task Reset()
+    private async Task Preview()
     {
-        if(saving||!ready)return;saving=true;error=null;
-        try { await JS.InvokeVoidAsync("stickerTypography.reset");value=await JS.InvokeAsync<Preferences>("stickerTypography.get");previousFont=value.Font; }
-        catch(JSException ex) { error=ex.Message.Split('\n')[0]; }
-        finally { saving=false; }
+        if(!ready)return;
+        try {
+            var data=value.Font.StartsWith("custom-")?(await Store.ReadFontAsync(value.Font)).Data:null;
+            await JS.InvokeVoidAsync("stickerTypography.preview",previewElement,value,data);
+        } catch(Exception ex) when(ex is JSException or IOException or InvalidOperationException){error=ex.Message.Split('\n')[0];}
     }
+    private async Task Reset() { value=new();await Preview(); }
 }

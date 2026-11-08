@@ -12,6 +12,10 @@ public partial class LayerEditorDialog
     [Parameter] public Guid? StickerId { get; set; }
     [Parameter] public Guid? PackId { get; set; }
     [Parameter] public bool StartWithText { get; set; }
+    [Parameter] public bool StartWithShape { get; set; }
+    private bool showShapes;
+    private string shapeColor="#80d4b0";
+    private static readonly (string Kind,string Name,string Glyph)[] Shapes=[("star","Star","★"),("circle","Circle","●"),("square","Square","■"),("triangle","Triangle","▲"),("cube","Cube","⬡"),("heart","Heart","♥"),("arrow","Arrow","➜")];
     [Parameter] public bool ReturnToEditor { get; set; }
     [Parameter] public string? InitialSource { get; set; }
     [Parameter] public string? InitialName { get; set; }
@@ -88,6 +92,7 @@ public partial class LayerEditorDialog
                     state = await controller.InvokeAsync<LayerEditorState>("add", name, source, 512);
                 }
             }
+            showShapes=StartWithShape;
             if (StartWithText) state = await controller.InvokeAsync<LayerEditorState>("addText");
             if (Selected?.Text is not null) layerCategory = "text";
         }
@@ -149,6 +154,14 @@ public partial class LayerEditorDialog
             state = await controller!.InvokeAsync<LayerEditorState>("updateText", next);
         }
     }
+    private void OpenShapes(){if(working || layerEditSource is not null || state.Layers.Count>=10)return;showAddMenu=false;showShapes=true;}
+    private Task AddShape(string kind,string title)=>Run("Adding shape…",async()=>{
+        await FlushText();
+        await using var shapes=await JS.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/media/layers/shapes.js");
+        var source=await shapes.InvokeAsync<string>("createShape",kind,shapeColor);
+        state=await controller!.InvokeAsync<LayerEditorState>("add",title,source,300);
+        showShapes=false;quickPanel="";layerCategory="adjust";
+    });
     private Task AddText() => Run("Adding text…", async () => { showAddMenu = false; await FlushText(); state = await controller!.InvokeAsync<LayerEditorState>("addText"); quickPanel = ""; layerCategory = "text"; });
     private TextLayerOptions? queuedText;
     private async Task UpdateText(TextLayerOptions text)

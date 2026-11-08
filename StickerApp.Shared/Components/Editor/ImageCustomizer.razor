@@ -4,13 +4,13 @@
 
 <div class="image-customizer live-editor live-tools-@(layout.ToolsPosition) live-controls-@(layout.ControlsPosition) live-size-@(layout.ButtonSize) @(Animated ? "animated-customizer" : "")" aria-busy="@working">
     <div class="live-history-row" role="group" aria-label="Edit history">
-        <button class="button icon-button" type="button" @onclick='() => Run("undo")' disabled="@(working || tool != "")" aria-label="Undo" title="Undo"><Icon Name="undo" /></button>
-        <button class="button icon-button" type="button" @onclick='() => Run("redo")' disabled="@(working || tool != "")" aria-label="Redo" title="Redo"><Icon Name="redo" /></button>
+        <button class="button icon-button" type="button" @onclick='() => Run("undo")' disabled="@(working || tool != "")" aria-label="@L["Undo"]" title="@L["Undo"]"><Icon Name="undo" /></button>
+        <button class="button icon-button" type="button" @onclick='() => Run("redo")' disabled="@(working || tool != "")" aria-label="@L["Redo"]" title="@L["Redo"]"><Icon Name="redo" /></button>
         <EditorViewControls />
         <EditorHelp Animated="Animated" />
         <EditorPopup Disabled="@(working || tool != "")">
             @Options
-            <button class="button" type="button" @onclick='() => Run("reset")' disabled="@(working || tool != "")"><Icon Name="reset" />Reset image</button>
+            <button class="button" type="button" @onclick='() => Run("reset")' disabled="@(working || tool != "")"><Icon Name="reset" />@L["Reset image"]</button>
         </EditorPopup>
     </div>
     <div class="customizer-preview-dock">
@@ -22,21 +22,22 @@
                     @if (tool == "draw")
                     {
                         <div class="drawing-controls">
-                            <label class="live-brush-size">Size<select aria-label="Drawing brush size" @bind="drawBrush" @bind:after="UpdateSettings" disabled="@working">@foreach (var size in new[] { 2, 4, 8, 12, 20, 30, 40, 60, 80, 100, 128 }) { <option value="@size">@size</option> }</select></label>
+                            <label class="live-brush-size">@L["Size"]<input type="number" inputmode="decimal" aria-label="Drawing brush size" min="0.5" max="256" step="0.5" @bind="drawBrush" @bind:after="UpdateSettings" disabled="@working" /></label>
+                            <label>@L["Tip"]<select aria-label="Drawing pencil type" @bind="brushType" @bind:after="UpdateSettings"><option value="pen">@L["Pen"]</option><option value="pencil">@L["Pencil"]</option><option value="brush">@L["Brush"]</option><option value="marker">@L["Marker"]</option></select></label>
                             <input type="color" aria-label="Brush color" title="Brush color" @bind="brushColor" @bind:after="UpdateSettings" disabled="@working" />
                         </div>
                     }
                     else if (tool == "border")
                     {
                         <div class="border-controls">
-                            <label>Width<input type="number" aria-label="Border thickness" min="0" max="80" @bind="borderWidth" @bind:event="oninput" @bind:after="UpdateBorder" /></label>
+                            <label>@L["Width"]<input type="number" aria-label="Border thickness" min="0" max="80" @bind="borderWidth" @bind:event="oninput" @bind:after="UpdateBorder" /></label>
                             <input type="color" aria-label="Border color" @bind="borderColor" @bind:after="UpdateBorder" />
                             <label>Round<input type="number" aria-label="Border corner radius" min="0" max="256" @bind="borderRadius" @bind:event="oninput" @bind:after="UpdateBorder" /></label>
                         </div>
                     }
                     else if (tool == "erase")
                     {
-                        <label class="live-brush-size">Size<select aria-label="Brush size" @bind="brush" @bind:after="UpdateSettings" disabled="@working">@foreach (var size in new[] { 5, 10, 20, 30, 40, 60, 80, 100, 128, 180, 256 }) { <option value="@size">@size</option> }</select></label>
+                        <label class="live-brush-size">@L["Size"]<input type="number" inputmode="decimal" aria-label="@L["Brush size"]" min="0.5" max="256" step="0.5" @bind="brush" @bind:after="UpdateSettings" disabled="@working" /></label>
                     }
                     else if (tool == "wand")
                     {
@@ -45,11 +46,11 @@
                     else if (tool == "adjust" && adjustmentTool == "transform")
                     {
                         <div class="resize-handle-options">
-                            <output data-image-resize-size>@width × @height</output>
+                            <output data-image-resize-size hidden>@width × @height</output>
                             <label>W<input type="number" aria-label="Transform width" data-image-transform-property="imageWidth" min="1" max="512" value="@width" /></label>
                             <label>H<input type="number" aria-label="Transform height" data-image-transform-property="imageHeight" min="1" max="512" value="@height" /></label>
                             <output data-image-transform-angle>0°</output>
-                            <label class="layer-check"><input type="checkbox" data-image-resize-ratio @bind="keepRatio" />Keep proportions</label>
+                            <label class="layer-check"><input type="checkbox" data-image-resize-ratio @bind="keepRatio" />@L["Keep proportions"]</label>
                         </div>
                     }
                     else if (tool == "adjust")
@@ -76,27 +77,28 @@
         @switch (category)
         {
             case "cutout":
-                <button class="button @(tool == "crop" ? "selected-tool" : "")" @onclick='() => SelectTool("crop")' disabled="@working"><Icon Name="crop" /><span>Crop</span></button>
-                <button class="button @(tool == "lasso" ? "selected-tool" : "")" @onclick='() => SelectTool("lasso")' disabled="@working"><Icon Name="lasso" /><span>Trace cutout</span></button>
-                <button class="button @(tool == "erase" ? "selected-tool" : "")" @onclick='() => SelectTool("erase")' disabled="@working"><Icon Name="eraser" /><span>Eraser</span></button>
-                <button class="button @(tool == "wand" ? "selected-tool" : "")" @onclick='() => SelectTool("wand")' disabled="@working"><Icon Name="wand" /><span>Magic wand</span></button>
+                <button class="button @(tool == "crop" ? "selected-tool" : "")" @onclick='() => SelectTool("crop")' disabled="@working"><Icon Name="crop" /><span>@L["Crop"]</span></button>
+                <button class="button @(tool == "lasso" ? "selected-tool" : "")" @onclick='() => SelectTool("lasso")' disabled="@working"><Icon Name="lasso" /><span>@L["Trace cutout"]</span></button>
+                <button class="button @(tool == "erase" ? "selected-tool" : "")" @onclick='() => SelectTool("erase")' disabled="@working"><Icon Name="eraser" /><span>@L["Eraser"]</span></button>
+                <button class="button @(tool == "wand" ? "selected-tool" : "")" @onclick='() => SelectTool("wand")' disabled="@working"><Icon Name="wand" /><span>@L["Magic wand"]</span></button>
                 break;
             case "draw":
-                <button class="button @(tool == "draw" ? "selected-tool" : "")" type="button" @onclick='() => SelectTool("draw")' disabled="@working"><Icon Name="edit" /><span>Draw</span></button>
-                <button class="button @(tool == "erase" ? "selected-tool" : "")" @onclick='() => SelectTool("erase")' disabled="@working"><Icon Name="eraser" /><span>Eraser</span></button>
-                <button class="button @(tool == "border" ? "selected-tool" : "")" type="button" @onclick='() => SelectTool("border")' disabled="@working"><Icon Name="image" /><span>Border</span></button>
+                <button class="button @(tool == "draw" ? "selected-tool" : "")" type="button" @onclick='() => SelectTool("draw")' disabled="@working"><Icon Name="edit" /><span>@L["Draw"]</span></button>
+                <button class="button @(tool == "erase" ? "selected-tool" : "")" @onclick='() => SelectTool("erase")' disabled="@working"><Icon Name="eraser" /><span>@L["Eraser"]</span></button>
+                <button class="button @(tool == "border" ? "selected-tool" : "")" type="button" @onclick='() => SelectTool("border")' disabled="@working"><Icon Name="image" /><span>@L["Border"]</span></button>
                 break;
             case "text":
-                @if (OnAddText.HasDelegate) { <button class="button" type="button" @onclick="OnAddText" disabled="@working"><Icon Name="text" /><span>Add text</span></button> }
+                @if (OnAddText.HasDelegate) { <button class="button" type="button" @onclick="OnAddText" disabled="@working"><Icon Name="text" /><span>@L["Add text"]</span></button> }
                 break;
             case "adjust":
-                <button class="button @(adjustmentTool == "opacity" ? "selected-tool" : "")" @onclick='() => SelectAdjustment("opacity")' disabled="@working"><Icon Name="opacity" /><span>Opacity</span></button>
-                <button class="button @(adjustmentTool == "tint" ? "selected-tool" : "")" @onclick='() => SelectAdjustment("tint")' disabled="@working"><Icon Name="palette" /><span>Color</span></button>
-                <button class="button @(adjustmentTool == "transform" ? "selected-tool" : "")" @onclick='() => SelectAdjustment("transform")' disabled="@working"><Icon Name="crop" /><span>Transform</span></button>
-                <button class="button" @onclick='() => Transform("flip")' disabled="@working"><Icon Name="flip" /><span>Flip</span></button>
+                <button class="button @(adjustmentTool == "opacity" ? "selected-tool" : "")" @onclick='() => SelectAdjustment("opacity")' disabled="@working"><Icon Name="opacity" /><span>@L["Opacity"]</span></button>
+                <button class="button @(adjustmentTool == "tint" ? "selected-tool" : "")" @onclick='() => SelectAdjustment("tint")' disabled="@working"><Icon Name="palette" /><span>@L["Color"]</span></button>
+                <button class="button @(adjustmentTool == "transform" ? "selected-tool" : "")" @onclick='() => SelectAdjustment("transform")' disabled="@working"><Icon Name="crop" /><span>@L["Transform"]</span></button>
+                <button class="button" @onclick='() => Transform("flip")' disabled="@working"><Icon Name="flip" /><span>@L["Flip"]</span></button>
                 break;
             case "layers":
-                @if (OnMakeLayered.HasDelegate) { <button class="button" type="button" @onclick="OnMakeLayered" disabled="@working"><Icon Name="layers" /><span>Make layered</span></button> }
+                @if(OnAddShape.HasDelegate){<button class="button" type="button" @onclick="OnAddShape" disabled="@working"><Icon Name="shapes" /><span>@L["Add shape"]</span></button>}
+                @if (OnMakeLayered.HasDelegate) { <button class="button" type="button" @onclick="OnMakeLayered" disabled="@working"><Icon Name="layers" /><span>@L["Make layered"]</span></button> }
                 break;
         }
     </EditorToolBrowser>
@@ -114,6 +116,7 @@
     [Parameter, EditorRequired] public string Source { get; set; } = "";
     [Parameter] public EventCallback OnReady { get; set; }
     [Parameter] public EventCallback OnAddText { get; set; }
+    [Parameter] public EventCallback OnAddShape { get; set; }
     [Parameter] public EventCallback OnMakeLayered { get; set; }
     [Parameter] public RenderFragment? Options { get; set; }
     [Parameter] public RenderFragment<PlaybackControlState>? Timeline { get; set; }
@@ -141,9 +144,11 @@
     private IJSObjectReference? layoutModule;
     private bool confirmToolCancel;
     private bool working = true, keepRatio = true, previewing, isDisposed;
-    private int width = 512, height = 512, brush = 40, drawBrush = 12, tolerance = 36;
+    private int width = 512, height = 512, tolerance = 36;
+    private double brush = 40, drawBrush = 12;
+    private string brushType = "pen";
     private string brushColor = "#ff4d6d";
-    private string ToolTitle => tool switch { "draw" => "Draw", "border" => "Border", "crop" => "Crop", "lasso" => "Trace cutout", "erase" => "Brush size", "wand" => "Tolerance", "adjust" => adjustmentTool switch { "rotate" => "Rotation", "opacity" => "Opacity", "tint" => "Color", _ => "Transform" }, _ => "Edit" };
+    private string ToolTitle => tool switch { "draw" => "Draw", "border" => "Border", "crop" => "Crop", "lasso" => "Trace cutout", "erase" => "Eraser", "wand" => "Tolerance", "adjust" => adjustmentTool switch { "rotate" => "Rotation", "opacity" => "Opacity", "tint" => "Color", _ => "Transform" }, _ => "Edit" };
     private string ToolHint => tool switch {
         "draw" => "Draw on the artwork with the selected color and brush size. Strokes stay in the same position on every GIF frame. Apply keeps them; Cancel restores this tool's changes.",
         "lasso" => "Trace around the part you want to keep, then use the checkmark to apply. Everything outside becomes transparent.",
@@ -236,7 +241,7 @@
     private int borderWidth = 8, borderRadius;
     private string borderColor = "#ffffff";
     private Task UpdateBorder() => Run("border", borderWidth, borderColor, borderRadius);
-    private async Task UpdateSettings() { if (controller is not null) await controller.InvokeVoidAsync("settings", tool == "draw" ? drawBrush : brush, tolerance, brushColor); }
+    private async Task UpdateSettings() { if (controller is not null) await controller.InvokeVoidAsync("settings", tool == "draw" ? drawBrush : brush, tolerance, brushColor, brushType); }
     private Task Transform(string action) => Run("transform", action, width, height);
     private async Task Run(string method, params object?[] args)
     {

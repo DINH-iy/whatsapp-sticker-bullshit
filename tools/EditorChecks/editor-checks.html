@@ -150,6 +150,21 @@ async function run(source) {
             assert.ok(canvas.parentElement.style.transform.includes('scale(1.25)'),'preview zoom changes the displayed view');
             assert.equal(canvas.toDataURL(),zoomBefore,'preview zoom must not alter artwork');zoomReset.click();
             assert.ok(canvas.parentElement.style.transform.includes('scale(1)'),'Fit resets preview zoom');
+            const tipResults=new Set();
+            for(const tip of ['pen','pencil','brush','marker']){
+                await controller.beginTool('draw');controller.settings(6.5,36,'#00ff00',tip);
+                pointer('pointerdown',8,2);pointer('pointermove',8,14);pointer('pointerup',8,14);
+                await new Promise(resolve=>setTimeout(resolve,30));
+                tipResults.add(canvas.toDataURL());
+                await controller.cancelTool();
+            }
+            assert.equal(tipResults.size,4,'pen, pencil, brush and marker must produce distinct artwork at decimal sizes');
+            const loupeToggle=document.createElement('input');loupeToggle.type='checkbox';loupeToggle.dataset.viewLoupe='';root.append(loupeToggle);
+            loupeToggle.checked=false;loupeToggle.dispatchEvent(new Event('input',{bubbles:true}));
+            await controller.beginTool('draw');pointer('pointerdown',8,2);
+            assert.equal(root.querySelector('.cutout-loupe').hidden,true,'disabled cutout magnifier must stay hidden');
+            pointer('pointerup',8,2);await controller.cancelTool();
+            loupeToggle.checked=true;loupeToggle.dispatchEvent(new Event('input',{bubbles:true}));
             const beforePaint = canvas.toDataURL();
             await controller.beginTool('draw'); controller.settings(5,36,'#00ff00');
             pointer('pointerdown',8,2);assert.equal(root.querySelector('.cutout-loupe').hidden,false,'magnified view must show while drawing');pointer('pointermove',8,14);pointer('pointerup',8,14);assert.equal(root.querySelector('.cutout-loupe').hidden,true,'magnified view must hide after drawing');
@@ -301,6 +316,22 @@ async function run(source) {
             await layerController.action('redo'); const redoSource = layerController.source();
             await layerController.open(layerExport.document);
             const layerReopen = layerController.source() === editedLayerSource;
+            const {createShape}=await import(base+'layers/shapes.js');
+            const shapeSources=new Set();
+            for(const kind of ['star','circle','square','triangle','cube','heart','arrow']){
+                const png=createShape(kind,'#ff0000');shapeSources.add(png);
+                const bitmap=new Image();bitmap.src=png;await bitmap.decode();
+                assert.equal(bitmap.naturalWidth,512,'shape source resolution');
+                const check=document.createElement('canvas');check.width=check.height=512;const ctx=check.getContext('2d');ctx.drawImage(bitmap,0,0);
+                assert.equal(ctx.getImageData(0,0,1,1).data[3],0,'shapes keep transparent padding for cutouts');
+            }
+            assert.equal(shapeSources.size,7,'shape presets have distinct artwork');
+            await layerController.open(null);await layerController.add('Star',createShape('star','#00ff00'),300);
+            layerController.update('width',180);layerController.update('height',150);layerController.update('rotation',35);
+            const shapeBackup=await layerController.export();await layerController.open(shapeBackup.document);
+            const reopenedShape=(await layerController.export()).document.layers[0];
+            assert.equal(reopenedShape.rotation,35,'shape transforms survive editable backup');
+            assert.equal(reopenedShape.source,shapeBackup.document.layers[0].source,'shape artwork survives editable backup');
             layerController.dispose(); layerRoot.remove();
             // Cancelling one editor session must not reject unrelated preparation.
             const other = createSession();
@@ -342,6 +373,6 @@ const result = await run(source);
         assert.equal(result.layerRedo, true, 'layer redo must restore the edited animated source');
         assert.equal(result.layerReopen, true, 'edited animations must survive composition export/reopen');
 
-document.getElementById('result').textContent = 'PASS: per-object outlines, transparent holes, text/image/GIF borders, border undo/cancel/save/reopen and animated export, still WebP layers and text, border replay and rounded corners, preview zoom, drawing on every GIF frame, brush undo/redo/cancel, combined move/resize/rotate handles, animated transform export, hue/strength and all-frame color export, no enlargement, resize handles and aspect lock, tool Apply/Cancel rollback, GIF/WebP/layer frame seeking and slow playback, image adjustments, all-frame cutouts, undo/redo, GIF and WebP export, transparency, isolated cancellation, animated layer apply/undo/redo/export/reopen.\n\n' + JSON.stringify(result, null, 2);
+document.getElementById('result').textContent = 'PASS: seven shape presets and editable shape transform/backups, distinct decimal-size drawing tips, magnifier toggle, per-object outlines, transparent holes, text/image/GIF borders, border undo/cancel/save/reopen and animated export, still WebP layers and text, border replay and rounded corners, preview zoom, drawing on every GIF frame, brush undo/redo/cancel, combined move/resize/rotate handles, animated transform export, hue/strength and all-frame color export, no enlargement, resize handles and aspect lock, tool Apply/Cancel rollback, GIF/WebP/layer frame seeking and slow playback, image adjustments, all-frame cutouts, undo/redo, GIF and WebP export, transparency, isolated cancellation, animated layer apply/undo/redo/export/reopen.\n\n' + JSON.stringify(result, null, 2);
 } catch (error) { document.getElementById('result').textContent = 'FAIL: ' + error.stack; }
 </script>

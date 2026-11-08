@@ -11,6 +11,7 @@ function update(){
     const height=scrolling?window.innerHeight:Math.max(document.documentElement.scrollHeight,window.innerHeight);
     const updates=[];
     for(const element of document.querySelectorAll(selector)){
+        if(element.closest('.danger,.nsfw-name-tag')){if(originals.has(element)){restore(element,originals.get(element));originals.delete(element);}continue;}
         if(!scrolling&&originals.has(element)||element.closest('svg,.demo-artboard,canvas'))continue;
         const rect=element.getBoundingClientRect();if(!rect.width||!rect.height)continue;
         if(scrolling&&(rect.bottom<0||rect.top>height))continue;

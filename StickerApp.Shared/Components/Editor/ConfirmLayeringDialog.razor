@@ -1,16 +1,17 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 <dialog @ref="dialog" class="folder-dialog tool-cancel-dialog" aria-labelledby="layering-title" @oncancel="Cancel" @oncancel:preventDefault @onkeydown:stopPropagation>
-    <h2 id="layering-title">Add text with layers?</h2>
-    <p>This creates a layered sticker so the text can be edited separately. Use Back to editor to discard the layer attempt and return to your current image or GIF edits.</p>
+    <h2 id="layering-title">@(AddingShape ? "Add shapes with layers?" : "Add text with layers?")</h2>
+    <p>This creates a layered sticker so @(AddingShape ? "shapes" : "the text") can be edited separately. Use Back to editor to discard the layer attempt and return to your current image or GIF edits.</p>
     <label class="toggle-row"><input type="checkbox" @bind="skipWarning" />Don’t show this warning again</label>
     @if(error is not null){<p class="error" role="alert">@error</p>}
     <div class="dialog-actions">
-        <button class="button" type="button" @onclick="OnCancel">Cancel</button>
+        <button class="button" type="button" @onclick="OnCancel">@L["Cancel"]</button>
         <button class="button primary" type="button" @onclick="Continue">Continue to layers</button>
     </div>
 </dialog>
 @code {
+    [Parameter] public bool AddingShape { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
     [Parameter] public EventCallback OnContinue { get; set; }
     private bool skipWarning;

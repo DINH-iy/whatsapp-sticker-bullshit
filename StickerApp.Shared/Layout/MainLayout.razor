@@ -1,6 +1,10 @@
 @inherits LayoutComponentBase
 @implements IDisposable
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
+@if(languageReady)
+{
+<div @key="L.Code" class="app-language-root">
 <main class="simple-app">
     <div class="app-navigation" @onkeydown="HandleMenuKey">
     <a class="app-brand" href="" aria-label="Stik-er-in home">
@@ -22,17 +26,20 @@
             }
         </svg>
     </button>
+    <button class="button icon-button navigation-help" type="button" @onclick="() => showGuide=true" aria-label="@L["How to use Stik-er-in"]" title="@L["How to use Stik-er-in"]"><Icon Name="help" /></button>
     <ProfileButton />
     </div>
     <nav id="main-navigation" class="app-nav @(menuOpen ? "navigation-open" : "")" aria-label="Main navigation" @onclick="CloseMenu">
-        <NavLink href="" Match="NavLinkMatch.All" class="@(Navigation.ToBaseRelativePath(Navigation.Uri).StartsWith("packs/") ? "active" : null)">My Packs</NavLink>
-        <NavLink href="friends">Friends’ packs</NavLink>
-        <NavLink href="library">My Library</NavLink>
-        <NavLink href="gifs">GIF search</NavLink>
-        <NavLink href="pinterest">Import from Pinterest</NavLink>
-        <NavLink href="imgur">Import from Imgur</NavLink>
-        <NavLink href="discord">Import from Discord</NavLink>
-        <NavLink class="navigation-settings-link" href="settings">Settings</NavLink>
+        <NavLink href="" Match="NavLinkMatch.All" class="@(Navigation.ToBaseRelativePath(Navigation.Uri).StartsWith("packs/") ? "active" : null)">@L["My Packs"]</NavLink>
+        @if(FriendsFeature.UnderMaintenance){<div class="navigation-maintenance"><span aria-disabled="true">@L["Friends’ packs"]<small>@L["Under maintenance"]</small></span><EditorPopup Title="@L["Friends’ packs · Under maintenance"]" IconName="info" IconOnly="true"><FriendsGuideContent /></EditorPopup></div>}
+        else{<NavLink href="friends">@L["Friends’ packs"]</NavLink>}
+        <NavLink href="library">@L["My Library"]</NavLink>
+        <NavLink href="gifs">@L["GIF search"]</NavLink>
+        <NavLink href="pinterest">@L["Import from Pinterest"]</NavLink>
+        <NavLink href="imgur">@L["Import from Imgur"]</NavLink>
+        <NavLink href="discord">@L["Import from Discord"]</NavLink>
+        <NavLink href="requests">@L["Feature requests"]</NavLink>
+        <NavLink class="navigation-settings-link" href="settings">@L["Settings"]</NavLink>
     </nav>
     @if (menuOpen)
     {
@@ -42,6 +49,7 @@
     <ConnectionStatus />
     @Body
 </main>
+@if(showGuide){<AppGuideDialog OnClose="() => showGuide=false" />}
 <ProfileSetupHost />
 <GroupInviteReceiver />
 <LocationSurprise />
@@ -52,3 +60,11 @@
 <DiagnosticsHost />
 <NavigationHost />
 <div id="blazor-error-ui">Error. <a href="">Reload</a></div>
+
+</div>
+
+}
+else
+{
+    <div class="startup-screen" role="status"><span class="feedback-spinner" aria-hidden="true"></span><strong>Stik-er-in</strong></div>
+}

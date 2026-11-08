@@ -26,7 +26,7 @@ await Reject(()=>client.DownloadAsync(new("bad","https://example.com/private.png
 await Reject(()=>client.PreviewAsync("https://imgur.com/a/large","client123",default),"oversized album rejected before media downloads");
 await Reject(()=>client.DownloadAsync(new("large","https://i.imgur.com/large.png",false),default),"image size checked before reading body");
 var connection=new ConnectionState();connection.Update(false);
-var services=new ServiceCollection().AddLogging().AddSingleton(connection).AddSingleton<IJSRuntime,NoJs>().BuildServiceProvider();
+var services=new ServiceCollection().AddSingleton<AppLanguage>().AddLogging().AddSingleton(connection).AddSingleton<IJSRuntime,NoJs>().BuildServiceProvider();
 await using var renderer=new HtmlRenderer(services,services.GetRequiredService<ILoggerFactory>());
 var offline=await renderer.Dispatcher.InvokeAsync(async()=>{
     var view=await renderer.RenderComponentAsync<OnlineOnly>(ParameterView.FromDictionary(new Dictionary<string,object?>{{"ChildContent",(RenderFragment)(b=>b.AddMarkupContent(0,"<button>Online import</button>"))}}));
@@ -63,6 +63,20 @@ try
     Check(reviewed && (await store.ReadAsync()).Stickers.Count == 1, "Cancelling reused video review leaves entire batch unsaved");
 }
 finally { if (Directory.Exists(discordRoot)) Directory.Delete(discordRoot, true); }
+var soloPack = new StickerPack { Name="A solo", Public=true };
+var groupPack = new StickerPack { Name="Z group", Collection=new("https://example.test/",Guid.NewGuid(),1) };
+var packSnapshot = new LibraryBrowseSnapshot(new StickerLibrary { Packs=[soloPack,groupPack] },new Dictionary<Guid,ImageStorageSize>(),new Dictionary<Guid,PackStorageStatistics>());
+Check(LibraryBrowsing.Packs(packSnapshot,new(Ownership:"group"),false).Single().Id==groupPack.Id,"group filter selects working copies independently of public visibility");
+Check(LibraryBrowsing.Packs(packSnapshot,new(Ownership:"solo"),false).Single().Id==soloPack.Id,"solo filter includes public personal packs");
+Check(LibraryBrowsing.Packs(packSnapshot,new(Sort:"group-first"),false).First().Id==groupPack.Id,"group-first sorting keeps solo packs and prioritizes group copies");
+Check(LibraryBrowsing.Packs(packSnapshot,new(Sort:"solo-first"),false).First().Id==soloPack.Id,"solo-first sorting keeps group copies and prioritizes personal packs");
+Check(LibraryBrowsing.Packs(packSnapshot,new(Search:"solo",Ownership:"group"),false).Count==0,"ownership filters combine with search");
+var maintenance=await renderer.Dispatcher.InvokeAsync(async()=> (await renderer.RenderComponentAsync<FriendsMaintenance>()).ToHtmlString());
+Check(FriendsFeature.UnderMaintenance && maintenance.Contains("Under maintenance") && !maintenance.Contains("Create invite link"),"maintenance screen explains deferred collaboration without join controls");
+var languages=new AppLanguage();
+foreach(var (code,expected) in new[]{("nl","Instellingen"),("de","Einstellungen"),("ro","Setări")}){languages.Set(code);Check(languages["Settings"]==expected,"JSON language catalog loads "+code);}
+Check(languages["Untranslated example"]=="Untranslated example","missing translations fall back without losing text");
+languages.Set("unsupported");Check(languages.Code=="en" && languages["Settings"]=="Settings","unsupported language safely falls back to English");
 Console.WriteLine($"{passed} feature checks passed.");
 sealed class NoJs:IJSRuntime{
     public ValueTask<T> InvokeAsync<T>(string identifier,object?[]? args)=>throw new NotSupportedException();

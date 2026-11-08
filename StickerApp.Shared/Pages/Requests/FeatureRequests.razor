@@ -1,0 +1,45 @@
+@page "/requests"
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject StickerApp.Shared.Services.IPackFileSaver FileSaver
+@inject StickerApp.Shared.Services.IFormFactor FormFactor
+<PageTitle>Feature requests · Stik-er-in</PageTitle>
+<header class="page-header"><h1>@L["Feature requests"]</h1></header>
+<p class="status-info">Keep an idea or bug report as a draft on this device. Drafts are not submitted to an owner. Export a text file to share it yourself; the owner review application is separate and is not connected here.</p>
+@if(FormFactor.GetFormFactor()=="Web"){<p class="helper">This browser version processes the form through its host computer. Draft storage stays in this browser.</p>}
+@if(error is not null){<p class="error" role="alert">@error</p>}
+@if(notice is not null){<p class="settings-success" role="status">@notice</p>}
+<section class="settings-card request-editor"><h2>@(editing is null?"New idea":"Edit draft")</h2>
+<form @onsubmit="Save" @onsubmit:preventDefault>
+    <label>@L["Title"]<input aria-label="Request title" maxlength="120" required @bind="title" @bind:event="oninput" disabled="@(!ready || busy)" /></label>
+    <label>@L["Type"]<select aria-label="Request type" @bind="category" disabled="@(!ready || busy)"><option value="feature">@L["New feature"]</option><option value="improvement">@L["Improvement"]</option><option value="bug">@L["Bug report"]</option></select></label>
+    <label>@L["Details"]<textarea aria-label="Request details" rows="5" maxlength="3000" @bind="details" @bind:event="oninput" disabled="@(!ready || busy)" placeholder="What would you like to do? For a bug, explain what happened and how to reproduce it."></textarea></label>
+    <div class="settings-actions"><button class="button primary" type="submit" disabled="@(!ready || busy || string.IsNullOrWhiteSpace(title))"><Icon Name="check" />@L["Save draft"]</button>@if(editing is not null){<button class="button" type="button" @onclick="Clear" disabled="@busy">@L["Cancel editing"]</button>}</div>
+</form></section>
+<section class="request-list" aria-label="Saved request drafts"><h2>Saved drafts (@drafts.Count)</h2>
+@if(ready && drafts.Count==0){<p class="helper">@L["No drafts yet. Save your first idea above."]</p>}
+@foreach(var draft in drafts){<article class="settings-card request-card" @key="draft.Id"><h3>@draft.Title</h3><small class="helper">Draft · @draft.Category · @draft.CreatedAt.ToLocalTime().ToString("g")</small><p class="request-details">@draft.Details</p><div class="settings-actions"><button class="button" @onclick="() => Edit(draft)" disabled="@busy"><Icon Name="edit" />@L["Edit"]</button><button class="button" @onclick="() => Export(draft)" disabled="@busy"><Icon Name="share" />@L["Export text"]</button><button class="button danger" @onclick="() => removing=draft.Id" disabled="@busy"><Icon Name="trash" />@L["Remove"]</button></div>
+@if(removing==draft.Id){<div class="request-remove-confirm" role="group" aria-label="Confirm draft removal"><p>Remove this local draft? Export it first if you want to keep a copy.</p><div class="settings-actions"><button class="button" @onclick="() => removing=null" disabled="@busy">@L["Keep draft"]</button><button class="button danger" @onclick="() => Remove(draft.Id)" disabled="@busy">@L["Remove draft"]</button></div></div>}
+</article>}
+</section>
+@code {
+    public sealed record Draft(Guid Id,string Title,string Details,string Category,DateTimeOffset CreatedAt);
+    private List<Draft> drafts=[];
+    private IJSObjectReference? module;
+    private string title="",details="",category="feature";
+    private string? error,notice;
+    private Guid? editing,removing;
+    private bool ready,busy;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if(!firstRender)return;
+        await Run(async()=>{module=await JS.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/ui/feature-requests.js");drafts=await module.InvokeAsync<List<Draft>>("read");ready=true;});
+    }
+    private Task Save()=>Run(async()=>{drafts=await module!.InvokeAsync<List<Draft>>("save",new{id=editing,title,details,category});Clear();notice="Draft saved on this device. It has not been sent.";});
+    private void Edit(Draft draft){editing=draft.Id;title=draft.Title;details=draft.Details;category=draft.Category;notice="Editing the selected draft above.";}
+    private void Clear(){editing=null;title=details="";category="feature";}
+    private Task Remove(Guid id)=>Run(async()=>{drafts=await module!.InvokeAsync<List<Draft>>("remove",id.ToString());if(editing==id)Clear();removing=null;notice="Draft removed.";});
+    private Task Export(Draft draft)=>Run(async()=>{var text=$"Stik-er-in feature request\n\n{draft.Title}\nType: {draft.Category}\n\n{draft.Details}\n";using var stream=new MemoryStream(System.Text.Encoding.UTF8.GetBytes(text));await FileSaver.SaveAsync($"stikerin-idea-{draft.Id:N}.txt",stream,"text/plain");notice="Export prepared. You choose where to save or share the file; nothing was submitted to a server.";});
+    private async Task Run(Func<Task> action){if(busy)return;busy=true;error=notice=null;try{await action();}catch(Exception ex) when(ex is JSException or IOException or InvalidOperationException or UnauthorizedAccessException){error=ex.Message.Split('\n')[0];}finally{busy=false;StateHasChanged();}}
+    public async ValueTask DisposeAsync(){if(module is not null)try{await module.DisposeAsync();}catch(JSDisconnectedException){}}
+}

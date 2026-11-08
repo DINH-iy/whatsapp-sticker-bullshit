@@ -3,7 +3,7 @@
 
 <dialog @ref="dialog" class="folder-dialog gif-search-dialog" aria-labelledby="gif-dialog-title" @onkeydown="HandleKey">
     <div class="folder-dialog-heading">
-        <h2 id="gif-dialog-title">Find a GIF</h2>
+        <h2 id="gif-dialog-title">@L["Find a GIF"]</h2>
         <button class="button icon-button" type="button" aria-label="Close GIF search" @onclick="Close"><Icon Name="close" /></button>
     </div>
     <StickerApp.Shared.Pages.Gifs.GifSearch Embedded="true" PackId="@PackId" OnImported="OnImported" />

@@ -2,9 +2,9 @@
 <div class="editor-design-preview demo-tools-@Preferences.ToolsPosition demo-controls-@Preferences.ControlsPosition demo-size-@Preferences.ButtonSize" aria-label="Interactive editor design preview" style="--demo-speed:@speed">
     <div class="demo-titlebar">
         <strong>@(animated ? "Edit GIF" : "Edit image")</strong>
-        <button class="button icon-button" @onclick="Undo" disabled="@(history.Count == 0)" aria-label="Undo preview adjustment" title="Undo"><Icon Name="undo" /></button>
-        <button class="button demo-options-button" @onclick="() => options = !options" aria-expanded="@options">Options</button>
-        @if (activeTool is null) { <button class="button primary" @onclick='() => notice = "Preview complete. No sticker files were changed."'>Done</button> }
+        <button class="button icon-button" @onclick="Undo" disabled="@(history.Count == 0)" aria-label="Undo preview adjustment" title="@L["Undo"]"><Icon Name="undo" /></button>
+        <button class="button demo-options-button" @onclick="() => options = !options" aria-expanded="@options">@L["Options"]</button>
+        @if (activeTool is null) { <button class="button primary" @onclick='() => notice = "Preview complete. No sticker files were changed."'>@L["Done"]</button> }
     </div>
     @if (options)
     {
@@ -32,7 +32,7 @@
                 @if (activeTool == "Crop") { <rect x="@inset" y="@inset" width="@(512-inset*2)" height="@(512-inset*2)" fill="none" stroke="white" stroke-width="3" stroke-dasharray="10 6" /> }
                 @if (activeTool is "Draw" or "Eraser") { <circle cx="374" cy="352" r="@(amount / 2)" fill="@brushColor" opacity=".7" stroke="white" stroke-width="2" /> }
             </svg>
-            <button class="demo-fit" @onclick='() => notice = "The preview canvas stays square and fits the available space."'>Fit</button>
+            <button class="demo-fit" @onclick='() => notice = "The preview canvas stays square and fits the available space."'>@L["Fit"]</button>
         </div>
         @if (activeTool is not null)
         {
@@ -42,7 +42,7 @@
                 {
                     @if (activeTool is "Draw" or "Eraser")
                     {
-                        <label class="demo-value-label">Size<select aria-label="Preview brush size" @bind="amount" @bind:after="Adjust">@foreach (var size in new[] { 2, 4, 8, 12, 20, 30, 50, 75, 100 }) { <option value="@size">@size</option> }</select></label>
+                        <label class="demo-value-label">@L["Size"]<select aria-label="Preview brush size" @bind="amount" @bind:after="Adjust">@foreach (var size in new[] { 2, 4, 8, 12, 20, 30, 50, 75, 100 }) { <option value="@size">@size</option> }</select></label>
                     }
                     else
                     {
@@ -52,7 +52,7 @@
                     @if (activeTool is "Draw" or "Color" or "Border") { <input type="color" aria-label="Preview tool color" @bind="brushColor" /> }
                 }
                 else { <p class="helper">@activeTool options appear only while this tool is selected.</p> }
-                <div class="demo-tool-actions"><button class="button" @onclick="CancelTool">Cancel</button><button class="button primary" @onclick="Apply">Apply</button></div>
+                <div class="demo-tool-actions"><button class="button" @onclick="CancelTool">@L["Cancel"]</button><button class="button primary" @onclick="Apply">@L["Apply"]</button></div>
             </aside>
         }
     </div>
@@ -76,7 +76,7 @@
                 }
             </div>
         }
-        <div class="demo-category-tabs" role="group" aria-label="Editing categories">
+        <div class="demo-category-tabs" role="group" aria-label="@L["Editing categories"]">
             @foreach (var id in Preferences.Categories)
             {
                 <button class="button @(category == id ? "demo-category-active" : "")" aria-pressed="@(category == id)" disabled="@(activeTool is not null)" @onclick="() => category = id"><Icon Name="@CategoryIcon(id)" /><span>@Label(id)</span></button>

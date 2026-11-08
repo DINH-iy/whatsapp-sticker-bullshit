@@ -7,7 +7,7 @@
 @inject StickerApp.Shared.Services.PinterestShareState Shares
 
 <PageTitle>Import from Pinterest · Stik-er-in</PageTitle>
-<header class="page-header"><h1>Import from Pinterest</h1></header>
+<header class="page-header"><h1>@L["Import from Pinterest"]</h1></header>
 <section class="settings-card pinterest-import" aria-labelledby="pinterest-link-title">
     <h2 id="pinterest-link-title">Share a board or selection</h2>
     <HelpDisclosure Summary="How to share a Pinterest selection">
@@ -19,7 +19,7 @@
         <label for="pinterest-link">Pinterest board or selection link</label>
         <textarea id="pinterest-link" rows="3" maxlength="4096" @bind="text" @bind:event="oninput" readonly="@(pending is not null)" disabled="@busy" placeholder="https://pin.it/…"></textarea>
         <div class="dialog-actions">
-            <button type="submit" class="button primary" disabled="@(busy || string.IsNullOrWhiteSpace(text))">Preview media</button>
+            <button type="submit" class="button primary" disabled="@(busy || string.IsNullOrWhiteSpace(text))">@L["Preview media"]</button>
             @if (pending is not null)
             {
                 <button type="button" class="button" disabled="@busy" @onclick="DismissShare">Discard saved link</button>
@@ -53,8 +53,8 @@
             <p class="notice" role="note">Pinterest lists @selection.ExpectedCount pins on this board, but returned only @selection.Count for this preview. @selection.UnavailableCount @(selection.UnavailableCount == 1 ? "pin was" : "pins were") not exposed by Pinterest and will not be imported.</p>
         }
         <div class="dialog-actions">
-            <button class="button" type="button" @onclick="SelectAll" disabled="@busy">Select all</button>
-            <button class="button" type="button" @onclick="ClearSelection" disabled="@busy">Clear selection</button>
+            <button class="button" type="button" @onclick="SelectAll" disabled="@busy">@L["Select all"]</button>
+            <button class="button" type="button" @onclick="ClearSelection" disabled="@busy">@L["Clear selection"]</button>
         </div>
         <div class="pinterest-grid">
             @foreach (var image in selection.Images)
@@ -76,7 +76,7 @@
             <div class="pinterest-destination-field">
                 <label for="pinterest-destination">Import into</label>
                 <select id="pinterest-destination" @bind="destination" disabled="@busy">
-                    <option value="">My Library</option>
+                    <option value="">@L["My Library"]</option>
                     <option value="new">Create new pack…</option>
                     @foreach (var pack in library.Packs)
                     {
@@ -88,8 +88,8 @@
             {
                 <div class="pinterest-destination-field">
                     <label for="pinterest-pack-name">New pack name</label>
-                    <input id="pinterest-pack-name" @bind="newPackName" @bind:event="oninput" maxlength="128" placeholder="Pack name" disabled="@busy" />
-                    <label for="pinterest-pack-publisher">Publisher</label>
+                    <input id="pinterest-pack-name" @bind="newPackName" @bind:event="oninput" maxlength="128" placeholder="@L["Pack name"]" disabled="@busy" />
+                    <label for="pinterest-pack-publisher">@L["Publisher"]</label>
                     <input id="pinterest-pack-publisher" @bind="newPackPublisher" @bind:event="oninput" maxlength="128" placeholder="Your name or brand" disabled="@busy" required />
                 </div>
             }

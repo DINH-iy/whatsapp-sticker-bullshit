@@ -1,0 +1,19 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+<section class="settings-card" aria-labelledby="language-title">
+<h2 id="language-title">@L["Language"]</h2>
+<label>@L["App language"]<select aria-label="@L["App language"]" @bind="choice" disabled="@saving">@foreach(var language in StickerApp.Shared.Services.AppLanguage.Supported){<option value="@language.Code">@language.Name</option>}</select></label>
+<p class="helper">@L["Choose the language used for menus and controls. Your pack names and sticker text stay unchanged."]</p>
+<div class="settings-actions"><button class="button primary" type="button" @onclick="Apply" disabled="@(saving || choice==L.Code)">@L["Apply language"]</button></div>
+<p class="helper">@L["Missing translations fall back to English. The Dutch font-preview jokes stay in Dutch."]</p>
+@if(error is not null){<p class="error" role="alert">@error</p>}
+</section>
+@code {
+    private string choice="en";
+    private string? error;
+    private bool saving;
+    private IJSObjectReference? module;
+    protected override void OnInitialized()=>choice=L.Code;
+    private async Task Apply(){saving=true;error=null;try{module??=await JS.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/ui/language.js");await module.InvokeVoidAsync("save",choice);L.Set(choice);}catch(JSException){error=L["Could not save the language. Please try again."];}finally{saving=false;}}
+    public async ValueTask DisposeAsync(){if(module is not null)try{await module.DisposeAsync();}catch(JSDisconnectedException){}}
+}

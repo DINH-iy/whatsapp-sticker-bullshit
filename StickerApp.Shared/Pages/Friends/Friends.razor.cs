@@ -30,6 +30,7 @@ public partial class Friends
     private void NativeInviteReady()=>_ = InvokeAsync(StateHasChanged);
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if(StickerApp.Core.FriendsFeature.UnderMaintenance)return;
         if(!firstRender)
         {
             if(ready && !connected)

@@ -13,7 +13,7 @@
 
 @if (CurrentPack?.Collection is { } collectionLink)
 {
-    <div class="status-info group-working-copy"><p>Group working copy · Revision @collectionLink.Revision. Your edits stay private here until you update the shared collection.</p><div class="settings-actions"><OnlineOnly><button class="button" @onclick="UpdateGroupCollection" disabled="@busy"><Icon Name="upload" />Update group collection</button></OnlineOnly><a class="button" href="friends/collections/@collectionLink.CollectionId">View shared collection</a></div></div>
+    <div class="status-info group-working-copy"><p>Group working copy · Revision @collectionLink.Revision. Your edits stay private here. Online group updates are under maintenance and will be added later.</p><div class="settings-actions"><OnlineOnly><button class="button" @onclick="UpdateGroupCollection" disabled="@(busy || FriendsFeature.UnderMaintenance)"><Icon Name="upload" />Update group collection</button></OnlineOnly><a class="button" href="friends/collections/@collectionLink.CollectionId">View shared collection</a></div></div>
 }
 
 <header class="page-header">
@@ -28,7 +28,7 @@
         }
         <div class="pack-heading-text">
             <div class="pack-heading-name">
-                <h1>@(CurrentPack?.Name ?? "My Library")</h1>
+                <h1>@(CurrentPack?.Name ?? "My Library") @if(CurrentPack?.Nsfw is true){<span class="nsfw-name-tag">[NSFW]</span>}</h1>
                 @if (CurrentPack is { } visibilityPack)
                 {
                     <span class="pack-visibility-indicator" role="img" aria-label="@(visibilityPack.Public ? "Public pack" : "Private pack")" title="@(visibilityPack.Public ? "Public pack" : "Private pack")">
@@ -40,14 +40,14 @@
         </div>
     </div>
     <div class="header-actions sticker-toolbar">
-        <ActionMenu Label="Add stickers" IconName="plus" Primary="true" Disabled="@busy">
+        <ActionMenu Label="@L["Add stickers"]" IconName="plus" Primary="true" Disabled="@busy">
             @StickerImportChoices
         </ActionMenu>
         @if (CurrentPack is not null)
         {
-            <ActionMenu Label="Pack options" Disabled="@busy">
+            <ActionMenu Label="@L["Pack options"]" Disabled="@busy">
                 <button class="toolbar-menu-option" type="button" @onclick="BeginRenamePack" disabled="@busy">
-                    <Icon Name="edit" /><span>Edit pack details<small>Change the name, publisher, and cover.</small></span>
+                    <Icon Name="edit" /><span>@L["Edit pack details"]<small>Change the name, publisher, and cover.</small></span>
                 </button>
                 @if (CurrentPack.Collection is not null)
                 {
@@ -61,11 +61,11 @@
                     <Icon Name="eye-off" /><span>@(CurrentPack.Nsfw ? "Remove NSFW tag" : "Mark pack as NSFW")<small>Blur previews for every sticker in this pack.</small></span>
                 </button>
                 <button class="toolbar-menu-option" type="button" @onclick="() => packToShare = CurrentPack" disabled="@busy">
-                    <Icon Name="share" /><span>Share or export<small>Save a pack file or create a sharing link.</small></span>
+                    <Icon Name="share" /><span>@L["Share or export"]<small>Save a pack file or create a sharing link.</small></span>
                 </button>
                 <div class="toolbar-menu-divider"></div>
                 <button class="toolbar-menu-option danger" type="button" @onclick="() => deletePack = true" disabled="@busy">
-                    <Icon Name="trash" /><span>Delete pack<small>Images stay in your library.</small></span>
+                    <Icon Name="trash" /><span>@L["Delete pack"]<small>Images stay in your library.</small></span>
                 </button>
             </ActionMenu>
         }
@@ -91,9 +91,9 @@
 
 @{ var visibleImages = Visible; }
 <div class="toolbar browse-toolbar">
-    <label class="browse-search">Search<input type="search" class="search" aria-label="Search images" placeholder="Search images or tags" @bind="search" @bind:event="oninput" /></label>
+    <label class="browse-search">@L["Search"]<input type="search" class="search" aria-label="Search images" placeholder="Search images or tags" @bind="search" @bind:event="oninput" /></label>
     <div class="browse-actions">
-        <button class="button @(sort != "default" ? "browse-action-active" : "")" type="button" aria-label="Sort images" aria-haspopup="dialog" @onclick='() => browsePanel = "sort"'>Sort</button>
+        <button class="button @(sort != "default" ? "browse-action-active" : "")" type="button" aria-label="Sort images" aria-haspopup="dialog" @onclick='() => browsePanel = "sort"'>@L["Sort"]</button>
         <button class="button @(FilterCount > 0 ? "browse-action-active" : "")" type="button" aria-label="Filter images" aria-haspopup="dialog" @onclick='() => browsePanel = "filters"'>Filters @if (FilterCount > 0) { <small class="filter-count">@FilterCount</small> }</button>
     </div>
 </div>
@@ -102,24 +102,24 @@
 <BrowseOptionsPopup Title="@(browsePanel == "sort" ? "Sort images" : "Filter images")" OnClose="() => browsePanel = null">
     @if (browsePanel == "sort")
     {
-    <label>Sort by<select aria-label="Sort images" @bind="sort">
+    <label>@L["Sort by"]<select aria-label="Sort images" @bind="sort">
         <option value="default">@(CurrentPack is null ? "Recently added" : "Saved pack order")</option>
-        @if (CurrentPack is null) { <option value="oldest">Oldest added</option> }
-        <option value="name-asc">Name: A–Z</option><option value="name-desc">Name: Z–A</option>
-        <option value="type">Type</option>
+        @if (CurrentPack is null) { <option value="oldest">@L["Oldest added"]</option> }
+        <option value="name-asc">@L["Name: A–Z"]</option><option value="name-desc">@L["Name: Z–A"]</option>
+        <option value="type">@L["Type"]</option>
         <option value="file-desc">File size: largest first</option><option value="file-asc">File size: smallest first</option>
-        <option value="storage-desc">Stored size: largest first</option><option value="storage-asc">Stored size: smallest first</option>
+        <option value="storage-desc">@L["Stored size: largest first"]</option><option value="storage-asc">@L["Stored size: smallest first"]</option>
     </select></label>
     }
     else
     {
     <div class="browse-filter-fields">
-        <label>Type<select aria-label="Filter image type" @bind="typeFilter"><option value="all">All types</option><option value="still">Still images</option><option value="animated">GIFs / animations</option><option value="layered">Editable layers</option></select></label>
+        <label>@L["Type"]<select aria-label="Filter image type" @bind="typeFilter"><option value="all">@L["All types"]</option><option value="still">@L["Still images"]</option><option value="animated">GIFs / animations</option><option value="layered">Editable layers</option></select></label>
         <label>Saved format<select aria-label="Filter image format" @bind="formatFilter"><option value="all">All formats</option><option value="webp">WebP</option><option value="png">PNG</option><option value="jpeg">JPEG</option><option value="gif">GIF</option></select></label>
-        <label>Total stored size<select aria-label="Filter image storage" @bind="storageFilter"><option value="all">Any size</option><option value="small">Under 100 @SmallSizeUnit</option><option value="medium">100–500 @SmallSizeUnit</option><option value="large">500 @SmallSizeUnit or more</option></select></label>
+        <label>@L["Total stored size"]<select aria-label="Filter image storage" @bind="storageFilter"><option value="all">@L["Any size"]</option><option value="small">Under 100 @SmallSizeUnit</option><option value="medium">100–500 @SmallSizeUnit</option><option value="large">500 @SmallSizeUnit or more</option></select></label>
     </div>
     <p class="helper">File size is the current image; stored size includes originals and layers. Prepared GIFs use WebP but remain under GIFs / animations.</p>
-    <button class="button" type="button" @onclick="ResetFilters">Reset filters</button>
+    <button class="button" type="button" @onclick="ResetFilters">@L["Reset filters"]</button>
     }
 </BrowseOptionsPopup>
 }
@@ -183,7 +183,7 @@
                 <Icon Name="remove" />
             </button>
         }
-        <button class="button icon-button" title="Clear selection" aria-label="Clear selection" @onclick="() => selected.Clear()">
+        <button class="button icon-button" title="@L["Clear selection"]" aria-label="@L["Clear selection"]" @onclick="() => selected.Clear()">
             <Icon Name="close" />
         </button>
     </div>
@@ -198,8 +198,8 @@ else
     <div class="image-grid @(CurrentPack is not null ? "pack-stickers" : "")">
         @if (CurrentPack is { } currentPack)
         {
-            <ActionMenu Label="Add sticker" TileStyle="true" Disabled="@busy">
-                <TriggerContent><AddTileLabel Title="Add sticker" Hint="@(currentPack.StickerIds.Count >= 30 ? "Pack full · 30/30 stickers" : "Image, GIF, or layered image")" /></TriggerContent>
+            <ActionMenu Label="@L["Add sticker"]" TileStyle="true" Disabled="@busy">
+                <TriggerContent><AddTileLabel Title="@L["Add sticker"]" Hint="@(currentPack.StickerIds.Count >= 30 ? "Pack full · 30/30 stickers" : "Image, GIF, or layered image")" /></TriggerContent>
                 <ChildContent>@StickerImportChoices</ChildContent>
             </ActionMenu>
         }
@@ -227,7 +227,7 @@ else
                                 disabled="@busy" title="Add to pack" aria-label="Add @image.Name to pack">
                             <Icon Name="folder-plus" />
                         </button>
-                        <button class="button icon-button" @onclick="() => Edit(image)" title="Edit image" aria-label="Edit @image.Name">
+                        <button class="button icon-button" @onclick="() => Edit(image)" title="@L["Edit image"]" aria-label="Edit @image.Name">
                             <Icon Name="edit" />
                         </button>
                         <button class="button icon-button danger" @onclick="() => pendingRemoval = image" title="Remove sticker" aria-label="Remove @image.Name">
@@ -252,7 +252,7 @@ else
 
 @if (showLayerEditor)
 {
-    <LayerEditorDialog StickerId="@compositionStickerId" PackId="@activePack" StartWithText="@compositionStartWithText" InitialSource="@compositionInitialSource" InitialName="@compositionInitialName" InitialNsfw="@compositionInitialNsfw" ReturnToEditor="@compositionFromEditor" Images="@library.Stickers" Previews="@previews"
+    <LayerEditorDialog StickerId="@compositionStickerId" PackId="@activePack" StartWithText="@compositionStartWithText" StartWithShape="@compositionStartWithShape" InitialSource="@compositionInitialSource" InitialName="@compositionInitialName" InitialNsfw="@compositionInitialNsfw" ReturnToEditor="@compositionFromEditor" Images="@library.Stickers" Previews="@previews"
                        OnCancel="CancelComposition" OnSaved="CompositionSaved" />
 }
 
@@ -267,8 +267,8 @@ else
         <div class="editor-dialog-heading">
             <h2 id="edit-title">@(IsGif ? "Edit GIF" : editing.Animated || replacementAnimated ? "Edit animated image" : "Edit image")</h2>
             <div class="editor-header-actions" hidden="@editorToolActive">
-                <button class="button icon-button" type="button" @onclick="CancelEditing" disabled="@((busy && !editorLoading) || (customizing && !editorToolsLoading))" aria-label="Cancel" title="Cancel editing"><Icon Name="close" /></button>
-                @if (!EditorOpening) { <button class="button primary icon-button" type="button" @onclick="Save" disabled="@(busy || customizing)" aria-label="Save" title="Save sticker"><Icon Name="check" /></button> }
+                <button class="button icon-button" type="button" @onclick="CancelEditing" disabled="@((busy && !editorLoading) || (customizing && !editorToolsLoading))" aria-label="@L["Cancel"]" title="@L["Cancel editing"]"><Icon Name="close" /></button>
+                @if (!EditorOpening) { <button class="button primary icon-button" type="button" @onclick="Save" disabled="@(busy || customizing)" aria-label="@L["Save"]" title="@L["Save sticker"]"><Icon Name="check" /></button> }
             </div>
         </div>
         @if (EditorOpening)
@@ -281,7 +281,7 @@ else
         <div class="editor-dialog-body" hidden="@EditorOpening">
             @if (EditingStill || EditingAnimation)
             {
-                <ImageCustomizer @key="editSource" Source="@editSource" OnReady="EditorToolsReady" OnAddText="RequestAddText" OnMakeLayered="MakeEditedLayered" Animated="@EditingAnimation" TrimStart="@trimStart" TrimEnd="@(gifDuration > 0 ? trimEnd : null)" OnEditsChanged="recipe => editRecipe = recipe" OnChanged="CustomizeImage" OnBusyChanged="value => customizing = value" OnToolActiveChanged="value => editorToolActive = value">
+                <ImageCustomizer @key="editSource" Source="@editSource" OnReady="EditorToolsReady" OnAddText="RequestAddText" OnAddShape="RequestAddShape" OnMakeLayered="MakeEditedLayered" Animated="@EditingAnimation" TrimStart="@trimStart" TrimEnd="@(gifDuration > 0 ? trimEnd : null)" OnEditsChanged="recipe => editRecipe = recipe" OnChanged="CustomizeImage" OnBusyChanged="value => customizing = value" OnToolActiveChanged="value => editorToolActive = value">
                     <Timeline Context="playback">
                         @if (EditingAnimation && gifDuration > 0)
                         {
@@ -292,8 +292,8 @@ else
                         }
                     </Timeline>
                     <Options>
-                            <label class="toggle-row editor-spoiler-toggle"><input type="checkbox" @bind="editNsfw" disabled="@(busy || customizing)" />NSFW spoiler</label>
-                            <label>Name <input @bind="editName" @bind:event="oninput" maxlength="128" disabled="@busy" /></label>
+                            <label class="toggle-row editor-spoiler-toggle"><input type="checkbox" @bind="editNsfw" disabled="@(busy || customizing)" />@L["NSFW spoiler"]</label>
+                            <label>@L["Name"] <input @bind="editName" @bind:event="oninput" maxlength="128" disabled="@busy" /></label>
                             <div class="edit-tools">
                                 <label class="button file-button"><Icon Name="image" /> Replace image
                                     <InputFile OnChange="Replace" accept="image/*" disabled="@(busy || customizing)" aria-label="Replace image" />
@@ -345,8 +345,8 @@ else
             <h2 id="remove-title">@(deletePack ? "Delete pack?" : "Remove sticker?")</h2>
             <p>@(deletePack ? "Stickers remain in the library." : pendingRemoval!.Name)</p>
             <div class="dialog-actions">
-                <button class="button" @onclick="CancelRemoval">Cancel</button>
-                <button class="button danger" @onclick="ConfirmRemoval" disabled="@busy"><Icon Name="trash" /> Remove</button>
+                <button class="button" @onclick="CancelRemoval">@L["Cancel"]</button>
+                <button class="button danger" @onclick="ConfirmRemoval" disabled="@busy"><Icon Name="trash" /> @L["Remove"]</button>
             </div>
         </section>
     </div>
@@ -386,5 +386,5 @@ else
 
 @if (confirmLayeredText)
 {
-    <ConfirmLayeringDialog OnCancel="() => confirmLayeredText = false" OnContinue="ConfirmAddText" />
+    <ConfirmLayeringDialog AddingShape="@pendingLayeredShape" OnCancel="() => confirmLayeredText = false" OnContinue="ConfirmAddText" />
 }

@@ -3,10 +3,10 @@
     {
         <div class="live-tool-choices" role="group" aria-label="@($"{Label(Category)} tools")">@ChildContent</div>
     }
-    <div class="live-category-tabs" role="group" aria-label="Editing categories">
+    <div class="live-category-tabs" role="group" aria-label="@L["Editing categories"]">
         @foreach (var category in Preferences.Categories)
         {
-            <button class="button @(Category == category ? "live-category-active" : "")" type="button" aria-pressed="@(Category == category)" disabled="@(Disabled || Active)" @onclick="() => CategoryChanged.InvokeAsync(category)"><Icon Name="@IconFor(category)" /><span>@Label(category)</span></button>
+            <button class="button @(Category == category ? "live-category-active" : "")" type="button" aria-pressed="@(Category == category)" disabled="@(Disabled || Active)" @onclick="() => CategoryChanged.InvokeAsync(category)"><Icon Name="@IconFor(category)" /><span>@L[Label(category)]</span></button>
         }
     </div>
 </div>

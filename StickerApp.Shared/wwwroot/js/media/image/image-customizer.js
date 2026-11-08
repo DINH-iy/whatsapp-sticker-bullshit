@@ -47,7 +47,7 @@ export function create(canvas, dotnet) {
         adjustmentBase = null; adjustment = { rotation: 0, opacity: 1, tint: null, hue: 0, colorStrength: 1 }; editingControl = null;
         return publishAdjustments();
     };
-    let tolerance = 36, brush = 40, brushColor = "#ff4d6d";
+    let tolerance = 36, brush = 40, brushColor = "#ff4d6d", brushType = "pen";
     const notify = () => disposed ? Promise.resolve() : dotnet.invokeMethodAsync('ImageChanged', canvas.toDataURL('image/png'), canvas.width, canvas.height, recipe());
     const remember = () => { history.push(state()); redo = []; if (history.length > 8) history.shift(); };
     const load = async (source, limit = 0) => {
@@ -88,7 +88,11 @@ export function create(canvas, dotnet) {
     const paint = (from,to) => {
         for(const target of [context,paintLayer.getContext('2d')]) {
             target.save();target.globalCompositeOperation='source-over';target.strokeStyle=brushColor;
-            target.lineWidth=brush*canvas.width/canvas.clientWidth;target.lineCap='round';target.lineJoin='round';
+            const width=brush*canvas.width/canvas.clientWidth;
+            target.lineWidth=width;target.lineCap=brushType==='marker'?'square':'round';target.lineJoin='round';
+            if(brushType==='pencil'){target.globalAlpha=.45;target.lineWidth=width*.55;}
+            if(brushType==='brush'){target.shadowColor=brushColor;target.shadowBlur=width*.25;target.lineWidth=width*.7;}
+            if(brushType==='marker')target.globalAlpha=.25;
             target.beginPath();target.moveTo(from.x,from.y);target.lineTo(to.x+.01,to.y+.01);target.stroke();target.restore();
         }
     };
@@ -346,7 +350,7 @@ export function create(canvas, dotnet) {
             tool = '';
         },
         async setTool(value) { stopPreview(); clearSelection(); await commitAdjustments(); tool = value; },
-        settings(size, threshold, color) { brush = Math.max(2,Math.min(256,Number(size)||40)); tolerance = threshold; if(/^#[0-9a-f]{6}$/i.test(color??''))brushColor=color; },
+        settings(size, threshold, color, tip="pen") { brush = Math.max(.5,Math.min(256,Number(size)||40)); brushType=["pen","pencil","brush","marker"].includes(tip)?tip:"pen"; tolerance = threshold; if(/^#[0-9a-f]{6}$/i.test(color??''))brushColor=color; },
         async applySelection() {
             if (!snapshot || points.length < 3) throw new Error('Draw a selection on the image first.');
             const minX = Math.floor(Math.min(...points.map(p => p.x))), minY = Math.floor(Math.min(...points.map(p => p.y)));

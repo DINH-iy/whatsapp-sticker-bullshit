@@ -1,6 +1,6 @@
 @implements IDisposable
 @inject LibraryStore Store
-<a class="button icon-button profile-navigation-button" href="profile" aria-label="Your profile" title="Your profile">
+<a class="button icon-button profile-navigation-button" href="profile" aria-label="@L["Your profile"]" title="@L["Your profile"]">
     @if (profile?.Picture is { } picture) { <img src="@picture" alt="" /> }
     else { <Icon Name="user" /> }
 </a>

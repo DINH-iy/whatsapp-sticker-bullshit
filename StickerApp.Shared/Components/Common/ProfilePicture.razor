@@ -1,0 +1,29 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+<button class="profile-picture-trigger @Class" type="button" @onclick="Open" aria-label="View larger profile picture">
+    <img src="@Source" alt="@Alt" />
+</button>
+@if(show)
+{
+    <dialog @ref="dialog" class="folder-dialog profile-picture-dialog" aria-label="@L["Profile picture"]" @oncancel="Close" @oncancel:preventDefault>
+        <div class="folder-dialog-heading"><h2>@L["Profile picture"]</h2><button type="button" class="button icon-button" @onclick="Close" aria-label="Close profile picture"><Icon Name="close" /></button></div>
+        <img src="@Source" alt="@Alt" />
+    </dialog>
+}
+@code {
+    [Parameter, EditorRequired] public string Source { get; set; } = "";
+    [Parameter] public string Alt { get; set; } = "Profile picture";
+    [Parameter] public string? Class { get; set; }
+    private bool show, opening;
+    private ElementReference dialog;
+    private IJSObjectReference? module;
+    private void Open(){show=opening=true;}
+    private void Close(){show=opening=false;}
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if(!opening)return;opening=false;
+        module??=await JS.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/ui/dialog.js");
+        await module.InvokeVoidAsync("open",dialog);
+    }
+    public async ValueTask DisposeAsync(){if(module is not null)try{await module.DisposeAsync();}catch(JSDisconnectedException){}}
+}

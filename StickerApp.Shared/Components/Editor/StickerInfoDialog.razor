@@ -17,7 +17,7 @@
         <dt>Dimensions</dt><dd>@Image.Width × @Image.Height pixels</dd>
         <dt>File size</dt><dd>@(Math.Ceiling(Image.Bytes / 1024d)) KB</dd>
         <dt>Format</dt><dd>@Image.MimeType.Replace("image/", "").ToUpperInvariant()</dd>
-        <dt>Appearance</dt><dd>@(Image.Animated ? "Animated" : "Still image")</dd>
+        <dt>@L["Appearance"]</dt><dd>@(Image.Animated ? "Animated" : "Still image")</dd>
         @if (Image.Animated && Image.DurationMs > 0)
         {
             <dt>Duration</dt><dd>@(Image.DurationMs / 1000d) seconds</dd>
@@ -32,10 +32,10 @@
     <div class="dialog-actions">
         @if (State?.Error is not null)
         {
-            <button class="button" type="button" @onclick="() => Preparation.Retry(Image.Id)">Try again</button>
+            <button class="button" type="button" @onclick="() => Preparation.Retry(Image.Id)">@L["Try again"]</button>
         }
-        <button class="button" type="button" @onclick="() => OnEdit.InvokeAsync()">Edit image</button>
-        <button class="button primary" type="button" @onclick="Close">Done</button>
+        <button class="button" type="button" @onclick="() => OnEdit.InvokeAsync()">@L["Edit image"]</button>
+        <button class="button primary" type="button" @onclick="Close">@L["Done"]</button>
     </div>
 </dialog>
 

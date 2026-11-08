@@ -5,7 +5,7 @@
 @if (Onboarding)
 {
     <dialog @ref="dialog" class="folder-dialog create-pack-dialog" aria-labelledby="profile-setup-title" @oncancel="Skip" @oncancel:preventDefault>
-        <h2 id="profile-setup-title">Welcome to Stik-er-in</h2>
+        <h2 id="profile-setup-title">@L["Welcome to Stik-er-in"]</h2>
         <p class="helper">Make it yours. Your profile is stored locally; no account or password needed.</p>
         @Fields
     </dialog>
@@ -31,10 +31,10 @@ else
 
     private RenderFragment Fields => @<form @onsubmit="Save" @onsubmit:preventDefault>
         <div class="profile-photo-row">
-            <span class="profile-photo-preview">@if (picture is not null) { <img src="@picture" alt="Your profile picture" /> } else { <Icon Name="user" /> }</span>
+            <span class="profile-photo-preview">@if (picture is not null) { <ProfilePicture Source="@picture" Alt="Your profile picture" /> } else { <Icon Name="user" /> }</span>
             <div class="profile-photo-copy"><strong>Profile photo</strong><div class="profile-photo-actions">
                 <label class="button file-button"><Icon Name="image-plus" /><span>@(picture is null ? "Add photo" : "Change photo")</span><input type="file" accept="image/*" @ref="pictureInput" @onchange="ChoosePicture" disabled="@saving" aria-label="Choose profile picture" /></label>
-                @if (picture is not null) { <button class="text-button profile-photo-remove" type="button" @onclick="() => picture = null" disabled="@saving" aria-label="Remove profile picture">Remove</button> }
+                @if (picture is not null) { <button class="text-button profile-photo-remove danger" type="button" @onclick="() => picture = null" disabled="@saving" aria-label="Remove profile picture">Remove</button> }
             </div></div>
         </div>
         <div class="profile-name-fields">

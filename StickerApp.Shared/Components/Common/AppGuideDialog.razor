@@ -1,0 +1,28 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+<dialog @ref="dialog" class="folder-dialog app-guide-dialog" aria-labelledby="app-guide-title" @oncancel="OnClose" @oncancel:preventDefault @onkeydown="Key">
+    <div class="folder-dialog-heading"><h2 id="app-guide-title">@L["How to use Stik-er-in"]</h2><button class="button icon-button" type="button" @onclick="OnClose" aria-label="Close app guide"><Icon Name="close" /></button></div>
+    <AppGuideContent />
+    <div class="guide-progress" role="group" aria-label="Tutorial progress">@for(var i=0;i<5;i++){var target=i;<button type="button" class="guide-dot" aria-label="Go to step @(i+1)" aria-current="@(step==i?"step":null)" @onclick="() => Go(target)"></button>}</div>
+    <div class="dialog-actions guide-navigation"><button class="button" type="button" @onclick="() => Go(step-1)" disabled="@(step==0)">@L["Back"]</button><span aria-live="polite">@(step+1) / 5</span>@if(step<4){<button class="button primary" type="button" @onclick="() => Go(step+1)">@L["Next"]<Icon Name="right" /></button>}else{<button type="button" class="button primary" @onclick="OnClose">@L["Got it"]<Icon Name="check" /></button>}</div>
+</dialog>
+@code {
+    [Parameter] public EventCallback OnClose { get; set; }
+    private int step;
+    private ElementReference dialog;
+    private IJSObjectReference? module,slides,controller;
+    private DotNetObjectReference<AppGuideDialog>? reference;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if(!firstRender)return;
+        module=await JS.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/ui/dialog.js");
+        await module.InvokeVoidAsync("open",dialog);
+        slides=await JS.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/ui/tutorial-slides.js");
+        reference=DotNetObjectReference.Create(this);
+        controller=await slides.InvokeAsync<IJSObjectReference>("create",dialog,reference);
+    }
+    private async Task Go(int index){if(controller is not null)await controller.InvokeVoidAsync("go",Math.Clamp(index,0,4));}
+    [JSInvokable] public void SlideChanged(int index){step=Math.Clamp(index,0,4);StateHasChanged();}
+    private Task Key(KeyboardEventArgs args)=>args.Key switch{"ArrowRight"=>Go(step+1),"ArrowLeft"=>Go(step-1),_=>Task.CompletedTask};
+    public async ValueTask DisposeAsync(){try{if(controller is not null){await controller.InvokeVoidAsync("dispose");await controller.DisposeAsync();}if(slides is not null)await slides.DisposeAsync();if(module is not null)await module.DisposeAsync();}catch(JSDisconnectedException){}reference?.Dispose();}
+}

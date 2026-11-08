@@ -8,25 +8,26 @@
 
 <PageTitle>Settings · Stik-er-in</PageTitle>
 <CascadingValue Value="expansion">
-<header class="page-header settings-page-header"><h1>Settings</h1>
+<header class="page-header settings-page-header"><h1>@L["Settings"]</h1>
 <div class="settings-section-actions" role="group" aria-label="Settings sections">
-    <button class="button" type="button" @onclick="() => ExpandSections(false)">Collapse all</button>
-    <button class="button" type="button" @onclick="() => ExpandSections(true)">Expand all</button>
+    <button class="button" type="button" @onclick="() => ExpandSections(false)">@L["Collapse all"]</button>
+    <button class="button" type="button" @onclick="() => ExpandSections(true)">@L["Expand all"]</button>
 </div>
 </header>
 <div class="settings-tabs" role="tablist" aria-label="Settings categories" @onkeydown="HandleTabKey">
     <button type="button" role="tab" id="general-settings-tab" aria-controls="general-settings-panel"
             aria-selected="@(selectedTab == "general" ? "true" : "false")" tabindex="@(selectedTab == "general" ? 0 : -1)"
-            @ref="generalTab" @onclick='() => SelectTab("general")'>General</button>
+            @ref="generalTab" @onclick='() => SelectTab("general")'>@L["General"]</button>
     <button type="button" role="tab" id="developer-settings-tab" aria-controls="developer-settings-panel"
             aria-selected="@(selectedTab == "developer" ? "true" : "false")" tabindex="@(selectedTab == "developer" ? 0 : -1)"
-            @ref="developerTab" @onclick='() => SelectTab("developer")'>Developer</button>
+            @ref="developerTab" @onclick='() => SelectTab("developer")'>@L["Developer"]</button>
 </div>
 <section role="tabpanel" id="general-settings-panel" aria-labelledby="general-settings-tab" hidden="@(selectedTab != "general")" tabindex="0">
 <div class="settings-stack">
-    <SettingsSection Title="Help &amp; FAQ" Anchor="faq">
+    <SettingsSection Title="@L["Language"]"><LanguageSettings /></SettingsSection>
+    <SettingsSection Title="@L["Help & FAQ"]" Anchor="faq">
 <section class="settings-card faq" id="faq" aria-labelledby="faq-title">
-        <h2 id="faq-title">Help &amp; FAQ</h2>
+        <h2 id="faq-title">@L["Help & FAQ"]</h2>
         <AppDisclosure><Header>How do I import Discord favourite GIFs on my phone?</Header><ChildContent>
             <p>In Discord, open You → settings cogwheel → Data &amp; Privacy → Request all of my data. Confirm and wait for the email (up to 30 days). Download its ZIP to Files or Downloads, then choose Add stickers → Discord favourites in Stik-er-in. Choose the ZIP, select GIFs and import them. Videos open the video-to-GIF editor first.</p>
             <p>The ZIP is read locally. Only the favourites list is passed to the app; your messages and account details are not uploaded. A browser development host downloads selected media and saves stickers on the host computer. No Discord password or account token is needed.</p>
@@ -79,19 +80,19 @@
         </ChildContent></AppDisclosure>
     </section>
 </SettingsSection>
-    @if (FormFactor.GetFormFactor() == "Web") { <SettingsSection Title="Home Screen app"><WebAppSettings /></SettingsSection> }
-    <SettingsSection Title="Appearance">
+    @if (FormFactor.GetFormFactor() == "Web") { <SettingsSection Title="@L["Home Screen app"]"><WebAppSettings /></SettingsSection> }
+    <SettingsSection Title="@L["Appearance"]">
 <section class="settings-card" aria-labelledby="appearance-title">
-        <h2 id="appearance-title">Appearance</h2>
-        <label for="theme">Theme</label>
+        <h2 id="appearance-title">@L["Appearance"]</h2>
+        <label for="theme">@L["Theme"]</label>
         <select id="theme" value="@theme" @onchange="ChangeTheme" disabled="@(!ready)">
-            <option value="system">Use system setting</option>
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
+            <option value="system">@L["Use system setting"]</option>
+            <option value="light">@L["Light"]</option>
+            <option value="dark">@L["Dark"]</option>
         </select>
         <p class="helper">Choose a theme, or follow your device. Your choice is saved on this device.</p>
-        <h3 class="settings-subheading">Color theme</h3>
-        <div class="color-options" role="group" aria-label="Color theme">
+        <h3 class="settings-subheading">@L["Color theme"]</h3>
+        <div class="color-options" role="group" aria-label="@L["Color theme"]">
             @foreach (var option in ColorOptions)
             {
                 <button class="color-option" type="button" aria-pressed="@(color == option.Id ? "true" : "false")"
@@ -114,21 +115,21 @@
         }
     </section>
 </SettingsSection>
-    <SettingsSection Title="Your profile"><ProfileEditor /></SettingsSection>
-    <SettingsSection Title="NSFW spoilers"><SpoilerSettings /></SettingsSection>
-    <SettingsSection Title="Editing"><LayerWarningSettings /></SettingsSection>
-    <SettingsSection Title="Editor layout" Anchor="editor-layout"><EditorLayoutSettings /></SettingsSection>
-    <SettingsSection Title="App font"><InterfaceFontSettings OnFontsChanged="RefreshFontStats" /></SettingsSection>
-    <SettingsSection Title="Touch feedback" Anchor="touch-feedback"><TapFeedbackSettings /></SettingsSection>
-    <SettingsSection Title="Library statistics &amp; storage"><LibraryStatisticsSettings @ref="fontStatistics" /></SettingsSection>
+    <SettingsSection Title="@L["Your profile"]"><ProfileEditor /></SettingsSection>
+    <SettingsSection Title="@L["NSFW spoilers"]"><SpoilerSettings /></SettingsSection>
+    <SettingsSection Title="@L["Editing"]"><LayerWarningSettings /></SettingsSection>
+    <SettingsSection Title="@L["Editor layout"]" Anchor="editor-layout"><EditorLayoutSettings /></SettingsSection>
+    <SettingsSection Title="@L["App font"]"><InterfaceFontSettings OnFontsChanged="RefreshFontStats" /></SettingsSection>
+    <SettingsSection Title="@L["Touch feedback"]" Anchor="touch-feedback"><TapFeedbackSettings /></SettingsSection>
+    <SettingsSection Title="@L["Library statistics & storage"]"><LibraryStatisticsSettings @ref="fontStatistics" /></SettingsSection>
 
 </div>
 </section>
 <section role="tabpanel" id="developer-settings-panel" aria-labelledby="developer-settings-tab" hidden="@(selectedTab != "developer")" tabindex="0">
 <div class="settings-stack">
     <SettingsSection Title="Diagnostics &amp; error logs" Anchor="diagnostics"><DiagnosticsSettings /></SettingsSection>
-    <SettingsSection Title="GIF search" Anchor="gif-search"><GifSearchSettings /></SettingsSection>
-    <SettingsSection Title="Pack sharing" Anchor="pack-sharing"><PackSharingSettings /></SettingsSection>
+    <SettingsSection Title="@L["GIF search"]" Anchor="gif-search"><GifSearchSettings /></SettingsSection>
+    <SettingsSection Title="@L["Pack sharing"]" Anchor="pack-sharing"><PackSharingSettings /></SettingsSection>
         <SettingsSection Title="Sticker storage" Anchor="storage">
 <section class="settings-card" id="storage" aria-labelledby="storage-title">
             <h2 id="storage-title">Sticker storage</h2>
@@ -173,7 +174,7 @@
         <p class="helper">This app does not sign in to cloud accounts or monitor sync status.</p>
     </section>
 </SettingsSection>
-    <SettingsSection Title="Easter eggs"><SurpriseSettings /></SettingsSection>
+    <SettingsSection Title="@L["Easter eggs"]"><SurpriseSettings /></SettingsSection>
 </div>
 </section>
 
@@ -182,6 +183,6 @@
     <StickerApp.Shared.Components.Settings.FolderPicker InitialFolder="@Store.Root" OnSelected="FolderSelected" OnCancel="() => showFolderPicker = false" />
 }
 
-<div class="settings-stack settings-reset-footer"><SettingsSection Title="Factory reset"><FactoryResetSettings /></SettingsSection></div>
+<div class="settings-stack settings-reset-footer"><SettingsSection Title="@L["Factory reset"]"><FactoryResetSettings /></SettingsSection></div>
 
 </CascadingValue>

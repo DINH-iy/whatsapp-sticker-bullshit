@@ -10,6 +10,7 @@ public partial class Packs
     private string? error;
     private bool busy;
     private bool showCreate;
+    private string ownershipFilter="all";
     private StickerPack? editingPack;
     private LibraryBrowseSnapshot? browse;
     private string search = "";
@@ -19,9 +20,9 @@ public partial class Packs
     private string countFilter = "all";
     private string storageFilter = "all";
     private string SizeUnit => Store.DecimalStorageUnits ? "MB" : "MiB";
-    private int FilterCount => new[] { typeFilter, countFilter, storageFilter }.Count(value => value != "all");
+    private int FilterCount => new[] { typeFilter, countFilter, storageFilter, ownershipFilter }.Count(value => value != "all");
     private IReadOnlyList<StickerPack> VisiblePacks => browse is null ? [] : LibraryBrowsing.Packs(browse,
-        new(search, typeFilter, countFilter, storageFilter, sort), Store.DecimalStorageUnits);
+        new(search, typeFilter, countFilter, storageFilter, sort, ownershipFilter), Store.DecimalStorageUnits);
     private string PackSize(StickerPack pack) => StorageDisplay.Format(
         browse?.PackSizes.TryGetValue(pack.Id, out var size) == true ? size.StickerBytes + size.SourceBytes : 0,
         Store.DecimalStorageUnits);
@@ -31,7 +32,7 @@ public partial class Packs
     private void ResetFilters()
     {
         search = "";
-        typeFilter = countFilter = storageFilter = "all";
+        typeFilter = countFilter = storageFilter = ownershipFilter = "all";
     }
 
     private Task PackDetailsSaved(Guid id) => Run(async () =>

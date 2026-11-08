@@ -1,9 +1,33 @@
+@implements IAsyncDisposable
 @inject LibraryStore Store
-@if (show)
+@inject IJSRuntime JS
+@if (showSetup)
 {
-    <ProfileEditor Onboarding="true" OnFinished="() => show = false" />
+    <ProfileEditor Onboarding="true" OnFinished="FinishedSetup" />
 }
+else if(showGuide)
+{
+    <AppGuideDialog OnClose="CloseGuide" />
+}
+@if(error is not null){<p class="notice" role="status">@error</p>}
 @code {
-    private bool show;
-    protected override async Task OnInitializedAsync() => show = !(await Store.ReadProfileAsync()).SetupComplete;
+    private bool showSetup,showGuide,seen;
+    private string? error;
+    private IJSObjectReference? module;
+    protected override async Task OnInitializedAsync()=>showSetup=!(await Store.ReadProfileAsync()).SetupComplete;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if(!firstRender)return;
+        module=await JS.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/ui/app-guide.js");
+        try{seen=await module.InvokeAsync<bool>("hasSeen");}catch(JSException){seen=false;}
+        showGuide=!showSetup&&!seen;StateHasChanged();
+    }
+    private void FinishedSetup(){showSetup=false;showGuide=!seen;}
+    private async Task CloseGuide()
+    {
+        try{if(module is not null)await module.InvokeVoidAsync("markSeen");seen=true;}
+        catch(JSException){error="Your browser could not remember that you read the guide. It may appear again next time.";}
+        showGuide=false;
+    }
+    public async ValueTask DisposeAsync(){if(module is not null)try{await module.DisposeAsync();}catch(JSDisconnectedException){}}
 }

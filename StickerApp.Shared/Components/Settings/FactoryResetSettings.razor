@@ -5,9 +5,9 @@
 @inject IServiceProvider Services
 @inject StickerApp.Shared.Services.IFormFactor FormFactor
 <section class="settings-card factory-reset-settings" aria-labelledby="factory-reset-title">
-    <h2 id="factory-reset-title">Factory reset</h2>
+    <h2 id="factory-reset-title">@L["Factory reset"]</h2>
     <p>Erase your profile, packs, stickers, original files, editable layers, uploaded fonts, saved app settings and local diagnostics. The app will start with first-launch setup again.</p>
-    <p class="error"><strong>This cannot be undone.</strong> Files you exported or backed up outside app storage are not erased. Shared packs on a friends server stay there; leave the group first to remove them.</p>
+    <p class="error"><strong>@L["This cannot be undone."]</strong> Files you exported or backed up outside app storage are not erased. Shared packs on a friends server stay there; leave the group first to remove them.</p>
     @if (FormFactor.GetFormFactor() == "Web") { <p class="helper">This browser host uses a shared library. Reset erases that library for every browser connected to this host.</p> }
     <button class="button danger" @onclick="Begin"><Icon Name="trash" />Factory reset…</button>
 </section>
@@ -18,15 +18,15 @@
         @if (stage == 1)
         {
             <p>This permanently deletes your profile, packs, stickers, originals, layers, fonts and settings.</p>
-            <p class="error"><strong>This cannot be undone.</strong> Export any packs you want to keep before continuing.</p>
-            <div class="dialog-actions"><button class="button" @onclick="Cancel">Cancel</button><button class="button danger" @onclick="() => stage = 2">Continue to final confirmation</button></div>
+            <p class="error"><strong>@L["This cannot be undone."]</strong> Export any packs you want to keep before continuing.</p>
+            <div class="dialog-actions"><button class="button" @onclick="Cancel">@L["Cancel"]</button><button class="button danger" @onclick="() => stage = 2">Continue to final confirmation</button></div>
         }
         else
         {
             <p>Everything listed will be erased. <strong>There is no undo or recovery inside the app.</strong></p>
             <label for="factory-reset-confirm">Type RESET to confirm</label><input id="factory-reset-confirm" autocomplete="off" spellcheck="false" @bind="confirmation" @bind:event="oninput" disabled="@working" />
             @if (error is not null) { <p class="error" role="alert">@error</p> }
-            <div class="dialog-actions"><button class="button" @onclick="Cancel" disabled="@working">Cancel</button><button class="button danger" @onclick="Reset" disabled="@(working || confirmation != "RESET")"><Icon Name="trash" />@(working ? "Erasing…" : "Erase everything permanently")</button></div>
+            <div class="dialog-actions"><button class="button" @onclick="Cancel" disabled="@working">@L["Cancel"]</button><button class="button danger" @onclick="Reset" disabled="@(working || confirmation != "RESET")"><Icon Name="trash" />@(working ? "Erasing…" : "Erase everything permanently")</button></div>
         }
     </dialog>
 }

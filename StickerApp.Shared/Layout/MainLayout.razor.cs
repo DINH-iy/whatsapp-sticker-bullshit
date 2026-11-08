@@ -1,3 +1,4 @@
+using Microsoft.JSInterop;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
@@ -6,10 +7,18 @@ namespace StickerApp.Shared.Layout;
 
 public partial class MainLayout
 {
-    private bool menuOpen;
+    private bool menuOpen,languageReady,showGuide;
     private ElementReference menuToggle;
 
-    protected override void OnInitialized() => Navigation.LocationChanged += OnLocationChanged;
+    protected override void OnInitialized(){Navigation.LocationChanged += OnLocationChanged;L.Changed+=LanguageChanged;}
+    private void LanguageChanged()=>_ = InvokeAsync(StateHasChanged);
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if(!firstRender)return;
+        try{await using var language=await JS.InvokeAsync<Microsoft.JSInterop.IJSObjectReference>("import","./_content/StickerApp.Shared/js/ui/language.js");L.Set(await language.InvokeAsync<string>("read"));}
+        catch(Microsoft.JSInterop.JSException){}
+        finally{languageReady=true;StateHasChanged();}
+    }
 
     private void ToggleMenu() => menuOpen = !menuOpen;
 
@@ -30,5 +39,5 @@ public partial class MainLayout
         _ = InvokeAsync(StateHasChanged);
     }
 
-    public void Dispose() => Navigation.LocationChanged -= OnLocationChanged;
+    public void Dispose(){Navigation.LocationChanged -= OnLocationChanged;L.Changed-=LanguageChanged;}
 }
