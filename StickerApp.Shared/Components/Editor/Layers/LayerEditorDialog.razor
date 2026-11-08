@@ -153,7 +153,7 @@
             @if (Selected is { } current)
             {
                 <div class="layer-selected-preview" aria-label="@L["Selected layer preview"]">
-                    <img src="@current.Thumbnail" alt="Preview of @current.Name" />
+                    <img src="@current.Thumbnail" alt="@L[$"Preview of {current.Name}"]" />
                     <div><small>@L["Selected layer"]</small><strong>@current.Name</strong><small>Layer @(state.Selected + 1) · @Math.Round(current.Opacity * 100)% opacity</small></div>
                 </div>
 

@@ -1,7 +1,7 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 <details @ref="root" @attributes="Attributes" class="app-disclosure @Class @(Popup ? "app-disclosure-popup" : "")" open="@expanded">
-    <summary class="@SummaryClass" aria-label="@Label" @onclick="Toggle" @onclick:preventDefault>
+    <summary class="@SummaryClass" aria-label="@L[$"{Label}"]" @onclick="Toggle" @onclick:preventDefault>
         <span class="app-disclosure-label">@Header</span><Icon Name="right" />
     </summary>
     @if (Popup) { @ChildContent }

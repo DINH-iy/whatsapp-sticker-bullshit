@@ -206,11 +206,11 @@ else
         @foreach (var image in visibleImages)
         {
             <article class="image-card" @key="image.Id" @onclick="() => Edit(image)">
-                <input type="checkbox" class="image-select" @onclick:stopPropagation aria-label="Select @image.Name"
+                <input type="checkbox" class="image-select" @onclick:stopPropagation aria-label="@L[$"Select {image.Name}"]"
                        checked="@selected.Contains(image.Id)" @onchange="() => Toggle(image.Id)" />
                 <SpoilerPreview IsSpoiler="@library.IsNsfw(image)" Name="@image.Name">
-                <button class="image-preview" @onclick:stopPropagation aria-label="Edit @image.Name" @onclick="() => Edit(image)">
-                    <img class="spoiler-artwork" src="@previews[image.Id]" alt="@image.Name" loading="lazy" />
+                <button class="image-preview" @onclick:stopPropagation aria-label="@L[$"Edit {image.Name}"]" @onclick="() => Edit(image)">
+                    <img class="spoiler-artwork" src="@previews[image.Id]" alt="@L[$"{image.Name}"]" loading="lazy" />
                 </button>
                 </SpoilerPreview>
                 <strong>@image.Name</strong>
@@ -222,15 +222,15 @@ else
                 }
                 <div class="card-actions" @onclick:stopPropagation>
                     <div class="sticker-actions">
-                        <button class="button icon-button" type="button" @onclick="() => infoImageId = image.Id" title="@L["Sticker details"]" aria-label="Details for @image.Name"><Icon Name="info" /></button>
+                        <button class="button icon-button" type="button" @onclick="() => infoImageId = image.Id" title="@L["Sticker details"]" aria-label="@L[$"Details for {image.Name}"]"><Icon Name="info" /></button>
                         <button class="button icon-button" type="button" @onclick="() => imageToAdd = image"
-                                disabled="@busy" title="@L["Add to pack"]" aria-label="Add @image.Name to pack">
+                                disabled="@busy" title="@L["Add to pack"]" aria-label="@L[$"Add {image.Name} to pack"]">
                             <Icon Name="folder-plus" />
                         </button>
-                        <button class="button icon-button" @onclick="() => Edit(image)" title="@L["Edit image"]" aria-label="Edit @image.Name">
+                        <button class="button icon-button" @onclick="() => Edit(image)" title="@L["Edit image"]" aria-label="@L[$"Edit {image.Name}"]">
                             <Icon Name="edit" />
                         </button>
-                        <button class="button icon-button danger" @onclick="() => pendingRemoval = image" title="@L["Remove sticker"]" aria-label="Remove @image.Name">
+                        <button class="button icon-button danger" @onclick="() => pendingRemoval = image" title="@L["Remove sticker"]" aria-label="@L[$"Remove {image.Name}"]">
                             <Icon Name="trash" />
                         </button>
                     </div>

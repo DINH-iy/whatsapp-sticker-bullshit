@@ -77,6 +77,44 @@ var languages=new AppLanguage();
 foreach(var (code,expected) in new[]{("nl","Instellingen"),("de","Einstellungen"),("ro","Setări")}){languages.Set(code);Check(languages["Settings"]==expected,"JSON language catalog loads "+code);}
 Check(languages["Untranslated example"]=="Untranslated example","missing translations fall back without losing text");
 languages.Set("unsupported");Check(languages.Code=="en" && languages["Settings"]=="Settings","unsupported language safely falls back to English");
+// UI translation is a presentation boundary; source diagnostics are never localized.
+var resources=typeof(AppLanguage).Assembly;
+var catalogs=AppLanguage.Supported.ToDictionary(item=>item.Code,item=>{
+    using var stream=resources.GetManifestResourceStream($"StickerApp.Shared.Localization.{item.Code}.json")!;
+    return System.Text.Json.JsonSerializer.Deserialize<Dictionary<string,string>>(stream)!;
+});
+foreach(var code in new[]{"nl","de","ro"})
+{
+    languages.Set(code);
+    Check(catalogs[code].Keys.ToHashSet().SetEquals(catalogs["en"].Keys),"catalog key parity "+code);
+    Check(catalogs[code].All(entry=>!string.IsNullOrWhiteSpace(entry.Value)),"no empty translations "+code);
+    Check(languages["The canvas is always 512 × 512 units. Small images keep their size; checkerboard areas are transparent."]!=catalogs["en"]["The canvas is always 512 × 512 units. Small images keep their size; checkerboard areas are transparent."],"editor help translated "+code);
+    var raw="This pack has room for 7 more stickers. Select fewer images or choose My Library.";
+    Check(languages.Error(raw)!=raw&&languages.Error(raw).Contains("7"),"dynamic capacity warning translated "+code);
+    var source="Photo with Settings in its name: convert to WebP (WhatsApp's sticker format); compress from 233 KB to at most 100 KB. Automatic preparation is pending; open sticker details for its status.";
+    var message=languages.Message(source);
+    Check(message.StartsWith("Photo with Settings in its name:")&&!message.Contains("Automatic preparation")&&!message.Contains("convert to WebP")&&message.Contains("233")&&message.Contains("100"),"nested pack warning preserves artwork name and numbers "+code);
+    var error=languages.Error("Unknown vendor exception. Reference: abc123def456.");
+    Check(error.Contains("abc123def456")&&!error.Contains("Unknown vendor exception"),"unknown technical error gets localized explanation and preserved reference "+code);
+    var known=languages.Error("This image no longer exists.");
+    Check(languages.Error(known)==known,"already translated errors are not translated again "+code);
+    Check(languages.Format("By {0}","Settings") .EndsWith("Settings"),"formatted user text remains untouched "+code);
+}
+var logRoot=Path.Combine(Path.GetTempPath(),"stik-language-log-"+Guid.NewGuid().ToString("N"));
+try
+{
+    var log=new AppLog(logRoot);
+    foreach(var code in new[]{"en","nl","de","ro"})
+    {
+        languages.Set(code);
+        var original=new InvalidDataException("This image no longer exists.");
+        var reference=log.Error("Open image editor",original);
+        _=languages.Error(original.Message+" Reference: "+reference+".");
+        var report=log.Report();
+        Check(report.Contains("Open image editor")&&report.Contains(original.Message)&&report.Contains(reference)&&!report.Contains("Deze afbeelding bestaat niet meer."),"diagnostic logs and reports remain English in "+code);
+    }
+}
+finally { if(Directory.Exists(logRoot))Directory.Delete(logRoot,true); }
 Console.WriteLine($"{passed} feature checks passed.");
 sealed class NoJs:IJSRuntime{
     public ValueTask<T> InvokeAsync<T>(string identifier,object?[]? args)=>throw new NotSupportedException();

@@ -59,14 +59,14 @@ else
             <article class="gif-card">
                 @if (!string.IsNullOrEmpty(gif.PreviewUrl))
                 {
-                    <img src="@gif.PreviewUrl" alt="@gif.Title" loading="lazy" />
+                    <img src="@gif.PreviewUrl" alt="@L[$"{gif.Title}"]" loading="lazy" />
                 }
                 else
                 {
                     <div class="gif-unavailable">@L["Preview unavailable"]</div>
                 }
                 <div class="gif-card-footer">
-                    <span title="@gif.Title">@gif.Title</span>
+                    <span title="@L[$"{gif.Title}"]">@gif.Title</span>
                     <div class="gif-card-actions">
 <OnlineOnly>                        <button class="button primary gif-import-button" type="button" @onclick="() => ImportGif(gif)"
                                 disabled="@(IsImporting || string.IsNullOrEmpty(gif.ShareUrl) || importedUrls.Contains(gif.ShareUrl))"
@@ -77,7 +77,7 @@ else
                         @if (!string.IsNullOrEmpty(gif.ShareUrl))
                         {
                             <a class="button icon-button" href="@gif.ShareUrl" target="_blank" rel="noopener noreferrer"
-                               title="@L["Open in browser"]" aria-label="Open @gif.Title in browser">
+                               title="@L["Open in browser"]" aria-label="@L[$"Open {gif.Title} in browser"]">
                                 <Icon Name="link" />
                             </a>
                         }

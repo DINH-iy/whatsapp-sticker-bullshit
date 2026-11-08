@@ -46,8 +46,8 @@ else
             <label for="profile-theme" class="settings-field-label">@L["Theme"]</label>
             <select id="profile-theme" @bind="theme" disabled="@(!ready || saving)"><option value="system">@L["Use system setting"]</option><option value="dark">@L["Dark"]</option><option value="light">@L["Light"]</option></select>
             <label class="toggle-row"><input type="checkbox" @bind="blur" disabled="@saving" />@L["Blur NSFW previews"]</label>
-            <label class="toggle-row"><input type="checkbox" @bind="keepSources" disabled="@saving" />Keep animation originals for editing</label>
-            <p class="helper">Everything else, including fonts and vibration, can be changed in Settings.</p>
+            <label class="toggle-row"><input type="checkbox" @bind="keepSources" disabled="@saving" />@L["Keep animation originals for editing"]</label>
+            <p class="helper">@L["Everything else, including fonts and vibration, can be changed in Settings."]</p>
         }
         @if (error is not null) { <p class="error" role="alert">@L.Error(error)</p> }
         @if (notice is not null) { <p role="status">@L.Message(notice)</p> }

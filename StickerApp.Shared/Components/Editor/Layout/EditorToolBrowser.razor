@@ -1,7 +1,7 @@
 <div class="live-editor-toolbar" aria-label="@L["Editor tools"]">
     @if (!Active)
     {
-        <div class="live-tool-choices" role="group" aria-label="@($"{Label(Category)} tools")">@ChildContent</div>
+        <div class="live-tool-choices" role="group" aria-label="@L.Format("{0} tools", L[Label(Category)])">@ChildContent</div>
     }
     <div class="live-category-tabs" role="group" aria-label="@L["Editing categories"]">
         @foreach (var category in Preferences.Categories)

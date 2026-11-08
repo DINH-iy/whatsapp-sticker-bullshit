@@ -72,7 +72,7 @@ else
 {
     <article class="friends-pack-card" @key="@(pack.OwnerId.ToString() + pack.PackId)">
         <div class="friends-pack-preview">
-            @if (previews.TryGetValue(Key(pack), out var preview)) { <img src="@preview" alt="Preview of @pack.Name" class="@(pack.Nsfw && Store.BlurNsfwPreviews && !revealed.Contains(Key(pack)) ? "friends-preview-blurred" : "")" /> }
+            @if (previews.TryGetValue(Key(pack), out var preview)) { <img src="@preview" alt="@L[$"Preview of {pack.Name}"]" class="@(pack.Nsfw && Store.BlurNsfwPreviews && !revealed.Contains(Key(pack)) ? "friends-preview-blurred" : "")" /> }
             else { <Icon Name="layers" /> }
             @if (pack.Nsfw && Store.BlurNsfwPreviews) { <button class="button icon-button" @onclick="() => Reveal(Key(pack))" aria-label="@L[revealed.Contains(Key(pack)) ? "Hide NSFW preview" : "Reveal NSFW preview"]"><Icon Name="@(revealed.Contains(Key(pack)) ? "eye-off" : "eye")" /></button> }
         </div>

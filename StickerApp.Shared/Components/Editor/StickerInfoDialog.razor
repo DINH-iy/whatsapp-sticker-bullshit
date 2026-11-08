@@ -14,13 +14,13 @@
         <p class="helper">@L.Error(error)</p>
     }
     <dl class="sticker-detail-list">
-        <dt>@L["Dimensions"]</dt><dd>@Image.Width × @Image.Height pixels</dd>
+        <dt>@L["Dimensions"]</dt><dd>@Image.Width × @Image.Height @L["pixels"]</dd>
         <dt>@L["File size"]</dt><dd>@(Math.Ceiling(Image.Bytes / 1024d)) KB</dd>
         <dt>@L["Format"]</dt><dd>@Image.MimeType.Replace("image/", "").ToUpperInvariant()</dd>
         <dt>@L["Appearance"]</dt><dd>@L[Image.Animated ? "Animated" : "Still image"]</dd>
         @if (Image.Animated && Image.DurationMs > 0)
         {
-            <dt>@L["Duration"]</dt><dd>@(Image.DurationMs / 1000d) seconds</dd>
+            <dt>@L["Duration"]</dt><dd>@(Image.DurationMs / 1000d) @L["seconds"]</dd>
         }
         <dt>@L["Original"]</dt><dd>@L[Image.OriginalFileName is not null ? "Original file kept" : Image.OriginalDiscarded ? "Not kept — edits use the current sticker" : "Current image is the original"]</dd>
     </dl>

@@ -1,13 +1,13 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 <button class="profile-picture-trigger @Class" type="button" @onclick="Open" aria-label="@L["View larger profile picture"]">
-    <img src="@Source" alt="@Alt" />
+    <img src="@Source" alt="@L[Alt]" />
 </button>
 @if(show)
 {
     <dialog @ref="dialog" class="folder-dialog profile-picture-dialog" aria-label="@L["Profile picture"]" @oncancel="Close" @oncancel:preventDefault>
         <div class="folder-dialog-heading"><h2>@L["Profile picture"]</h2><button type="button" class="button icon-button" @onclick="Close" aria-label="@L["Close profile picture"]"><Icon Name="close" /></button></div>
-        <img src="@Source" alt="@Alt" />
+        <img src="@Source" alt="@L[Alt]" />
     </dialog>
 }
 @code {

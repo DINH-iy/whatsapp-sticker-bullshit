@@ -90,7 +90,7 @@
                 <small class="image-file-summary">@L.Format("{0} stored", PackSize(pack)) · @L[pack.Public ? "Public" : "Private"]</small>
             </a>
             <div class="pack-card-actions">
-                <button class="button icon-button" type="button" disabled="@busy" @onclick="() => editingPack = pack" title="@L["Edit pack details"]" aria-label="Edit details for @pack.Name"><Icon Name="edit" /><span>@L["Edit details"]</span></button>
+                <button class="button icon-button" type="button" disabled="@busy" @onclick="() => editingPack = pack" title="@L["Edit pack details"]" aria-label="@L[$"Edit details for {pack.Name}"]"><Icon Name="edit" /><span>@L["Edit details"]</span></button>
             </div>
         </article>
     }

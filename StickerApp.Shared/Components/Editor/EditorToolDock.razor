@@ -1,4 +1,4 @@
-<aside class="editor-tool-dock @(ActionsOnly ? "actions-only" : "")" aria-label="@($"{Title} controls")">
+<aside class="editor-tool-dock @(ActionsOnly ? "actions-only" : "")" aria-label="@L.Format("{0} controls", L[Title])">
     <strong class="editor-tool-title">@L[Title]</strong>
     @if (!ActionsOnly)
     {

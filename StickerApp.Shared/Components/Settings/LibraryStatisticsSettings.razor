@@ -138,10 +138,10 @@
         <p class="helper">@L[used > budget ? "The library is above its limit. Existing files are kept; clean up or raise the limit to add more." : $"{Size(Math.Max(0, budget - used))} remaining within your library budget."]</p>
     }
     <label class="toggle-row"><input type="checkbox" @bind="limitEnabled" disabled="@busy" /> @L["Limit library storage"]</label>
-    <label for="library-limit">Maximum library size (@LimitUnit)</label>
+    <label for="library-limit">@L["Maximum library size"] (@LimitUnit)</label>
     <input id="library-limit" type="number" min="@InputNumber(MinimumLimit)" max="@InputNumber(MaximumLimit)" step="any" @bind="limitAmount" disabled="@(busy || !limitEnabled)" />
     <button type="button" class="button" @onclick="SaveStorageLimit" disabled="@busy">@L["Save storage limit"]</button>
-    <p class="helper">@(decimalUnits ? "1,000 MB = 1 GB." : "1,024 MiB = 1 GiB.") This limits the saved library, including sources, layers, unused media, and its index. It does not reserve device space or guarantee that much free space. Temporary imports and conversions need extra room. Logs, exported packs, and other apps are outside this budget. Cleanup and saves that reduce usage are allowed even above the limit.</p>
+    <p class="helper">@(decimalUnits ? "1,000 MB = 1 GB." : "1,024 MiB = 1 GiB.") @L["This limits the saved library, including sources, layers, unused media, and its index. It does not reserve device space or guarantee that much free space. Temporary imports and conversions need extra room. Logs, exported packs, and other apps are outside this budget. Cleanup and saves that reduce usage are allowed even above the limit."]</p>
     </div>
     </ChildContent></AppDisclosure>
     <AppDisclosure Class="storage-section"><Header>@L["Original file defaults"] <small>@L[askOnImport ? "Ask per file" : "Use defaults"]</small></Header><ChildContent>
