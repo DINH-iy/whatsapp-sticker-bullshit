@@ -670,6 +670,7 @@ try
         log.Info("fixture", "test only"); log.Clear();
         Require(!Directory.EnumerateFiles(logFolder).Any(), "Reset log cleanup left diagnostic files");
     });
+    checks += await EditableBackupChecks.RunAsync(root, png, webp, animated);
     Console.WriteLine($"Passed {checks} storage checks.");
 }
 finally

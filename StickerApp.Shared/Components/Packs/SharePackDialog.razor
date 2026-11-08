@@ -18,7 +18,7 @@
             <option value="zip">Editable backup (.zip)</option>
         </select>
     </label>
-    <p class="helper">.wastickers contains WebP stickers, a cover, and the pack name. Images are prepared automatically. Editable backup keeps GIFs and other original formats, names, tags, and NSFW spoiler flags.</p>
+    <p class="helper">.wastickers contains WebP stickers, a cover, and the pack name. Images are prepared automatically. Editable backup keeps current sticker files, names, tags, spoiler flags and editable layers, including animation sources, text and embedded fonts.</p>
     <p class="helper">Still images and GIFs can share one .wastickers pack. Still images are exported with two identical frames, so they keep looking still.</p>
     @if (WaitingForPreparation)
     {
@@ -63,11 +63,10 @@
                 <p class="helper" role="status">@copyNotice</p>
             }
         }
-        <details class="pack-fingerprint">
-            <summary>SHA-256 fingerprint</summary>
+        <AppDisclosure Class="pack-fingerprint"><Header>SHA-256 fingerprint</Header><ChildContent>
             <code>@result.Sha256</code>
             <p class="helper">This identifies the complete exported file. It detects changes, but does not verify the sender’s identity.</p>
-        </details>
+        </ChildContent></AppDisclosure>
     }
     @if (error is not null)
     {

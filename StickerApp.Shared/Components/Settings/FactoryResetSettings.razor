@@ -7,7 +7,7 @@
 <section class="settings-card factory-reset-settings" aria-labelledby="factory-reset-title">
     <h2 id="factory-reset-title">Factory reset</h2>
     <p>Erase your profile, packs, stickers, original files, editable layers, uploaded fonts, saved app settings and local diagnostics. The app will start with first-launch setup again.</p>
-    <p class="error"><strong>This cannot be undone.</strong> Files you exported or backed up outside app storage are not erased.</p>
+    <p class="error"><strong>This cannot be undone.</strong> Files you exported or backed up outside app storage are not erased. Shared packs on a friends server stay there; leave the group first to remove them.</p>
     @if (FormFactor.GetFormFactor() == "Web") { <p class="helper">This browser host uses a shared library. Reset erases that library for every browser connected to this host.</p> }
     <button class="button danger" @onclick="Begin"><Icon Name="trash" />Factory reset…</button>
 </section>

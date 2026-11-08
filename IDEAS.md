@@ -1,8 +1,8 @@
-# Stick it — remaining work
+# Stik-er-in — remaining work
 
 Only unfinished ideas and follow-up work are listed here. This is a backlog, not an instruction to implement these features now.
 
-Last updated: 5 November 2026.
+Last updated: 8 November 2026.
 
 ## Hosting and syncing (later, at home)
 
@@ -13,19 +13,13 @@ Last updated: 5 November 2026.
 
 ## Friends' pack overview
 
-- [ ] A dashboard showing packs shared by friends who use the app.
-- [ ] A private/public setting on each pack. Public packs appear in the overview; private packs do not. Local visibility metadata and editing are implemented; the shared overview and server enforcement remain future work.
-- [ ] Define whether "public" means visible to this friends-only app or visible to anyone with a link.
-
-## Editable layer backups
-
-- [ ] Transfer editable layers in pack backups; current pack exports contain the flattened sticker only.
+- [ ] Deploy the invited-friends overview/API on the Pi and invite the first friends. Public currently means invited-group members only.
+- [ ] Add automatic pack syncing; the current overview uses an explicit Sync my public packs action.
 
 ## Owner/admin application
 
 - [ ] A separate admin panel for the owner to inspect clients and manage the app.
-- [ ] No account creation for friends: ask for a name once on first use and remember it.
-- [ ] Associate clients with a persistent GUID, chosen name, app/browser and OS versions, and other useful device information. Local profile ID and library stats are implemented; admin sync is not connected.
+- [ ] Connect local profile identities and library stats to admin sync, including the chosen name and app/browser and OS versions.
 - [ ] Define sync permissions and an authenticated admin API: username/avatar and public packs for the shared overview; first name, private packs and device/storage stats stay outside the public payload. Do not use the local GUID as authentication.
 - [ ] Decide which location information is useful and how it is requested/disclosed; do not collect location now.
 - [ ] Allow client logs and relevant diagnostics to be uploaded to the admin service, with a clear upload policy.
@@ -45,14 +39,8 @@ Last updated: 5 November 2026.
 - [ ] Review whether the existing pack-sharing server configuration is useful for friends.
 - [ ] Remove or replace that settings section if it is redundant once the shared dashboard exists.
 
-## Discord integration — investigate first
-
-- [ ] Find out whether Discord offers a supported way to access a user's favorited GIFs.
-- [ ] If feasible, make favorites easy to browse and import into Stick it.
-- [ ] Check available permissions/APIs before choosing an approach; do not assume favorites are exposed.
-
 ## Instagram integration — investigate first
 
 - [ ] Paste an Instagram link to import an image or video and create a sticker.
 - [ ] Investigate supported media access, login requirements, permissions, and applicable provider limits.
-- [ ] Add a video-to-sticker workflow if a supported import path is feasible.
+- [ ] Connect supported Instagram video imports to the existing video-to-sticker workflow, if feasible.

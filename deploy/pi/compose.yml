@@ -7,6 +7,8 @@ services:
     environment:
       Sharing__PublishToken: ${PACK_PUBLISH_TOKEN:?Set PACK_PUBLISH_TOKEN in .env}
       Sharing__MaxStorageBytes: ${PACK_STORAGE_LIMIT_BYTES:-2147483648}
+      Friends__InviteCode: ${FRIENDS_INVITE_CODE:-}
+      Friends__MaxStorageBytes: ${FRIENDS_STORAGE_LIMIT_BYTES:-2147483648}
     volumes:
       - pack-data:/data
     expose:

@@ -26,6 +26,7 @@
     </div>
     <nav id="main-navigation" class="app-nav @(menuOpen ? "navigation-open" : "")" aria-label="Main navigation" @onclick="CloseMenu">
         <NavLink href="" Match="NavLinkMatch.All" class="@(Navigation.ToBaseRelativePath(Navigation.Uri).StartsWith("packs/") ? "active" : null)">My Packs</NavLink>
+        <NavLink href="friends">Friends’ packs</NavLink>
         <NavLink href="library">My Library</NavLink>
         <NavLink href="gifs">GIF search</NavLink>
         <NavLink href="pinterest">Import from Pinterest</NavLink>
@@ -42,6 +43,7 @@
     @Body
 </main>
 <ProfileSetupHost />
+<GroupInviteReceiver />
 <LocationSurprise />
 <PinterestShareReceiver />
 <StickerPreparationHost />

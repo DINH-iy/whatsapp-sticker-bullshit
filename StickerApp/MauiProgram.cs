@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Maui.LifecycleEvents;
 using StickerApp.Shared.Services;
 using StickerApp.Services;
 using StickerApp.Core;
@@ -16,6 +17,16 @@ public static class MauiProgram
             {
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
             });
+
+#if IOS
+        builder.ConfigureLifecycleEvents(events => events.AddiOS(ios => ios.SceneOpenUrl((scene, contexts) =>
+        {
+            var handled = false;
+            if (contexts is not null)
+                foreach (var context in contexts) handled |= GroupInviteInbox.Receive(context.Url.AbsoluteString);
+            return handled;
+        })));
+#endif
 
         var diagnostics = new AppLog(Path.Combine(FileSystem.AppDataDirectory, "logs"));
         builder.Services.AddSingleton(diagnostics);

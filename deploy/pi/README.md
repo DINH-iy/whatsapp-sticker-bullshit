@@ -62,3 +62,13 @@ The service is in `StickerApp.ShareServer`. `PackRepository.cs` validates and st
 - [.NET deployment on Raspberry Pi and ARM boards](https://learn.microsoft.com/en-us/dotnet/iot/deployment)
 - [Docker Engine installation](https://docs.docker.com/engine/install/)
 - [Caddy automatic HTTPS](https://caddyserver.com/docs/automatic-https)
+
+## Enable the invited-friends overview
+
+1. Generate a **separate** code with `openssl rand -hex 32` and set `FRIENDS_INVITE_CODE` in `deploy/pi/.env`. Leave it empty to keep the friends API disabled. Keep `PACK_PUBLISH_TOKEN` private; friends do not need it.
+2. Rebuild with `docker compose up -d --build`. No deployment is performed automatically by editing these files.
+3. Check `https://YOUR_HOSTNAME/api/friends/status`: enabled should be true and visibility should be invited-friends-only.
+4. Give invited friends the HTTPS server root URL and the invitation code. They open **Friends’ packs → Join your friends’ group** in their own app.
+5. Choose Public in Pack options, then **Sync my public packs**. Other invited members can preview and import it. Making it private removes the server copy before committing the local visibility change. Sync again after edits.
+
+Membership authentication protects the overview and every pack/preview download. Friends archives are stored under `/data/friends` in the existing volume; they do not become anonymous sharing links. `FRIENDS_STORAGE_LIMIT_BYTES` controls their separate quota (default 2 GiB). Back up the whole volume to preserve membership identities and archives. Use **Leave group and remove my shared packs** before resetting local app data if remote removal is wanted. Changing the invitation code blocks future joins with the old code but does not revoke current members; the admin management UI is not implemented yet.

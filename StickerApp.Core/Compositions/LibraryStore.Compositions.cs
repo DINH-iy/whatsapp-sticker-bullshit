@@ -13,7 +13,7 @@ public sealed partial class LibraryStore
                 ?? throw new InvalidOperationException("This sticker no longer exists.");
             if (image.CompositionFileName is null) return null;
             var path = MediaPath(image.CompositionFileName);
-            if (new FileInfo(path).Length > 36 * 1024 * 1024)
+            if (new FileInfo(path).Length > LayerComposition.MaxFileBytes)
                 throw new InvalidDataException("This composition is too large to open.");
             await using var stream = File.OpenRead(path);
             var composition = await JsonSerializer.DeserializeAsync<LayerComposition>(stream)

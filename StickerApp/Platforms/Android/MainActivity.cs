@@ -1,4 +1,4 @@
-﻿using Android.App;
+using Android.App;
 using Android.Content;
 using Android.Content.PM;
 using Android.OS;
@@ -6,7 +6,8 @@ using System.Threading.Tasks;
 
 namespace StickerApp;
 
-[Activity(Theme = "@style/Maui.MainTheme.NoActionBar", MainLauncher = true, ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation | ConfigChanges.UiMode | ConfigChanges.ScreenLayout | ConfigChanges.SmallestScreenSize | ConfigChanges.Density)]
+[IntentFilter(new[] { Intent.ActionView }, Categories = new[] { Intent.CategoryDefault, Intent.CategoryBrowsable }, DataScheme = "stikerin", DataHost = "join")]
+[Activity(Exported = true, LaunchMode = LaunchMode.SingleTop, Theme = "@style/Maui.MainTheme.NoActionBar", MainLauncher = true, ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation | ConfigChanges.UiMode | ConfigChanges.ScreenLayout | ConfigChanges.SmallestScreenSize | ConfigChanges.Density)]
 public class MainActivity : MauiAppCompatActivity
 {
     private const int AddStickerPackRequestCode = 200;
@@ -19,10 +20,17 @@ public class MainActivity : MauiAppCompatActivity
     {
         current = this;
         base.OnCreate(savedInstanceState);
+        StickerApp.Core.GroupInviteInbox.Receive(Intent?.DataString);
         // Native system bars use the neutral app background rather than MAUI's default purple.
         if (Window is { } window &&
             AndroidX.Core.View.WindowCompat.GetInsetsController(window, window.DecorView) is { } controller)
             controller.AppearanceLightStatusBars = false;
+    }
+
+    protected override void OnNewIntent(Intent? intent)
+    {
+        base.OnNewIntent(intent);
+        StickerApp.Core.GroupInviteInbox.Receive(intent?.DataString);
     }
 
     internal static Task<bool> AddStickerPackAsync(string identifier, string authority, string name)

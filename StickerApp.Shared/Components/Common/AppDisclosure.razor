@@ -1,0 +1,45 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+<details @ref="root" @attributes="Attributes" class="app-disclosure @Class @(Popup ? "app-disclosure-popup" : "")" open="@expanded">
+    <summary class="@SummaryClass" aria-label="@Label" @onclick="Toggle" @onclick:preventDefault>
+        <span class="app-disclosure-label">@Header</span><Icon Name="right" />
+    </summary>
+    @if (Popup) { @ChildContent }
+    else { <div class="app-disclosure-body @BodyClass">@ChildContent</div> }
+</details>
+
+@code {
+    [Parameter] public RenderFragment? Header { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? BodyClass { get; set; }
+    [Parameter] public string? SummaryClass { get; set; }
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public bool Popup { get; set; }
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? Attributes { get; set; }
+    private bool expanded, initialized, previousOpen;
+    protected override void OnParametersSet()
+    {
+        if (!initialized || Open != previousOpen) { expanded = previousOpen = Open; initialized = true; }
+    }
+    private async Task Toggle() { expanded = !expanded; await OpenChanged.InvokeAsync(expanded); }
+    private ElementReference root;
+    private IJSObjectReference? module, controller;
+    private DotNetObjectReference<AppDisclosure>? reference;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || !Popup) return;
+        module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/disclosure.js");
+        reference = DotNetObjectReference.Create(this);
+        controller = await module.InvokeAsync<IJSObjectReference>("create", root, reference);
+    }
+    [JSInvokable] public async Task ClosePopup() { expanded = false; await OpenChanged.InvokeAsync(false); StateHasChanged(); }
+    public async ValueTask DisposeAsync()
+    {
+        try { if (controller is not null) { await controller.InvokeVoidAsync("dispose"); await controller.DisposeAsync(); } if (module is not null) await module.DisposeAsync(); }
+        catch (JSDisconnectedException) { }
+        reference?.Dispose();
+    }
+}

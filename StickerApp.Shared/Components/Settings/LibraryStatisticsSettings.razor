@@ -27,8 +27,7 @@
             }
         </dl>
         @if (quickStats.Count == 0) { <p class="helper">No quick stats selected. Use Customize stats to choose them.</p> }
-        <details class="storage-section" open="@customizingStats">
-        <summary>Library details <small>Images, originals &amp; layers</small></summary>
+        <AppDisclosure Class="storage-section" Open="@customizingStats"><Header>Library details <small>Images, originals &amp; layers</small></Header><ChildContent>
         <div class="storage-section-body">
         <dl class="library-statistics-grid" data-stat-zone="library">
             @foreach (var stat in AllStats)
@@ -39,7 +38,7 @@
         <dl class="storage-location"><dt>Library folder</dt><dd>@stats.Root</dd></dl>
         <p class="helper">Totals count each file once, even when an image belongs to several packs. Logs, exported downloads, and previous library folders are excluded. Originals and layers can be much larger than prepared stickers.</p>
         </div>
-        </details>
+        </ChildContent></AppDisclosure>
         <div class="total-storage-summary">
             <div class="pack-storage-heading"><strong>Total used</strong><span>@Size(stats.MediaBytes + stats.IndexBytes)</span></div>
             <div class="storage-view-controls" role="group" aria-label="Storage chart style">
@@ -89,9 +88,9 @@
         </div>
         @if (stats.Fonts.Count > 0)
         {
-            <details><summary>Custom fonts · @Size(stats.FontBytes)</summary>
+            <AppDisclosure><Header>Custom fonts · @Size(stats.FontBytes)</Header><ChildContent>
                 @foreach (var font in stats.Fonts) { <p class="font-storage-row"><span>@font.Name</span><span>@Size(font.Bytes)</span></p> }
-            </details>
+            </ChildContent></AppDisclosure>
         }
         @if (stats.PackStorage.Count == 0)
         {
@@ -99,8 +98,7 @@
         }
         else
         {
-            <details class="pack-storage-details">
-                <summary>Pack details <span class="helper">(@stats.PackStorage.Count packs)</span></summary>
+            <AppDisclosure Class="pack-storage-details"><Header>Pack details <span class="helper">(@stats.PackStorage.Count packs)</span></Header><ChildContent>
                 <div class="pack-storage-list">
                     @for (var packIndex = 0; packIndex < stats.PackStorage.Count; packIndex++)
                     {
@@ -116,12 +114,11 @@
                     }
                 </div>
                 <p class="helper">Bars compare each pack with the largest pack. Shared images appear in each pack's size, so pack sizes can add up to more than the library total. Covers and pack metadata are included in the library index above.</p>
-            </details>
+            </ChildContent></AppDisclosure>
         }
     }
     <div class="storage-options-grid">
-    <details class="storage-section">
-        <summary>Display units <small>@LimitUnit</small></summary>
+    <AppDisclosure Class="storage-section"><Header>Display units <small>@LimitUnit</small></Header><ChildContent>
         <div class="storage-section-body">
             <label for="storage-display-units">Storage units</label>
             <select id="storage-display-units" value="@(decimalUnits ? "decimal" : "binary")" @onchange="ChangeUnits" disabled="@busy">
@@ -130,9 +127,8 @@
             </select>
             <p class="helper">Applies to totals, pack sizes, cleanup estimates, and the limit input. Switching units keeps your actual storage limit unchanged. This preference is remembered.</p>
         </div>
-    </details>
-    <details class="storage-section">
-    <summary>Storage limit <small>@(Store.StorageLimitBytes is { } cap ? Size(cap) : "No limit")</small></summary>
+    </ChildContent></AppDisclosure>
+    <AppDisclosure Class="storage-section"><Header>Storage limit <small>@(Store.StorageLimitBytes is { } cap ? Size(cap) : "No limit")</small></Header><ChildContent>
     <div class="storage-section-body">
     @if (statistics is { } usage && Store.StorageLimitBytes is { } budget)
     {
@@ -147,9 +143,8 @@
     <button type="button" class="button" @onclick="SaveStorageLimit" disabled="@busy">Save storage limit</button>
     <p class="helper">@(decimalUnits ? "1,000 MB = 1 GB." : "1,024 MiB = 1 GiB.") This limits the saved library, including sources, layers, unused media, and its index. It does not reserve device space or guarantee that much free space. Temporary imports and conversions need extra room. Logs, exported packs, and other apps are outside this budget. Cleanup and saves that reduce usage are allowed even above the limit.</p>
     </div>
-    </details>
-    <details class="storage-section">
-    <summary>Original file defaults <small>@(askOnImport ? "Ask per file" : "Use defaults")</small></summary>
+    </ChildContent></AppDisclosure>
+    <AppDisclosure Class="storage-section"><Header>Original file defaults <small>@(askOnImport ? "Ask per file" : "Use defaults")</small></Header><ChildContent>
     <div class="storage-section-body">
     <label class="toggle-row"><input type="checkbox" checked="@(!askOnImport)" @onchange="ChangeImportPrompts" disabled="@busy" /> Always use these defaults; skip per-file import choices</label>
     <label class="toggle-row"><input type="checkbox" checked="@keepStills" @onchange="ChangeStillRetention" disabled="@busy" /> Keep originals for new still images</label>
@@ -160,12 +155,11 @@
         <p class="status-info" role="note">When originals are off, only the smaller prepared sticker remains after conversion succeeds. You cannot return to the previous image or uncut GIF without reimporting a copy you saved yourself. Prepared animated WebP stickers can still be trimmed and edited. Editable layer projects still keep their embedded sources.</p>
     }
     </div>
-    </details>
+    </ChildContent></AppDisclosure>
     @if (busy) { <p class="helper" role="status">@progress</p> }
     @if (error is not null) { <p class="error" role="alert">@error</p> }
     @if (notice is not null) { <p class="settings-success" role="status">@notice</p> }
-    <details class="storage-section storage-cleanup">
-    <summary>Cleanup &amp; duplicates <small>@(statistics is { UnusedFiles: > 0 } measured ? $"{measured.UnusedFiles} unused files" : "Review before removing")</small></summary>
+    <AppDisclosure Class="storage-section storage-cleanup"><Header>Cleanup &amp; duplicates <small>@(statistics is { UnusedFiles: > 0 } measured ? $"{measured.UnusedFiles} unused files" : "Review before removing")</small></Header><ChildContent>
     <div class="storage-section-body">
     <p class="helper">Scan first, then review what to remove. Originals and editable layers are kept unless you explicitly choose to remove originals.</p>
     <button type="button" class="button" disabled="@busy" @onclick="Scan">Find duplicates &amp; unused files</button>
@@ -221,6 +215,6 @@
         }
     }
     </div>
-    </details>
+    </ChildContent></AppDisclosure>
     </div>
 </section>

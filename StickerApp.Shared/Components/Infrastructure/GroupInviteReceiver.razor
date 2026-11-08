@@ -1,0 +1,25 @@
+@implements IDisposable
+@inject NavigationManager Navigation
+@if (show)
+{
+    <div class="status-info" role="status"><p>A group invitation is ready. Finish or save any current edit before opening it.</p><div class="settings-actions"><button class="button" @onclick="Open">View invitation</button><button class="button" @onclick="() => show=false">Later</button></div></div>
+}
+@code {
+    private bool show;
+    protected override void OnInitialized()=>GroupInviteInbox.Changed+=Received;
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if(firstRender && GroupInviteInbox.Peek() is not null && Navigation.ToBaseRelativePath(Navigation.Uri) is "" or "friends") Navigation.NavigateTo("friends");
+        else if(firstRender) Received();
+        return Task.CompletedTask;
+    }
+    private void Received()=>_ = InvokeAsync(()=>
+    {
+        if(GroupInviteInbox.Peek() is null)return;
+        var path=Navigation.ToBaseRelativePath(Navigation.Uri);
+        show=path!="friends";
+        StateHasChanged();
+    });
+    private void Open(){show=false;Navigation.NavigateTo("friends");}
+    public void Dispose()=>GroupInviteInbox.Changed-=Received;
+}

@@ -3,6 +3,7 @@ namespace StickerApp.Core;
 public sealed class LayerComposition
 {
     public const int MaxLayers = 10;
+    public const int MaxFileBytes = 36 * 1024 * 1024;
     public const int MaxSourceCharacters = 24 * 1024 * 1024;
     public int Version { get; set; } = 1;
     public List<CompositionLayer> Layers { get; set; } = [];

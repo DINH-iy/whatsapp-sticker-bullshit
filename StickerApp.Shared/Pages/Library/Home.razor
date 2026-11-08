@@ -11,6 +11,11 @@
 
 <PageTitle>@(CurrentPack?.Name ?? "My Library") · Stik-er-in</PageTitle>
 
+@if (CurrentPack?.Collection is { } collectionLink)
+{
+    <div class="status-info group-working-copy"><p>Group working copy · Revision @collectionLink.Revision. Your edits stay private here until you update the shared collection.</p><div class="settings-actions"><OnlineOnly><button class="button" @onclick="UpdateGroupCollection" disabled="@busy"><Icon Name="upload" />Update group collection</button></OnlineOnly><a class="button" href="friends/collections/@collectionLink.CollectionId">View shared collection</a></div></div>
+}
+
 <header class="page-header">
     <div class="page-title">
         @if (PackHeaderCover is { } cover)
@@ -44,8 +49,13 @@
                 <button class="toolbar-menu-option" type="button" @onclick="BeginRenamePack" disabled="@busy">
                     <Icon Name="edit" /><span>Edit pack details<small>Change the name, publisher, and cover.</small></span>
                 </button>
-                <button class="toolbar-menu-option" type="button" disabled="@busy" aria-pressed="@CurrentPack.Public" @onclick="() => Run(() => Store.SetPackPublicAsync(CurrentPack.Id, !CurrentPack.Public))">
-                    <Icon Name="@(CurrentPack.Public ? "globe" : "lock")" /><span>@(CurrentPack.Public ? "Public pack" : "Private pack")<small>@(CurrentPack.Public ? "Change to private. Existing shared links still work." : "Change to public for the future shared overview. This does not upload the pack.")</small></span>
+                @if (CurrentPack.Collection is not null)
+                {
+                    <OnlineOnly><button class="toolbar-menu-option" type="button" disabled="@busy" @onclick="UpdateGroupCollection"><Icon Name="upload" /><span>Update group collection<small>Share this working copy with the group. Other people’s updates are checked before saving.</small></span></button></OnlineOnly>
+                    <a class="toolbar-menu-option" href="friends/collections/@CurrentPack.Collection.CollectionId"><Icon Name="layers" /><span>View shared collection<small>See who added or edited stickers and their reactions.</small></span></a>
+                }
+                <button class="toolbar-menu-option" type="button" disabled="@(busy || CurrentPack.Collection is not null)" aria-pressed="@CurrentPack.Public" @onclick="TogglePackVisibility">
+                    <Icon Name="@(CurrentPack.Public ? "globe" : "lock")" /><span>@(CurrentPack.Public ? "Public pack" : "Private pack")<small>@(CurrentPack.Public ? "Remove from the friends group and make private. Separate sharing links still work." : "Make public, then use Friends’ packs → Sync my public packs to share.")</small></span>
                 </button>
                 <button class="toolbar-menu-option" type="button" disabled="@busy" aria-pressed="@CurrentPack.Nsfw" @onclick="() => Run(() => Store.SetPackNsfwAsync(CurrentPack.Id, !CurrentPack.Nsfw))">
                     <Icon Name="eye-off" /><span>@(CurrentPack.Nsfw ? "Remove NSFW tag" : "Mark pack as NSFW")<small>Blur previews for every sticker in this pack.</small></span>
@@ -139,8 +149,7 @@
     }
     @if (Issues.Any(issue => issue.StickerId is null))
     {
-        <details class="validation" open>
-            <summary>Fix before adding to WhatsApp</summary>
+        <AppDisclosure Class="validation" Open="true"><Header>Fix before adding to WhatsApp</Header><ChildContent>
             <ul>
                 @foreach (var issue in Issues.Where(issue => issue.StickerId is null))
                 {
@@ -150,7 +159,7 @@
                 }
             </ul>
             <a href="settings#faq">View requirements &amp; FAQ</a>
-        </details>
+        </ChildContent></AppDisclosure>
     }
 }
 
@@ -300,8 +309,7 @@ else
                             }
                         @if (EditingAnimation && gifDuration > 0)
                         {
-                            <details class="editor-details">
-                                <summary>Precise trim times</summary>
+                            <AppDisclosure Class="editor-details"><Header>Precise trim times</Header><ChildContent>
                                 <div class="trim-fields">
                                     <label>Start (seconds)
                                         <input type="number" min="0" max="@GifMax" step="0.01" @bind="trimStart"
@@ -313,7 +321,7 @@ else
                                     </label>
                                 </div>
                                 <button class="button" @onclick="ResetTrim" disabled="@busy"><Icon Name="reset" /> Reset trim</button>
-                            </details>
+                            </ChildContent></AppDisclosure>
                         }
                             <HelpDisclosure Summary="About original files">
                                 <p class="helper">Keeping a source uses more storage. This choice applies when saving a trim, replacement, or image edit. Cancel keeps everything unchanged. Prepared animated WebP stickers can still be trimmed and edited; editable layer projects keep their own sources.</p>

@@ -10,7 +10,7 @@
         <label>Button size<select @bind="preferences.ButtonSize" @bind:after="Save" disabled="@(!ready)"><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select></label>
         <label class="toggle-row"><input type="checkbox" @bind="preferences.ShowTimeline" @bind:after="Save" disabled="@(!ready)" />Show GIF timeline by default</label>
     </div>
-    <details class="editor-details"><summary>Category order</summary>
+    <AppDisclosure Class="editor-details"><Header>Category order</Header><ChildContent>
         <ol class="editor-layout-order">
             @for (var i = 0; i < preferences.Categories.Length; i++)
             {
@@ -21,11 +21,11 @@
                 </li>
             }
         </ol>
-    </details>
+    </ChildContent></AppDisclosure>
     <div class="settings-actions"><a class="button primary" href="editor-preview"><Icon Name="image" />Open editor example</a><button class="button" @onclick="Reset" disabled="@(!ready)">Reset editor layout</button></div>
     @if (error is not null) { <p class="error" role="alert">@error</p> }
     @if (saved) { <p class="helper" role="status">Editor layout saved on this device.</p> }
-    <details class="editor-details"><summary>Try the layout with sample artwork</summary><div class="editor-layout-live-preview"><EditorDesignPreview Preferences="preferences" /></div></details>
+    <AppDisclosure Class="editor-details"><Header>Try the layout with sample artwork</Header><ChildContent><div class="editor-layout-live-preview"><EditorDesignPreview Preferences="preferences" /></div></ChildContent></AppDisclosure>
 </section>
 @code {
     private EditorLayoutPreferences preferences = new();

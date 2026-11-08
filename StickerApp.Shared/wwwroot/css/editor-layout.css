@@ -116,3 +116,14 @@
 .editor-help-section dt { font-weight: 600; }
 .editor-help-section dd { margin: 0; color: var(--muted); line-height: 1.5; }
 @media(max-width:420px) { .editor-help-section dl { grid-template-columns: 1fr; gap: 4px; } .editor-help-section dd { margin-bottom: 8px; } }
+
+.live-editor .live-history-row { padding: 5px 4px; min-height: 44px; }
+.image-edit-dialog .editor-dialog-heading { margin-bottom: 4px; }
+.live-editor .editor-tool-title { padding: 3px 4px; }
+.live-editor:is(.live-controls-left,.live-controls-right) .editor-tool-dock { padding: 16px; }
+.live-editor .app-disclosure > summary { padding: 12px 16px; }
+.live-editor .app-disclosure.editor-zoom-menu > summary { padding: 5px 8px; }
+.live-layer-editor[open] { display: flex; flex-direction: column; max-height: calc(var(--dialog-viewport-height,100dvh) - 24px); overflow: hidden; }
+.live-layer-editor .layer-workspace { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 4px; overscroll-behavior: contain; }
+.live-layer-editor .layer-preview-dock { position: static; }
+.live-layer-editor > .layer-footer { position: static; flex: 0 0 auto; margin: 8px 0 0; }

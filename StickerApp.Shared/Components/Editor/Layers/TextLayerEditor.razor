@@ -12,6 +12,7 @@
     </div>
     <label>Font<select aria-label="Text font" @bind="draft.Font" @bind:after="Changed">
         <option value="meme">Meme · Anton</option><option value="sans">Sans serif</option><option value="serif">Serif</option><option value="mono">Monospace</option>
+        @if (draft.Font.StartsWith("custom-") && !Fonts.Any(font => font.Id == draft.Font)) { <option value="@draft.Font">Embedded custom font</option> }
         @foreach (var font in Fonts) { <option value="@font.Id">@font.Name</option> }
     </select></label>
     <label class="button file-button"><Icon Name="plus" /><span>Upload font</span>
@@ -30,8 +31,7 @@
         <label><input type="checkbox" @bind="draft.Strike" @bind:after="Changed" />Strikethrough</label>
         <label><input type="checkbox" @bind="draft.Uppercase" @bind:after="Changed" />UPPERCASE</label>
     </div>
-    <details open>
-        <summary>Color &amp; gradient</summary>
+    <AppDisclosure Open="true"><Header>Color &amp; gradient</Header><ChildContent>
         <div class="text-format-grid">
             <label>Text color<input type="color" aria-label="Text color" @bind="draft.Color" @bind:after="Changed" /></label>
             <label><input type="checkbox" @bind="draft.Gradient" @bind:after="Changed" />Gradient</label>
@@ -41,9 +41,8 @@
                 <label>Gradient angle<input type="range" aria-label="Text gradient angle" min="-180" max="180" @bind="draft.GradientAngle" @bind:event="oninput" @bind:after="Changed" /></label>
             }
         </div>
-    </details>
-    <details>
-        <summary>Outline, shadow &amp; background</summary>
+    </ChildContent></AppDisclosure>
+    <AppDisclosure><Header>Outline, shadow &amp; background</Header><ChildContent>
         <div class="text-format-grid">
             <label>Outline width<input type="number" min="0" max="16" @bind="draft.OutlineWidth" @bind:after="Changed" /></label>
             <label>Outline color<input type="color" @bind="draft.OutlineColor" @bind:after="Changed" /></label>
@@ -52,7 +51,7 @@
             <label><input type="checkbox" @bind="draft.Background" @bind:after="Changed" />Background</label>
             <label>Background color<input type="color" @bind="draft.BackgroundColor" @bind:after="Changed" /></label>
         </div>
-    </details>
+    </ChildContent></AppDisclosure>
     <p class="helper">Use the canvas handles to resize and rotate. Emoji appearance follows your device.</p>
 </section>
 

@@ -142,6 +142,20 @@ public partial class Home
         selected.IntersectWith(library.Stickers.Select(s => s.Id));
     }
 
+    private Task UpdateGroupCollection() => Run(async () =>
+    {
+        if(CurrentPack is not { } pack)return;
+        await new StickerApp.Shared.Services.FriendsPackService(Store,JS).UpdateCollectionAsync(pack.Id);
+        notice="Group collection updated.";
+    });
+
+    private Task TogglePackVisibility() => Run(async () =>
+    {
+        if (CurrentPack is not { } pack) return;
+        if (pack.Public) await StickerApp.Shared.Services.FriendsPackService.UnpublishAsync(JS, pack.Id);
+        await Store.SetPackPublicAsync(pack.Id, !pack.Public);
+    });
+
     private async Task Run(Func<Task> action, [System.Runtime.CompilerServices.CallerMemberName] string operation = "Sticker action")
     {
         if (busy)
@@ -211,6 +225,7 @@ public partial class Home
     {
         if (deletePack)
         {
+            await StickerApp.Shared.Services.FriendsPackService.UnpublishAsync(JS, activePack!.Value);
             await Store.DeletePackAsync(activePack!.Value);
             activePack = null;
             Navigation.NavigateTo("/");

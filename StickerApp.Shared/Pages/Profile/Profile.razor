@@ -34,28 +34,27 @@
         </dl>
         @if (current.PackActivity.Count > 0)
         {
-            <details class="editor-details profile-pack-activity">
-                <summary>Updates by pack</summary>
+            <AppDisclosure Class="editor-details profile-pack-activity"><Header>Updates by pack</Header><ChildContent>
                 <ul>
                     @foreach (var activity in current.PackActivity)
                     {
                         <li><a href="@($"packs/{activity.Id}")">@activity.Name</a><span>@activity.Updates @(activity.Updates == 1 ? "update" : "updates")</span></li>
                     }
                 </ul>
-            </details>
+            </ChildContent></AppDisclosure>
         }
         <p class="helper">Pack updates are counted from now on, once per saved change to a pack or its stickers. Previous history is unavailable. Totals cover packs currently in your library.</p>
         <a href="settings#general-settings-panel">Storage and app settings</a>
     </section>
     <section class="settings-card" aria-labelledby="profile-sharing-title">
         <h2 id="profile-sharing-title">Sharing &amp; sync</h2>
-        <p>Your profile and stats are stored locally. Admin syncing and the shared pack overview are not connected yet.</p>
-        <details class="editor-details"><summary>What could be shared later?</summary>
-            <p>Your username, profile picture and public packs can form your shared profile. Your first name, private packs and local storage details belong in private account or admin information, separate from the public overview.</p>
+        <p>Your profile and stats are stored locally. Friends’ packs shares your chosen username and the public packs you sync. Admin syncing is not connected.</p>
+        <AppDisclosure Class="editor-details"><Header>What is shared?</Header><ChildContent>
+            <p>Joining a friends group shares your username. Sync uploads your public packs, including their editable artwork. Your profile photo, first name, private packs, device details and storage stats are not uploaded.</p>
             <p>A stable local profile ID is ready for linking this installation later. It is an identifier, not a login or proof of identity. Nothing on this page is sent to a server.</p>
             <dl class="sticker-detail-list"><dt>Local profile ID</dt><dd>@current.Identity.Id</dd></dl>
-        </details>
-        <a class="button" href=""><Icon Name="layers" />My Packs</a>
+        </ChildContent></AppDisclosure>
+        <a class="button" href="friends"><Icon Name="layers" />Friends’ packs</a>
     </section>
     </div>
 }

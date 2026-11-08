@@ -1,0 +1,45 @@
+@page "/friends/collections/{CollectionId:guid}"
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject LibraryStore Store
+@inject NavigationManager Navigation
+
+<PageTitle>Group collection · Stik-er-in</PageTitle>
+<a href="friends">← Friends’ packs</a>
+@if (detail is not null)
+{
+    <header class="page-header"><h1>@detail.Collection.Name</h1><div class="settings-actions"><OnlineOnly><button class="button primary" @onclick="Edit" disabled="@busy"><Icon Name="edit" />Edit collection</button><button class="button" @onclick="Refresh" disabled="@busy"><Icon Name="rotate" />Refresh</button></OnlineOnly></div></header>
+    <p class="helper">Everyone in this group can add and edit stickers. Started by @detail.Collection.CreatedBy · Last updated by @detail.Collection.EditedBy · Revision @detail.Collection.Revision</p>
+    <AppDisclosure><Header>How shared editing works</Header><ChildContent><ol class="disclosure-steps"><li>Choose Edit collection to open a private working copy in My Packs.</li><li>Add or edit stickers with the usual editor.</li><li>Choose Pack options → Update group collection to share your changes.</li></ol><p class="helper">If someone updates it first, your local edits stay safe. Open the latest version and merge your changes before updating.</p></ChildContent></AppDisclosure>
+}
+@if (!string.IsNullOrEmpty(error)) { <p class="error" role="alert">@error</p> }
+@if (busy) { <p role="status"><span class="feedback-spinner"></span>@progress</p> }
+@if (detail?.Stickers.Count == 0) { <p class="empty-state">This collection is empty. Choose Edit collection to add its first stickers.</p> }
+<div class="friends-pack-grid">
+@foreach (var sticker in detail?.Stickers ?? [])
+{
+    <article class="friends-pack-card" @key="sticker.Id">
+        <div class="friends-pack-preview">
+            @if (previews.TryGetValue(sticker.Id,out var preview)) { <img src="@preview" alt="@sticker.Name" class="@(sticker.Nsfw && Store.BlurNsfwPreviews && !revealed.Contains(sticker.Id) ? "friends-preview-blurred" : "")" /> }
+            @if (sticker.Nsfw && Store.BlurNsfwPreviews) { <button class="button icon-button" @onclick="() => Reveal(sticker.Id)" aria-label="@(revealed.Contains(sticker.Id) ? "Hide NSFW preview" : "Reveal NSFW preview")"><Icon Name="@(revealed.Contains(sticker.Id) ? "eye-off" : "eye")" /></button> }
+        </div>
+        <h2>@sticker.Name</h2><p class="helper">Added by @sticker.AddedBy<br />Last edited by @sticker.EditedBy</p>
+        <div class="collection-reactions">
+        @foreach (var reaction in sticker.Reactions) { <button class="button @(reaction.Mine ? "selected-tool" : "")" @onclick="() => React(sticker.Id,reaction.Emoji)" disabled="@busy" aria-label="@($"{reaction.Emoji} {reaction.Count} reactions on {sticker.Name}")">@reaction.Emoji @reaction.Count</button> }
+        <AppDisclosure Class="collection-reaction-menu" Popup="true" Open="@(reactionMenu == sticker.Id)" OpenChanged="value => reactionMenu = value ? sticker.Id : null" Label="@($"React to {sticker.Name}")"><Header><Icon Name="smile" />React</Header><ChildContent>
+            <div class="collection-reaction-options">@foreach (var emoji in emojiChoices) { <button class="button" @onclick="() => React(sticker.Id,emoji)" disabled="@busy" aria-label="@($"React {emoji} to {sticker.Name}")">@emoji</button> }
+                <button class="button custom-reaction-toggle" @onclick="() => customFor = customFor == sticker.Id ? null : sticker.Id" disabled="@busy" aria-label="Choose another emoji for @sticker.Name"><Icon Name="plus" /></button>
+                @if(customFor==sticker.Id){<div class="custom-reaction-entry"><label>Any emoji<input aria-label="Custom emoji reaction" type="text" maxlength="64" placeholder="Type or paste an emoji" autocomplete="off" spellcheck="false" @bind="customEmoji" @bind:event="oninput" /></label><button class="button primary" @onclick="() => React(sticker.Id,customEmoji)" disabled="@(busy || !StickerApp.Core.EmojiReaction.IsValid(customEmoji))">React</button></div>}
+            </div>
+        </ChildContent></AppDisclosure>
+        </div>
+    </article>
+}
+</div>
+@if (detail?.CanDelete == true)
+{
+    <AppDisclosure><Header>Collection options</Header><ChildContent>
+        @if (!confirmDelete) { <button class="button danger" @onclick="() => confirmDelete = true">Delete collection…</button> }
+        else { <p>This removes the shared collection for everyone and cannot be undone. Private working copies stay in My Packs.</p><div class="settings-actions"><button class="button" @onclick="() => confirmDelete = false">Keep collection</button><button class="button danger" @onclick="Delete" disabled="@busy">Delete for everyone</button></div> }
+    </ChildContent></AppDisclosure>
+}

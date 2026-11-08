@@ -14,7 +14,11 @@ AppDomain.CurrentDomain.UnhandledException += (_, args) => { if (args.ExceptionO
 TaskScheduler.UnobservedTaskException += (_, args) => diagnostics.Error("Unobserved background task exception", args.Exception);
 diagnostics.Info("Web app startup", $"Stik-er-in browser host; .NET {Environment.Version}");
 if (builder.Environment.IsDevelopment())
+{
     builder.Services.AddDataProtection().UseEphemeralDataProtectionProvider();
+    var instance = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(builder.Environment.ContentRootPath)))[..12];
+    builder.Services.AddAntiforgery(options => options.Cookie.Name = "StikerAntiforgery-" + instance);
+}
 
 // Add services to the container.
 builder.Services.AddRazorComponents()

@@ -1,4 +1,4 @@
-﻿namespace StickerApp.Core;
+namespace StickerApp.Core;
 
 public sealed class Sticker
 {
@@ -10,6 +10,7 @@ public sealed class Sticker
     public bool OriginalDiscarded { get; set; }
     public bool? KeepOriginalOverride { get; set; }
     public string? CompositionFileName { get; set; }
+    public Guid? BackupStickerId { get; set; }
     public string MimeType { get; set; } = "";
     public int Width { get; set; }
     public int Height { get; set; }
@@ -21,8 +22,11 @@ public sealed class Sticker
     public string Tags { get; set; } = "";
 }
 
+public sealed record GroupCollectionLink(string ServerUrl, Guid CollectionId, int Revision);
+
 public sealed class StickerPack
 {
+    public GroupCollectionLink? Collection { get; set; }
     public bool Public { get; set; }
     public long UpdateCount { get; set; }
     public DateTimeOffset? LastUpdatedUtc { get; set; }

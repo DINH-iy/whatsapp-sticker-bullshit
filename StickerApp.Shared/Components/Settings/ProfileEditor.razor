@@ -53,7 +53,7 @@ else
         @if (notice is not null) { <p role="status">@notice</p> }
         <div class="dialog-actions profile-form-actions">
             @if (Onboarding) { <button class="button" type="button" @onclick="Skip" disabled="@saving">Set up later</button> }
-            else { <details class="profile-info"><summary>About your profile</summary><p class="helper">Stored locally in app storage. Your username is suggested as the publisher for new packs. Your first name and photo are not included in pack exports.</p></details> }
+            else { <AppDisclosure Class="profile-info"><Header>About your profile</Header><ChildContent><p class="helper">Stored locally in app storage. Your username is suggested as the publisher for new packs. Your first name and photo are not included in pack exports.</p></ChildContent></AppDisclosure> }
             @if (!Onboarding && ShowOverviewLink) { <a class="button" href="profile">Profile &amp; stats<Icon Name="right" /></a> }
             <button class="button primary" type="submit" disabled="@(!ready || saving)">@(saving ? "Saving…" : Onboarding ? "Get started" : "Save profile")</button>
         </div>

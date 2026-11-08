@@ -251,6 +251,8 @@ async function run(source) {
             assert.equal(layerModule.isAnimatedSource(stillWebp),false,'still WebP must not be detected as animation');
             const stillLayer=await layerController.add('Still WebP',stillWebp);
             assert.equal(stillLayer.layers[0].isGif,false,'still WebP must open as an image layer');
+            const stillThumb=new Image();stillThumb.src=stillLayer.layers[0].thumbnail;await stillThumb.decode();
+            assert.equal(stillThumb.naturalWidth,128,'layer list thumbnail must be a decodable image');
             await layerController.addText();
             await layerController.open(null);await layerController.add('Cutout',object.toDataURL());
             layerController.beginTool();layerController.update('borderWidth',2);layerController.update('borderColor','#00ff00');
@@ -264,6 +266,8 @@ async function run(source) {
             assert.equal((await layerController.export()).document.layers[1].borderWidth,4,'text layers support object outlines');
             await layerController.open(null); const added = await layerController.add('Animation', source);
             assert.equal(added.layers[0].gifThumbnails.length, 6, 'animated layer must expose timeline thumbnails');
+            const animatedThumb=new Image();animatedThumb.src=added.layers[0].thumbnail;await animatedThumb.decode();
+            assert.equal(animatedThumb.naturalHeight,128,'animated layers need decodable row thumbnails');
             const layerSeek = seekControl.cloneNode(true), layerSpeed = speedControl.cloneNode(true);
             layerRoot.append(layerSeek, layerSpeed);
             layerSeek.value = '0.15'; layerSeek.dispatchEvent(new Event('input', { bubbles: true }));

@@ -5,7 +5,7 @@ using System.Text.Json;
 namespace StickerApp.Core;
 
 /// <summary>A portable ZIP containing an ordered manifest and the current image files.</summary>
-public static class PackArchive
+public static partial class PackArchive
 {
     public const long MaxArchiveBytes = 100L * 1024 * 1024;
     private const int MaxManifestBytes = 192 * 1024;
@@ -29,19 +29,24 @@ public static class PackArchive
 
     public sealed class ManifestImage
     {
+        public Guid? StickerId { get; set; }
         public string Name { get; set; } = "";
         public bool Nsfw { get; set; }
         public string Tags { get; set; } = "";
         public string File { get; set; } = "";
         public string Sha256 { get; set; } = "";
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+        public string? CompositionFile { get; set; }
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+        public string? CompositionSha256 { get; set; }
     }
 
-    public sealed record ImportedImage(string Name, string Tags, byte[] Bytes, MediaInfo Info, bool Nsfw = false);
+    public sealed record ImportedImage(string Name, string Tags, byte[] Bytes, MediaInfo Info, bool Nsfw = false, byte[]? CompositionBytes = null, Guid? SourceId = null);
     public sealed record ImportedPack(string Name, bool Animated, IReadOnlyList<ImportedImage> Images, string? CoverImage = null, string Publisher = "Sticker Studio", bool IsWhatsAppFormat = false, bool Nsfw = false, bool Public = false);
     public sealed record ExportInfo(string FileName, string Sha256);
 
     public static async Task<ExportInfo> WriteAsync(
-        Stream destination, StickerPack pack, IReadOnlyList<Sticker> images, Func<Sticker, Stream> openImage)
+        Stream destination, StickerPack pack, IReadOnlyList<Sticker> images, Func<Sticker, Stream> openImage, Func<Sticker, Stream>? openComposition = null)
     {
         if (!destination.CanSeek)
             throw new ArgumentException("Pack export requires a seekable stream.", nameof(destination));
@@ -50,6 +55,7 @@ public static class PackArchive
 
         if (pack.CoverImage is not null) PackCover.ReadBytes(pack.CoverImage);
         var manifest = new Manifest { Name = pack.Name, Animated = pack.Animated, CoverImage = pack.CoverImage, Publisher = pack.Publisher, Nsfw = pack.Nsfw, Public = pack.Public };
+        manifest.Version = images.Any(image => image.CompositionFileName is not null) ? 2 : 1;
         long totalBytes = 0;
 
         using (var archive = new ZipArchive(destination, ZipArchiveMode.Create, leaveOpen: true))
@@ -67,19 +73,35 @@ public static class PackArchive
 
                 var path = $"media/{index:D2}{info.Extension}";
                 await WriteEntryAsync(archive, path, bytes);
-                manifest.Images.Add(new ManifestImage
+                var metadata = new ManifestImage
                 {
+                    StickerId = image.BackupStickerId ?? image.Id,
                     Name = image.Name,
                     Tags = image.Tags,
                     Nsfw = image.Nsfw,
                     File = path,
                     Sha256 = Convert.ToHexString(SHA256.HashData(bytes))
-                });
+                };
+                if (image.CompositionFileName is not null)
+                {
+                    if (openComposition is null) throw new InvalidDataException("Editable layer artwork is unavailable for this backup.");
+                    await using var compositionSource = openComposition(image);
+                    var composition = await ReadBoundedAsync(compositionSource, LayerComposition.MaxFileBytes);
+                    ValidateComposition(composition);
+                    totalBytes += composition.Length;
+                    if (totalBytes > MaxArchiveBytes) throw new InvalidDataException("Sticker artwork and layers exceed the 100 MB pack limit.");
+                    metadata.CompositionFile = $"layers/{index:D2}.layers.json";
+                    metadata.CompositionSha256 = Convert.ToHexString(SHA256.HashData(composition));
+                    await WriteEntryAsync(archive, metadata.CompositionFile, composition);
+                }
+                manifest.Images.Add(metadata);
             }
 
             var manifestBytes = JsonSerializer.SerializeToUtf8Bytes(manifest, Json);
             if (manifestBytes.Length > MaxManifestBytes)
                 throw new InvalidDataException("The pack metadata is too large.");
+            if (totalBytes + manifestBytes.Length > MaxArchiveBytes)
+                throw new InvalidDataException("The unpacked pack exceeds the 100 MB pack limit.");
             await WriteEntryAsync(archive, "manifest.json", manifestBytes);
         }
 
@@ -102,7 +124,7 @@ public static class PackArchive
         temporary.Position = 0;
 
         using var archive = new ZipArchive(temporary, ZipArchiveMode.Read, leaveOpen: true);
-        if (archive.Entries.Count is < 1 or > 34 ||
+        if (archive.Entries.Count is < 1 or > 61 ||
             archive.Entries.Select(entry => entry.FullName).Distinct(StringComparer.Ordinal).Count() != archive.Entries.Count)
             throw new InvalidDataException("The pack archive contains unexpected or repeated files.");
 
@@ -117,7 +139,7 @@ public static class PackArchive
             ?? throw new InvalidDataException("The pack metadata is empty.");
         ValidateManifest(manifest);
 
-        if (archive.Entries.Count != manifest.Images.Count + 1)
+        if (archive.Entries.Count != manifest.Images.Count + manifest.Images.Count(image => image.CompositionFile is not null) + 1)
             throw new InvalidDataException("The pack archive contains unlisted files.");
 
         List<ImportedImage> images = [];
@@ -145,7 +167,23 @@ public static class PackArchive
             if (image.File != $"media/{index:D2}{info.Extension}")
                 throw new InvalidDataException("An image does not match the pack format.");
 
-            images.Add(new ImportedImage(image.Name.Trim(), image.Tags.Trim(), bytes, info, image.Nsfw));
+            byte[]? composition = null;
+            if (image.CompositionFile is not null)
+            {
+                var layerEntry = archive.GetEntry(image.CompositionFile)
+                    ?? throw new InvalidDataException($"The editable layers for “{image.Name}” are missing.");
+                if (layerEntry.Length > LayerComposition.MaxFileBytes)
+                    throw new InvalidDataException("An editable composition exceeds the 36 MB file limit.");
+                totalBytes += layerEntry.Length;
+                if (totalBytes > MaxArchiveBytes) throw new InvalidDataException("The unpacked pack exceeds the 100 MB pack limit.");
+                await using var layerStream = layerEntry.Open();
+                composition = await ReadBoundedAsync(layerStream, LayerComposition.MaxFileBytes);
+                if (composition.LongLength != layerEntry.Length ||
+                    !string.Equals(Convert.ToHexString(SHA256.HashData(composition)), image.CompositionSha256, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException($"The editable layers for “{image.Name}” failed their checksum. Download the pack again.");
+                ValidateComposition(composition);
+            }
+            images.Add(new ImportedImage(image.Name.Trim(), image.Tags.Trim(), bytes, info, image.Nsfw, composition, image.StickerId));
         }
 
         return new ImportedPack(manifest.Name.Trim(), images.Any(image => image.Info.Animated), images, manifest.CoverImage, manifest.Publisher, Nsfw: manifest.Nsfw, Public: manifest.Public);
@@ -159,7 +197,7 @@ public static class PackArchive
 
     private static void ValidateManifest(Manifest manifest)
     {
-        if (manifest.Format != FormatName || manifest.Version != 1)
+        if (manifest.Format != FormatName || manifest.Version is not (1 or 2))
             throw new InvalidDataException("This is not a supported sticker pack version.");
         if (string.IsNullOrWhiteSpace(manifest.Name) || manifest.Name.Trim().Length > 128 ||
             manifest.Images is null || manifest.Images.Count > 30 ||
@@ -168,13 +206,19 @@ public static class PackArchive
 
         if (manifest.CoverImage is not null) PackCover.ReadBytes(manifest.CoverImage);
         var paths = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var image in manifest.Images)
+        for (var index = 0; index < manifest.Images.Count; index++)
         {
-            if (image is null || string.IsNullOrWhiteSpace(image.Name) || image.Name.Trim().Length > 128 ||
+            var image = manifest.Images[index];
+            if (image is null || image.StickerId == Guid.Empty || string.IsNullOrWhiteSpace(image.Name) || image.Name.Trim().Length > 128 ||
                 image.Tags is null || image.Tags.Length > 256 || image.Sha256 is null ||
                 image.Sha256.Length != 64 || !image.Sha256.All(Uri.IsHexDigit) ||
                 string.IsNullOrEmpty(image.File) || !paths.Add(image.File))
                 throw new InvalidDataException("The pack contains invalid image metadata.");
+            if ((image.CompositionFile is null) != (image.CompositionSha256 is null) ||
+                (image.CompositionFile is not null && (manifest.Version != 2 ||
+                    image.CompositionFile != $"layers/{index:D2}.layers.json" || !paths.Add(image.CompositionFile) ||
+                    image.CompositionSha256!.Length != 64 || !image.CompositionSha256.All(Uri.IsHexDigit))))
+                throw new InvalidDataException("The pack contains invalid editable layer metadata.");
         }
     }
 

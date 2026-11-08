@@ -10,11 +10,11 @@
         <label>Image, GIF, video or album link<input type="url" @bind="link" required disabled="@busy" placeholder="https://i.imgur.com/…" /></label>
         <button class="button primary" type="submit" disabled="@busy">Preview media</button>
     </form></OnlineOnly>
-    <details class="editor-details"><summary>Post and album access</summary>
+    <AppDisclosure Class="editor-details"><Header>Post and album access</Header><ChildContent>
         <p class="helper">Direct i.imgur.com links work without setup. For post and album links, enter your Imgur Client ID. This is a public app identifier; no account password or client secret is needed.</p>
         <label>Imgur Client ID<input @bind="clientId" @bind:after="SaveClientId" maxlength="64" autocomplete="off" /></label>
         <a href="https://api.imgur.com/oauth2/addclient" target="_blank" rel="noopener noreferrer">Register an Imgur application</a>
-    </details>
+    </ChildContent></AppDisclosure>
 </section>
 @if(error is not null){<p class="notice notice-error" role="alert">@error</p>}
 @if(notice is not null){<p class="notice" role="status">@notice <a href="library">Open library</a></p>}

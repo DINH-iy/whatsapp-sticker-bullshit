@@ -108,7 +108,7 @@ export function create(canvas, reference) {
         }
         return thumbnails.get(image);
     }
-    const state = () => ({ layers: layers.map(({ source, gifSource, ...layer }) => ({ ...layer, text: layer.text ? {...layer.text,fontData:null} : null, isGif: !!gifSource, gifThumbnails: gifs.get(gifSource)?.thumbnails ?? [], thumbnail: thumbnail(layer) })),
+    const state = () => ({ layers: layers.map(({ source, gifSource, ...layer }) => ({ ...layer, text: layer.text ? {...layer.text,fontData:null} : null, isGif: !!gifSource, gifThumbnails: gifs.get(gifSource)?.thumbnails ?? [], thumbnail: thumbnail({ source }) })),
         selected, canUndo: undo.length > 0, canRedo: redo.length > 0, previewPlaying: !paused });
     const notify = () => { if (!disposed) return reference.invokeMethodAsync('LayersChanged', state()); };
     const decode = async source => { const image = new Image(); image.src = source; await image.decode(); return image; };

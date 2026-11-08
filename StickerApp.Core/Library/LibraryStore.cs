@@ -580,7 +580,8 @@ public sealed partial class LibraryStore
             var images = pack.StickerIds.Select(id => library.Stickers.FirstOrDefault(image => image.Id == id)
                 ?? throw new InvalidDataException("A pack image is missing from the library.")).ToList();
             return whatsAppCover is null
-                ? await PackArchive.WriteAsync(destination, pack, images, image => File.OpenRead(MediaPath(image.FileName)))
+                ? await PackArchive.WriteAsync(destination, pack, images, image => File.OpenRead(MediaPath(image.FileName)),
+                    image => File.OpenRead(MediaPath(image.CompositionFileName!)))
                 : await WhatsAppArchive.WriteAsync(destination, pack, images, image => File.OpenRead(MediaPath(image.FileName)), whatsAppCover);
         }
         finally
@@ -589,7 +590,7 @@ public sealed partial class LibraryStore
         }
     }
 
-    public async Task<Guid> ImportPackAsync(Stream source)
+    public async Task<Guid> ImportPackAsync(Stream source, bool forcePrivate = false, bool preserveSourceIds = false)
     {
         // Validate everything before touching the library. No archive entry is extracted by its supplied path.
         var imported = await PackArchive.ReadAsync(source);
@@ -601,13 +602,14 @@ public sealed partial class LibraryStore
             if (library.Packs.Count >= 10)
                 throw new InvalidOperationException("This build supports up to 10 packs.");
 
-            var pack = new StickerPack { Name = imported.Name, Animated = imported.Animated, CoverImage = imported.CoverImage, Publisher = imported.Publisher, Nsfw = imported.Nsfw, Public = imported.Public };
+            var pack = new StickerPack { Name = imported.Name, Animated = imported.Animated, CoverImage = imported.CoverImage, Publisher = imported.Publisher, Nsfw = imported.Nsfw, Public = imported.Public && !forcePrivate };
             var images = new List<Sticker>();
             foreach (var image in imported.Images)
             {
                 var sticker = new Sticker
                 {
                     Name = image.Name,
+                    BackupStickerId = preserveSourceIds ? image.SourceId : null,
                     Tags = image.Tags,
                     Nsfw = image.Nsfw,
                     MimeType = image.Info.MimeType,
@@ -625,6 +627,14 @@ public sealed partial class LibraryStore
                 {
                     createdFiles.Add(path);
                     await output.WriteAsync(image.Bytes);
+                }
+                if (image.CompositionBytes is not null)
+                {
+                    sticker.CompositionFileName = $"{sticker.Id:N}.layers.json";
+                    var compositionPath = MediaPath(sticker.CompositionFileName);
+                    await using var output = new FileStream(compositionPath, FileMode.CreateNew, FileAccess.Write);
+                    createdFiles.Add(compositionPath);
+                    await output.WriteAsync(image.CompositionBytes);
                 }
                 images.Add(sticker);
                 pack.StickerIds.Add(sticker.Id);

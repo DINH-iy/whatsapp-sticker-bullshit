@@ -12,6 +12,7 @@ RUN mkdir /data && chown app:app /data
 COPY --from=build /publish ./
 ENV ASPNETCORE_HTTP_PORTS=8080
 ENV Sharing__StoragePath=/data
+ENV Friends__StoragePath=/data/friends
 EXPOSE 8080
 USER app
 ENTRYPOINT ["dotnet", "StickerApp.ShareServer.dll"]

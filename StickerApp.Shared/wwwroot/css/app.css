@@ -2227,6 +2227,7 @@ html[data-app-bold="true"] body, html[data-app-bold="true"] body :where(p,span,l
 .settings-page-header h1 { margin: 0; }
 .settings-page-header .settings-section-actions { margin: 0; margin-left: auto; gap: 6px; }
 .settings-page-header .settings-section-actions .button { padding-inline: 9px; font-size: calc(11px * var(--app-font-scale,1)); }
+@keyframes ui-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes ui-reveal { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes dialog-reveal { from { opacity: 0; transform: translateY(6px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @media (prefers-reduced-motion: no-preference) {
@@ -2234,9 +2235,93 @@ html[data-app-bold="true"] body, html[data-app-bold="true"] body :where(p,span,l
     .button:not(:disabled):active, .text-button:not(:disabled):active { transform: scale(.97); }
     .settings-accordion[open] > .settings-accordion-body, details[open] > .editor-view-controls, .live-tool-choices, .editor-tool-dock { animation: ui-reveal .18s ease-out; }
     dialog[open] { animation: dialog-reveal .18s ease-out; }
-    dialog[open]::backdrop { animation: ui-reveal .18s ease-out; }
+    dialog[open]::backdrop { animation: ui-fade .18s ease-out; }
     input, select, textarea { transition: border-color .16s ease, box-shadow .16s ease; }
 }
 @media (prefers-reduced-motion: reduce) {
     .settings-accordion > summary .app-icon { transition: none; }
 }
+
+/* Shared expandable menus, used by settings, help, storage and editor panels. */
+.app-disclosure:not(.app-disclosure-popup) { min-width: 0; margin-block: 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.app-disclosure > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 12px 16px; margin: 0; list-style: none; color: var(--text); font-size: calc(13px * var(--app-font-scale,1)); font-weight: 600; cursor: pointer; border-radius: inherit; }
+.app-disclosure > summary::-webkit-details-marker { display: none; }
+.app-disclosure > summary::marker { content: ""; }
+.app-disclosure > summary::after { content: none; }
+.app-disclosure-label { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; min-width: 0; text-align: left; line-height: 1.4; }
+.app-disclosure-label > small { color: var(--muted); font-weight: 400; }
+.app-disclosure > summary > .app-icon { width: 16px; height: 16px; flex: 0 0 16px; transform: rotate(90deg); color: var(--muted); }
+.app-disclosure[open] > summary > .app-icon { transform: rotate(-90deg); }
+.app-disclosure > .app-disclosure-body { padding: 14px 16px; border-top: 1px solid var(--line); }
+.app-disclosure-body > :first-child { margin-top: 0; }
+.app-disclosure-body > :last-child { margin-bottom: 0; }
+.app-disclosure.settings-accordion { margin: 0; }
+.app-disclosure.settings-accordion > summary { padding: 18px 20px; }
+.app-disclosure.settings-accordion > .app-disclosure-body { padding: 0; border: 0; }
+.app-disclosure.app-disclosure-popup > summary { padding: 6px 8px; }
+.app-disclosure.app-disclosure-popup > summary > .app-icon { width: 12px; height: 12px; flex-basis: 12px; }
+.app-disclosure.profile-info { flex-basis: 100%; }
+@media (prefers-reduced-motion: no-preference) {
+    .app-disclosure > summary { transition: background-color .16s ease; }
+    .app-disclosure > summary > .app-icon { transition: transform .18s ease; }
+    .app-disclosure[open] > .app-disclosure-body { animation: ui-reveal .18s ease-out; }
+}
+
+.friends-pack-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(min(250px,100%),1fr)); gap: 16px; margin-block: 20px; }
+.friends-pack-card { min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.friends-pack-card h2 { font-size: calc(17px * var(--app-font-scale,1)); overflow-wrap: anywhere; }
+.friends-pack-card p { font-size: calc(13px * var(--app-font-scale,1)); }
+.friends-pack-preview { position: relative; display: grid; place-items: center; aspect-ratio: 1.5; background: var(--soft); border-radius: 8px; overflow: hidden; }
+.friends-pack-preview img { width: 100%; height: 100%; object-fit: contain; }
+.friends-pack-preview > .button { position: absolute; top: 8px; right: 8px; }
+.friends-preview-blurred { filter: blur(18px); }
+
+.friends-collections { margin-block: 24px; }
+.collection-link { display: block; text-decoration: none; color: var(--text); }
+.collection-link > .app-icon { width: 28px; height: 28px; color: var(--accent); }
+.collection-reactions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.collection-reactions > .button { min-height: 34px; padding: 5px 8px; }
+.collection-reaction-menu { position: relative; }
+.collection-reaction-options { position: absolute; z-index: 20; top: calc(100% + 6px); right: 0; display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; padding: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: 0 6px 20px #0004; }
+.collection-reaction-options .button { width: 42px; min-width: 42px; padding: 5px; font-size: 20px; }
+
+/* Action spacing belongs to the shared offline wrapper, including wrapped mobile headers. */
+.online-feature { max-width: 100%; }
+.online-feature-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.online-feature-controls > form { flex: 1 1 100%; min-width: 0; }
+.settings-actions, .dialog-actions { align-items: center; flex-wrap: wrap; gap: 10px; }
+.page-header > .settings-actions { min-width: 0; max-width: 100%; margin: 0; }
+.settings-actions .online-feature { min-width: 0; }
+.settings-actions .button, .online-feature-controls > .button { max-width: 100%; min-width: 0; height: auto; min-height: 44px; padding: 9px 12px; white-space: normal; line-height: 1.35; overflow-wrap: anywhere; }
+.friends-pack-card h2 { margin: 14px 0 8px; }
+.friends-pack-card p { margin: 8px 0; line-height: 1.5; }
+.collection-link h3 { margin: 12px 0 8px; }
+.collection-link small { display: block; line-height: 1.5; }
+
+.invitation-options { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; margin-block: 16px; }
+.invitation-options select { width: 100%; }
+.created-invitation { display: grid; gap: 14px; padding: 16px; margin-top: 16px; border: 1px solid var(--line); border-radius: 10px; }
+.created-invitation[hidden] { display: none; }
+.created-invitation label, .invitation-options label { min-width: 0; margin: 0; }
+.created-invitation input { width: 100%; min-width: 0; }
+.invitation-preview { margin-top: 16px; padding: 16px; border: 1px solid var(--line); border-radius: 10px; }
+.active-invites { padding: 0; margin: 0; list-style: none; }
+.active-invites li { display: flex; align-items: center; gap: 12px; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.active-invites li:last-child { border: 0; }
+.active-invites small { display: block; color: var(--muted); line-height: 1.5; }
+.friends-pack-preview > img { position: absolute; inset: 0; }
+.collection-reaction-options { grid-template-columns: repeat(2,1fr); left: 50%; right: auto; transform: translateX(-50%); }
+.collection-reaction-options .button { width: 44px; min-width: 44px; min-height: 44px; }
+.group-working-copy { margin-bottom: 20px; }
+.group-working-copy p { margin: 0 0 12px; line-height: 1.5; }
+
+.app-disclosure-body > p { font-size: calc(13px * var(--app-font-scale,1)); line-height: 1.6; margin: 0 0 14px; }
+.app-disclosure-body > label { display: block; margin: 0 0 14px; }
+.app-disclosure-body > label + .online-feature { margin-top: 14px; }
+.disclosure-steps { margin: 0 0 14px; padding-left: 20px; font-size: calc(13px * var(--app-font-scale,1)); line-height: 1.65; }
+.disclosure-steps li + li { margin-top: 8px; }
+.collection-reaction-options .custom-reaction-toggle { grid-column: 1/-1; width: 100%; }
+.custom-reaction-entry { grid-column: 1/-1; display: grid; gap: 8px; width: 170px; max-width: calc(100vw - 80px); }
+.custom-reaction-entry label { margin: 0; font-size: 12px; }
+.custom-reaction-entry input { width: 100%; min-width: 0; padding: 8px; }
+.collection-reaction-options .custom-reaction-entry .button { width: 100%; font-size: 13px; }

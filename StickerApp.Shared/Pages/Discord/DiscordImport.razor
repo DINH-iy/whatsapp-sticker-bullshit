@@ -7,8 +7,7 @@
 <section class="settings-card">
     <h2>Bring your saved GIFs</h2>
     <p>Your Discord ZIP is read on your device. Only the favourites list is passed to the app; messages, account details and the full ZIP are never uploaded.</p>
-    <details class="editor-details" open="@(items.Count == 0)">
-        <summary>How to get your Discord data export on a phone</summary>
+    <AppDisclosure Class="editor-details" Open="@(items.Count == 0)"><Header>How to get your Discord data export on a phone</Header><ChildContent>
         <ol>
             <li>Open Discord, tap your avatar (You), then the settings cogwheel.</li>
             <li>Open <strong>Data &amp; Privacy → Request all of my data</strong> and confirm. If categories are offered, include <strong>Account</strong>.</li>
@@ -18,7 +17,7 @@
         </ol>
         <p class="helper">You can also choose Account/user.json or a favourites-only JSON file. No Discord login, password or account token is needed. Some expired or removed media links may no longer work.</p>
         <a href="https://support.discord.com/hc/en-us/articles/360004027692-Requesting-a-Copy-of-your-Data" target="_blank" rel="noopener noreferrer">Discord’s data export instructions</a>
-    </details>
+    </ChildContent></AppDisclosure>
     <label class="button file-button"><Icon Name="folder-import" /><span>Choose Discord ZIP or JSON</span><input @ref="fileInput" type="file" accept=".zip,.json,application/zip,application/json" disabled="@(!ready || busy || reading)" aria-label="Choose Discord export" /></label>
 </section>
 @if (error is not null) { <p class="notice notice-error" role="alert">@error</p> }

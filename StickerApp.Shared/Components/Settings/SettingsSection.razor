@@ -1,8 +1,7 @@
 @inject NavigationManager Navigation
-<details class="settings-accordion" open="@expanded">
-    <summary @onclick="Toggle" @onclick:preventDefault><h2>@Title</h2><Icon Name="down" /></summary>
-    <div class="settings-accordion-body">@ChildContent</div>
-</details>
+<AppDisclosure Class="settings-accordion" @bind-Open="expanded" BodyClass="settings-accordion-body"><Header><h2>@Title</h2></Header><ChildContent>
+    @ChildContent
+</ChildContent></AppDisclosure>
 
 @code {
     [Parameter] public string Title { get; set; } = "";
@@ -23,5 +22,4 @@
         if (fragment != previousFragment && fragment == "#" + Anchor) expanded = true;
         previousFragment = fragment;
     }
-    private void Toggle() => expanded = !expanded;
 }
