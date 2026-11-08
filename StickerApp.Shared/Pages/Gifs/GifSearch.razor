@@ -8,52 +8,52 @@
 
 @if (!Embedded)
 {
-    <PageTitle>GIF search · Stik-er-in</PageTitle>
+    <PageTitle>@L["GIF search · Stik-er-in"]</PageTitle>
     <header class="page-header"><h1>@L["GIF search"]</h1></header>
 }
 
 @if (!isReady)
 {
-    <p class="helper" role="status">Loading GIF search…</p>
+    <p class="helper" role="status">@L["Loading GIF search…"]</p>
 }
 else if (!isConfigured)
 {
     <section class="settings-card gif-setup">
-        <h2>Connect KLIPY</h2>
-        <p>Add your KLIPY API key in Settings to search for GIFs.</p>
-        <a class="button primary" href="settings#gif-search">Set up GIF search</a>
+        <h2>@L["Connect KLIPY"]</h2>
+        <p>@L["Add your KLIPY API key in Settings to search for GIFs."]</p>
+        <a class="button primary" href="settings#gif-search">@L["Set up GIF search"]</a>
     </section>
 }
 else
 {
     <OnlineOnly><form class="gif-search-form" @onsubmit="StartSearch" @onsubmit:preventDefault>
-        <label class="visually-hidden" for="gif-query">Search KLIPY GIFs</label>
+        <label class="visually-hidden" for="gif-query">@L["Search KLIPY GIFs"]</label>
         <input id="gif-query" class="search" @bind="query" @bind:event="oninput"
-               placeholder="Search KLIPY" maxlength="200" disabled="@(isLoading || IsImporting)" autofocus="@Embedded" />
+               placeholder="@L["Search KLIPY"]" maxlength="200" disabled="@(isLoading || IsImporting)" autofocus="@Embedded" />
         <button class="button primary" type="submit" disabled="@(isLoading || IsImporting || string.IsNullOrWhiteSpace(query))">@L["Search"]</button>
     </form></OnlineOnly>
 
-    <HelpDisclosure Summary="About importing GIFs">
-        <p class="helper">Choose Import to save a GIF to your library, then choose a pack or keep it in My Library. Imports use your GIF original-file setting; sticker preparation runs automatically. Maximum file size: 10 MB.</p>
+    <HelpDisclosure Summary="@L["About importing GIFs"]">
+        <p class="helper">@L["Choose Import to save a GIF to your library, then choose a pack or keep it in My Library. Imports use your GIF original-file setting; sticker preparation runs automatically. Maximum file size: 10 MB."]</p>
     </HelpDisclosure>
     @if (IsImporting)
     {
         <div class="notice gif-import-status" role="status">
-            <span><span class="feedback-spinner" aria-hidden="true"></span> @(importCommitting ? "Adding GIF…" : "Downloading GIF…")</span>
-            <button class="button" type="button" @onclick="CancelImport" disabled="@(importCommitting || importCancellation!.IsCancellationRequested)">Cancel import</button>
+            <span><span class="feedback-spinner" aria-hidden="true"></span> @L[importCommitting ? "Adding GIF…" : "Downloading GIF…"]</span>
+            <button class="button" type="button" @onclick="CancelImport" disabled="@(importCommitting || importCancellation!.IsCancellationRequested)">@L["Cancel import"]</button>
         </div>
     }
     @if (importNotice is not null)
     {
-        <div class="notice" role="status">@importNotice <a href="library">View images</a></div>
+        <div class="notice" role="status">@L.Message(importNotice) <a href="library">@L["View images"]</a></div>
     }
-    @if (importError is not null) { <p class="error" role="alert">@importError</p> }
+    @if (importError is not null) { <p class="error" role="alert">@L.Error(importError)</p> }
     @if (hasSearched)
     {
-        <h2 class="gif-results-heading">Results for “@activeQuery”</h2>
+        <h2 class="gif-results-heading">@L.Format("Results for “{0}”", activeQuery)</h2>
     }
 
-    <div class="gif-grid" aria-label="KLIPY GIF results" aria-busy="@(isLoading ? "true" : "false")">
+    <div class="gif-grid" aria-label="@L["KLIPY GIF results"]" aria-busy="@(isLoading ? "true" : "false")">
         @foreach (var gif in results)
         {
             <article class="gif-card">
@@ -63,21 +63,21 @@ else
                 }
                 else
                 {
-                    <div class="gif-unavailable">Preview unavailable</div>
+                    <div class="gif-unavailable">@L["Preview unavailable"]</div>
                 }
                 <div class="gif-card-footer">
                     <span title="@gif.Title">@gif.Title</span>
                     <div class="gif-card-actions">
 <OnlineOnly>                        <button class="button primary gif-import-button" type="button" @onclick="() => ImportGif(gif)"
                                 disabled="@(IsImporting || string.IsNullOrEmpty(gif.ShareUrl) || importedUrls.Contains(gif.ShareUrl))"
-                                aria-label="@(importedUrls.Contains(gif.ShareUrl) ? $"Imported {gif.Title}" : $"Import {gif.Title}")">
+                                aria-label="@L[importedUrls.Contains(gif.ShareUrl) ? $"Imported {gif.Title}" : $"Import {gif.Title}"]">
                             <Icon Name="@(importedUrls.Contains(gif.ShareUrl) ? "check" : "plus")" />
-                            @(importedUrls.Contains(gif.ShareUrl) ? "Imported" : importingUrl == gif.ShareUrl ? "Importing…" : "Import")
+                            @L[importedUrls.Contains(gif.ShareUrl) ? "Imported" : importingUrl == gif.ShareUrl ? "Importing…" : "Import"]
                         </button></OnlineOnly>
                         @if (!string.IsNullOrEmpty(gif.ShareUrl))
                         {
                             <a class="button icon-button" href="@gif.ShareUrl" target="_blank" rel="noopener noreferrer"
-                               title="Open in browser" aria-label="Open @gif.Title in browser">
+                               title="@L["Open in browser"]" aria-label="Open @gif.Title in browser">
                                 <Icon Name="link" />
                             </a>
                         }
@@ -89,17 +89,17 @@ else
 
     @if (isLoading)
     {
-        <p class="helper" role="status">Finding GIFs…</p>
+        <p class="helper" role="status">@L["Finding GIFs…"]</p>
     }
     else if (results.Count == 0 && error is null)
     {
-        <p class="empty-state">@(hasSearched ? "No GIFs found. Try another search." : "Search for a reaction to get started.")</p>
+        <p class="empty-state">@L[hasSearched ? "No GIFs found. Try another search." : "Search for a reaction to get started."]</p>
     }
 
     @if (hasNextPage)
     {
         <div class="gif-load-more">
-            <OnlineOnly><button class="button" type="button" @onclick="LoadMore" disabled="@(isLoading || IsImporting)">Load more GIFs</button></OnlineOnly>
+            <OnlineOnly><button class="button" type="button" @onclick="LoadMore" disabled="@(isLoading || IsImporting)">@L["Load more GIFs"]</button></OnlineOnly>
         </div>
     }
 }
@@ -107,7 +107,7 @@ else
 @if (error is not null)
 {
     <div class="notice notice-error" role="alert">
-        <span>@error</span>
+        <span>@L.Error(error)</span>
         @if (isConfigured)
         {
             <OnlineOnly><button class="button" type="button" @onclick="RetrySearch" disabled="@(isLoading || IsImporting)">@L["Try again"]</button></OnlineOnly>
@@ -117,7 +117,7 @@ else
 
 @if (importedImage is not null)
 {
-    <AddToPackDialog Image="@importedImage" Title="Add imported GIF to a pack?" CancelLabel="Keep in library"
+    <AddToPackDialog Image="@importedImage" Title="@L["Add imported GIF to a pack?"]" CancelLabel="Keep in library"
                      Description="Your GIF is saved. Choose a pack below, or keep it in My Library."
                      OnAdded="ImportAddedToPack" OnCancel="KeepImportedInLibrary" />
 }

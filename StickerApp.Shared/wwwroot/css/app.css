@@ -2364,11 +2364,6 @@ button:not(.navigation-dismiss):not(.layer-handle):not(.layer-rotation-handle):n
 .faq .app-disclosure > .app-disclosure-body { padding-block: 10px; }
 .library-statistics-card .storage-options-grid > .app-disclosure { margin-block: 0; }
 
-.app-guide-card { display: flex; align-items: center; gap: 14px; width: 100%; padding: 14px 16px; margin: 0 0 20px; color: var(--text); background: var(--surface); border: 1px solid var(--line); text-align: left; }
-.app-guide-card > .app-icon:first-child { flex: 0 0 30px; width: 30px; height: 30px; color: var(--accent); }
-.app-guide-card > span { flex: 1; min-width: 0; }
-.app-guide-card strong, .app-guide-card small { display: block; }
-.app-guide-card small { margin-top: 4px; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .app-guide-dialog { display: flex; flex-direction: column; width: min(640px,calc(100vw - 24px)); max-height: calc(var(--dialog-viewport-height,100dvh) - 24px); overflow: hidden; }
 .app-guide-dialog:not([open]) { display: none; }
 .app-guide-dialog .folder-dialog-heading { flex: 0 0 auto; gap: 12px; }

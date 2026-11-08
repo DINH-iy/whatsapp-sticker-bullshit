@@ -1,21 +1,21 @@
 @namespace StickerApp.Shared.Components.Editor.DesignPreview
-<div class="editor-design-preview demo-tools-@Preferences.ToolsPosition demo-controls-@Preferences.ControlsPosition demo-size-@Preferences.ButtonSize" aria-label="Interactive editor design preview" style="--demo-speed:@speed">
+<div class="editor-design-preview demo-tools-@Preferences.ToolsPosition demo-controls-@Preferences.ControlsPosition demo-size-@Preferences.ButtonSize" aria-label="@L["Interactive editor design preview"]" style="--demo-speed:@speed">
     <div class="demo-titlebar">
-        <strong>@(animated ? "Edit GIF" : "Edit image")</strong>
-        <button class="button icon-button" @onclick="Undo" disabled="@(history.Count == 0)" aria-label="Undo preview adjustment" title="@L["Undo"]"><Icon Name="undo" /></button>
+        <strong>@L[animated ? "Edit GIF" : "Edit image"]</strong>
+        <button class="button icon-button" @onclick="Undo" disabled="@(history.Count == 0)" aria-label="@L["Undo preview adjustment"]" title="@L["Undo"]"><Icon Name="undo" /></button>
         <button class="button demo-options-button" @onclick="() => options = !options" aria-expanded="@options">@L["Options"]</button>
         @if (activeTool is null) { <button class="button primary" @onclick='() => notice = "Preview complete. No sticker files were changed."'>@L["Done"]</button> }
     </div>
     @if (options)
     {
         <div class="demo-options">
-            <label class="toggle-row"><input type="checkbox" @bind="animated" />GIF example</label>
-            <p class="helper">Name, spoiler and file options would live here.</p>
+            <label class="toggle-row"><input type="checkbox" @bind="animated" />@L["GIF example"]</label>
+            <p class="helper">@L["Name, spoiler and file options would live here."]</p>
         </div>
     }
     <div class="demo-workspace">
-        <div class="demo-artboard" aria-label="Sample sticker on a fixed square canvas">
-            <svg viewBox="0 0 512 512" role="img" aria-label="A cheerful green sticker character with top text">
+        <div class="demo-artboard" aria-label="@L["Sample sticker on a fixed square canvas"]">
+            <svg viewBox="0 0 512 512" role="img" aria-label="@L["A cheerful green sticker character with top text"]">
                 <defs><clipPath id="demo-crop"><rect x="@inset" y="@inset" width="@(512-inset*2)" height="@(512-inset*2)" /></clipPath></defs>
                 <g clip-path="url(#demo-crop)">
                     <g style="@ArtworkStyle">
@@ -26,7 +26,7 @@
                             <path d="M219 277Q254 310 291 277" fill="none" stroke="#152c25" stroke-width="12" stroke-linecap="round"/>
                             <ellipse cx="165" cy="268" rx="22" ry="12" fill="#f398a7"/><ellipse cx="345" cy="268" rx="22" ry="12" fill="#f398a7"/>
                         </g>
-                        <text x="256" y="87" text-anchor="middle" font-family="Impact, sans-serif" font-weight="900" font-size="54" fill="white" stroke="#17231f" stroke-width="5" paint-order="stroke">TOP TEXT</text>
+                        <text x="256" y="87" text-anchor="middle" font-family="Impact, sans-serif" font-weight="900" font-size="54" fill="white" stroke="#17231f" stroke-width="5" paint-order="stroke">@L["TOP TEXT"]</text>
                     </g>
                 </g>
                 @if (activeTool == "Crop") { <rect x="@inset" y="@inset" width="@(512-inset*2)" height="@(512-inset*2)" fill="none" stroke="white" stroke-width="3" stroke-dasharray="10 6" /> }
@@ -37,21 +37,21 @@
         @if (activeTool is not null)
         {
             <aside class="demo-control-panel" aria-label="@($"{activeTool} controls")">
-                <strong>@activeTool</strong>
+                <strong>@L[activeTool]</strong>
                 @if (activeTool is "Draw" or "Eraser" or "Magic wand" or "Opacity" or "Color" or "Transform" or "Border" or "Crop")
                 {
                     @if (activeTool is "Draw" or "Eraser")
                     {
-                        <label class="demo-value-label">@L["Size"]<select aria-label="Preview brush size" @bind="amount" @bind:after="Adjust">@foreach (var size in new[] { 2, 4, 8, 12, 20, 30, 50, 75, 100 }) { <option value="@size">@size</option> }</select></label>
+                        <label class="demo-value-label">@L["Size"]<select aria-label="@L["Preview brush size"]" @bind="amount" @bind:after="Adjust">@foreach (var size in new[] { 2, 4, 8, 12, 20, 30, 50, 75, 100 }) { <option value="@size">@size</option> }</select></label>
                     }
                     else
                     {
-                        <label class="demo-value-label">@ValueLabel<input type="number" aria-label="Preview tool value" min="@Minimum" max="@Maximum" @bind="amount" @bind:event="oninput" @bind:after="Adjust" /></label>
-                        <input type="range" aria-label="Preview tool slider" min="@Minimum" max="@Maximum" @bind="amount" @bind:event="oninput" @bind:after="Adjust" />
+                        <label class="demo-value-label">@ValueLabel<input type="number" aria-label="@L["Preview tool value"]" min="@Minimum" max="@Maximum" @bind="amount" @bind:event="oninput" @bind:after="Adjust" /></label>
+                        <input type="range" aria-label="@L["Preview tool slider"]" min="@Minimum" max="@Maximum" @bind="amount" @bind:event="oninput" @bind:after="Adjust" />
                     }
-                    @if (activeTool is "Draw" or "Color" or "Border") { <input type="color" aria-label="Preview tool color" @bind="brushColor" /> }
+                    @if (activeTool is "Draw" or "Color" or "Border") { <input type="color" aria-label="@L["Preview tool color"]" @bind="brushColor" /> }
                 }
-                else { <p class="helper">@activeTool options appear only while this tool is selected.</p> }
+                else { <p class="helper">@L.Format("{0} options appear only while this tool is selected.", L[activeTool])</p> }
                 <div class="demo-tool-actions"><button class="button" @onclick="CancelTool">@L["Cancel"]</button><button class="button primary" @onclick="Apply">@L["Apply"]</button></div>
             </aside>
         }
@@ -59,12 +59,12 @@
     @if (animated)
     {
         <div class="demo-playback">
-            <button class="button icon-button" @onclick="() => playing = !playing" aria-label="@(playing ? "Pause example animation" : "Play example animation")"><Icon Name="@(playing ? "pause" : "play")" /></button>
-            <span>Frame @frame</span>
-            <select aria-label="Example playback speed" @bind="speed"><option value="1">1×</option><option value="2">0.5×</option><option value="4">0.25×</option></select>
-            <button class="button icon-button" @onclick="() => timeline = !timeline" aria-label="Toggle example timeline" aria-expanded="@timeline"><Icon Name="animation" /></button>
+            <button class="button icon-button" @onclick="() => playing = !playing" aria-label="@L[playing ? "Pause example animation" : "Play example animation"]"><Icon Name="@(playing ? "pause" : "play")" /></button>
+            <span>@L.Format("Frame {0}", frame)</span>
+            <select aria-label="@L["Example playback speed"]" @bind="speed"><option value="1">1×</option><option value="2">0.5×</option><option value="4">0.25×</option></select>
+            <button class="button icon-button" @onclick="() => timeline = !timeline" aria-label="@L["Toggle example timeline"]" aria-expanded="@timeline"><Icon Name="animation" /></button>
         </div>
-        @if (timeline) { <div class="demo-timeline"><div class="demo-filmstrip" aria-hidden="true">@for (var i=0;i<8;i++) { <span>●</span> }</div><input type="range" aria-label="Example animation frame" min="0" max="7" @bind="frame" @bind:event="oninput" /></div> }
+        @if (timeline) { <div class="demo-timeline"><div class="demo-filmstrip" aria-hidden="true">@for (var i=0;i<8;i++) { <span>●</span> }</div><input type="range" aria-label="@L["Example animation frame"]" min="0" max="7" @bind="frame" @bind:event="oninput" /></div> }
     }
     <div class="demo-tool-browser">
         @if (activeTool is null)
@@ -72,7 +72,7 @@
             <div class="demo-tool-choices" role="group" aria-label="@($"{Label(category)} tools")">
                 @foreach (var tool in Tools)
                 {
-                    <button class="button" @onclick="() => SelectTool(tool.Label)"><Icon Name="@tool.Icon" /><span>@tool.Label</span></button>
+                    <button class="button" @onclick="() => SelectTool(tool.Label)"><Icon Name="@tool.Icon" /><span>@L[tool.Label]</span></button>
                 }
             </div>
         }
@@ -83,7 +83,7 @@
             }
         </div>
     </div>
-    @if (notice is not null) { <p class="demo-notice" role="status">@notice</p> }
+    @if (notice is not null) { <p class="demo-notice" role="status">@L.Message(notice)</p> }
 </div>
 @code {
     [Parameter] public EditorLayoutPreferences Preferences { get; set; } = new();

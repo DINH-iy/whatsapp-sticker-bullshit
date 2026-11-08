@@ -1,42 +1,42 @@
 @inject NavigationManager Navigation
 @using Microsoft.AspNetCore.Components.Forms
 
-<p class="toolbar-menu-heading">@(PackName is null ? "Add to your library" : $"Add to {PackName}")</p>
+<p class="toolbar-menu-heading">@L[PackName is null ? "Add to your library" : $"Add to {PackName}"]</p>
 <label class="toolbar-menu-option file-button">
-    <Icon Name="image-plus" /><span>@L["Image from device"]<small>Choose PNG, JPG, or WebP images.</small></span>
-    <InputFile OnChange="OnImport" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" multiple disabled="@StickerImportsDisabled" aria-label="Choose image files" />
+    <Icon Name="image-plus" /><span>@L["Image from device"]<small>@L["Choose PNG, JPG, or WebP images."]</small></span>
+    <InputFile OnChange="OnImport" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" multiple disabled="@StickerImportsDisabled" aria-label="@L["Choose image files"]" />
 </label>
 <label class="toolbar-menu-option file-button">
-    <Icon Name="image" /><span>@L["GIF from device"]<small>Choose saved animated GIF files.</small></span>
-    <InputFile OnChange="OnImport" accept="image/gif,.gif" multiple disabled="@StickerImportsDisabled" aria-label="Choose GIF files" />
+    <Icon Name="image" /><span>@L["GIF from device"]<small>@L["Choose saved animated GIF files."]</small></span>
+    <InputFile OnChange="OnImport" accept="image/gif,.gif" multiple disabled="@StickerImportsDisabled" aria-label="@L["Choose GIF files"]" />
 </label>
 <button class="toolbar-menu-option" type="button" @onclick="OnVideo" disabled="@StickerImportsDisabled">
-    <Icon Name="animation" /><span>@L["Video from device"]<small>Turn a video clip into a GIF.</small></span>
+    <Icon Name="animation" /><span>@L["Video from device"]<small>@L["Turn a video clip into a GIF."]</small></span>
 </button>
 <button class="toolbar-menu-option" type="button" @onclick="OnLayers" disabled="@StickerImportsDisabled">
-    <Icon Name="edit" /><span>@L["Layered image"]<small>Combine images in the layer editor.</small></span>
+    <Icon Name="edit" /><span>@L["Layered image"]<small>@L["Combine images in the layer editor."]</small></span>
 </button>
 <OnlineOnly><button class="toolbar-menu-option" type="button" @onclick="OnGifSearch" disabled="@StickerImportsDisabled">
-    <Icon Name="search" /><span>@L["Find a GIF"]<small>Search and preview GIFs in a popup.</small></span>
+    <Icon Name="search" /><span>@L["Find a GIF"]<small>@L["Search and preview GIFs in a popup."]</small></span>
 </button>
 </OnlineOnly><OnlineOnly><button type="button" class="toolbar-menu-option" @onclick='()=>Navigation.NavigateTo(PackId is {} id?$"pinterest?pack={id}":"pinterest")'>
-    <Icon Name="link" /><span>@L["Import from Pinterest"]<small>Choose photos and videos from a shared board or selection.</small></span>
+    <Icon Name="link" /><span>@L["Import from Pinterest"]<small>@L["Choose photos and videos from a shared board or selection."]</small></span>
 </button></OnlineOnly>
 <OnlineOnly><button type="button" class="toolbar-menu-option" @onclick='()=>Navigation.NavigateTo(PackId is {} id?$"imgur?pack={id}":"imgur")'>
-    <Icon Name="link" /><span>@L["Import from Imgur"]<small>Import an image, GIF, video or album link.</small></span>
+    <Icon Name="link" /><span>@L["Import from Imgur"]<small>@L["Import an image, GIF, video or album link."]</small></span>
 </button></OnlineOnly>
 <button type="button" class="toolbar-menu-option" disabled="@Disabled" @onclick='()=>Navigation.NavigateTo(PackId is {} id?$"discord?pack={id}":"discord")'>
-    <Icon Name="folder-import" /><span>Discord favourites<small>Choose your Discord data ZIP, then select saved GIFs.</small></span>
+    <Icon Name="folder-import" /><span>@L["Discord favourites"]<small>@L["Choose your Discord data ZIP, then select saved GIFs."]</small></span>
 </button>
 @if (CanImportFolder)
 {
     <button class="toolbar-menu-option" type="button" @onclick="OnImportFolder" disabled="@StickerImportsDisabled">
-        <Icon Name="folder-import" /><span>@FolderImportLabel<small>Add supported images from a device folder.</small></span>
+        <Icon Name="folder-import" /><span>@FolderImportLabel<small>@L["Add supported images from a device folder."]</small></span>
     </button>
 }
 <div class="toolbar-menu-divider"></div>
 <label class="toolbar-menu-option file-button">
-    <Icon Name="folder-import" /><span>Import a pack file<small>Open a .wastickers or ZIP file as a new pack.</small></span>
+    <Icon Name="folder-import" /><span>@L["Import a pack file"]<small>@L["Open a .wastickers or ZIP file as a new pack."]</small></span>
     <InputFile OnChange="OnImportPack" accept=".zip,.wastickers" disabled="@Disabled" aria-label="@L["Import pack file"]" />
 </label>
 

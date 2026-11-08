@@ -1,27 +1,27 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 <div class="theme-custom-picker">
-    <div class="theme-color-wheel" @ref="wheel" role="slider" aria-label="Custom theme color wheel. Left/right changes hue; up/down changes saturation." aria-valuemin="0" aria-valuemax="359" aria-valuenow="0" tabindex="0"><span class="theme-color-knob"></span></div>
-    <div class="theme-color-format" role="group" aria-label="Color input format">
-        <button class="button" type="button" aria-pressed="@(!hexMode)" @onclick="() => SetFormat(false)">RGBA</button>
-        <button class="button" type="button" aria-pressed="@hexMode" @onclick="() => SetFormat(true)">HEX</button>
+    <div class="theme-color-wheel" @ref="wheel" role="slider" aria-label="@L["Custom theme color wheel. Left/right changes hue; up/down changes saturation."]" aria-valuemin="0" aria-valuemax="359" aria-valuenow="0" tabindex="0"><span class="theme-color-knob"></span></div>
+    <div class="theme-color-format" role="group" aria-label="@L["Color input format"]">
+        <button class="button" type="button" aria-pressed="@(!hexMode)" @onclick="() => SetFormat(false)">@L["RGBA"]</button>
+        <button class="button" type="button" aria-pressed="@hexMode" @onclick="() => SetFormat(true)">@L["HEX"]</button>
     </div>
     @if (hexMode)
     {
-        <label class="theme-hex-field">@L["HEX color"]<input type="text" aria-label="Highlight hex color" value="@hexDraft" @oninput="e => hexDraft = e.Value?.ToString() ?? string.Empty" @onblur="ApplyHex" @onkeydown="HexKey" maxlength="9" spellcheck="false" autocapitalize="off" autocomplete="off" aria-invalid="@(hexError is not null)" aria-describedby="theme-hex-help" /></label>
-        <p id="theme-hex-help" class="helper">Use #RRGGBB or #RRGGBBAA. The last two digits set opacity; six digits keep the current opacity.</p>
-        @if (hexError is not null) { <p class="error" role="alert">@hexError</p> }
+        <label class="theme-hex-field">@L["HEX color"]<input type="text" aria-label="@L["Highlight hex color"]" value="@hexDraft" @oninput="e => hexDraft = e.Value?.ToString() ?? string.Empty" @onblur="ApplyHex" @onkeydown="HexKey" maxlength="9" spellcheck="false" autocapitalize="off" autocomplete="off" aria-invalid="@(hexError is not null)" aria-describedby="theme-hex-help" /></label>
+        <p id="theme-hex-help" class="helper">@L["Use #RRGGBB or #RRGGBBAA. The last two digits set opacity; six digits keep the current opacity."]</p>
+        @if (hexError is not null) { <p class="error" role="alert">@L.Error(hexError)</p> }
     }
     else
     {
-    <div class="theme-rgba-fields" role="group" aria-label="Highlight RGBA values">
-        <label>R<input type="number" min="0" max="255" value="@Channel(0)" @oninput="e => ChangeChannel(0, e)" aria-label="Highlight red" /></label>
-        <label>G<input type="number" min="0" max="255" value="@Channel(1)" @oninput="e => ChangeChannel(1, e)" aria-label="Highlight green" /></label>
-        <label>B<input type="number" min="0" max="255" value="@Channel(2)" @oninput="e => ChangeChannel(2, e)" aria-label="Highlight blue" /></label>
-        <label>A · %<input type="number" min="0" max="100" value="@Math.Round(Channel(3) / 2.55)" @oninput="e => ChangeChannel(3, e)" aria-label="Highlight alpha percent" /></label>
+    <div class="theme-rgba-fields" role="group" aria-label="@L["Highlight RGBA values"]">
+        <label>@L["R"]<input type="number" min="0" max="255" value="@Channel(0)" @oninput="e => ChangeChannel(0, e)" aria-label="@L["Highlight red"]" /></label>
+        <label>@L["G"]<input type="number" min="0" max="255" value="@Channel(1)" @oninput="e => ChangeChannel(1, e)" aria-label="@L["Highlight green"]" /></label>
+        <label>@L["B"]<input type="number" min="0" max="255" value="@Channel(2)" @oninput="e => ChangeChannel(2, e)" aria-label="@L["Highlight blue"]" /></label>
+        <label>@L["A · %"]<input type="number" min="0" max="100" value="@Math.Round(Channel(3) / 2.55)" @oninput="e => ChangeChannel(3, e)" aria-label="@L["Highlight alpha percent"]" /></label>
     </div>
     }
-    <p class="helper">Choose a color on the wheel or enter @(hexMode ? "HEX" : "RGBA") values. Shades adapt for readable text.</p>
+    <p class="helper">Choose a color on the wheel or enter @L[hexMode ? "HEX" : "RGBA"] values. Shades adapt for readable text.</p>
 </div>
 @code {
     [Parameter] public string Value { get; set; } = "#32875f";

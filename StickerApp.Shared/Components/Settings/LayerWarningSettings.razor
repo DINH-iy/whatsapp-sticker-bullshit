@@ -2,9 +2,9 @@
 @inject IJSRuntime JS
 <section class="settings-card" aria-labelledby="layer-warning-title">
     <h2 id="layer-warning-title">@L["Editing"]</h2>
-    <label class="toggle-row"><input type="checkbox" checked="@warn" @onchange="Change" disabled="@(module is null)" />Warn before adding text with layers</label>
-    <p class="helper">Show the explanation before switching an image or GIF to layers. You can always use Back to editor to discard the layered attempt.</p>
-    @if(error is not null){<p role="alert" class="error">@error</p>}
+    <label class="toggle-row"><input type="checkbox" checked="@warn" @onchange="Change" disabled="@(module is null)" />@L["Warn before adding text with layers"]</label>
+    <p class="helper">@L["Show the explanation before switching an image or GIF to layers. You can always use Back to editor to discard the layered attempt."]</p>
+    @if(error is not null){<p role="alert" class="error">@L.Error(error)</p>}
 </section>
 @code {
     private bool warn=true;

@@ -12,32 +12,32 @@
         <button class="button" type="button" @onclick="AddText" disabled="@(working || state.Layers.Count >= 10)"><Icon Name="text" />@L["Add text"]</button>
         <button class="button" type="button" @onclick="OpenShapes" disabled="@(working || layerEditSource is not null || state.Layers.Count>=10)"><Icon Name="shapes" />@L["Add shape"]</button>
         <label class="button file-button"><Icon Name="plus" /> @L["Add images"]
-            <InputFile OnChange="AddFiles" accept="image/png,image/jpeg,image/webp,image/gif" multiple disabled="@(working || layerEditSource is not null || state.Layers.Count >= 10)" aria-label="Add layer images from device" />
+            <InputFile OnChange="AddFiles" accept="image/png,image/jpeg,image/webp,image/gif" multiple disabled="@(working || layerEditSource is not null || state.Layers.Count >= 10)" aria-label="@L["Add layer images from device"]" />
         </label>
-        <select aria-label="Choose a library image for a layer" @bind="libraryImageId" disabled="@(working || layerEditSource is not null)">
-            <option value="">Choose from library…</option>
+        <select aria-label="@L["Choose a library image for a layer"]" @bind="libraryImageId" disabled="@(working || layerEditSource is not null)">
+            <option value="">@L["Choose from library…"]</option>
             @foreach (var image in Images) { <option value="@image.Id">@image.Name@(image.Animated ? " (animated)" : "")</option> }
         </select>
         <button class="button" type="button" @onclick="AddLibraryImage" disabled="@(working || layerEditSource is not null || libraryImageId == "" || state.Layers.Count >= 10)"><Icon Name="layers" />@L["Add layer"]</button>
     </div>
         </ChildContent></AppDisclosure>
-        <button class="button icon-button" type="button" aria-label="Close layer editor" @onclick="Cancel" disabled="@working" hidden="@(quickPanel != "")"><Icon Name="close" /></button>
+        <button class="button icon-button" type="button" aria-label="@L["Close layer editor"]" @onclick="Cancel" disabled="@working" hidden="@(quickPanel != "")"><Icon Name="close" /></button>
     </div>
     @if(showShapes)
     {
-        <section class="shape-picker" aria-label="Choose a shape">
-            <div class="shape-picker-heading"><h3>@L["Add shape"]</h3><label>@L["Fill color"]<input type="color" aria-label="Shape fill color" @bind="shapeColor" /></label><button class="button icon-button" type="button" @onclick="() => showShapes=false" aria-label="Close shape picker"><Icon Name="close" /></button></div>
+        <section class="shape-picker" aria-label="@L["Choose a shape"]">
+            <div class="shape-picker-heading"><h3>@L["Add shape"]</h3><label>@L["Fill color"]<input type="color" aria-label="@L["Shape fill color"]" @bind="shapeColor" /></label><button class="button icon-button" type="button" @onclick="() => showShapes=false" aria-label="@L["Close shape picker"]"><Icon Name="close" /></button></div>
             <div class="shape-picker-grid">@foreach(var shape in Shapes){<button class="button" type="button" @onclick="() => AddShape(shape.Kind,shape.Name)" disabled="@working"><span class="shape-sample" style="color:@shapeColor" aria-hidden="true">@shape.Glyph</span><span>@L[shape.Name]</span></button>}</div>
             <p class="helper">@L["Each shape becomes a separate layer. Use the handles to move, resize or rotate it; select Crop to cut it down."]</p>
         </section>
     }
-    @if (loading) { <p class="status-info" role="status"><span class="feedback-spinner" aria-hidden="true"></span> @progress</p> }
-    @if (error is not null) { <p class="error" role="alert">@error</p> }
+    @if (loading) { <p class="status-info" role="status"><span class="feedback-spinner" aria-hidden="true"></span> @L.Message(progress)</p> }
+    @if (error is not null) { <p class="error" role="alert">@L.Error(error)</p> }
     <div class="layer-workspace">
         <div class="layer-stage">
             <div class="layer-preview-dock" hidden="@(layerEditSource is not null)">
                 <div class="layer-preview-stage @(quickPanel == "opacity" ? "opacity-tool-stage" : "")">
-                    <div class="editor-viewport"><div class="layer-canvas-wrap"><canvas @ref="canvas" aria-label="Layer canvas. Drag to move; resize and rotation handles surround the selected layer." /></div></div>
+                    <div class="editor-viewport"><div class="layer-canvas-wrap"><canvas @ref="canvas" aria-label="@L["Layer canvas. Drag to move; resize and rotation handles surround the selected layer."]" /></div></div>
                     @if (quickPanel != "" && Selected is { } adjustment)
                     {
                         <EditorToolDock Title="@PanelTitle" Disabled="@working" OnApply="ApplyQuickTool" OnCancel="() => confirmQuickToolCancel = true">
@@ -48,14 +48,14 @@
                         </EditorToolDock>
                     }
                 </div>
-                <div class="live-history-row" role="group" aria-label="Layer history and options">
+                <div class="live-history-row" role="group" aria-label="@L["Layer history and options"]">
                     <button class="button icon-button" type="button" @onclick='() => Action("undo")' disabled="@(working || quickPanel != "" || !state.CanUndo)" aria-label="@L["Undo"]" title="@L["Undo"]"><Icon Name="undo" /></button>
                     <button class="button icon-button" type="button" @onclick='() => Action("redo")' disabled="@(working || quickPanel != "" || !state.CanRedo)" aria-label="@L["Redo"]" title="@L["Redo"]"><Icon Name="redo" /></button>
                     <EditorViewControls />
                     <EditorHelp Animated="@(TimelineLayer is not null)" Layers="true" />
                     <EditorPopup Disabled="@(working || quickPanel != "")">
         <label class="toggle-row editor-spoiler-toggle"><input type="checkbox" @bind="nsfw" disabled="@working" />@L["NSFW spoiler"]</label>
-        <label for="composition-name">Sticker name</label>
+        <label for="composition-name">@L["Sticker name"]</label>
         <input id="composition-name" class="layer-name" @bind="name" @bind:event="oninput" maxlength="128" disabled="@(working || layerEditSource is not null)" />
 
                     </EditorPopup>
@@ -63,7 +63,7 @@
                 @if (TimelineLayer is { } clip)
                 {
                     <AnimationTimeline Thumbnails="@clip.GifThumbnails" Duration="@clip.GifDuration" Start="@clip.TrimStart" End="@clip.TrimEnd" LayerControls="true" Disabled="@(working || layerEditSource is not null)">
-                        <PlaybackControl><button class="button animation-preview-button" type="button" @onclick="TogglePreview" disabled="@working" aria-label="@(state.PreviewPlaying ? "Pause animation" : "Play animation")"><Icon Name="@(state.PreviewPlaying ? "pause" : "play")" />@(state.PreviewPlaying ? "Pause" : "Play")</button></PlaybackControl>
+                        <PlaybackControl><button class="button animation-preview-button" type="button" @onclick="TogglePreview" disabled="@working" aria-label="@L[state.PreviewPlaying ? "Pause animation" : "Play animation"]"><Icon Name="@(state.PreviewPlaying ? "pause" : "play")" />@L[state.PreviewPlaying ? "Pause" : "Play"]</button></PlaybackControl>
                     </AnimationTimeline>
                 }
                 <EditorToolBrowser Preferences="layout" @bind-Category="layerCategory" Active="@(quickPanel != "")" Disabled="@(working || layerEditSource is not null)">
@@ -84,33 +84,33 @@
                             <button class="button" type="button" data-layer-tool="rotate" aria-expanded="@(quickPanel == "rotate" ? "true" : "false")" @onclick='() => ToggleTool("rotate")' disabled="@(working || layerEditSource is not null || Selected is null)"><Icon Name="rotate" /><span>@L["Rotate"]</span></button>
                             <button class="button" type="button" data-layer-tool="opacity" aria-expanded="@(quickPanel == "opacity" ? "true" : "false")" @onclick='() => ToggleTool("opacity")' disabled="@(working || layerEditSource is not null || Selected is null)"><Icon Name="opacity" /><span>@L["Opacity"]</span></button>
                             <button class="button" type="button" data-layer-tool="tint" aria-expanded="@(quickPanel == "tint" ? "true" : "false")" @onclick='() => ToggleTool("tint")' disabled="@(working || layerEditSource is not null || Selected is null)"><Icon Name="palette" /><span>@L["Color"]</span></button>
-                            <button class="button" type="button" @onclick='() => Action("flip")' disabled="@(working || layerEditSource is not null || Selected is null)" title="Flip selected layer"><Icon Name="flip" /><span>@L["Flip"]</span></button>
+                            <button class="button" type="button" @onclick='() => Action("flip")' disabled="@(working || layerEditSource is not null || Selected is null)" title="@L["Flip selected layer"]"><Icon Name="flip" /><span>@L["Flip"]</span></button>
                             break;
                         case "layers":
-                            <button class="button" type="button" @onclick='() => Action("duplicate")' disabled="@(working || layerEditSource is not null || Selected is null || state.Layers.Count >= 10)" title="Duplicate selected layer"><Icon Name="copy" /><span>@L["Duplicate"]</span></button>
-                            <button class="button" type="button" @onclick='() => Action("front")' disabled="@(working || layerEditSource is not null || Selected is null || state.Selected == state.Layers.Count - 1)" title="Bring selected layer forward"><Icon Name="up" /><span>@L["Forward"]</span></button>
-                            <button class="button" type="button" @onclick='() => Action("back")' disabled="@(working || layerEditSource is not null || Selected is null || state.Selected == 0)" title="Send selected layer backward"><Icon Name="down" /><span>@L["Backward"]</span></button>
-                            <button class="button" type="button" @onclick='() => Action("center")' disabled="@(working || layerEditSource is not null || Selected is null)" title="Center selected layer"><Icon Name="center" /><span>@L["Center"]</span></button>
-                            <button class="button danger" type="button" @onclick='() => Action("remove")' disabled="@(working || layerEditSource is not null || Selected is null)" title="Remove selected layer"><Icon Name="trash" /><span>@L["Remove"]</span></button>
+                            <button class="button" type="button" @onclick='() => Action("duplicate")' disabled="@(working || layerEditSource is not null || Selected is null || state.Layers.Count >= 10)" title="@L["Duplicate selected layer"]"><Icon Name="copy" /><span>@L["Duplicate"]</span></button>
+                            <button class="button" type="button" @onclick='() => Action("front")' disabled="@(working || layerEditSource is not null || Selected is null || state.Selected == state.Layers.Count - 1)" title="@L["Bring selected layer forward"]"><Icon Name="up" /><span>@L["Forward"]</span></button>
+                            <button class="button" type="button" @onclick='() => Action("back")' disabled="@(working || layerEditSource is not null || Selected is null || state.Selected == 0)" title="@L["Send selected layer backward"]"><Icon Name="down" /><span>@L["Backward"]</span></button>
+                            <button class="button" type="button" @onclick='() => Action("center")' disabled="@(working || layerEditSource is not null || Selected is null)" title="@L["Center selected layer"]"><Icon Name="center" /><span>@L["Center"]</span></button>
+                            <button class="button danger" type="button" @onclick='() => Action("remove")' disabled="@(working || layerEditSource is not null || Selected is null)" title="@L["Remove selected layer"]"><Icon Name="trash" /><span>@L["Remove"]</span></button>
                             <button class="button" type="button" @onclick="() => showAddMenu = !showAddMenu" disabled="@working"><Icon Name="plus" /><span>@L["Add layer"]</span></button>
                             break;
                         case "text":
                             <button class="button" type="button" @onclick="AddText" disabled="@(working || state.Layers.Count >= 10)"><Icon Name="text" /><span>@L["Add text"]</span></button>
-                            @if (Selected?.Text is null) { <span class="helper live-tool-hint">Select a text layer to change its font and style.</span> }
+                            @if (Selected?.Text is null) { <span class="helper live-tool-hint">@L["Select a text layer to change its font and style."]</span> }
                             break;
                     }
                 </EditorToolBrowser>
             </div>
             @if (layerEditSource is not null)
             {
-                <section class="layer-source-editor" aria-label="Edit selected layer image">
-                    <h3>Edit layer image</h3>
+                <section class="layer-source-editor" aria-label="@L["Edit selected layer image"]">
+                    <h3>@L["Edit layer image"]</h3>
                     <ImageCustomizer @key="layerEditId" Source="@layerEditSource" InitialTool="@layerInitialTool" OnAddText="AddTextToLayerImage" Animated="@layerEditAnimated" TrimStart="@layerTrimStart" TrimEnd="@(layerEditAnimated ? layerTrimEnd : null)" OnEditsChanged="recipe => layerEditRecipe = recipe" OnChanged="LayerImageChanged" OnBusyChanged="value => editingLayerBusy = value" OnToolActiveChanged="value => layerImageToolActive = value" MaxDimension="1024">
                         <Timeline Context="playback">
                             @if (layerEditAnimated && Selected is { } sourceClip)
                             {
                                 <AnimationTimeline Thumbnails="@sourceClip.GifThumbnails" Duration="@sourceClip.GifDuration" Start="@layerTrimStart" End="@layerTrimEnd" Disabled="@editingLayerBusy" StartChanged="value => layerTrimStart = Math.Min(value, layerTrimEnd - 0.02)" EndChanged="value => layerTrimEnd = Math.Max(value, layerTrimStart + 0.02)">
-                                    <PlaybackControl><button class="button animation-preview-button" type="button" @onclick="playback.Toggle" disabled="@playback.Disabled" aria-label="@(playback.Playing ? "Stop preview" : "Preview animation")"><Icon Name="@(playback.Playing ? "pause" : "play")" />@(playback.Playing ? "Pause" : "Preview")</button></PlaybackControl>
+                                    <PlaybackControl><button class="button animation-preview-button" type="button" @onclick="playback.Toggle" disabled="@playback.Disabled" aria-label="@L[playback.Playing ? "Stop preview" : "Preview animation"]"><Icon Name="@(playback.Playing ? "pause" : "play")" />@L[playback.Playing ? "Pause" : "Preview"]</button></PlaybackControl>
                                 </AnimationTimeline>
                             }
                         </Timeline>
@@ -122,7 +122,7 @@
                 </section>
             }
 
-            <p class="helper">@state.Layers.Count / 10 layers · checkerboard = transparent</p>
+            <p class="helper">@L.Format("{0} / 10 layers · checkerboard = transparent", state.Layers.Count)</p>
         </div>
         <div class="layer-panel">
 
@@ -130,20 +130,20 @@
             {
                 <TextLayerEditor @ref="textEditor" @key="Selected.Id" Value="@text" Fonts="@fonts" Disabled="@working" OnChanged="UpdateText" OnPlace="PlaceText" OnImportFont="ImportFont" />
             }
-            <AppDisclosure Class="editor-details live-layer-stack" Open="@(layerCategory == "layers")"><Header>Layers (@state.Layers.Count) · top is front</Header><ChildContent>
-            @if (state.Layers.Count == 0) { <p class="helper">Add an image to start your sticker.</p> }
-            <div class="layer-stack" role="group" aria-label="Layer stack">
+            <AppDisclosure Class="editor-details live-layer-stack" Open="@(layerCategory == "layers")"><Header>@L.Format("Layers ({0}) · top is front", state.Layers.Count)</Header><ChildContent>
+            @if (state.Layers.Count == 0) { <p class="helper">@L["Add an image to start your sticker."]</p> }
+            <div class="layer-stack" role="group" aria-label="@L["Layer stack"]">
                 @for (var index = state.Layers.Count - 1; index >= 0; index--)
                 {
                     var layerIndex = index;
                     var layer = state.Layers[index];
                     <div @key="layer.Id" class="layer-row" data-layer-row="@layer.Id">
                         <div class="layer-row-main">
-                            <button class="layer-drag-handle" type="button" data-layer-grip aria-label="Reorder @layer.Name" title="Drag to reorder; arrow keys also work" disabled="@(working || layerEditSource is not null)"><Icon Name="grip" /></button>
+                            <button class="layer-drag-handle" type="button" data-layer-grip aria-label="Reorder @layer.Name" title="@L["Drag to reorder; arrow keys also work"]" disabled="@(working || layerEditSource is not null)"><Icon Name="grip" /></button>
                             <button class="layer-stack-item @(state.Selected == index ? "selected-tool" : "")" type="button"
                                     aria-pressed="@(state.Selected == index ? "true" : "false")" @onclick="() => Select(layerIndex)" disabled="@(working || layerEditSource is not null)">
                                 <img class="layer-thumbnail" src="@layer.Thumbnail" alt="" />
-                                <span>@layer.Name</span><small>@(layer.IsGif ? "Animated · " : "")@Math.Round(layer.Opacity * 100)%</small>
+                                <span>@layer.Name</span><small>@L[layer.IsGif ? "Animated · " : ""]@Math.Round(layer.Opacity * 100)%</small>
                             </button>
                         </div>
 
@@ -152,9 +152,9 @@
             </div>
             @if (Selected is { } current)
             {
-                <div class="layer-selected-preview" aria-label="Selected layer preview">
+                <div class="layer-selected-preview" aria-label="@L["Selected layer preview"]">
                     <img src="@current.Thumbnail" alt="Preview of @current.Name" />
-                    <div><small>Selected layer</small><strong>@current.Name</strong><small>Layer @(state.Selected + 1) · @Math.Round(current.Opacity * 100)% opacity</small></div>
+                    <div><small>@L["Selected layer"]</small><strong>@current.Name</strong><small>Layer @(state.Selected + 1) · @Math.Round(current.Opacity * 100)% opacity</small></div>
                 </div>
 
             }
@@ -165,7 +165,7 @@
     </div>
     <div class="dialog-actions layer-footer" hidden="@(quickPanel != "" || layerEditSource is not null)">
         <div class="layer-save-actions">
-            <button class="button" type="button" @onclick="Cancel" disabled="@working" title="@(ReturnToEditor ? "Discard layers and return to the previous editor" : "Cancel")">@(ReturnToEditor ? "Back to editor" : "Cancel")</button>
+            <button class="button" type="button" @onclick="Cancel" disabled="@working" title="@L[ReturnToEditor ? "Discard layers and return to the previous editor" : "Cancel"]">@L[ReturnToEditor ? "Back to editor" : "Cancel"]</button>
             <button class="button primary" type="button" @onclick="Save" disabled="@(working || layerEditSource is not null || state.Layers.Count == 0 || string.IsNullOrWhiteSpace(name))">@L["Save sticker"]</button>
         </div>
     </div>

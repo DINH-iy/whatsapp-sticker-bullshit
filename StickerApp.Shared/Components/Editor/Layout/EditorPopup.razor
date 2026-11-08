@@ -1,10 +1,10 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
-<button class="button @(IconOnly ? "icon-button" : "") editor-popup-trigger" type="button" disabled="@Disabled" @onclick="Open" aria-haspopup="dialog" aria-label="@Title" title="@Title"><Icon Name="@IconName" />@if (!IconOnly) { <span>@Label</span> }</button>
+<button class="button @(IconOnly ? "icon-button" : "") editor-popup-trigger" type="button" disabled="@Disabled" @onclick="Open" aria-haspopup="dialog" aria-label="@Title" title="@Title"><Icon Name="@IconName" />@if (!IconOnly) { <span>@L[Label]</span> }</button>
 @if (show)
 {
     <dialog @ref="dialog" class="folder-dialog editor-popup-dialog" aria-labelledby="@titleId" @oncancel="Close" @oncancel:preventDefault @onkeydown:stopPropagation>
-        <div class="folder-dialog-heading"><h2 id="@titleId">@Title</h2><button class="button icon-button" type="button" @onclick="Close" aria-label="Close @Title"><Icon Name="close" /></button></div>
+        <div class="folder-dialog-heading"><h2 id="@titleId">@L[Title]</h2><button class="button icon-button" type="button" @onclick="Close" aria-label="Close @Title"><Icon Name="close" /></button></div>
         <div class="editor-popup-body">@ChildContent</div>
         <div class="dialog-actions"><button class="button" type="button" @onclick="Close">@L["Back to editor"]</button></div>
     </dialog>

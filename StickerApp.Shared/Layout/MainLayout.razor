@@ -7,13 +7,13 @@
 <div @key="L.Code" class="app-language-root">
 <main class="simple-app">
     <div class="app-navigation" @onkeydown="HandleMenuKey">
-    <a class="app-brand" href="" aria-label="Stik-er-in home">
+    <a class="app-brand" href="" aria-label="@L["Stik-er-in home"]">
         <span class="app-brand-mark" aria-hidden="true"><Icon Name="image" /></span>
-        <span>Stik-er-in</span>
+        <span>@L["Stik-er-in"]</span>
     </a>
     <div class="navigation-tools">
     <button class="button icon-button navigation-toggle" type="button" @onclick="ToggleMenu" @ref="menuToggle"
-            aria-label="@(menuOpen ? "Close navigation menu" : "Open navigation menu")"
+            aria-label="@L[menuOpen ? "Close navigation menu" : "Open navigation menu"]"
             aria-expanded="@(menuOpen ? "true" : "false")" aria-controls="main-navigation">
         <svg class="app-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
             @if (menuOpen)
@@ -29,7 +29,7 @@
     <button class="button icon-button navigation-help" type="button" @onclick="() => showGuide=true" aria-label="@L["How to use Stik-er-in"]" title="@L["How to use Stik-er-in"]"><Icon Name="help" /></button>
     <ProfileButton />
     </div>
-    <nav id="main-navigation" class="app-nav @(menuOpen ? "navigation-open" : "")" aria-label="Main navigation" @onclick="CloseMenu">
+    <nav id="main-navigation" class="app-nav @(menuOpen ? "navigation-open" : "")" aria-label="@L["Main navigation"]" @onclick="CloseMenu">
         <NavLink href="" Match="NavLinkMatch.All" class="@(Navigation.ToBaseRelativePath(Navigation.Uri).StartsWith("packs/") ? "active" : null)">@L["My Packs"]</NavLink>
         @if(FriendsFeature.UnderMaintenance){<div class="navigation-maintenance"><span aria-disabled="true">@L["Friends’ packs"]<small>@L["Under maintenance"]</small></span><EditorPopup Title="@L["Friends’ packs · Under maintenance"]" IconName="info" IconOnly="true"><FriendsGuideContent /></EditorPopup></div>}
         else{<NavLink href="friends">@L["Friends’ packs"]</NavLink>}
@@ -43,7 +43,7 @@
     </nav>
     @if (menuOpen)
     {
-        <button class="navigation-dismiss" type="button" aria-label="Dismiss navigation menu" tabindex="-1" @onclick="CloseMenu"></button>
+        <button class="navigation-dismiss" type="button" aria-label="@L["Dismiss navigation menu"]" tabindex="-1" @onclick="CloseMenu"></button>
     }
     </div>
     <ConnectionStatus />
@@ -59,12 +59,12 @@
 <TapFeedbackHost />
 <DiagnosticsHost />
 <NavigationHost />
-<div id="blazor-error-ui">Error. <a href="">Reload</a></div>
+<div id="blazor-error-ui">@L["Error."] <a href="">@L["Reload"]</a></div>
 
 </div>
 
 }
 else
 {
-    <div class="startup-screen" role="status"><span class="feedback-spinner" aria-hidden="true"></span><strong>Stik-er-in</strong></div>
+    <div class="startup-screen" role="status"><span class="feedback-spinner" aria-hidden="true"></span><strong>@L["Stik-er-in"]</strong></div>
 }

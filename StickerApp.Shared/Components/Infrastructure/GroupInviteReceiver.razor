@@ -2,7 +2,7 @@
 @inject NavigationManager Navigation
 @if (show)
 {
-    <div class="status-info" role="status"><p>A group invitation is ready. Finish or save any current edit before opening it.</p><div class="settings-actions"><button class="button" @onclick="Open">View invitation</button><button class="button" @onclick="() => show=false">Later</button></div></div>
+    <div class="status-info" role="status"><p>@L["A group invitation is ready. Finish or save any current edit before opening it."]</p><div class="settings-actions"><button class="button" @onclick="Open">@L["View invitation"]</button><button class="button" @onclick="() => show=false">@L["Later"]</button></div></div>
 }
 @code {
     private bool show;

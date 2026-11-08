@@ -10,7 +10,7 @@
     @if (IsSpoiler && Store.BlurNsfwPreviews)
     {
         <button class="button icon-button spoiler-eye" type="button" @onclick="Toggle" @onclick:stopPropagation
-                aria-label="@($"{(Hidden ? "Show" : "Hide")} NSFW preview for {Name}")" aria-pressed="@(!Hidden)" title="@(Hidden ? "Show preview" : "Hide preview")"><Icon Name="@(Hidden ? "eye" : "eye-off")" /></button>
+                aria-label="@L[$"{(Hidden ? "Show" : "Hide")} NSFW preview for {Name}"]" aria-pressed="@(!Hidden)" title="@L[Hidden ? "Show preview" : "Hide preview"]"><Icon Name="@(Hidden ? "eye" : "eye-off")" /></button>
     }
 </div>
 

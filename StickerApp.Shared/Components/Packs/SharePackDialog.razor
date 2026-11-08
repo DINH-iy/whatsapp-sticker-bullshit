@@ -6,70 +6,70 @@
 <dialog @ref="dialog" class="folder-dialog" aria-labelledby="share-pack-title"
         @onkeydown="HandleKey" @onkeydown:preventDefault="isWorking">
     <div class="folder-dialog-heading">
-        <h2 id="share-pack-title">Share pack</h2>
-        <button class="button icon-button" type="button" @onclick="Close" disabled="@isWorking" title="@L["Close"]" aria-label="Close sharing">
+        <h2 id="share-pack-title">@L["Share pack"]</h2>
+        <button class="button icon-button" type="button" @onclick="Close" disabled="@isWorking" title="@L["Close"]" aria-label="@L["Close sharing"]">
             <Icon Name="close" />
         </button>
     </div>
-    <p class="helper">@Pack.Name · By @Pack.Publisher · @Pack.StickerIds.Count @(Pack.StickerIds.Count == 1 ? "image" : "images")</p>
-    <label>File format
+    <p class="helper">@Pack.Name · @L.Format("By {0}", Pack.Publisher) · @Pack.StickerIds.Count @L[Pack.StickerIds.Count == 1 ? "image" : "images"]</p>
+    <label>@L["File format"]
         <select @bind="format" disabled="@isWorking">
-            <option value="wastickers">Sticker pack (.wastickers)</option>
-            <option value="zip">Editable backup (.zip)</option>
+            <option value="wastickers">@L["Sticker pack (.wastickers)"]</option>
+            <option value="zip">@L["Editable backup (.zip)"]</option>
         </select>
     </label>
-    <p class="helper">.wastickers contains WebP stickers, a cover, and the pack name. Images are prepared automatically. Editable backup keeps current sticker files, names, tags, spoiler flags and editable layers, including animation sources, text and embedded fonts.</p>
-    <p class="helper">Still images and GIFs can share one .wastickers pack. Still images are exported with two identical frames, so they keep looking still.</p>
+    <p class="helper">@L[".wastickers contains WebP stickers, a cover, and the pack name. Images are prepared automatically. Editable backup keeps current sticker files, names, tags, spoiler flags and editable layers, including animation sources, text and embedded fonts."]</p>
+    <p class="helper">@L["Still images and GIFs can share one .wastickers pack. Still images are exported with two identical frames, so they keep looking still."]</p>
     @if (WaitingForPreparation)
     {
-        <p class="helper" role="status">Waiting for automatic preparation. If a sticker needs attention, open its info button and edit it. You can save an editable backup at any time.</p>
+        <p class="helper" role="status">@L["Waiting for automatic preparation. If a sticker needs attention, open its info button and edit it. You can save an editable backup at any time."]</p>
     }
     <div class="settings-actions">
         <button class="button primary" type="button" @onclick="SaveFile" disabled="@(!isReady || isWorking || WaitingForPreparation)">
             <Icon Name="download" /> @Sharing.FileActionLabel
         </button>
 <OnlineOnly>        <button class="button" type="button" @onclick="PublishLink" disabled="@(!isReady || isWorking || !canPublish || WaitingForPreparation)">
-            <Icon Name="link" /> Create share link
+            <Icon Name="link" /> @L["Create share link"]
         </button></OnlineOnly>
     </div>
-    <p class="helper">Send the pack file through chat, email, or Drive. The recipient imports it with Import pack in the Stickers app.</p>
+    <p class="helper">@L["Send the pack file through chat, email, or Drive. The recipient imports it with Import pack in the Stickers app."]</p>
     @if (canPublish)
     {
-        <p class="helper">Creating a link uploads this pack to your server. Anyone with the link can download it.</p>
+        <p class="helper">@L["Creating a link uploads this pack to your server. Anyone with the link can download it."]</p>
     }
     else if (isReady)
     {
-        <p class="helper">To create links, add your sharing server in <a href="settings?tab=developer#pack-sharing">Settings → Developer → Pack sharing</a>.</p>
+        <p class="helper">@L["To create links, add your sharing server in"] <a href="settings?tab=developer#pack-sharing">@L["Settings → Developer → Pack sharing"]</a>.</p>
     }
 
     @if (isWorking)
     {
-        <p role="status">@progress</p>
+        <p role="status">@L.Message(progress)</p>
     }
     @if (result is not null)
     {
-        <p class="settings-success" role="status">@(result.Url is null ? "Pack file prepared. Check your downloads or share sheet." : "Pack link created.")</p>
+        <p class="settings-success" role="status">@L[result.Url is null ? "Pack file prepared. Check your downloads or share sheet." : "Pack link created."]</p>
         @if (result.Url is not null)
         {
-            <label for="shared-pack-link">Pack link</label>
+            <label for="shared-pack-link">@L["Pack link"]</label>
             <div class="folder-input-row">
                 <input id="shared-pack-link" class="folder-input" value="@result.Url" readonly />
-                <button class="button icon-button" type="button" title="Copy pack link" aria-label="Copy pack link" @onclick="CopyLink">
+                <button class="button icon-button" type="button" title="@L["Copy pack link"]" aria-label="@L["Copy pack link"]" @onclick="CopyLink">
                     <Icon Name="copy" />
                 </button>
             </div>
             @if (copyNotice is not null)
             {
-                <p class="helper" role="status">@copyNotice</p>
+                <p class="helper" role="status">@L.Message(copyNotice)</p>
             }
         }
-        <AppDisclosure Class="pack-fingerprint"><Header>SHA-256 fingerprint</Header><ChildContent>
+        <AppDisclosure Class="pack-fingerprint"><Header>@L["SHA-256 fingerprint"]</Header><ChildContent>
             <code>@result.Sha256</code>
-            <p class="helper">This identifies the complete exported file. It detects changes, but does not verify the sender’s identity.</p>
+            <p class="helper">@L["This identifies the complete exported file. It detects changes, but does not verify the sender’s identity."]</p>
         </ChildContent></AppDisclosure>
     }
     @if (error is not null)
     {
-        <p class="error" role="alert">@error</p>
+        <p class="error" role="alert">@L.Error(error)</p>
     }
 </dialog>

@@ -3,23 +3,23 @@
 @inject IJSRuntime JS
 
 <div class="pack-cover-picker @(MenuStyle ? "pack-cover-menu" : "")">
-    <label class="@(MenuStyle ? "toolbar-menu-option file-button" : "button file-button")" title="Choose or change this pack's cover">
+    <label class="@(MenuStyle ? "toolbar-menu-option file-button" : "button file-button")" title="@L["Choose or change this pack's cover"]">
         <Icon Name="image-plus" />
-        <span>@(MenuStyle ? Pack.CoverImage is null ? "Set cover" : "Change cover" : "Cover")@if (MenuStyle) { <small>Choose the picture shown on this pack.</small> }</span>
+        <span>@L[MenuStyle ? Pack.CoverImage is null ? "Set cover" : "Change cover" : "Cover"]@if (MenuStyle) { <small>@L["Choose the picture shown on this pack."]</small> }</span>
         <input type="file" accept="image/*" @ref="input" @onchange="Upload"
-               disabled="@working" aria-label="@($"Choose cover for {Pack.Name}")" />
+               disabled="@working" aria-label="@L[$"Choose cover for {Pack.Name}"]" />
     </label>
     @if (AllowRemove && Pack.CoverImage is not null)
     {
-        <button class="@(MenuStyle ? "toolbar-menu-option danger" : "button icon-button danger")" type="button" @onclick="Remove" disabled="@working" title="Remove cover" aria-label="Remove cover">
+        <button class="@(MenuStyle ? "toolbar-menu-option danger" : "button icon-button danger")" type="button" @onclick="Remove" disabled="@working" title="@L["Remove cover"]" aria-label="@L["Remove cover"]">
             <Icon Name="close" />
-            @if (MenuStyle) { <span>Remove cover<small>Use the first sticker as the cover.</small></span> }
+            @if (MenuStyle) { <span>@L["Remove cover"]<small>@L["Use the first sticker as the cover."]</small></span> }
         </button>
     }
 </div>
 @if (error is not null)
 {
-    <p class="error" role="alert">@error</p>
+    <p class="error" role="alert">@L.Error(error)</p>
 }
 
 @code {

@@ -3,8 +3,8 @@
 
 <dialog @ref="dialog" class="folder-dialog browse-options-popup" aria-labelledby="browse-options-title" @onkeydown="HandleKey" @onclose="Close" @oncancel="Close">
     <div class="folder-dialog-heading">
-        <h2 id="browse-options-title">@Title</h2>
-        <button class="button icon-button" type="button" @onclick="Close" aria-label="Close options"><Icon Name="close" /></button>
+        <h2 id="browse-options-title">@L[Title]</h2>
+        <button class="button icon-button" type="button" @onclick="Close" aria-label="@L["Close options"]"><Icon Name="close" /></button>
     </div>
     @ChildContent
     <div class="dialog-actions"><button type="button" class="button primary" @onclick="Close">@L["Done"]</button></div>

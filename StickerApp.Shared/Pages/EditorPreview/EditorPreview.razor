@@ -2,11 +2,11 @@
 @using StickerApp.Shared.Components.Editor.DesignPreview
 @implements IAsyncDisposable
 @inject IJSRuntime JS
-<PageTitle>Editor preview · Stik-er-in</PageTitle>
-<header class="page-header demo-page-heading"><div><h1>Editor preview</h1><small class="helper">Interactive layout example · sample artwork</small></div><a class="button" href="settings#editor-layout"><Icon Name="settings" />Layout settings</a></header>
-@if (error is not null) { <p class="error" role="alert">@error</p> }
+<PageTitle>@L["Editor preview · Stik-er-in"]</PageTitle>
+<header class="page-header demo-page-heading"><div><h1>@L["Editor preview"]</h1><small class="helper">@L["Interactive layout example · sample artwork"]</small></div><a class="button" href="settings#editor-layout"><Icon Name="settings" />@L["Layout settings"]</a></header>
+@if (error is not null) { <p class="error" role="alert">@L.Error(error)</p> }
 <EditorDesignPreview Preferences="preferences" />
-<p class="helper demo-preview-note">Try the categories and tools. This is a design preview; it does not edit or save library stickers. Control positions are changed in Settings.</p>
+<p class="helper demo-preview-note">@L["Try the categories and tools. This is a design preview; it does not edit or save library stickers. Control positions are changed in Settings."]</p>
 @code {
     private EditorLayoutPreferences preferences = new();
     private IJSObjectReference? module;

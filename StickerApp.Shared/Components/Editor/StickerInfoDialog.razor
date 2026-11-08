@@ -4,30 +4,30 @@
 
 <dialog @ref="dialog" class="folder-dialog sticker-info-dialog" aria-labelledby="sticker-info-title" @onkeydown="HandleKey">
     <div class="folder-dialog-heading">
-        <h2 id="sticker-info-title">Sticker details</h2>
-        <button class="button icon-button" type="button" @onclick="Close" aria-label="Close sticker details"><Icon Name="close" /></button>
+        <h2 id="sticker-info-title">@L["Sticker details"]</h2>
+        <button class="button icon-button" type="button" @onclick="Close" aria-label="@L["Close sticker details"]"><Icon Name="close" /></button>
     </div>
     <h3>@Image.Name</h3>
-    <p class="@(State?.Error is not null ? "error" : "helper")" role="status">@StatusText</p>
+    <p class="@(State?.Error is not null ? "error" : "helper")" role="status">@L.Message(StatusText)</p>
     @if (State?.Error is { } error)
     {
-        <p class="helper">@error</p>
+        <p class="helper">@L.Error(error)</p>
     }
     <dl class="sticker-detail-list">
-        <dt>Dimensions</dt><dd>@Image.Width × @Image.Height pixels</dd>
-        <dt>File size</dt><dd>@(Math.Ceiling(Image.Bytes / 1024d)) KB</dd>
-        <dt>Format</dt><dd>@Image.MimeType.Replace("image/", "").ToUpperInvariant()</dd>
-        <dt>@L["Appearance"]</dt><dd>@(Image.Animated ? "Animated" : "Still image")</dd>
+        <dt>@L["Dimensions"]</dt><dd>@Image.Width × @Image.Height pixels</dd>
+        <dt>@L["File size"]</dt><dd>@(Math.Ceiling(Image.Bytes / 1024d)) KB</dd>
+        <dt>@L["Format"]</dt><dd>@Image.MimeType.Replace("image/", "").ToUpperInvariant()</dd>
+        <dt>@L["Appearance"]</dt><dd>@L[Image.Animated ? "Animated" : "Still image"]</dd>
         @if (Image.Animated && Image.DurationMs > 0)
         {
-            <dt>Duration</dt><dd>@(Image.DurationMs / 1000d) seconds</dd>
+            <dt>@L["Duration"]</dt><dd>@(Image.DurationMs / 1000d) seconds</dd>
         }
-        <dt>Original</dt><dd>@(Image.OriginalFileName is not null ? "Original file kept" : Image.OriginalDiscarded ? "Not kept — edits use the current sticker" : "Current image is the original")</dd>
+        <dt>@L["Original"]</dt><dd>@L[Image.OriginalFileName is not null ? "Original file kept" : Image.OriginalDiscarded ? "Not kept — edits use the current sticker" : "Current image is the original"]</dd>
     </dl>
-    <p class="helper">Images are fitted into 512 × 512 WebP automatically without cropping or stretching. Still pictures stay visually still when exported in an animated pack.</p>
+    <p class="helper">@L["Images are fitted into 512 × 512 WebP automatically without cropping or stretching. Still pictures stay visually still when exported in an animated pack."]</p>
     @if (Image.Animated && Image.MimeType == "image/webp")
     {
-        <p class="helper">WebP animation previews loop here, including packs whose files play only once. Saved files and exported frames stay unchanged. GIF and animated WebP stickers both support trimming, cutouts, and adjustments in Edit.</p>
+        <p class="helper">@L["WebP animation previews loop here, including packs whose files play only once. Saved files and exported frames stay unchanged. GIF and animated WebP stickers both support trimming, cutouts, and adjustments in Edit."]</p>
     }
     <div class="dialog-actions">
         @if (State?.Error is not null)

@@ -3,7 +3,7 @@
 @inject IJSRuntime JS
 
 <div class="image-customizer live-editor live-tools-@(layout.ToolsPosition) live-controls-@(layout.ControlsPosition) live-size-@(layout.ButtonSize) @(Animated ? "animated-customizer" : "")" aria-busy="@working">
-    <div class="live-history-row" role="group" aria-label="Edit history">
+    <div class="live-history-row" role="group" aria-label="@L["Edit history"]">
         <button class="button icon-button" type="button" @onclick='() => Run("undo")' disabled="@(working || tool != "")" aria-label="@L["Undo"]" title="@L["Undo"]"><Icon Name="undo" /></button>
         <button class="button icon-button" type="button" @onclick='() => Run("redo")' disabled="@(working || tool != "")" aria-label="@L["Redo"]" title="@L["Redo"]"><Icon Name="redo" /></button>
         <EditorViewControls />
@@ -15,24 +15,24 @@
     </div>
     <div class="customizer-preview-dock">
         <div class="customizer-preview-stage @(tool == "adjust" && adjustmentTool == "opacity" ? "opacity-tool-stage" : "")">
-            <div class="editor-viewport"><div class="customizer-canvas-wrap"><canvas @ref="canvas" aria-label="Image editing canvas. Draw with your finger or pointer." /></div></div>
+            <div class="editor-viewport"><div class="customizer-canvas-wrap"><canvas @ref="canvas" aria-label="@L["Image editing canvas. Draw with your finger or pointer."]" /></div></div>
             @if (tool != "")
             {
                 <EditorToolDock Title="@ToolTitle" Disabled="@working" ActionsOnly="@(tool is "crop" or "lasso")" OnApply="ApplyTool" OnCancel="RequestCancelTool">
                     @if (tool == "draw")
                     {
                         <div class="drawing-controls">
-                            <label class="live-brush-size">@L["Size"]<input type="number" inputmode="decimal" aria-label="Drawing brush size" min="0.5" max="256" step="0.5" @bind="drawBrush" @bind:after="UpdateSettings" disabled="@working" /></label>
-                            <label>@L["Tip"]<select aria-label="Drawing pencil type" @bind="brushType" @bind:after="UpdateSettings"><option value="pen">@L["Pen"]</option><option value="pencil">@L["Pencil"]</option><option value="brush">@L["Brush"]</option><option value="marker">@L["Marker"]</option></select></label>
-                            <input type="color" aria-label="Brush color" title="Brush color" @bind="brushColor" @bind:after="UpdateSettings" disabled="@working" />
+                            <label class="live-brush-size">@L["Size"]<input type="number" inputmode="decimal" aria-label="@L["Drawing brush size"]" min="0.5" max="256" step="0.5" @bind="drawBrush" @bind:after="UpdateSettings" disabled="@working" /></label>
+                            <label>@L["Tip"]<select aria-label="@L["Drawing pencil type"]" @bind="brushType" @bind:after="UpdateSettings"><option value="pen">@L["Pen"]</option><option value="pencil">@L["Pencil"]</option><option value="brush">@L["Brush"]</option><option value="marker">@L["Marker"]</option></select></label>
+                            <input type="color" aria-label="@L["Brush color"]" title="@L["Brush color"]" @bind="brushColor" @bind:after="UpdateSettings" disabled="@working" />
                         </div>
                     }
                     else if (tool == "border")
                     {
                         <div class="border-controls">
-                            <label>@L["Width"]<input type="number" aria-label="Border thickness" min="0" max="80" @bind="borderWidth" @bind:event="oninput" @bind:after="UpdateBorder" /></label>
-                            <input type="color" aria-label="Border color" @bind="borderColor" @bind:after="UpdateBorder" />
-                            <label>Round<input type="number" aria-label="Border corner radius" min="0" max="256" @bind="borderRadius" @bind:event="oninput" @bind:after="UpdateBorder" /></label>
+                            <label>@L["Width"]<input type="number" aria-label="@L["Border thickness"]" min="0" max="80" @bind="borderWidth" @bind:event="oninput" @bind:after="UpdateBorder" /></label>
+                            <input type="color" aria-label="@L["Border color"]" @bind="borderColor" @bind:after="UpdateBorder" />
+                            <label>@L["Round"]<input type="number" aria-label="@L["Border corner radius"]" min="0" max="256" @bind="borderRadius" @bind:event="oninput" @bind:after="UpdateBorder" /></label>
                         </div>
                     }
                     else if (tool == "erase")
@@ -41,14 +41,14 @@
                     }
                     else if (tool == "wand")
                     {
-                        <label class="vertical-tool-setting"><input type="number" aria-label="Color tolerance value" min="0" max="150" @bind="tolerance" @bind:event="oninput" @bind:after="UpdateSettings" disabled="@working" /><input aria-label="Color tolerance" type="range" min="0" max="150" @bind="tolerance" @bind:event="oninput" @bind:after="UpdateSettings" disabled="@working" /></label>
+                        <label class="vertical-tool-setting"><input type="number" aria-label="@L["Color tolerance value"]" min="0" max="150" @bind="tolerance" @bind:event="oninput" @bind:after="UpdateSettings" disabled="@working" /><input aria-label="@L["Color tolerance"]" type="range" min="0" max="150" @bind="tolerance" @bind:event="oninput" @bind:after="UpdateSettings" disabled="@working" /></label>
                     }
                     else if (tool == "adjust" && adjustmentTool == "transform")
                     {
                         <div class="resize-handle-options">
                             <output data-image-resize-size hidden>@width × @height</output>
-                            <label>W<input type="number" aria-label="Transform width" data-image-transform-property="imageWidth" min="1" max="512" value="@width" /></label>
-                            <label>H<input type="number" aria-label="Transform height" data-image-transform-property="imageHeight" min="1" max="512" value="@height" /></label>
+                            <label>@L["W"]<input type="number" aria-label="@L["Transform width"]" data-image-transform-property="imageWidth" min="1" max="512" value="@width" /></label>
+                            <label>@L["H"]<input type="number" aria-label="@L["Transform height"]" data-image-transform-property="imageHeight" min="1" max="512" value="@height" /></label>
                             <output data-image-transform-angle>0°</output>
                             <label class="layer-check"><input type="checkbox" data-image-resize-ratio @bind="keepRatio" />@L["Keep proportions"]</label>
                         </div>
@@ -70,7 +70,7 @@
         @if (Timeline is not null) { @Timeline(new PlaybackControlState(() => Run("preview", TrimStart, TrimEnd), previewing, working || adjustmentTool == "transform")) }
         @if (Animated && Timeline is null)
         {
-            <button class="button animation-preview-button" @onclick='() => Run("preview", TrimStart, TrimEnd)' disabled="@(working || adjustmentTool == "transform")"><Icon Name="@(previewing ? "pause" : "play")" />@(previewing ? "Stop preview" : "Preview animation")</button>
+            <button class="button animation-preview-button" @onclick='() => Run("preview", TrimStart, TrimEnd)' disabled="@(working || adjustmentTool == "transform")"><Icon Name="@(previewing ? "pause" : "play")" />@L[previewing ? "Stop preview" : "Preview animation"]</button>
         }
     </div>
     <EditorToolBrowser Preferences="layout" @bind-Category="category" Active="@(tool != "")" Disabled="@working">
@@ -103,7 +103,7 @@
         }
     </EditorToolBrowser>
     <div class="customizer-controls">
-        @if (error is not null) { <p class="error" role="alert">@error</p> }
+        @if (error is not null) { <p class="error" role="alert">@L.Error(error)</p> }
     </div>
 </div>
 

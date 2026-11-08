@@ -1,7 +1,7 @@
 @implements IDisposable
 @inject StickerApp.Shared.Services.ConnectionState Connection
 <div class="online-feature">
-    <fieldset class="online-feature-controls" disabled="@(!Connection.Online)" title="@(!Connection.Online ? "No internet connection" : null)">@ChildContent</fieldset>
+    <fieldset class="online-feature-controls" disabled="@(!Connection.Online)" title="@(!Connection.Online ? L["No internet connection"] : null)">@ChildContent</fieldset>
     @if(!Connection.Online){<small class="offline-reason" role="status">@L["No internet connection"]</small>}
 </div>
 @code {

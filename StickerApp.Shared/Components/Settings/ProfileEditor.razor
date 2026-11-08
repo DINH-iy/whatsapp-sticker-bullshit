@@ -6,14 +6,14 @@
 {
     <dialog @ref="dialog" class="folder-dialog create-pack-dialog" aria-labelledby="profile-setup-title" @oncancel="Skip" @oncancel:preventDefault>
         <h2 id="profile-setup-title">@L["Welcome to Stik-er-in"]</h2>
-        <p class="helper">Make it yours. Your profile is stored locally; no account or password needed.</p>
+        <p class="helper">@L["Make it yours. Your profile is stored locally; no account or password needed."]</p>
         @Fields
     </dialog>
 }
 else
 {
     <section class="settings-card profile-editor-card" aria-labelledby="profile-title">
-        <h2 id="profile-title">@(ShowOverviewLink ? "Your profile" : "Edit profile")</h2>
+        <h2 id="profile-title">@L[ShowOverviewLink ? "Your profile" : "Edit profile"]</h2>
         @Fields
     </section>
 }
@@ -32,30 +32,30 @@ else
     private RenderFragment Fields => @<form @onsubmit="Save" @onsubmit:preventDefault>
         <div class="profile-photo-row">
             <span class="profile-photo-preview">@if (picture is not null) { <ProfilePicture Source="@picture" Alt="Your profile picture" /> } else { <Icon Name="user" /> }</span>
-            <div class="profile-photo-copy"><strong>Profile photo</strong><div class="profile-photo-actions">
-                <label class="button file-button"><Icon Name="image-plus" /><span>@(picture is null ? "Add photo" : "Change photo")</span><input type="file" accept="image/*" @ref="pictureInput" @onchange="ChoosePicture" disabled="@saving" aria-label="Choose profile picture" /></label>
-                @if (picture is not null) { <button class="text-button profile-photo-remove danger" type="button" @onclick="() => picture = null" disabled="@saving" aria-label="Remove profile picture">Remove</button> }
+            <div class="profile-photo-copy"><strong>@L["Profile photo"]</strong><div class="profile-photo-actions">
+                <label class="button file-button"><Icon Name="image-plus" /><span>@L[picture is null ? "Add photo" : "Change photo"]</span><input type="file" accept="image/*" @ref="pictureInput" @onchange="ChoosePicture" disabled="@saving" aria-label="@L["Choose profile picture"]" /></label>
+                @if (picture is not null) { <button class="text-button profile-photo-remove danger" type="button" @onclick="() => picture = null" disabled="@saving" aria-label="@L["Remove profile picture"]">@L["Remove"]</button> }
             </div></div>
         </div>
         <div class="profile-name-fields">
-            <label>Username<input id="profile-username" maxlength="40" @bind="username" disabled="@saving" autocomplete="nickname" placeholder="Your public name" /></label>
-            <label>First name<input id="profile-firstname" maxlength="80" @bind="firstName" disabled="@saving" autocomplete="given-name" /></label>
+            <label>@L["Username"]<input id="profile-username" maxlength="40" @bind="username" disabled="@saving" autocomplete="nickname" placeholder="@L["Your public name"]" /></label>
+            <label>@L["First name"]<input id="profile-firstname" maxlength="80" @bind="firstName" disabled="@saving" autocomplete="given-name" /></label>
         </div>
         @if (Onboarding)
         {
-            <label for="profile-theme" class="settings-field-label">Theme</label>
-            <select id="profile-theme" @bind="theme" disabled="@(!ready || saving)"><option value="system">Use system setting</option><option value="dark">Dark</option><option value="light">Light</option></select>
-            <label class="toggle-row"><input type="checkbox" @bind="blur" disabled="@saving" />Blur NSFW previews</label>
+            <label for="profile-theme" class="settings-field-label">@L["Theme"]</label>
+            <select id="profile-theme" @bind="theme" disabled="@(!ready || saving)"><option value="system">@L["Use system setting"]</option><option value="dark">@L["Dark"]</option><option value="light">@L["Light"]</option></select>
+            <label class="toggle-row"><input type="checkbox" @bind="blur" disabled="@saving" />@L["Blur NSFW previews"]</label>
             <label class="toggle-row"><input type="checkbox" @bind="keepSources" disabled="@saving" />Keep animation originals for editing</label>
             <p class="helper">Everything else, including fonts and vibration, can be changed in Settings.</p>
         }
-        @if (error is not null) { <p class="error" role="alert">@error</p> }
-        @if (notice is not null) { <p role="status">@notice</p> }
+        @if (error is not null) { <p class="error" role="alert">@L.Error(error)</p> }
+        @if (notice is not null) { <p role="status">@L.Message(notice)</p> }
         <div class="dialog-actions profile-form-actions">
-            @if (Onboarding) { <button class="button" type="button" @onclick="Skip" disabled="@saving">Set up later</button> }
-            else { <AppDisclosure Class="profile-info"><Header>About your profile</Header><ChildContent><p class="helper">Stored locally in app storage. Your username is suggested as the publisher for new packs. Your first name and photo are not included in pack exports.</p></ChildContent></AppDisclosure> }
-            @if (!Onboarding && ShowOverviewLink) { <a class="button" href="profile">Profile &amp; stats<Icon Name="right" /></a> }
-            <button class="button primary" type="submit" disabled="@(!ready || saving)">@(saving ? "Saving…" : Onboarding ? "Get started" : "Save profile")</button>
+            @if (Onboarding) { <button class="button" type="button" @onclick="Skip" disabled="@saving">@L["Set up later"]</button> }
+            else { <AppDisclosure Class="profile-info"><Header>@L["About your profile"]</Header><ChildContent><p class="helper">Stored locally in app storage. Your username is suggested as the publisher for new packs. Your first name and photo are not included in pack exports.</p></ChildContent></AppDisclosure> }
+            @if (!Onboarding && ShowOverviewLink) { <a class="button" href="profile">@L["Profile & stats"]<Icon Name="right" /></a> }
+            <button class="button primary" type="submit" disabled="@(!ready || saving)">@L[saving ? "Saving…" : Onboarding ? "Get started" : "Save profile"]</button>
         </div>
     </form>;
 

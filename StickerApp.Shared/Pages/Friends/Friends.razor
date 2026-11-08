@@ -4,68 +4,68 @@
 @inject LibraryStore Store
 @inject AppLog Log
 
-<PageTitle>Friends’ packs · Stik-er-in</PageTitle>
+<PageTitle>@L["Friends’ packs · Stik-er-in"]</PageTitle>
 @if(FriendsFeature.UnderMaintenance){<FriendsMaintenance />}
 else
 {
 
 <header class="page-header"><h1>@L["Friends’ packs"]</h1>
-@if (connected) { <div class="settings-actions"><OnlineOnly><button class="button" @onclick="Load" disabled="@busy"><Icon Name="rotate" />@L["Refresh"]</button><button class="button primary" @onclick="Sync" disabled="@busy"><Icon Name="upload" />Sync my public packs</button></OnlineOnly></div> }
+@if (connected) { <div class="settings-actions"><OnlineOnly><button class="button" @onclick="Load" disabled="@busy"><Icon Name="rotate" />@L["Refresh"]</button><button class="button primary" @onclick="Sync" disabled="@busy"><Icon Name="upload" />@L["Sync my public packs"]</button></OnlineOnly></div> }
 </header>
-@if (!string.IsNullOrEmpty(error)) { <p class="error" role="alert">@error</p> }
-@if (!string.IsNullOrEmpty(notice)) { <p class="settings-success" role="status">@notice</p> }
-@if (busy) { <p role="status"><span class="feedback-spinner"></span> @progress</p> }
-<AppDisclosure Open="@(!connected)"><Header>@(connected ? $"Connected as {username}" : "Join your friends’ group")</Header><ChildContent>
-    <p>Public packs are shared only with invited members of this group. Private packs stay out of the overview. Sync uploads editable layers and embedded fonts too.</p>
+@if (!string.IsNullOrEmpty(error)) { <p class="error" role="alert">@L.Error(error)</p> }
+@if (!string.IsNullOrEmpty(notice)) { <p class="settings-success" role="status">@L.Message(notice)</p> }
+@if (busy) { <p role="status"><span class="feedback-spinner"></span> @L.Message(progress)</p> }
+<AppDisclosure Open="@(!connected)"><Header>@L[connected ? $"Connected as {username}" : "Join your friends’ group"]</Header><ChildContent>
+    <p>@L["Public packs are shared only with invited members of this group. Private packs stay out of the overview. Sync uploads editable layers and embedded fonts too."]</p>
     @if (!connected)
     {
-        <label class="friends-invite-field">Invite link or code<input @ref="inviteInput" type="password" placeholder="Paste your invitation" autocomplete="off" autocapitalize="none" spellcheck="false" disabled="@busy" /></label>
-        <AppDisclosure><Header>Owner setup &amp; server address</Header><ChildContent>
-            <label>Friends server<input @ref="serverInput" type="url" value="@serverUrl" placeholder="https://stickers.dinnyvanhuizen.com" autocomplete="url" disabled="@busy" /></label>
-            <p class="helper">Invite links include the server address. Only the group owner needs the initial server setup code.</p>
+        <label class="friends-invite-field">@L["Invite link or code"]<input @ref="inviteInput" type="password" placeholder="@L["Paste your invitation"]" autocomplete="off" autocapitalize="none" spellcheck="false" disabled="@busy" /></label>
+        <AppDisclosure><Header>@L["Owner setup & server address"]</Header><ChildContent>
+            <label>@L["Friends server"]<input @ref="serverInput" type="url" value="@serverUrl" placeholder="@L["https://stickers.dinnyvanhuizen.com"]" autocomplete="url" disabled="@busy" /></label>
+            <p class="helper">@L["Invite links include the server address. Only the group owner needs the initial server setup code."]</p>
         </ChildContent></AppDisclosure>
-        <OnlineOnly><button class="button" @onclick="PreviewInvite" disabled="@(!ready || busy)">Review invitation</button></OnlineOnly>
+        <OnlineOnly><button class="button" @onclick="PreviewInvite" disabled="@(!ready || busy)">@L["Review invitation"]</button></OnlineOnly>
         @if (joinPreview is not null)
         {
             <div class="invitation-preview"><h3>Join @joinPreview.GroupName?</h3><p class="helper">@joinPreview.ServerUrl · Your username is shared. Your first name, photo and device/storage details are not uploaded.</p>
-            @if (joinPreview.OwnerSetup) { <p class="helper">Owner setup code: keep it private. Use Invite friends for limited-use invitations.</p> }
+            @if (joinPreview.OwnerSetup) { <p class="helper">@L["Owner setup code: keep it private. Use Invite friends for limited-use invitations."]</p> }
             else { <p class="helper">Expires @joinPreview.ExpiresAt?.ToLocalTime().ToString("g") · @joinPreview.RemainingUses joins left</p> }
-            <OnlineOnly><button class="button primary" @onclick="Join" disabled="@busy">Join group</button></OnlineOnly></div>
+            <OnlineOnly><button class="button primary" @onclick="Join" disabled="@busy">@L["Join group"]</button></OnlineOnly></div>
         }
     }
     else
     {
         <p class="helper">@serverUrl · Use Sync my public packs after editing. Making a shared pack private removes it from this group before changing its local visibility. Copies already downloaded and separate legacy sharing links cannot be recalled.</p>
-        <button class="button" @onclick="Disconnect" disabled="@busy">Leave group and remove my shared packs</button>
+        <button class="button" @onclick="Disconnect" disabled="@busy">@L["Leave group and remove my shared packs"]</button>
     }
 </ChildContent></AppDisclosure>
-@if (connected && !busy && cards.Count == 0) { <p class="empty-state">No personal packs shared yet. Start a group collection below, or make a pack public in Pack options, then choose Sync my public packs.</p> }
+@if (connected && !busy && cards.Count == 0) { <p class="empty-state">@L["No personal packs shared yet. Start a group collection below, or make a pack public in Pack options, then choose Sync my public packs."]</p> }
 @if (connected)
 {
-    <AppDisclosure><Header><Icon Name="plus" />Invite friends</Header><ChildContent>
-        <label>Custom name (optional)<input maxlength="24" placeholder="menno-was-er-al-bij" @bind="inviteLabel" @bind:event="oninput" disabled="@busy" /></label>
-        <p class="helper">Make the fun part your own; a random suffix keeps the code hard to guess. Links keep the secret outside the server’s request URL.</p>
-        <div class="invitation-options"><label>Expires after<select @bind="inviteHours" disabled="@busy"><option value="1">1 hour</option><option value="24">1 day</option><option value="168">7 days</option></select></label><label>Allowed joins<select @bind="inviteUses" disabled="@busy">@for(var count=1;count<=10;count++){<option value="@count">@count</option>}</select></label></div>
-        <OnlineOnly><button class="button" @onclick="MakeInvitation" disabled="@busy">Create invite link</button></OnlineOnly>
+    <AppDisclosure><Header><Icon Name="plus" />@L["Invite friends"]</Header><ChildContent>
+        <label>@L["Custom name (optional)"]<input maxlength="24" placeholder="@L["menno-was-er-al-bij"]" @bind="inviteLabel" @bind:event="oninput" disabled="@busy" /></label>
+        <p class="helper">@L["Make the fun part your own; a random suffix keeps the code hard to guess. Links keep the secret outside the server’s request URL."]</p>
+        <div class="invitation-options"><label>@L["Expires after"]<select @bind="inviteHours" disabled="@busy"><option value="1">@L["1 hour"]</option><option value="24">@L["1 day"]</option><option value="168">@L["7 days"]</option></select></label><label>@L["Allowed joins"]<select @bind="inviteUses" disabled="@busy">@for(var count=1;count<=10;count++){<option value="@count">@count</option>}</select></label></div>
+        <OnlineOnly><button class="button" @onclick="MakeInvitation" disabled="@busy">@L["Create invite link"]</button></OnlineOnly>
         <div class="created-invitation" hidden="@(!inviteCreated)">
-            <label>Invitation link<input @ref="inviteLinkOutput" readonly aria-label="Invitation link to share" /></label><label>Invitation code<input @ref="inviteCodeOutput" readonly aria-label="Invitation code to share" /></label>
-            <div class="settings-actions"><button class="button primary" @onclick="ShareInvitation" disabled="@busy">Share invite</button><button class="button" @onclick="CopyInvitation" disabled="@busy"><Icon Name="copy" />Copy link</button></div>
+            <label>@L["Invitation link"]<input @ref="inviteLinkOutput" readonly aria-label="@L["Invitation link to share"]" /></label><label>@L["Invitation code"]<input @ref="inviteCodeOutput" readonly aria-label="@L["Invitation code to share"]" /></label>
+            <div class="settings-actions"><button class="button primary" @onclick="ShareInvitation" disabled="@busy">@L["Share invite"]</button><button class="button" @onclick="CopyInvitation" disabled="@busy"><Icon Name="copy" />@L["Copy link"]</button></div>
         </div>
-        @if(activeInvites.Count>0){<AppDisclosure><Header>Your active invitations</Header><ChildContent><ul class="active-invites">@foreach(var invite in activeInvites){<li><div><strong>@invite.Label</strong><small>@invite.RemainingUses joins left · Expires @invite.ExpiresAt.ToLocalTime().ToString("g")</small></div><button class="button" @onclick="() => RevokeInvite(invite.Id)" disabled="@busy">Revoke</button></li>}</ul></ChildContent></AppDisclosure>}
+        @if(activeInvites.Count>0){<AppDisclosure><Header>@L["Your active invitations"]</Header><ChildContent><ul class="active-invites">@foreach(var invite in activeInvites){<li><div><strong>@invite.Label</strong><small>@invite.RemainingUses joins left · Expires @invite.ExpiresAt.ToLocalTime().ToString("g")</small></div><button class="button" @onclick="() => RevokeInvite(invite.Id)" disabled="@busy">@L["Revoke"]</button></li>}</ul></ChildContent></AppDisclosure>}
     </ChildContent></AppDisclosure>
 }
 @if (connected)
 {
-    <section class="friends-collections" aria-label="Shared group collections">
-        <h2>Group collections</h2>
-        <AppDisclosure><Header><Icon Name="plus" />Create group collection</Header><ChildContent>
-            <p class="helper">Everyone in this invited group can add and edit stickers and react to them.</p>
-            <label>Collection name<input maxlength="128" @bind="collectionName" @bind:event="oninput" disabled="@busy" /></label>
-            <OnlineOnly><button class="button primary" @onclick="CreateCollection" disabled="@(busy || string.IsNullOrWhiteSpace(collectionName))">Create collection</button></OnlineOnly>
+    <section class="friends-collections" aria-label="@L["Shared group collections"]">
+        <h2>@L["Group collections"]</h2>
+        <AppDisclosure><Header><Icon Name="plus" />@L["Create group collection"]</Header><ChildContent>
+            <p class="helper">@L["Everyone in this invited group can add and edit stickers and react to them."]</p>
+            <label>@L["Collection name"]<input maxlength="128" @bind="collectionName" @bind:event="oninput" disabled="@busy" /></label>
+            <OnlineOnly><button class="button primary" @onclick="CreateCollection" disabled="@(busy || string.IsNullOrWhiteSpace(collectionName))">@L["Create collection"]</button></OnlineOnly>
         </ChildContent></AppDisclosure>
-        <div class="friends-pack-grid">@foreach (var collection in groupCollections) { <a class="friends-pack-card collection-link" href="friends/collections/@collection.Id"><Icon Name="layers" /><h3>@collection.Name</h3><p>@collection.Count @(collection.Count == 1 ? "sticker" : "stickers") · Started by @collection.CreatedBy</p><small>Last edited by @collection.EditedBy</small></a> }</div>
+        <div class="friends-pack-grid">@foreach (var collection in groupCollections) { <a class="friends-pack-card collection-link" href="friends/collections/@collection.Id"><Icon Name="layers" /><h3>@collection.Name</h3><p>@collection.Count @L[collection.Count == 1 ? "sticker" : "stickers"] · Started by @collection.CreatedBy</p><small>Last edited by @collection.EditedBy</small></a> }</div>
     </section>
-    <h2>Friends’ public packs</h2>
+    <h2>@L["Friends’ public packs"]</h2>
 }
 <div class="friends-pack-grid">
 @foreach (var pack in cards)
@@ -74,9 +74,9 @@ else
         <div class="friends-pack-preview">
             @if (previews.TryGetValue(Key(pack), out var preview)) { <img src="@preview" alt="Preview of @pack.Name" class="@(pack.Nsfw && Store.BlurNsfwPreviews && !revealed.Contains(Key(pack)) ? "friends-preview-blurred" : "")" /> }
             else { <Icon Name="layers" /> }
-            @if (pack.Nsfw && Store.BlurNsfwPreviews) { <button class="button icon-button" @onclick="() => Reveal(Key(pack))" aria-label="@(revealed.Contains(Key(pack)) ? "Hide NSFW preview" : "Reveal NSFW preview")"><Icon Name="@(revealed.Contains(Key(pack)) ? "eye-off" : "eye")" /></button> }
+            @if (pack.Nsfw && Store.BlurNsfwPreviews) { <button class="button icon-button" @onclick="() => Reveal(Key(pack))" aria-label="@L[revealed.Contains(Key(pack)) ? "Hide NSFW preview" : "Reveal NSFW preview"]"><Icon Name="@(revealed.Contains(Key(pack)) ? "eye-off" : "eye")" /></button> }
         </div>
-        <h2>@pack.Name</h2><p>By @pack.Username · @pack.Count @(pack.Count == 1 ? "sticker" : "stickers")</p><p class="helper">@(pack.Animated ? "Animated" : "Still") · Updated @pack.UpdatedAt.ToLocalTime().ToString("g")</p>
+        <h2>@pack.Name</h2><p>By @pack.Username · @pack.Count @L[pack.Count == 1 ? "sticker" : "stickers"]</p><p class="helper">@L[pack.Animated ? "Animated" : "Still"] · Updated @pack.UpdatedAt.ToLocalTime().ToString("g")</p>
         <OnlineOnly><button class="button" @onclick="() => Import(pack)" disabled="@busy"><Icon Name="folder-import" />@L["Import pack"]</button></OnlineOnly>
     </article>
 }

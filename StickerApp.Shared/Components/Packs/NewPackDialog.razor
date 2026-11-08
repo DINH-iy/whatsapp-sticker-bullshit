@@ -4,44 +4,44 @@
 
 <dialog @ref="dialog" class="folder-dialog create-pack-dialog" aria-labelledby="new-pack-title" @onkeydown="HandleKey" @onkeydown:preventDefault="saving">
     <div class="folder-dialog-heading">
-        <h2 id="new-pack-title">@(Pack is null ? "New pack" : "Edit pack details")</h2>
-        <button class="button icon-button" type="button" aria-label="Close pack details" @onclick="Cancel" disabled="@(saving || preparingCover)"><Icon Name="close" /></button>
+        <h2 id="new-pack-title">@L[Pack is null ? "New pack" : "Edit pack details"]</h2>
+        <button class="button icon-button" type="button" aria-label="@L["Close pack details"]" @onclick="Cancel" disabled="@(saving || preparingCover)"><Icon Name="close" /></button>
     </div>
-    <p class="helper">The publisher appears with your pack in exports and WhatsApp.</p>
+    <p class="helper">@L["The publisher appears with your pack in exports and WhatsApp."]</p>
     <form @onsubmit="CreatePack" @onsubmit:preventDefault>
         <label for="new-pack-name">@L["Pack name"]</label>
-        <input id="new-pack-name" class="new-pack-name" @bind="name" @bind:event="oninput" maxlength="128" required autofocus placeholder="e.g. Everyday reactions" disabled="@(saving || preparingCover)" />
+        <input id="new-pack-name" class="new-pack-name" @bind="name" @bind:event="oninput" maxlength="128" required autofocus placeholder="@L["e.g. Everyday reactions"]" disabled="@(saving || preparingCover)" />
         <label for="new-pack-publisher" class="settings-field-label">@L["Publisher"]</label>
-        <input id="new-pack-publisher" class="new-pack-name" @bind="publisher" @bind:event="oninput" maxlength="128" required placeholder="Your name or brand" disabled="@(saving || preparingCover)" />
+        <input id="new-pack-publisher" class="new-pack-name" @bind="publisher" @bind:event="oninput" maxlength="128" required placeholder="@L["Your name or brand"]" disabled="@(saving || preparingCover)" />
         @if (Pack is not null)
         {
-            <section class="pack-details-cover" aria-label="Pack cover">
-                <label>Pack cover</label>
+            <section class="pack-details-cover" aria-label="@L["Pack cover"]">
+                <label>@L["Pack cover"]</label>
                 <div class="pack-details-cover-controls">
                     @if (coverPreview is not null)
                     {
-                        <img src="@coverPreview" alt="Pack cover preview" />
+                        <img src="@coverPreview" alt="@L["Pack cover preview"]" />
                     }
                     <label class="button file-button">
-                        <Icon Name="image-plus" /><span>@(coverPreview is null ? "Choose cover" : "Change cover")</span>
-                        <input type="file" accept="image/*" @ref="coverInput" @onchange="ChooseCover" disabled="@(saving || preparingCover)" aria-label="Choose pack cover" />
+                        <Icon Name="image-plus" /><span>@L[coverPreview is null ? "Choose cover" : "Change cover"]</span>
+                        <input type="file" accept="image/*" @ref="coverInput" @onchange="ChooseCover" disabled="@(saving || preparingCover)" aria-label="@L["Choose pack cover"]" />
                     </label>
                     @if (coverPreview is not null)
                     {
-                        <button class="button icon-button danger" type="button" @onclick="RemoveCover" disabled="@(saving || preparingCover)" aria-label="Remove cover" title="Remove cover"><Icon Name="trash" /></button>
+                        <button class="button icon-button danger" type="button" @onclick="RemoveCover" disabled="@(saving || preparingCover)" aria-label="@L["Remove cover"]" title="@L["Remove cover"]"><Icon Name="trash" /></button>
                     }
                 </div>
-                <small class="helper">Without a custom cover, the first sticker is used.</small>
+                <small class="helper">@L["Without a custom cover, the first sticker is used."]</small>
             </section>
         }
         <label class="toggle-row editor-spoiler-toggle"><input type="checkbox" @bind="nsfw" disabled="@(saving || preparingCover)" />@L["NSFW spoiler"]</label>
         @if (error is not null)
         {
-            <p class="error" role="alert">@error</p>
+            <p class="error" role="alert">@L.Error(error)</p>
         }
         <div class="dialog-actions">
             <button class="button" type="button" @onclick="Cancel" disabled="@(saving || preparingCover)">@L["Cancel"]</button>
-            <button class="button primary" type="submit" disabled="@(saving || preparingCover || string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(publisher))">@(saving ? "Saving…" : Pack is null ? "Create pack" : "Save details")</button>
+            <button class="button primary" type="submit" disabled="@(saving || preparingCover || string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(publisher))">@L[saving ? "Saving…" : Pack is null ? "Create pack" : "Save details"]</button>
         </div>
     </form>
 </dialog>

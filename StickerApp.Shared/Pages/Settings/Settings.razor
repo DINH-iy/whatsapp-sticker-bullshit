@@ -6,15 +6,15 @@
 @inject AppLog Log
 @inject StickerApp.Shared.Services.IFormFactor FormFactor
 
-<PageTitle>Settings · Stik-er-in</PageTitle>
+<PageTitle>@L["Settings · Stik-er-in"]</PageTitle>
 <CascadingValue Value="expansion">
 <header class="page-header settings-page-header"><h1>@L["Settings"]</h1>
-<div class="settings-section-actions" role="group" aria-label="Settings sections">
+<div class="settings-section-actions" role="group" aria-label="@L["Settings sections"]">
     <button class="button" type="button" @onclick="() => ExpandSections(false)">@L["Collapse all"]</button>
     <button class="button" type="button" @onclick="() => ExpandSections(true)">@L["Expand all"]</button>
 </div>
 </header>
-<div class="settings-tabs" role="tablist" aria-label="Settings categories" @onkeydown="HandleTabKey">
+<div class="settings-tabs" role="tablist" aria-label="@L["Settings categories"]" @onkeydown="HandleTabKey">
     <button type="button" role="tab" id="general-settings-tab" aria-controls="general-settings-panel"
             aria-selected="@(selectedTab == "general" ? "true" : "false")" tabindex="@(selectedTab == "general" ? 0 : -1)"
             @ref="generalTab" @onclick='() => SelectTab("general")'>@L["General"]</button>
@@ -28,55 +28,55 @@
     <SettingsSection Title="@L["Help & FAQ"]" Anchor="faq">
 <section class="settings-card faq" id="faq" aria-labelledby="faq-title">
         <h2 id="faq-title">@L["Help & FAQ"]</h2>
-        <AppDisclosure><Header>How do I import Discord favourite GIFs on my phone?</Header><ChildContent>
-            <p>In Discord, open You → settings cogwheel → Data &amp; Privacy → Request all of my data. Confirm and wait for the email (up to 30 days). Download its ZIP to Files or Downloads, then choose Add stickers → Discord favourites in Stik-er-in. Choose the ZIP, select GIFs and import them. Videos open the video-to-GIF editor first.</p>
-            <p>The ZIP is read locally. Only the favourites list is passed to the app; your messages and account details are not uploaded. A browser development host downloads selected media and saves stickers on the host computer. No Discord password or account token is needed.</p>
-            <a href="discord">Open Discord import and instructions</a>
+        <AppDisclosure><Header>@L["How do I import Discord favourite GIFs on my phone?"]</Header><ChildContent>
+            <p>@L["In Discord, open You → settings cogwheel → Data & Privacy → Request all of my data. Confirm and wait for the email (up to 30 days). Download its ZIP to Files or Downloads, then choose Add stickers → Discord favourites in Stik-er-in. Choose the ZIP, select GIFs and import them. Videos open the video-to-GIF editor first."]</p>
+            <p>@L["The ZIP is read locally. Only the favourites list is passed to the app; your messages and account details are not uploaded. A browser development host downloads selected media and saves stickers on the host computer. No Discord password or account token is needed."]</p>
+            <a href="discord">@L["Open Discord import and instructions"]</a>
         </ChildContent></AppDisclosure>
-        <AppDisclosure><Header>What does a pack need for WhatsApp?</Header><ChildContent>
+        <AppDisclosure><Header>@L["What does a pack need for WhatsApp?"]</Header><ChildContent>
             <ul>
-                <li>A name of 1–128 characters and 3–30 different stickers.</li>
-                <li>Each sticker must be a 512 × 512 pixel WebP image.</li>
-                <li>You can mix still images and GIFs in the same pack. Still pictures keep their appearance in the app. The .wastickers export stores every sticker as animated WebP; still pictures use two identical frames, so they stay visually still.</li>
-                <li>Still stickers: up to 100 KB each. Animated stickers: up to 500 KB each.</li>
-                <li>Animations: at most 10 seconds, with frames lasting at least 8 milliseconds.</li>
+                <li>@L["A name of 1–128 characters and 3–30 different stickers."]</li>
+                <li>@L["Each sticker must be a 512 × 512 pixel WebP image."]</li>
+                <li>@L["You can mix still images and GIFs in the same pack. Still pictures keep their appearance in the app. The .wastickers export stores every sticker as animated WebP; still pictures use two identical frames, so they stay visually still."]</li>
+                <li>@L["Still stickers: up to 100 KB each. Animated stickers: up to 500 KB each."]</li>
+                <li>@L["Animations: at most 10 seconds, with frames lasting at least 8 milliseconds."]</li>
             </ul>
-            <p>The pack view shows only the rules your pack currently breaks. Add to WhatsApp is available in the Android and iPhone apps; the browser preview cannot send packs to WhatsApp.</p>
+            <p>@L["The pack view shows only the rules your pack currently breaks. Add to WhatsApp is available in the Android and iPhone apps; the browser preview cannot send packs to WhatsApp."]</p>
         </ChildContent></AppDisclosure>
-        <AppDisclosure><Header>Can I add GIFs and other images?</Header><ChildContent>
-            <p>Yes. Choose Add stickers → Image from device or GIF from device. The Add sticker tile in a pack offers the same choices, including Layered image to combine pictures. Image and GIF file pickers use separate filters. The Add sticker tile inside a pack imports images straight into that pack. Open My Packs to see all your collections, create one with the New pack tile, or choose its cover. You can store and share these files before they meet WhatsApp's requirements.</p>
-            <p>Images and GIFs are prepared automatically in the background: converted to WebP, fitted into 512 × 512 pixels without stretching, and compressed. Choose whether to keep originals in Library statistics &amp; storage or when saving an edit. Still-image originals are off by default; animation sources are on by default to preserve the full original. Discarding a source saves storage but you cannot recover the previous version without reimporting your own saved copy. Prepared animated WebP stickers can still be trimmed and edited. Open a sticker’s info button to see its details and status. GIFs longer than 10 seconds or too large to compress need a shorter selection in Edit; preparation resumes after you save.</p>
+        <AppDisclosure><Header>@L["Can I add GIFs and other images?"]</Header><ChildContent>
+            <p>@L["Yes. Choose Add stickers → Image from device or GIF from device. The Add sticker tile in a pack offers the same choices, including Layered image to combine pictures. Image and GIF file pickers use separate filters. The Add sticker tile inside a pack imports images straight into that pack. Open My Packs to see all your collections, create one with the New pack tile, or choose its cover. You can store and share these files before they meet WhatsApp's requirements."]</p>
+            <p>@L["Images and GIFs are prepared automatically in the background: converted to WebP, fitted into 512 × 512 pixels without stretching, and compressed. Choose whether to keep originals in Library statistics & storage or when saving an edit. Still-image originals are off by default; animation sources are on by default to preserve the full original. Discarding a source saves storage but you cannot recover the previous version without reimporting your own saved copy. Prepared animated WebP stickers can still be trimmed and edited. Open a sticker’s info button to see its details and status. GIFs longer than 10 seconds or too large to compress need a shorter selection in Edit; preparation resumes after you save."]</p>
         </ChildContent></AppDisclosure>
-        <AppDisclosure><Header>How do I edit an image or trim a GIF?</Header><ChildContent>
-            <p>Tap a sticker’s picture or pencil button. Still images support cropping, rotating, flipping, resizing or stretching, erasing, tracing a cutout, and a magic wand for connected areas of similar color. Checkerboard areas are transparent. Save applies your edits and automatic sticker preparation runs again.</p>
-            <p>GIFs show a loading indicator while their preview and timeline are prepared. Once ready, set the start and end points, preview the trim, and save. Trimming needs the original GIF; an animated WebP without that original cannot be trimmed here.</p>
+        <AppDisclosure><Header>@L["How do I edit an image or trim a GIF?"]</Header><ChildContent>
+            <p>@L["Tap a sticker’s picture or pencil button. Still images support cropping, rotating, flipping, resizing or stretching, erasing, tracing a cutout, and a magic wand for connected areas of similar color. Checkerboard areas are transparent. Save applies your edits and automatic sticker preparation runs again."]</p>
+            <p>@L["GIFs show a loading indicator while their preview and timeline are prepared. Once ready, set the start and end points, preview the trim, and save. Trimming needs the original GIF; an animated WebP without that original cannot be trimmed here."]</p>
         </ChildContent></AppDisclosure>
-        <AppDisclosure><Header>How do I combine images with layers?</Header><ChildContent>
-            <p>While editing any image or GIF, choose Make layered to use the current artwork as a layer, or Add text to open layers with a caption already added. Applied image edits and animation trims carry over. You can also add text while editing an individual layer image. Save sticker keeps the result and its editable layers.</p>
-            <p>In a pack or My Library, choose Add stickers → Layered image. Add images from your device or library, then drag a layer on the canvas. Drag its corner or edge handles to resize, and the round arrow handle to rotate. Turn off Keep proportions to stretch. Position, size, rotation, opacity, and tint controls also provide precise adjustments. The top of the layer list is the front. Each layer has a thumbnail, and selecting one shows a larger preview so similar filenames are easier to distinguish. Quick buttons stay pinned at the bottom. Size/position, Rotate, Opacity, and Color open compact adjustment panels above the toolbar. Rotate includes a dial, the original slider, ±45°/±90° presets, and reset; opacity has a slider and percentage presets. Flip, duplicate, reorder, center, remove, undo, and redo are also directly available.</p>
-            <p>Save creates a sticker and keeps its editable layers locally. Tap that sticker’s pencil button to reopen its layers. Compositions support up to 10 layers on a transparent 512 × 512 canvas; GIFs stay animated: select a GIF layer to trim its clip directly beneath its row. Shorter clips loop alongside longer layers. Drag a layer’s grip to change its order. Animated compositions save as animated WebP for WhatsApp; still-only compositions receive identical frames on WhatsApp export. Exported pack files contain the flattened image, not the editable layers.</p>
+        <AppDisclosure><Header>@L["How do I combine images with layers?"]</Header><ChildContent>
+            <p>@L["While editing any image or GIF, choose Make layered to use the current artwork as a layer, or Add text to open layers with a caption already added. Applied image edits and animation trims carry over. You can also add text while editing an individual layer image. Save sticker keeps the result and its editable layers."]</p>
+            <p>@L["In a pack or My Library, choose Add stickers → Layered image. Add images from your device or library, then drag a layer on the canvas. Drag its corner or edge handles to resize, and the round arrow handle to rotate. Turn off Keep proportions to stretch. Position, size, rotation, opacity, and tint controls also provide precise adjustments. The top of the layer list is the front. Each layer has a thumbnail, and selecting one shows a larger preview so similar filenames are easier to distinguish. Quick buttons stay pinned at the bottom. Size/position, Rotate, Opacity, and Color open compact adjustment panels above the toolbar. Rotate includes a dial, the original slider, ±45°/±90° presets, and reset; opacity has a slider and percentage presets. Flip, duplicate, reorder, center, remove, undo, and redo are also directly available."]</p>
+            <p>@L["Save creates a sticker and keeps its editable layers locally. Tap that sticker’s pencil button to reopen its layers. Compositions support up to 10 layers on a transparent 512 × 512 canvas; GIFs stay animated: select a GIF layer to trim its clip directly beneath its row. Shorter clips loop alongside longer layers. Drag a layer’s grip to change its order. Animated compositions save as animated WebP for WhatsApp; still-only compositions receive identical frames on WhatsApp export. Exported pack files contain the flattened image, not the editable layers."]</p>
         </ChildContent></AppDisclosure>
-        <AppDisclosure><Header>Where do I change vibration and intensity?</Header><ChildContent>
-            <p>Open Settings → General → Touch feedback. In the Android and iPhone apps, switch Vibration on or off and adjust Intensity. Each slider step gives a short tick. At 50%, Android uses twice the previous maximum amplitude. Your choice is remembered on that device. Some Android motors cannot vary strength and use a short system tap instead.</p>
-            <p>Vibration is unavailable in the browser and Home Screen web app, so those controls are disabled there. Changes to native features appear on your phone after installing an updated mobile build.</p>
+        <AppDisclosure><Header>@L["Where do I change vibration and intensity?"]</Header><ChildContent>
+            <p>@L["Open Settings → General → Touch feedback. In the Android and iPhone apps, switch Vibration on or off and adjust Intensity. Each slider step gives a short tick. At 50%, Android uses twice the previous maximum amplitude. Your choice is remembered on that device. Some Android motors cannot vary strength and use a short system tap instead."]</p>
+            <p>@L["Vibration is unavailable in the browser and Home Screen web app, so those controls are disabled there. Changes to native features appear on your phone after installing an updated mobile build."]</p>
         </ChildContent></AppDisclosure>
-        <AppDisclosure><Header>How do I go back or close something?</Header><ChildContent>
-            <p>Tap the logo or app name to open Packs; the space around it is not a home button. Use the menu to switch screens. Android Back or the iPhone app’s left-edge swipe closes an open popup first, then navigates back. Popups also have their own Close or Cancel control. In the browser, use its normal navigation controls.</p>
+        <AppDisclosure><Header>@L["How do I go back or close something?"]</Header><ChildContent>
+            <p>@L["Tap the logo or app name to open Packs; the space around it is not a home button. Use the menu to switch screens. Android Back or the iPhone app’s left-edge swipe closes an open popup first, then navigates back. Popups also have their own Close or Cancel control. In the browser, use its normal navigation controls."]</p>
         </ChildContent></AppDisclosure>
-        <AppDisclosure><Header>Where can I find error logs?</Header><ChildContent>
-            <p>Open Settings → Developer → Diagnostics &amp; error logs. View log shows recent entries, Close log hides them, and Export log (.txt) downloads a report or opens the phone’s share sheet. Logs are saved locally; nothing is uploaded automatically. Review a report before sharing it.</p>
+        <AppDisclosure><Header>@L["Where can I find error logs?"]</Header><ChildContent>
+            <p>@L["Open Settings → Developer → Diagnostics & error logs. View log shows recent entries, Close log hides them, and Export log (.txt) downloads a report or opens the phone’s share sheet. Logs are saved locally; nothing is uploaded automatically. Review a report before sharing it."]</p>
         </ChildContent></AppDisclosure>
-        <AppDisclosure><Header>How do I import, export, or share a pack?</Header><ChildContent>
-            <p>Import pack opens .wastickers files or editable ZIP backups and creates a new pack. Use Pack options → Share or export to export .wastickers for other sticker makers, or an editable ZIP to preserve original GIFs and metadata. Both formats support sharing links after configuring your server. On phones, exporting opens the system share sheet.</p>
-            <p>A pack ZIP includes its images. A fingerprint identifies the file; it does not store or encrypt it. Anyone with a sharing link can download that pack.</p>
+        <AppDisclosure><Header>@L["How do I import, export, or share a pack?"]</Header><ChildContent>
+            <p>@L["Import pack opens .wastickers files or editable ZIP backups and creates a new pack. Use Pack options → Share or export to export .wastickers for other sticker makers, or an editable ZIP to preserve original GIFs and metadata. Both formats support sharing links after configuring your server. On phones, exporting opens the system share sheet."]</p>
+            <p>@L["A pack ZIP includes its images. A fingerprint identifies the file; it does not store or encrypt it. Anyone with a sharing link can download that pack."]</p>
         </ChildContent></AppDisclosure>
-        <AppDisclosure><Header>What works without internet?</Header><ChildContent>
-            <p>In the installed Android and iPhone apps, your saved library, packs, and editable layers are local. You can import files already on the device, edit images, combine layers, trim saved GIFs, prepare stickers, set pack covers, import/export local pack files, change settings, and view/export logs without internet. Cloud-only files must be downloaded first.</p>
-            <p>GIF search, Pinterest and Imgur imports, creating or opening online sharing links, and online country lookup need a connection. A saved GIF can still be edited offline. Sending files through an online messaging service also needs its usual connection.</p>
-            <p>The browser and Home Screen web app are different: they must stay connected to the computer hosting Stik-er-in. A local host on the same Wi-Fi can work without internet, but if that computer stops or the host connection is lost, editing and saving are unavailable. The reconnect notice refers to that host connection; it does not mean native layer editing needs internet.</p>
+        <AppDisclosure><Header>@L["What works without internet?"]</Header><ChildContent>
+            <p>@L["In the installed Android and iPhone apps, your saved library, packs, and editable layers are local. You can import files already on the device, edit images, combine layers, trim saved GIFs, prepare stickers, set pack covers, import/export local pack files, change settings, and view/export logs without internet. Cloud-only files must be downloaded first."]</p>
+            <p>@L["GIF search, Pinterest and Imgur imports, creating or opening online sharing links, and online country lookup need a connection. A saved GIF can still be edited offline. Sending files through an online messaging service also needs its usual connection."]</p>
+            <p>@L["The browser and Home Screen web app are different: they must stay connected to the computer hosting Stik-er-in. A local host on the same Wi-Fi can work without internet, but if that computer stops or the host connection is lost, editing and saving are unavailable. The reconnect notice refers to that host connection; it does not mean native layer editing needs internet."]</p>
         </ChildContent></AppDisclosure>
-        <AppDisclosure><Header>Do my phones sync automatically?</Header><ChildContent>
-            <p>Each installed Android/iPhone app keeps its own library. The browser and Home Screen web app use the library on the computer hosting Stik-er-in and need a connection to it. Use pack files or sharing links to move packs between native apps. Automatic syncing and separate browser libraries for each friend are planned for later.</p>
+        <AppDisclosure><Header>@L["Do my phones sync automatically?"]</Header><ChildContent>
+            <p>@L["Each installed Android/iPhone app keeps its own library. The browser and Home Screen web app use the library on the computer hosting Stik-er-in and need a connection to it. Use pack files or sharing links to move packs between native apps. Automatic syncing and separate browser libraries for each friend are planned for later."]</p>
         </ChildContent></AppDisclosure>
     </section>
 </SettingsSection>
@@ -90,7 +90,7 @@
             <option value="light">@L["Light"]</option>
             <option value="dark">@L["Dark"]</option>
         </select>
-        <p class="helper">Choose a theme, or follow your device. Your choice is saved on this device.</p>
+        <p class="helper">@L["Choose a theme, or follow your device. Your choice is saved on this device."]</p>
         <h3 class="settings-subheading">@L["Color theme"]</h3>
         <div class="color-options" role="group" aria-label="@L["Color theme"]">
             @foreach (var option in ColorOptions)
@@ -102,16 +102,16 @@
                 </button>
             }
         </div>
-        <p class="helper">Your color theme is remembered when you close and reopen the app.</p>
+        <p class="helper">@L["Your color theme is remembered when you close and reopen the app."]</p>
         @if (color == "custom") { <ThemeColorPicker Value="@customColor" ValueChanged="ChangeCustomColor" /> }
         @if (color == "rainbow")
         {
-            <label class="toggle-row"><input type="checkbox" checked="@rainbowMotion" @onchange="ChangeRainbowMotion" disabled="@(!ready)" />Colors follow scrolling</label>
-            <p class="helper">Off: each element gets a fixed color from its position on the page, red at the top through violet at the bottom. On: colors change as controls move through the screen.</p>
+            <label class="toggle-row"><input type="checkbox" checked="@rainbowMotion" @onchange="ChangeRainbowMotion" disabled="@(!ready)" />@L["Colors follow scrolling"]</label>
+            <p class="helper">@L["Off: each element gets a fixed color from its position on the page, red at the top through violet at the bottom. On: colors change as controls move through the screen."]</p>
         }
         @if (themeError is not null)
         {
-            <p class="error" role="alert">@themeError</p>
+            <p class="error" role="alert">@L.Error(themeError)</p>
         }
     </section>
 </SettingsSection>
@@ -127,51 +127,51 @@
 </section>
 <section role="tabpanel" id="developer-settings-panel" aria-labelledby="developer-settings-tab" hidden="@(selectedTab != "developer")" tabindex="0">
 <div class="settings-stack">
-    <SettingsSection Title="Diagnostics &amp; error logs" Anchor="diagnostics"><DiagnosticsSettings /></SettingsSection>
+    <SettingsSection Title="@L["Diagnostics & error logs"]" Anchor="diagnostics"><DiagnosticsSettings /></SettingsSection>
     <SettingsSection Title="@L["GIF search"]" Anchor="gif-search"><GifSearchSettings /></SettingsSection>
     <SettingsSection Title="@L["Pack sharing"]" Anchor="pack-sharing"><PackSharingSettings /></SettingsSection>
-        <SettingsSection Title="Sticker storage" Anchor="storage">
+        <SettingsSection Title="@L["Sticker storage"]" Anchor="storage">
 <section class="settings-card" id="storage" aria-labelledby="storage-title">
-            <h2 id="storage-title">Sticker storage</h2>
-            <p class="helper">Your sticker images, edits, and packs are saved together.</p>
+            <h2 id="storage-title">@L["Sticker storage"]</h2>
+            <p class="helper">@L["Your sticker images, edits, and packs are saved together."]</p>
             <dl class="storage-location">
-                <dt>Current folder</dt>
+                <dt>@L["Current folder"]</dt>
                 <dd>@Store.Root</dd>
             </dl>
             <form @onsubmit="SaveFolder" @onsubmit:preventDefault>
-                <label for="folder">New save folder</label>
+                <label for="folder">@L["New save folder"]</label>
                 <div class="folder-input-row">
                     <input id="folder" class="folder-input" @bind="folder" @bind:event="oninput"
-                           placeholder="Full path to an empty folder" required disabled="@saving" aria-describedby="folder-help" />
-                    <button class="button" type="button" @onclick="() => showFolderPicker = true" disabled="@saving">Browse…</button>
+                           placeholder="@L["Full path to an empty folder"]" required disabled="@saving" aria-describedby="folder-help" />
+                    <button class="button" type="button" @onclick="() => showFolderPicker = true" disabled="@saving">@L["Browse…"]</button>
                 </div>
-                <p id="folder-help" class="helper">Browse for a folder or type its full path. Choose a new or empty folder that the app can write to. Saving copies your library there and uses it for future changes. The old copy stays in place as a backup.</p>
-                <button class="button primary" type="submit" disabled="@(saving || string.IsNullOrWhiteSpace(folder))">@(saving ? "Copying library…" : "Save folder")</button>
+                <p id="folder-help" class="helper">@L["Browse for a folder or type its full path. Choose a new or empty folder that the app can write to. Saving copies your library there and uses it for future changes. The old copy stays in place as a backup."]</p>
+                <button class="button primary" type="submit" disabled="@(saving || string.IsNullOrWhiteSpace(folder))">@L[saving ? "Copying library…" : "Save folder"]</button>
             </form>
             @if (storageError is not null)
             {
-                <p class="error" role="alert">@storageError</p>
+                <p class="error" role="alert">@L.Error(storageError)</p>
             }
             @if (notice is not null)
             {
-                <p class="settings-success" role="status">@notice</p>
+                <p class="settings-success" role="status">@L.Message(notice)</p>
             }
         </section>
 </SettingsSection>
-    <SettingsSection Title="OneDrive &amp; Google Drive" Anchor="cloud">
+    <SettingsSection Title="@L["OneDrive & Google Drive"]" Anchor="cloud">
 <section class="settings-card" id="cloud" aria-labelledby="cloud-title">
-        <h2 id="cloud-title">OneDrive &amp; Google Drive</h2>
+        <h2 id="cloud-title">@L["OneDrive & Google Drive"]</h2>
         @if (FormFactor.GetFormFactor() == "Web")
         {
-            <p>To keep a cloud copy, choose an empty folder inside your locally synced OneDrive or Google Drive folder above.</p>
-            <p class="helper">The path is on the computer running this app, which may differ from the device with this browser. Your installed cloud app handles uploads. Keep the folder available offline, and edit the library on one computer at a time to avoid sync conflicts.</p>
+            <p>@L["To keep a cloud copy, choose an empty folder inside your locally synced OneDrive or Google Drive folder above."]</p>
+            <p class="helper">@L["The path is on the computer running this app, which may differ from the device with this browser. Your installed cloud app handles uploads. Keep the folder available offline, and edit the library on one computer at a time to avoid sync conflicts."]</p>
         }
         else
         {
-            <p>Choose a folder this app has permission to write to.</p>
-            <p class="helper">On phones, the library stays in folders the app can access. Cloud-provider folders cannot be selected by a file path. Connecting directly to OneDrive or Google Drive is not available yet.</p>
+            <p>@L["Choose a folder this app has permission to write to."]</p>
+            <p class="helper">@L["On phones, the library stays in folders the app can access. Cloud-provider folders cannot be selected by a file path. Connecting directly to OneDrive or Google Drive is not available yet."]</p>
         }
-        <p class="helper">This app does not sign in to cloud accounts or monitor sync status.</p>
+        <p class="helper">@L["This app does not sign in to cloud accounts or monitor sync status."]</p>
     </section>
 </SettingsSection>
     <SettingsSection Title="@L["Easter eggs"]"><SurpriseSettings /></SettingsSection>

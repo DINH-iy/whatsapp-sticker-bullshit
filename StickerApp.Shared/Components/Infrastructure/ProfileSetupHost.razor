@@ -9,7 +9,7 @@ else if(showGuide)
 {
     <AppGuideDialog OnClose="CloseGuide" />
 }
-@if(error is not null){<p class="notice" role="status">@error</p>}
+@if(error is not null){<p class="notice" role="status">@L.Error(error)</p>}
 @code {
     private bool showSetup,showGuide,seen;
     private string? error;

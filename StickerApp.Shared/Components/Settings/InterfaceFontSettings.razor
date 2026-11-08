@@ -3,28 +3,28 @@
 
 <section class="settings-card" aria-labelledby="interface-font-title">
     <h2 id="interface-font-title">@L["App font"]</h2>
-    <label>@L["Interface font"]<select aria-label="App interface font" @bind="value.Font" @bind:after="Preview" disabled="@(!ready || saving)">
+    <label>@L["Interface font"]<select aria-label="@L["App interface font"]" @bind="value.Font" @bind:after="Preview" disabled="@(!ready || saving)">
         <option value="system">@L["System default"]</option><option value="sans">@L["Sans serif"]</option><option value="serif">@L["Serif"]</option><option value="mono">@L["Monospace"]</option><option value="meme">@L["Meme · Anton"]</option>
         @if(value.Font.StartsWith("custom-") && !fonts.Any(font => font.Id == value.Font)) { <option value="@value.Font">@L["Saved custom font"]</option> }
         @foreach(var font in fonts){<option value="@font.Id">@font.Name</option>}
     </select></label>
     <div class="interface-font-grid">
-        <label>Text size · @value.Scale%<span class="font-default-slider" style="--default-position:23.076923%"><input aria-label="App text size" type="range" min="85" max="150" step="5" @bind="value.Scale" @bind:event="oninput" @bind:after="Preview" disabled="@(!ready || saving)" /><span class="font-default-track" aria-hidden="true"><span class="font-default-marker" title="Default: 100%"><svg viewBox="0 0 10 8"><path d="M1 6 5 2 9 6" /></svg></span></span></span></label>
-        <label>Line spacing · @value.LineSpacing%<span class="font-default-slider" style="--default-position:16.666667%"><input aria-label="App line spacing" type="range" min="90" max="150" step="5" @bind="value.LineSpacing" @bind:event="oninput" @bind:after="Preview" disabled="@(!ready || saving)" /><span class="font-default-track" aria-hidden="true"><span class="font-default-marker" title="Default: 100%"><svg viewBox="0 0 10 8"><path d="M1 6 5 2 9 6" /></svg></span></span></span></label>
-        <label>Letter spacing · @value.Spacing.ToString("0.##") px<span class="font-default-slider" style="--default-position:20%"><input aria-label="App letter spacing" type="range" min="-0.5" max="2" step="0.1" @bind="value.Spacing" @bind:event="oninput" @bind:after="Preview" disabled="@(!ready || saving)" /><span class="font-default-track" aria-hidden="true"><span class="font-default-marker" title="Default: 0 px"><svg viewBox="0 0 10 8"><path d="M1 6 5 2 9 6" /></svg></span></span></span></label>
-        <label class="toggle-row"><input aria-label="Bold app text" type="checkbox" @bind="value.Bold" @bind:after="Preview" disabled="@(!ready || saving)" />@L["Bold text"]</label>
+        <label>Text size · @value.Scale%<span class="font-default-slider" style="--default-position:23.076923%"><input aria-label="@L["App text size"]" type="range" min="85" max="150" step="5" @bind="value.Scale" @bind:event="oninput" @bind:after="Preview" disabled="@(!ready || saving)" /><span class="font-default-track" aria-hidden="true"><span class="font-default-marker" title="@L["Default: 100%"]"><svg viewBox="0 0 10 8"><path d="M1 6 5 2 9 6" /></svg></span></span></span></label>
+        <label>Line spacing · @value.LineSpacing%<span class="font-default-slider" style="--default-position:16.666667%"><input aria-label="@L["App line spacing"]" type="range" min="90" max="150" step="5" @bind="value.LineSpacing" @bind:event="oninput" @bind:after="Preview" disabled="@(!ready || saving)" /><span class="font-default-track" aria-hidden="true"><span class="font-default-marker" title="@L["Default: 100%"]"><svg viewBox="0 0 10 8"><path d="M1 6 5 2 9 6" /></svg></span></span></span></label>
+        <label>Letter spacing · @value.Spacing.ToString("0.##") px<span class="font-default-slider" style="--default-position:20%"><input aria-label="@L["App letter spacing"]" type="range" min="-0.5" max="2" step="0.1" @bind="value.Spacing" @bind:event="oninput" @bind:after="Preview" disabled="@(!ready || saving)" /><span class="font-default-track" aria-hidden="true"><span class="font-default-marker" title="@L["Default: 0 px"]"><svg viewBox="0 0 10 8"><path d="M1 6 5 2 9 6" /></svg></span></span></span></label>
+        <label class="toggle-row"><input aria-label="@L["Bold app text"]" type="checkbox" @bind="value.Bold" @bind:after="Preview" disabled="@(!ready || saving)" />@L["Bold text"]</label>
     </div>
     <p id="interface-font-preview-label" class="interface-font-preview-label">@L["Preview text"]</p>
     <p @ref="previewElement" class="interface-font-preview" lang="nl" aria-labelledby="interface-font-preview-label">@preview</p>
     <div class="settings-actions interface-font-actions">
         <button class="button primary" type="button" @onclick="Save" disabled="@(!ready || saving)">@L["Apply font settings"]</button>
         <label class="button file-button"><Icon Name="plus" />@L["Upload font"]
-            <InputFile OnChange="Upload" accept=".ttf,.otf,.woff,.woff2" aria-label="Upload app font" disabled="@(!ready || saving)" />
+            <InputFile OnChange="Upload" accept=".ttf,.otf,.woff,.woff2" aria-label="@L["Upload app font"]" disabled="@(!ready || saving)" />
         </label>
         <button class="button" type="button" @onclick="Reset" disabled="@(!ready || saving)">@L["Reset font settings"]</button>
     </div>
-    <p class="helper">Changes appear in the preview first. Press Apply font settings to use them across the app and remember them on this device. Sticker text keeps its own formatting. Uploaded fonts are also available in the sticker editor and counted in storage statistics.</p>
-    @if(error is not null){<p class="error" role="alert">@error</p>}
+    <p class="helper">@L["Changes appear in the preview first. Press Apply font settings to use them across the app and remember them on this device. Sticker text keeps its own formatting. Uploaded fonts are also available in the sticker editor and counted in storage statistics."]</p>
+    @if(error is not null){<p class="error" role="alert">@L.Error(error)</p>}
 </section>
 
 @code {

@@ -5,17 +5,16 @@
     <h2 id="surprise-settings-title">@L["Easter eggs"]</h2>
     <label class="toggle-row">
         <input type="checkbox" checked="@enabled" @onchange="ChangeEnabled" disabled="@(!isReady)" />
-        Location surprises
+        @L["Location surprises"]
     </label>
     <p class="helper">
-        When enabled, your device asks <a href="https://country.is/" target="_blank" rel="noopener noreferrer">country.is</a>
-        which country your public IP belongs to. No GPS permission is needed. A VPN can change the result.
-        The setting is remembered on this device; surprises appear once per session.
+        @L["When enabled, your device asks"] <a href="https://country.is/" target="_blank" rel="noopener noreferrer">@L["country.is"]</a>
+        @L["which country your public IP belongs to. No GPS permission is needed. A VPN can change the result.\n        The setting is remembered on this device; surprises appear once per session."]
     </p>
-    <button class="button" type="button" @onclick="PreviewRomania" disabled="@(!isReady)">Preview Romania surprise</button>
-    <p class="helper">The preview works anywhere without checking your location.</p>
+    <button class="button" type="button" @onclick="PreviewRomania" disabled="@(!isReady)">@L["Preview Romania surprise"]</button>
+    <p class="helper">@L["The preview works anywhere without checking your location."]</p>
     @if (error is not null)
     {
-        <p class="error" role="alert">@error</p>
+        <p class="error" role="alert">@L.Error(error)</p>
     }
 </section>

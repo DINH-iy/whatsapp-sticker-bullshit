@@ -6,51 +6,51 @@
 @inject StickerApp.Shared.Services.IPinterestShareInbox Inbox
 @inject StickerApp.Shared.Services.PinterestShareState Shares
 
-<PageTitle>Import from Pinterest · Stik-er-in</PageTitle>
+<PageTitle>@L["Import from Pinterest · Stik-er-in"]</PageTitle>
 <header class="page-header"><h1>@L["Import from Pinterest"]</h1></header>
 <section class="settings-card pinterest-import" aria-labelledby="pinterest-link-title">
-    <h2 id="pinterest-link-title">Share a board or selection</h2>
-    <HelpDisclosure Summary="How to share a Pinterest selection">
-    <p>Share a public Pinterest board or select several pins and share the selection. Paste the link or shared text below. Boards and selections are limited to 100 pins. Oversized boards are rejected before collecting their media.</p>
-    <p class="helper">Images: up to 10 MB each. Videos: up to 100 MB each, converted to GIF clips of at most 10 seconds. A whole batch can download at most 250 MB. You review each video clip before the batch is saved.</p>
-    <p class="helper">On iPhone, choose Stickers in the share sheet, save the link, then open Stickers to preview it here.</p>
+    <h2 id="pinterest-link-title">@L["Share a board or selection"]</h2>
+    <HelpDisclosure Summary="@L["How to share a Pinterest selection"]">
+    <p>@L["Share a public Pinterest board or select several pins and share the selection. Paste the link or shared text below. Boards and selections are limited to 100 pins. Oversized boards are rejected before collecting their media."]</p>
+    <p class="helper">@L["Images: up to 10 MB each. Videos: up to 100 MB each, converted to GIF clips of at most 10 seconds. A whole batch can download at most 250 MB. You review each video clip before the batch is saved."]</p>
+    <p class="helper">@L["On iPhone, choose Stickers in the share sheet, save the link, then open Stickers to preview it here."]</p>
     </HelpDisclosure>
     <OnlineOnly><form @onsubmit="Load" @onsubmit:preventDefault>
-        <label for="pinterest-link">Pinterest board or selection link</label>
-        <textarea id="pinterest-link" rows="3" maxlength="4096" @bind="text" @bind:event="oninput" readonly="@(pending is not null)" disabled="@busy" placeholder="https://pin.it/…"></textarea>
+        <label for="pinterest-link">@L["Pinterest board or selection link"]</label>
+        <textarea id="pinterest-link" rows="3" maxlength="4096" @bind="text" @bind:event="oninput" readonly="@(pending is not null)" disabled="@busy" placeholder="@L["https://pin.it/…"]"></textarea>
         <div class="dialog-actions">
             <button type="submit" class="button primary" disabled="@(busy || string.IsNullOrWhiteSpace(text))">@L["Preview media"]</button>
             @if (pending is not null)
             {
-                <button type="button" class="button" disabled="@busy" @onclick="DismissShare">Discard saved link</button>
+                <button type="button" class="button" disabled="@busy" @onclick="DismissShare">@L["Discard saved link"]</button>
             }
             else
             {
-                <button type="button" class="button" disabled="@busy" @onclick="ReadSharedLink">Check saved links</button>
+                <button type="button" class="button" disabled="@busy" @onclick="ReadSharedLink">@L["Check saved links"]</button>
             }
         </div>
     </form></OnlineOnly>
 </section>
 @if (error is not null)
 {
-    <p class="notice notice-error" role="alert">@error</p>
+    <p class="notice notice-error" role="alert">@L.Error(error)</p>
 }
 @if (success is not null)
 {
-    <p class="notice notice-success" role="status">@success <a href="@destinationLink">Open destination</a></p>
+    <p class="notice notice-success" role="status">@success <a href="@destinationLink">@L["Open destination"]</a></p>
 }
 @if (busy)
 {
-    <OperationProgressDialog Title="@status" Detail="@ProgressDetail" Progress="@ProgressPercent" ProgressLabel="Pinterest media import progress" Estimate="@TimeEstimate" CanCancel="@(operation?.IsCancellationRequested == false)" OnCancel="Cancel" />
+    <OperationProgressDialog Title="@status" Detail="@ProgressDetail" Progress="@ProgressPercent" ProgressLabel="@L["Pinterest media import progress"]" Estimate="@TimeEstimate" CanCancel="@(operation?.IsCancellationRequested == false)" OnCancel="Cancel" />
 }
 @if (selection is not null)
 {
     <section class="settings-card pinterest-import" aria-labelledby="pinterest-images-title">
-        <h2 id="pinterest-images-title">Choose photos &amp; videos</h2>
-        <p>@selected.Count of @selection.Count selected</p>
+        <h2 id="pinterest-images-title">@L["Choose photos & videos"]</h2>
+        <p>@L.Format("{0} of {1} selected", selected.Count, selection.Count)</p>
         @if (selection.UnavailableCount > 0)
         {
-            <p class="notice" role="note">Pinterest lists @selection.ExpectedCount pins on this board, but returned only @selection.Count for this preview. @selection.UnavailableCount @(selection.UnavailableCount == 1 ? "pin was" : "pins were") not exposed by Pinterest and will not be imported.</p>
+            <p class="notice" role="note">@L.Format("Pinterest lists {0} pins on this board, but returned only {1} for this preview. {2} pins were not exposed by Pinterest and will not be imported.", selection.ExpectedCount, selection.Count, selection.UnavailableCount)</p>
         }
         <div class="dialog-actions">
             <button class="button" type="button" @onclick="SelectAll" disabled="@busy">@L["Select all"]</button>
@@ -61,23 +61,23 @@
             {
                 <div class="pinterest-image-choice" @key="image.PinId">
                 <label class="pinterest-image">
-                    <img src="@image.ThumbnailUrl" alt="@(string.IsNullOrWhiteSpace(image.Title) ? $"Pinterest item {selection.Images.IndexOf(image) + 1}" : image.Title)" loading="lazy" referrerpolicy="no-referrer" />
-                    <span><input type="checkbox" checked="@selected.Contains(image.PinId)" @onchange="() => Toggle(image.PinId)" disabled="@busy" /> @(string.IsNullOrWhiteSpace(image.Title) ? $"{(image.IsVideo ? "Video" : "Image")} {selection.Images.IndexOf(image) + 1}" : image.Title)</span>
-                    @if (image.IsVideo) { <small class="pinterest-media-type"><Icon Name="animation" />Video@(image.DurationMs is > 0 ? $" · {image.DurationMs / 1000d:0.#} s" : "") · trim to GIF</small> }
+                    <img src="@image.ThumbnailUrl" alt="@L[string.IsNullOrWhiteSpace(image.Title) ? $"Pinterest item {selection.Images.IndexOf(image) + 1}" : image.Title]" loading="lazy" referrerpolicy="no-referrer" />
+                    <span><input type="checkbox" checked="@selected.Contains(image.PinId)" @onchange="() => Toggle(image.PinId)" disabled="@busy" /> @L[string.IsNullOrWhiteSpace(image.Title) ? $"{(image.IsVideo ? "Video" : "Image")} {selection.Images.IndexOf(image) + 1}" : image.Title]</span>
+                    @if (image.IsVideo) { <small class="pinterest-media-type"><Icon Name="animation" />@L["Video"]@(image.DurationMs is > 0 ? $" · {image.DurationMs / 1000d:0.#} s" : "") · @L["Trim to GIF"]</small> }
                 </label>
                 @if (Store.AskForOriginalOnImport)
                 {
-                    <label class="toggle-row pinterest-original-choice"><input type="checkbox" @bind="keepOriginals[image.PinId]" disabled="@(busy || !selected.Contains(image.PinId))" /> @(image.IsVideo ? "Keep GIF clip" : "Keep original")</label>
+                    <label class="toggle-row pinterest-original-choice"><input type="checkbox" @bind="keepOriginals[image.PinId]" disabled="@(busy || !selected.Contains(image.PinId))" /> @L[image.IsVideo ? "Keep GIF clip" : "Keep original"]</label>
                 }
                 </div>
             }
         </div>
         <div class="pinterest-destination-row">
             <div class="pinterest-destination-field">
-                <label for="pinterest-destination">Import into</label>
+                <label for="pinterest-destination">@L["Import into"]</label>
                 <select id="pinterest-destination" @bind="destination" disabled="@busy">
                     <option value="">@L["My Library"]</option>
-                    <option value="new">Create new pack…</option>
+                    <option value="new">@L["Create new pack…"]</option>
                     @foreach (var pack in library.Packs)
                     {
                         <option value="@pack.Id">@pack.Name (@pack.StickerIds.Count/30)</option>
@@ -87,20 +87,20 @@
             @if (CreatingPack)
             {
                 <div class="pinterest-destination-field">
-                    <label for="pinterest-pack-name">New pack name</label>
+                    <label for="pinterest-pack-name">@L["New pack name"]</label>
                     <input id="pinterest-pack-name" @bind="newPackName" @bind:event="oninput" maxlength="128" placeholder="@L["Pack name"]" disabled="@busy" />
                     <label for="pinterest-pack-publisher">@L["Publisher"]</label>
-                    <input id="pinterest-pack-publisher" @bind="newPackPublisher" @bind:event="oninput" maxlength="128" placeholder="Your name or brand" disabled="@busy" required />
+                    <input id="pinterest-pack-publisher" @bind="newPackPublisher" @bind:event="oninput" maxlength="128" placeholder="@L["Your name or brand"]" disabled="@busy" required />
                 </div>
             }
-<OnlineOnly>            <button class="button primary" type="button" @onclick="Import" disabled="@(busy || selected.Count == 0 || CapacityError is not null || (CreatingPack && (string.IsNullOrWhiteSpace(newPackName) || string.IsNullOrWhiteSpace(newPackPublisher))))">@(CreatingPack ? $"Create pack & import {selected.Count} items" : $"Import {selected.Count} items")</button></OnlineOnly>
+<OnlineOnly>            <button class="button primary" type="button" @onclick="Import" disabled="@(busy || selected.Count == 0 || CapacityError is not null || (CreatingPack && (string.IsNullOrWhiteSpace(newPackName) || string.IsNullOrWhiteSpace(newPackPublisher))))">@L[CreatingPack ? $"Create pack & import {selected.Count} items" : $"Import {selected.Count} items"]</button></OnlineOnly>
         </div>
         @if (CapacityError is not null)
         {
-            <p class="error" role="alert">@CapacityError</p>
+            <p class="error" role="alert">@L.Error(CapacityError)</p>
         }
-        <p class="helper">Choose Keep original for each selected image, or use your saved Settings defaults when per-file choices are disabled. Discarding originals saves space after preparation succeeds; previous full-size images cannot be recovered without your own copy. GIF and animated WebP stickers can both be trimmed and edited. Editable layer sources are separate.</p>
-        @if (selection.Images.Any(image => image.IsVideo)) { <p class="helper">Keep GIF clip retains the converted animation; downloaded MP4 files are temporary.</p> }
+        <p class="helper">@L["Choose Keep original for each selected image, or use your saved Settings defaults when per-file choices are disabled. Discarding originals saves space after preparation succeeds; previous full-size images cannot be recovered without your own copy. GIF and animated WebP stickers can both be trimmed and edited. Editable layer sources are separate."]</p>
+        @if (selection.Images.Any(image => image.IsVideo)) { <p class="helper">@L["Keep GIF clip retains the converted animation; downloaded MP4 files are temporary."]</p> }
     </section>
 }
 @if (videoInput is not null && videoMedia is not null)

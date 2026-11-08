@@ -5,8 +5,8 @@
 <label>@L["App language"]<select aria-label="@L["App language"]" @bind="choice" disabled="@saving">@foreach(var language in StickerApp.Shared.Services.AppLanguage.Supported){<option value="@language.Code">@language.Name</option>}</select></label>
 <p class="helper">@L["Choose the language used for menus and controls. Your pack names and sticker text stay unchanged."]</p>
 <div class="settings-actions"><button class="button primary" type="button" @onclick="Apply" disabled="@(saving || choice==L.Code)">@L["Apply language"]</button></div>
-<p class="helper">@L["Missing translations fall back to English. The Dutch font-preview jokes stay in Dutch."]</p>
-@if(error is not null){<p class="error" role="alert">@error</p>}
+<p class="helper">@L["Log entries and technical diagnostics always remain in English."]</p>
+@if(error is not null){<p class="error" role="alert">@L.Error(error)</p>}
 </section>
 @code {
     private string choice="en";

@@ -1,31 +1,31 @@
 @implements IDisposable
 
 <section class="text-layer-editor" aria-label="@L["Text formatting"]">
-    <div class="text-scroll-grip" aria-label="Swipe here to scroll text settings"><span aria-hidden="true">⋮⋮</span> Swipe here to scroll</div>
+    <div class="text-scroll-grip" aria-label="@L["Swipe here to scroll text settings"]"><span aria-hidden="true">⋮⋮</span> @L["Swipe here to scroll"]</div>
     <AppDisclosure Open="true"><Header>@L["Caption & placement"]</Header><ChildContent>
-    <label>@L["Caption"]<textarea aria-label="Text content" rows="3" maxlength="1000" @bind="draft.Content" @bind:event="oninput" @bind:after="Changed" placeholder="Type text or paste emoji…"></textarea></label>
-    <div class="text-placement-tools" role="group" aria-label="Text placement">
+    <label>@L["Caption"]<textarea aria-label="@L["Text content"]" rows="3" maxlength="1000" @bind="draft.Content" @bind:event="oninput" @bind:after="Changed" placeholder="@L["Type text or paste emoji…"]"></textarea></label>
+    <div class="text-placement-tools" role="group" aria-label="@L["Text placement"]">
         @foreach (var place in new[] { "top", "center", "bottom" })
         {
-            <button type="button" class="button" @onclick="() => Place(place)" disabled="@Disabled">@place</button>
+            <button type="button" class="button" @onclick="() => Place(place)" disabled="@Disabled">@L[place]</button>
         }
-        <small class="helper">Drag the text on the canvas for free placement.</small>
+        <small class="helper">@L["Drag the text on the canvas for free placement."]</small>
     </div>
     </ChildContent></AppDisclosure>
     <AppDisclosure><Header>@L["Font & formatting"]</Header><ChildContent>
-    <label>@L["Font"]<select aria-label="Text font" @bind="draft.Font" @bind:after="Changed">
+    <label>@L["Font"]<select aria-label="@L["Text font"]" @bind="draft.Font" @bind:after="Changed">
         <option value="meme">@L["Meme · Anton"]</option><option value="sans">@L["Sans serif"]</option><option value="serif">@L["Serif"]</option><option value="mono">@L["Monospace"]</option>
         @if (draft.Font.StartsWith("custom-") && !Fonts.Any(font => font.Id == draft.Font)) { <option value="@draft.Font">@L["Embedded custom font"]</option> }
         @foreach (var font in Fonts) { <option value="@font.Id">@font.Name</option> }
     </select></label>
     <label class="button file-button"><Icon Name="plus" /><span>@L["Upload font"]</span>
-        <InputFile OnChange="OnImportFont" accept=".ttf,.otf,.woff,.woff2" disabled="@Disabled" aria-label="Upload custom font" />
+        <InputFile OnChange="OnImportFont" accept=".ttf,.otf,.woff,.woff2" disabled="@Disabled" aria-label="@L["Upload custom font"]" />
     </label>
     <div class="text-format-grid">
-        <label>@L["Font size"]<input type="number" aria-label="Text font size" min="8" max="256" @bind="draft.FontSize" @bind:after="Changed" /></label>
-        <label>@L["Wrap width"]<input type="number" aria-label="Text wrap width" min="32" max="1000" @bind="draft.MaxWidth" @bind:after="Changed" /></label>
+        <label>@L["Font size"]<input type="number" aria-label="@L["Text font size"]" min="8" max="256" @bind="draft.FontSize" @bind:after="Changed" /></label>
+        <label>@L["Wrap width"]<input type="number" aria-label="@L["Text wrap width"]" min="32" max="1000" @bind="draft.MaxWidth" @bind:after="Changed" /></label>
         <label>@L["Line spacing"]<input type="number" min="0.8" max="3" step="0.05" @bind="draft.LineHeight" @bind:after="Changed" /></label>
-        <label>@L["Alignment"]<select aria-label="Text alignment" @bind="draft.Align" @bind:after="Changed"><option value="left">@L["Left"]</option><option value="center">@L["Center"]</option><option value="right">@L["Right"]</option></select></label>
+        <label>@L["Alignment"]<select aria-label="@L["Text alignment"]" @bind="draft.Align" @bind:after="Changed"><option value="left">@L["Left"]</option><option value="center">@L["Center"]</option><option value="right">@L["Right"]</option></select></label>
     </div>
     <div class="text-style-toggles">
         <label><input type="checkbox" @bind="draft.Bold" @bind:after="Changed" />@L["Bold"]</label>
@@ -41,8 +41,8 @@
             <label><input type="checkbox" @bind="draft.Gradient" @bind:after="Changed" />@L["Gradient"]</label>
             @if (draft.Gradient)
             {
-                <label>@L["Second color"]<input type="color" aria-label="Second text color" @bind="draft.GradientColor" @bind:after="Changed" /></label>
-                <label>@L["Gradient angle"]<input type="range" aria-label="Text gradient angle" min="-180" max="180" @bind="draft.GradientAngle" @bind:event="oninput" @bind:after="Changed" /></label>
+                <label>@L["Second color"]<input type="color" aria-label="@L["Second text color"]" @bind="draft.GradientColor" @bind:after="Changed" /></label>
+                <label>@L["Gradient angle"]<input type="range" aria-label="@L["Text gradient angle"]" min="-180" max="180" @bind="draft.GradientAngle" @bind:event="oninput" @bind:after="Changed" /></label>
             }
         </div>
     </ChildContent></AppDisclosure>
@@ -56,7 +56,7 @@
             <label>@L["Background color"]<input type="color" @bind="draft.BackgroundColor" @bind:after="Changed" /></label>
         </div>
     </ChildContent></AppDisclosure>
-    <p class="helper">Use the canvas handles to resize and rotate. Emoji appearance follows your device.</p>
+    <p class="helper">@L["Use the canvas handles to resize and rotate. Emoji appearance follows your device."]</p>
 </section>
 
 @code {

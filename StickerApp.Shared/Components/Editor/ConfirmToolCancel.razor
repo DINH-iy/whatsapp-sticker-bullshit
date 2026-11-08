@@ -2,11 +2,11 @@
 @implements IAsyncDisposable
 
 <dialog @ref="dialog" class="folder-dialog tool-cancel-dialog" aria-labelledby="tool-cancel-title" aria-describedby="tool-cancel-message" @onkeydown="HandleKey" @onkeydown:stopPropagation>
-    <h2 id="tool-cancel-title">Cancel tool changes?</h2>
-    <p id="tool-cancel-message">Changes made with the current tool will be discarded.</p>
+    <h2 id="tool-cancel-title">@L["Cancel tool changes?"]</h2>
+    <p id="tool-cancel-message">@L["Changes made with the current tool will be discarded."]</p>
     <div class="dialog-actions">
-        <button class="button" type="button" @onclick="OnKeep">Keep editing</button>
-        <button class="button danger" type="button" @onclick="OnDiscard">Discard changes</button>
+        <button class="button" type="button" @onclick="OnKeep">@L["Keep editing"]</button>
+        <button class="button danger" type="button" @onclick="OnDiscard">@L["Discard changes"]</button>
     </div>
 </dialog>
 

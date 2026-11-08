@@ -4,20 +4,20 @@
     <h2 id="tap-feedback-title">@L["Touch feedback"]</h2>
     <label class="tap-feedback-toggle">
         <input type="checkbox" checked="@enabled" @onchange="Toggle" disabled="@(feedback is null)" />
-        Vibration
+        @L["Vibration"]
     </label>
     @if (feedback is null)
     {
-        <p class="helper">Vibration is available in the Android and iPhone apps. These controls are disabled in the browser, including the Home Screen web app.</p>
+        <p class="helper">@L["Vibration is available in the Android and iPhone apps. These controls are disabled in the browser, including the Home Screen web app."]</p>
     }
     else
     {
-        <p class="helper">Feedback for buttons and slider steps. Saved on this device.</p>
+        <p class="helper">@L["Feedback for buttons and slider steps. Saved on this device."]</p>
     }
-    <label for="tap-intensity">Intensity · @intensity%</label>
+    <label for="tap-intensity">@L.Format("Intensity · {0}%", intensity)</label>
     <input id="tap-intensity" class="tap-intensity" type="range" min="1" max="100" step="1"
            value="@intensity" @oninput="PreviewValue" @onchange="SaveIntensity" disabled="@(feedback is null || !enabled)" />
-    <p class="helper">Each slider step gives a short tick. At 50%, Android uses twice the previous maximum strength. Actual strength depends on your device and system settings.</p>
+    <p class="helper">@L["Each slider step gives a short tick. At 50%, Android uses twice the previous maximum strength. Actual strength depends on your device and system settings."]</p>
 </section>
 
 @code {

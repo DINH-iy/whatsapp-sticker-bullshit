@@ -4,21 +4,21 @@
 
 <dialog @ref="dialog" class="folder-dialog" aria-labelledby="add-to-pack-title" @onkeydown="HandleKey" @onkeydown:stopPropagation>
     <div class="folder-dialog-heading">
-        <h2 id="add-to-pack-title">@Title</h2>
-        <button class="button icon-button" type="button" title="@L["Close"]" aria-label="Close pack picker" @onclick="Cancel">
+        <h2 id="add-to-pack-title">@L[Title]</h2>
+        <button class="button icon-button" type="button" title="@L["Close"]" aria-label="@L["Close pack picker"]" @onclick="Cancel">
             <Icon Name="close" />
         </button>
     </div>
-    @if (Description is not null) { <p class="helper">@Description</p> }
-    <p class="helper">@Image.Name · @(Image.Animated ? "Animated image" : "Still image")</p>
+    @if (Description is not null) { <p class="helper">@L[Description]</p> }
+    <p class="helper">@Image.Name · @L[Image.Animated ? "Animated image" : "Still image"]</p>
 
     @if (isLoading)
     {
-        <p role="status">Loading your packs…</p>
+        <p role="status">@L["Loading your packs…"]</p>
     }
     else
     {
-        <div class="quick-pack-list" aria-label="Your packs">
+        <div class="quick-pack-list" aria-label="@L["Your packs"]">
             @foreach (var pack in availablePacks)
             {
                 var alreadyAdded = pack.StickerIds.Contains(Image.Id);
@@ -27,37 +27,37 @@
                         disabled="@(isSaving || alreadyAdded || isFull)">
                     <Icon Name="@(alreadyAdded ? "check" : "folder-plus")" />
                     <span>@pack.Name</span>
-                    <small>@(alreadyAdded ? "Already added" : isFull ? "Full" : $"{pack.StickerIds.Count}/30")</small>
+                    <small>@L[alreadyAdded ? "Already added" : isFull ? "Full" : $"{pack.StickerIds.Count}/30"]</small>
                 </button>
             }
         </div>
         @if (availablePacks.Count == 0)
         {
-            <p class="helper">No packs yet. Create one below.</p>
+            <p class="helper">@L["No packs yet. Create one below."]</p>
         }
 
         <form class="new-folder-form" @onsubmit="CreatePackAndAdd" @onsubmit:preventDefault>
-            <label for="quick-pack-name">Or create a new pack</label>
+            <label for="quick-pack-name">@L["Or create a new pack"]</label>
             <div class="folder-input-row">
                 <input id="quick-pack-name" @bind="newPackName" @bind:event="oninput" maxlength="128"
                        placeholder="@L["Pack name"]" disabled="@isSaving" />
             </div>
             <label for="quick-pack-publisher" class="settings-field-label">@L["Publisher"]</label>
             <input id="quick-pack-publisher" class="folder-input" @bind="newPackPublisher" @bind:event="oninput" maxlength="128"
-                   placeholder="Your name or brand" disabled="@isSaving" required />
+                   placeholder="@L["Your name or brand"]" disabled="@isSaving" required />
             <div class="settings-actions">
-                <button class="button primary" type="submit" disabled="@(isSaving || string.IsNullOrWhiteSpace(newPackName) || string.IsNullOrWhiteSpace(newPackPublisher))">Create &amp; add</button>
+                <button class="button primary" type="submit" disabled="@(isSaving || string.IsNullOrWhiteSpace(newPackName) || string.IsNullOrWhiteSpace(newPackPublisher))">@L["Create & add"]</button>
             </div>
         </form>
     }
 
     @if (error is not null)
     {
-        <p class="error" role="alert">@error</p>
+        <p class="error" role="alert">@L.Error(error)</p>
     }
     @if (isSaving)
     {
-        <p class="helper" role="status">Adding to pack…</p>
+        <p class="helper" role="status">@L["Adding to pack…"]</p>
     }
     <div class="dialog-actions">
         <button class="button" type="button" @onclick="Cancel" disabled="@isSaving">@CancelLabel</button>

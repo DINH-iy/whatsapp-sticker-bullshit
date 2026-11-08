@@ -5,39 +5,39 @@
 
 <dialog @ref="dialog" class="folder-dialog video-import-dialog" aria-labelledby="video-import-title" @onkeydown="HandleKey" @onkeydown:stopPropagation>
     <div class="folder-dialog-heading">
-        <h2 id="video-import-title">@(ClipReview ? $"Trim {ImportSource} video" : "Video to GIF")</h2>
-        <button class="button icon-button" type="button" aria-label="Close video import" @onclick="Close" disabled="@saving"><Icon Name="close" /></button>
+        <h2 id="video-import-title">@L[ClipReview ? $"Trim {ImportSource} video" : "Video to GIF"]</h2>
+        <button class="button icon-button" type="button" aria-label="@L["Close video import"]" @onclick="Close" disabled="@saving"><Icon Name="close" /></button>
     </div>
     <div hidden="@(InitialVideo is not null)">
-    <label class="button file-button"><Icon Name="animation" />Choose video
-        <input @ref="fileInput" type="file" accept="video/*,.mp4,.mov,.webm,.m4v" aria-label="Choose video file" disabled="@converting" />
+    <label class="button file-button"><Icon Name="animation" />@L["Choose video"]
+        <input @ref="fileInput" type="file" accept="video/*,.mp4,.mov,.webm,.m4v" aria-label="@L["Choose video file"]" disabled="@converting" />
     </label>
     </div>
-    @if (ClipReview) { <p class="helper">Choose up to 10 seconds for this video. Cancel stops the whole @ImportSource import; nothing has been saved yet.</p> }
+    @if (ClipReview) { <p class="helper">@L.Format("Choose up to 10 seconds for this video. Cancel stops the whole {0} import; nothing has been saved yet.", ImportSource)</p> }
     <div @ref="editorRoot" class="video-import-editor" aria-busy="@(converting ? "true" : "false")">
-        <video @ref="video" class="video-import-preview" controls="@(!converting)" playsinline muted preload="auto" aria-label="Video clip preview" hidden="@(!ready)" />
-        @if (loading) { <p role="status">Loading video…</p> }
+        <video @ref="video" class="video-import-preview" controls="@(!converting)" playsinline muted preload="auto" aria-label="@L["Video clip preview"]" hidden="@(!ready)" />
+        @if (loading) { <p role="status">@L["Loading video…"]</p> }
         @if (ready)
         {
             <AnimationTimeline Duration="@duration" Start="@start" End="@end" Thumbnails="@thumbnails" StartChanged="ChangeStart" EndChanged="ChangeEnd" Disabled="@converting">
-                <PlaybackControl><button class="button animation-preview-button" type="button" @onclick="Preview" disabled="@converting" aria-label="@(playing ? "Pause clip" : "Preview clip")"><Icon Name="@(playing ? "pause" : "play")" />@(playing ? "Pause" : "Preview")</button></PlaybackControl>
+                <PlaybackControl><button class="button animation-preview-button" type="button" @onclick="Preview" disabled="@converting" aria-label="@L[playing ? "Pause clip" : "Preview clip"]"><Icon Name="@(playing ? "pause" : "play")" />@L[playing ? "Pause" : "Preview"]</button></PlaybackControl>
             </AnimationTimeline>
             <div class="video-import-options">
-                @if (!ClipReview) { <label>GIF name<input @bind="name" maxlength="128" disabled="@converting" /></label> }
-                <label>Frames per second<select @bind="fps" disabled="@converting"><option value="8">8 · smaller file</option><option value="12">12</option><option value="20">20 · smoother</option></select></label>
+                @if (!ClipReview) { <label>@L["GIF name"]<input @bind="name" maxlength="128" disabled="@converting" /></label> }
+                <label>@L["Frames per second"]<select @bind="fps" disabled="@converting"><option value="8">@L["8 · smaller file"]</option><option value="12">12</option><option value="20">@L["20 · smoother"]</option></select></label>
             </div>
-            <HelpDisclosure Summary="Video import help"><p class="helper">Choose all or part of the video, up to 10 seconds. Conversion happens on your device, without sound. Videos up to 100 MB are supported when your device can play their format. The GIF fits within 512 × 512 without enlargement.</p></HelpDisclosure>
+            <HelpDisclosure Summary="@L["Video import help"]"><p class="helper">@L["Choose all or part of the video, up to 10 seconds. Conversion happens on your device, without sound. Videos up to 100 MB are supported when your device can play their format. The GIF fits within 512 × 512 without enlargement."]</p></HelpDisclosure>
         }
-        @if (error is not null) { <p class="notice notice-error" role="alert">@error</p> }
+        @if (error is not null) { <p class="notice notice-error" role="alert">@L.Error(error)</p> }
     </div>
     <div class="dialog-actions">
         <button class="button" type="button" @onclick="Close" disabled="@saving">@L["Cancel"]</button>
-        <button class="button primary" type="button" @onclick="Convert" disabled="@(!ready || converting || string.IsNullOrWhiteSpace(name))"><Icon Name="check" />@(ClipReview ? "Use clip" : "Create GIF")</button>
+        <button class="button primary" type="button" @onclick="Convert" disabled="@(!ready || converting || string.IsNullOrWhiteSpace(name))"><Icon Name="check" />@L[ClipReview ? "Use clip" : "Create GIF"]</button>
     </div>
 </dialog>
 @if (converting)
 {
-    <OperationProgressDialog Title="@(saving && !ClipReview ? "Adding GIF…" : "Creating GIF…")" Progress="@progress" ProgressLabel="GIF conversion progress" CanCancel="@(!saving)" OnCancel="Close" />
+    <OperationProgressDialog Title="@L[saving && !ClipReview ? "Adding GIF…" : "Creating GIF…"]" Progress="@progress" ProgressLabel="@L["GIF conversion progress"]" CanCancel="@(!saving)" OnCancel="Close" />
 }
 
 @code {

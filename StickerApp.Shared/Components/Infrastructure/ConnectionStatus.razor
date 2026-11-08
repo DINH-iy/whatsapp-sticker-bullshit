@@ -2,7 +2,7 @@
 @inject StickerApp.Shared.Services.ConnectionState Connection
 @inject IServiceProvider Services
 @inject IJSRuntime JS
-@if(!Connection.Online){<div class="notice offline-notice" role="alert"><strong>@L["No internet connection"]</strong><span>Saved stickers, editing, device imports and file exports still work in the installed app. GIF search, online imports and publishing download links are unavailable until you reconnect.</span></div>}
+@if(!Connection.Online){<div class="notice offline-notice" role="alert"><strong>@L["No internet connection"]</strong><span>@L["Saved stickers, editing, device imports and file exports still work in the installed app. GIF search, online imports and publishing download links are unavailable until you reconnect."]</span></div>}
 @code {
     private StickerApp.Shared.Services.IInternetStatus? native;
     private IJSObjectReference? module, watcher;

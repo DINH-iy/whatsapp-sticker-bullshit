@@ -6,9 +6,10 @@ namespace StickerApp.Shared.Services;
 public sealed partial class AppLanguage
 {
     private static string Normalize(string text)=>Regex.Replace(text.Trim(),@"\s+"," ");
-    private static readonly Dictionary<string,string> Keys=Resources["en"].Keys.GroupBy(Normalize,StringComparer.Ordinal).ToDictionary(group=>group.Key,group=>group.First(),StringComparer.Ordinal);
+    private static readonly Lazy<Dictionary<string,string>> Keys=new(()=>Resources["en"].Keys.GroupBy(Normalize,StringComparer.Ordinal).ToDictionary(group=>group.Key,group=>group.First(),StringComparer.Ordinal));
+    private static readonly Lazy<Dictionary<string,HashSet<string>>> Values=new(()=>Resources.ToDictionary(pair=>pair.Key,pair=>pair.Value.Values.Select(Normalize).ToHashSet(StringComparer.Ordinal)));
     private sealed record Template(string Key,Regex Pattern,string[] Names);
-    private static readonly Template[] Templates=Resources["en"].Keys.Where(key=>key.Contains('{')).Select(CreateTemplate).OfType<Template>().OrderByDescending(item=>item.Key.Length).ToArray();
+    private static readonly Lazy<Template[]> Templates=new(()=>Resources["en"].Keys.Where(key=>key.Contains('{')).Select(CreateTemplate).OfType<Template>().OrderByDescending(item=>item.Key.Length).ToArray());
     private static Template? CreateTemplate(string key)
     {
         var source=Normalize(key).Replace("${","{");
@@ -23,9 +24,10 @@ public sealed partial class AppLanguage
     {
         if(Resources[Code].TryGetValue(raw,out var direct))return direct;
         var normalized=Normalize(raw);
-        if(Keys.TryGetValue(normalized,out var key)&&Resources[Code].TryGetValue(key,out direct))return direct;
+        if(Values.Value[Code].Contains(normalized))return raw;
+        if(Keys.Value.TryGetValue(normalized,out var key)&&Resources[Code].TryGetValue(key,out direct))return direct;
         if(depth>3||normalized.Length>8192)return null;
-        foreach(var template in Templates)
+        foreach(var template in Templates.Value)
         {
             Match match;try{match=template.Pattern.Match(normalized);}catch(RegexMatchTimeoutException){continue;}
             if(!match.Success||!Resources[Code].TryGetValue(template.Key,out var translated))continue;
@@ -33,12 +35,19 @@ public sealed partial class AppLanguage
             for(var i=0;i<template.Names.Length;i++)
             {
                 var name=template.Names[i];var value=match.Groups[i+1].Value;
-                if(Regex.IsMatch(name,"message|reason|error",RegexOptions.IgnoreCase))value=Known(value,depth+1)??this["Technical details are available in the diagnostic log."];
+                if(Regex.IsMatch(name,"message|reason|error|changes",RegexOptions.IgnoreCase))
+                    value=Known(value,depth+1)??string.Join("; ",value.Split("; ").Select(part=>Known(part,depth+1)??this["Technical details are available in the diagnostic log."]));
+                else if(Regex.IsMatch(name,@"^(kind|unit|type|label|title)$|\.Label$",RegexOptions.IgnoreCase))value=Known(value,depth+1)??value;
                 translated=translated.Replace("{"+name+"}",value,StringComparison.Ordinal);
             }
             return translated;
         }
         return null;
+    }
+    public string Format(string template, params object?[] values)
+    {
+        var translated=this[template];
+        return Regex.Replace(translated,@"\{(\d+)\}",match=>int.TryParse(match.Groups[1].Value,out var index)&&index<values.Length?Convert.ToString(values[index],System.Globalization.CultureInfo.CurrentCulture)??"":match.Value);
     }
     // Translate only presentation. Raw exceptions and log payloads remain English.
     public string Error(string? raw)=>Present(raw,true);

@@ -1,13 +1,13 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 <dialog @ref="dialog" class="folder-dialog tool-cancel-dialog" aria-labelledby="layering-title" @oncancel="Cancel" @oncancel:preventDefault @onkeydown:stopPropagation>
-    <h2 id="layering-title">@(AddingShape ? "Add shapes with layers?" : "Add text with layers?")</h2>
-    <p>This creates a layered sticker so @(AddingShape ? "shapes" : "the text") can be edited separately. Use Back to editor to discard the layer attempt and return to your current image or GIF edits.</p>
-    <label class="toggle-row"><input type="checkbox" @bind="skipWarning" />Don’t show this warning again</label>
-    @if(error is not null){<p class="error" role="alert">@error</p>}
+    <h2 id="layering-title">@L[AddingShape ? "Add shapes with layers?" : "Add text with layers?"]</h2>
+    <p>@L[AddingShape ? "This creates a layered sticker so shapes can be edited separately. Use Back to editor to discard the layer attempt and return to your current image or GIF edits." : "This creates a layered sticker so the text can be edited separately. Use Back to editor to discard the layer attempt and return to your current image or GIF edits."]</p>
+    <label class="toggle-row"><input type="checkbox" @bind="skipWarning" />@L["Don’t show this warning again"]</label>
+    @if(error is not null){<p class="error" role="alert">@L.Error(error)</p>}
     <div class="dialog-actions">
         <button class="button" type="button" @onclick="OnCancel">@L["Cancel"]</button>
-        <button class="button primary" type="button" @onclick="Continue">Continue to layers</button>
+        <button class="button primary" type="button" @onclick="Continue">@L["Continue to layers"]</button>
     </div>
 </dialog>
 @code {
