@@ -1,0 +1,9 @@
+<section class="editor-tool-section" aria-label="@Title">
+    <h3 class="editor-tool-section-title">@Title</h3>
+    <div class="customizer-tools @(LayerTools ? "layer-quick-tools" : "")" role="group" aria-label="@Title">@ChildContent</div>
+</section>
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter] public bool LayerTools { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

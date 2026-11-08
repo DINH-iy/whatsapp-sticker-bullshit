@@ -25,15 +25,15 @@ public sealed class NativeTapFeedback(AppLog log) : ITapFeedback
         var settings = Settings;
         if (!settings.Enabled || unavailable) return;
         var now = Environment.TickCount64;
-        if (now - lastTap < 150) return;
+        if (now - lastTap < 20) return;
         lastTap = now;
         try
         {
 #if IOS
-            // Light impact, deliberately bounded below full device intensity.
-            using var generator = new UIKit.UIImpactFeedbackGenerator(UIKit.UIImpactFeedbackStyle.Light);
+            // Fifty percent is twice the former maximum; devices cap physical intensity.
+            using var generator = new UIKit.UIImpactFeedbackGenerator(UIKit.UIImpactFeedbackStyle.Heavy);
             generator.Prepare();
-            generator.ImpactOccurred((System.Runtime.InteropServices.NFloat)(0.08 + settings.Intensity / 100.0 * 0.32));
+            generator.ImpactOccurred((System.Runtime.InteropServices.NFloat)(Math.Min(1.0, settings.Intensity / 50.0 * 0.8)));
 #elif ANDROID
             var context = Android.App.Application.Context;
             if (Android.Provider.Settings.System.GetInt(context.ContentResolver,
@@ -42,8 +42,8 @@ public sealed class NativeTapFeedback(AppLog log) : ITapFeedback
             if (vibrator?.HasVibrator != true) return;
             if (OperatingSystem.IsAndroidVersionAtLeast(26) && vibrator.HasAmplitudeControl)
             {
-                // A single 8 ms pulse at 12–70/255 amplitude, never a long buzz.
-                using var effect = Android.OS.VibrationEffect.CreateOneShot(8, 12 + settings.Intensity * 58 / 100);
+                // At 50% use 140/255 (twice the former 70/255 maximum).
+                using var effect = Android.OS.VibrationEffect.CreateOneShot(16, Math.Min(255, settings.Intensity * 280 / 100));
                 vibrator.Vibrate(effect);
             }
             else

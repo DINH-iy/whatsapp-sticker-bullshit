@@ -11,6 +11,16 @@ export function watch(reference) {
         lastTap = now;
         reference.invokeMethodAsync('Tap').catch(() => {});
     };
+    const values=new WeakMap();
+    const onInput=event=>{
+        const control=event.target;
+        if(!event.isTrusted || !(control instanceof HTMLInputElement) || control.type!=='range' ||
+            control.disabled || control.closest('[data-tap-feedback="off"]'))return;
+        if(values.get(control)===control.value)return;
+        values.set(control,control.value);
+        reference.invokeMethodAsync('Tap').catch(()=>{});
+    };
+    document.addEventListener('input',onInput,true);
     document.addEventListener('click', onClick, true);
-    return { dispose() { document.removeEventListener('click', onClick, true); } };
+    return { dispose() { document.removeEventListener('click', onClick, true); document.removeEventListener('input',onInput,true); } };
 }

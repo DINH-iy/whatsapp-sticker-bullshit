@@ -1,16 +1,18 @@
-import { applyColorEffect } from './color-effect.js';
+import { editorView, cutoutLoupe } from '../shared/editor-view.js';
+import { applyStickerBorder } from '../effects/sticker-border.js';
+import { applyColorEffect } from '../effects/color-effect.js';
 import { createTransformHandles } from './image-transform.js';
 import { createResizeHandles } from './image-resize.js';
-import { previewControls } from './animation-preview.js';
-import { openAnimation } from './animation-reader.js';
-import { createRasterRenderer, eraseConnected } from './raster-edits.js';
+import { previewControls } from '../animation/animation-preview.js';
+import { openAnimation } from '../animation/animation-reader.js';
+import { createRasterRenderer, eraseConnected } from '../effects/raster-edits.js';
 // Pointer gestures stay in the WebView so drawing remains responsive offline.
 export function create(canvas, dotnet) {
     const context = canvas.getContext('2d', { willReadFrequently: true });
     let tool = 'crop', points = [], start, snapshot, history = [], redo = [], original, busy = false, disposed = false;
     let adjustmentBase = null, adjustment = { rotation: 0, opacity: 1, tint: null, hue: 0, colorStrength: 1 }, editingControl = null, maxSize = 4096;
     let toolCheckpoint = null, pendingControl = null;
-    let operations = [], initialWidth = 0, initialHeight = 0, cutoutMask = null, animationReader = null, playback = null;
+    let operations = [], initialWidth = 0, initialHeight = 0, cutoutMask = null, paintLayer = null, animationReader = null, playback = null;
     const adjustmentEdit = () => ({ type: 'adjust', ...adjustment, maxSize });
     const hasAdjustment = () => adjustmentBase && (adjustment.rotation !== 0 || adjustment.opacity !== 1 || adjustment.tint !== null || adjustment.hue !== 0 && adjustment.colorStrength > 0);
     const recipe = () => ({ width: initialWidth, height: initialHeight, edits: [...operations, ...(hasAdjustment() ? [adjustmentEdit()] : [])] });
@@ -23,6 +25,7 @@ export function create(canvas, dotnet) {
     };
     let previewRate = 1, previewTime = 0, seekVersion = 0;
     const root = canvas.closest('.image-customizer');
+    const view = editorView(canvas,root), loupe=cutoutLoupe(canvas,root);
     const syncPreview = () => {
         if (!canvas.parentElement.classList.contains('customizer-canvas-wrap')) return;
         canvas.style.width = `${canvas.width / 512 * 100}%`;
@@ -44,7 +47,7 @@ export function create(canvas, dotnet) {
         adjustmentBase = null; adjustment = { rotation: 0, opacity: 1, tint: null, hue: 0, colorStrength: 1 }; editingControl = null;
         return publishAdjustments();
     };
-    let tolerance = 36, brush = 40;
+    let tolerance = 36, brush = 40, brushColor = "#ff4d6d";
     const notify = () => disposed ? Promise.resolve() : dotnet.invokeMethodAsync('ImageChanged', canvas.toDataURL('image/png'), canvas.width, canvas.height, recipe());
     const remember = () => { history.push(state()); redo = []; if (history.length > 8) history.shift(); };
     const load = async (source, limit = 0) => {
@@ -82,33 +85,44 @@ export function create(canvas, dotnet) {
             target.beginPath(); target.moveTo(from.x, from.y); target.lineTo(to.x + .01, to.y + .01); target.stroke(); target.restore();
         }
     };
+    const paint = (from,to) => {
+        for(const target of [context,paintLayer.getContext('2d')]) {
+            target.save();target.globalCompositeOperation='source-over';target.strokeStyle=brushColor;
+            target.lineWidth=brush*canvas.width/canvas.clientWidth;target.lineCap='round';target.lineJoin='round';
+            target.beginPath();target.moveTo(from.x,from.y);target.lineTo(to.x+.01,to.y+.01);target.stroke();target.restore();
+        }
+    };
     const wand = point => {
         const edit = eraseConnected(context, point, tolerance);
         if (edit) operations.push(edit);
     };
     const down = event => {
-        if (disposed || busy || start || !tool || tool === 'adjust' || tool === 'resize') return;
+        if (disposed || busy || start || !tool || tool === 'adjust' || tool === 'resize' || tool === 'border') return;
         stopPreview(); event.preventDefault(); clearSelection(); canvas.setPointerCapture(event.pointerId);
-        start = position(event);
-        if (tool === 'erase' || tool === 'wand') remember();
+        start = position(event); loupe.show(event,start);
+        if (tool === 'erase' || tool === 'wand' || tool === 'draw') remember();
         if (tool === 'erase') cutoutMask = makeMask();
+        if(tool==='draw'){paintLayer=document.createElement('canvas');paintLayer.width=canvas.width;paintLayer.height=canvas.height;}
         if (tool === 'erase') erase(start, start);
+        else if(tool==='draw')paint(start,start);
         else if (tool === 'wand') wand(start);
         else { snapshot = context.getImageData(0, 0, canvas.width, canvas.height); points = [start]; }
     };
     const move = event => {
         if (!start || busy) return;
-        const p = position(event);
+        const p = position(event); loupe.show(event,p);
         if (tool === 'erase') { erase(start, p); start = p; }
+        else if(tool==='draw'){paint(start,p);start=p;}
         else if (tool === 'crop') { points = [start, { x: p.x, y: start.y }, p, { x: start.x, y: p.y }]; preview(); }
         else if (tool === 'lasso') { points.push(p); preview(); }
     };
     const up = async event => {
         if (!start) return;
-        start = null;
+        start = null; loupe.hide();
         if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
         if (tool === 'erase') { operations.push({ type: 'mask', mask: cutoutMask.toDataURL('image/png') }); cutoutMask = null; }
-        if (tool === 'erase' || tool === 'wand') { busy = true; try { await notify(); } finally { busy = false; } }
+        if(tool==='draw'){operations.push({type:'paint',source:paintLayer.toDataURL('image/png')});paintLayer=null;}
+        if (tool === 'erase' || tool === 'wand' || tool === 'draw') { busy = true; try { await notify(); } finally { busy = false; } }
     };
     const restore = async saved => {
         stopPreview(); await load(saved.source); operations = [...saved.operations];
@@ -141,6 +155,11 @@ export function create(canvas, dotnet) {
         for (const readout of root.querySelectorAll('[data-layer-readout]')) {
             const property = readout.dataset.layerReadout;
             readout.textContent = String(Math.round(adjustment[property] * (['opacity', 'colorStrength'].includes(property) ? 100 : 1)));
+        }
+        for(const field of root.querySelectorAll('[data-adjustment-scope="image"] [data-layer-property]')) {
+            const property=field.dataset.layerProperty;
+            if(field===editingControl || !['rotation','opacity','hue','colorStrength'].includes(property))continue;
+            field.value=String(Math.round(adjustment[property]*(['opacity','colorStrength'].includes(property)?100:1)));
         }
         const dial = root.querySelector('[data-layer-dial]');
         dial?.setAttribute('aria-valuenow', String(adjustment.rotation));
@@ -296,6 +315,13 @@ export function create(canvas, dotnet) {
             context.drawImage(source, 0, 0, width, height);
             operations.push({ type: 'resize', width, height }); await notify();
         },
+        async border(thickness,color,radius) {
+            if(!toolCheckpoint)return;
+            if(!operations.some(edit=>edit.type==='border') || operations.length===toolCheckpoint.image.operations.length)remember();
+            await load(toolCheckpoint.image.source);
+            const edit={type:'border',thickness:Math.max(0,Math.min(80,thickness)),color,radius:Math.max(0,Math.min(256,radius))};
+            applyStickerBorder(context,edit);operations=[...toolCheckpoint.image.operations,edit];await notify();
+        },
         async beginTool(value) {
             stopPreview(); clearSelection(); ++seekVersion;
             if (resizer.active) await controller.resizeAdjustment();
@@ -320,7 +346,7 @@ export function create(canvas, dotnet) {
             tool = '';
         },
         async setTool(value) { stopPreview(); clearSelection(); await commitAdjustments(); tool = value; },
-        settings(size, threshold) { brush = size; tolerance = threshold; },
+        settings(size, threshold, color) { brush = Math.max(2,Math.min(256,Number(size)||40)); tolerance = threshold; if(/^#[0-9a-f]{6}$/i.test(color??''))brushColor=color; },
         async applySelection() {
             if (!snapshot || points.length < 3) throw new Error('Draw a selection on the image first.');
             const minX = Math.floor(Math.min(...points.map(p => p.x))), minY = Math.floor(Math.min(...points.map(p => p.y)));
@@ -359,7 +385,7 @@ export function create(canvas, dotnet) {
         async redo() { resizer.end(); stopPreview(); clearSelection(); if (redo.length) { history.push(state()); await restore(redo.pop()); } },
         async reset() { resizer.end(); stopPreview(); clearSelection(); remember(); await load(original); adjustmentBase = null; operations = []; await commitAdjustments(); await notify(); },
         dispose() {
-            disposed = true; ++seekVersion; legacyResizer.dispose(); transformer.dispose(); canvasObserver.disconnect(); controls.dispose(); stopPreview(); animationReader?.dispose?.(); animationReader = null;
+            disposed = true; view.dispose(); loupe.dispose(); ++seekVersion; legacyResizer.dispose(); transformer.dispose(); canvasObserver.disconnect(); controls.dispose(); stopPreview(); animationReader?.dispose?.(); animationReader = null;
             root.removeEventListener('input', input); root.removeEventListener('change', change);
             root.removeEventListener('pointerdown', dialDown); root.removeEventListener('pointermove', dialMove);
             root.removeEventListener('pointerup', dialUp); root.removeEventListener('pointercancel', dialUp); root.removeEventListener('keydown', dialKey);

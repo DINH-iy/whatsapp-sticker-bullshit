@@ -1,13 +1,21 @@
+using Microsoft.JSInterop;
 namespace StickerApp.Shared.Pages.Library;
 
 public partial class Home
 {
-    private bool showLayerEditor;
+    private bool showLayerEditor, compositionFromEditor, confirmLayeredText;
     private Guid? compositionStickerId;
     private bool compositionStartWithText;
     private bool? compositionInitialNsfw;
     private string? compositionInitialSource, compositionInitialName;
-    private Task AddTextToEdited() => OpenEditedLayers(startWithText: true);
+    private async Task RequestAddText() {
+        if(busy || customizing)return;
+        await using var preferences=await JS.InvokeAsync<Microsoft.JSInterop.IJSObjectReference>("import","./_content/StickerApp.Shared/js/ui/layer-preferences.js");
+        if(await preferences.InvokeAsync<bool>("shouldWarn"))confirmLayeredText=true;
+        else await OpenEditedLayers(startWithText:true);
+    }
+    private async Task ConfirmAddText() { confirmLayeredText = false; await OpenEditedLayers(startWithText: true); }
+    private void CancelComposition() { showLayerEditor = false; compositionFromEditor = false; }
     private Task MakeEditedLayered() => OpenEditedLayers(startWithText: false);
     private async Task OpenEditedLayers(bool startWithText)
     {
@@ -20,7 +28,7 @@ public partial class Home
             compositionInitialSource = source; compositionInitialName = editName;
             compositionStartWithText = startWithText;
             compositionInitialNsfw = editNsfw;
-            busy = false; await CancelEditing();
+            compositionFromEditor = true;
             showLayerEditor = true;
         }
         catch (Exception exception) when (exception is Microsoft.JSInterop.JSException or InvalidOperationException or IOException)
@@ -30,6 +38,7 @@ public partial class Home
 
     private void NewComposition()
     {
+        compositionFromEditor = false;
         compositionStickerId = null;
         compositionStartWithText = false; compositionInitialSource = compositionInitialName = null; compositionInitialNsfw = null;
         showLayerEditor = true;
@@ -38,6 +47,7 @@ public partial class Home
     private async Task CompositionSaved(Guid id)
     {
         showLayerEditor = false;
+        if (compositionFromEditor) { compositionFromEditor = false; await CancelEditing(); }
         await Reload();
         notice = "Layered sticker saved. Tap its pencil button to edit the layers again.";
         noticeIsError = false;

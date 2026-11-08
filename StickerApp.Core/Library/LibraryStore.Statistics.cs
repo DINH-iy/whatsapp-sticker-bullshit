@@ -246,10 +246,11 @@ public sealed partial class LibraryStore
     {
         foreach (var pack in library.Packs)
             pack.Animated = library.Stickers.Any(image => image.Animated && pack.StickerIds.Contains(image.Id));
+        var previous = await ReadInternalAsync();
+        TrackPackUpdates(previous, library);
         var json = System.Text.Json.JsonSerializer.Serialize(library, Json);
         if (StorageLimitBytes is { } limit)
         {
-            var previous = await ReadInternalAsync();
             var oldFiles = previous.Stickers.SelectMany(ImageFiles).Concat(previous.Fonts.Select(f => f.FileName)).ToHashSet();
             var newFiles = library.Stickers.SelectMany(ImageFiles).Concat(library.Fonts.Select(f => f.FileName)).ToHashSet();
             var media = Directory.EnumerateFiles(Path.Combine(Root, "media")).Select(path => new FileInfo(path))

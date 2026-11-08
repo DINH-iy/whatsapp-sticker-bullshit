@@ -2,10 +2,10 @@
 const assert = { equal(actual, expected, message) { if (actual !== expected) throw new Error(message + ': ' + actual + ' != ' + expected); }, ok(value, message) { if (!value) throw new Error(message); } };
 async function run(source) {
             const base = '/_content/StickerApp.Shared/js/media/';
-            const { create } = await import(base + 'image-customizer.js');
-            const { createRasterRenderer } = await import(base + 'raster-edits.js');
-            const { openAnimation } = await import(base + 'animation-reader.js');
-            const { applyColorEffect } = await import(base + 'color-effect.js');
+            const { create } = await import(base + 'image/image-customizer.js');
+            const { createRasterRenderer } = await import(base + 'effects/raster-edits.js');
+            const { openAnimation } = await import(base + 'animation/animation-reader.js');
+            const { applyColorEffect } = await import(base + 'effects/color-effect.js');
             const colorCanvas = document.createElement('canvas'); colorCanvas.width = 2; colorCanvas.height = 1;
             const colorContext = colorCanvas.getContext('2d');
             const colorPixels = new ImageData(new Uint8ClampedArray([80,0,0,128, 220,0,0,255]),2,1);
@@ -19,7 +19,18 @@ async function run(source) {
             colorContext.putImageData(colorPixels,0,0); applyColorEffect(colorContext,{hue:120,colorStrength:0.5});
             const halfColor = colorContext.getImageData(0,0,2,1).data;
             assert.ok(Math.abs(halfColor[5] - (originalColor[5]+shiftedColor[5])/2) < 2,'color strength must mix with the original');
-            const { createSession } = await import(base + 'gif-editor.js');
+            const {outlinedArtwork}=await import(base+'effects/object-outline.js');
+            const object=document.createElement('canvas');object.width=object.height=32;
+            const objectContext=object.getContext('2d');objectContext.fillStyle='#ff0000';objectContext.fillRect(8,8,16,16);objectContext.clearRect(12,12,8,8);
+            objectContext.fillStyle='#0000ff';objectContext.fillRect(0,1,2,2);
+            const outline=outlinedArtwork(object,{width:32,height:32,borderWidth:2,borderColor:'#00ff00'}),outlineContext=outline.image.getContext('2d');
+            const outlinedPixel=(x,y)=>outlineContext.getImageData(x+outline.pad,y+outline.pad,1,1).data;
+            assert.ok(outlinedPixel(6,10)[1]>240,'object outline follows the artwork edge');
+            assert.equal(outlinedPixel(0,30)[3],0,'object outline must not fill the transparent bounding rectangle');
+            assert.equal(outlinedPixel(16,16)[3],0,'large transparent holes stay transparent');
+            assert.ok(outlinedPixel(11,14)[1]===0 && outlinedPixel(11,14)[0]>240,'object pixels retain their original color');
+            assert.ok(outlinedPixel(-1,2)[1]>240,'objects at the image edge get an outward padded outline');
+            const { createSession } = await import(base + 'animation/gif-editor.js');
             const root = document.createElement('div'); root.className = 'image-customizer'; root.style.width='512px'; root.style.height='512px';
             const seekControl = document.createElement('input'); seekControl.type = 'range'; seekControl.min = '0'; seekControl.max = '0.2'; seekControl.step = '0.001'; seekControl.dataset.animationSeek = '';
             const speedControl = document.createElement('select'); speedControl.dataset.animationSpeed = ''; speedControl.innerHTML = '<option value="0.1">0.1</option><option value="1" selected>1</option>';
@@ -123,6 +134,40 @@ async function run(source) {
             const pointer = (type, x, y) => canvas.dispatchEvent(new PointerEvent(type, { pointerId: 1, pointerType: 'mouse', bubbles: true, clientX: rect.left + x, clientY: rect.top + y }));
             // Synthetic pointer events have no native capture; only capture is stubbed.
             canvas.setPointerCapture = () => {}; canvas.hasPointerCapture = () => false;
+            const beforeBorder=canvas.toDataURL();
+            await controller.beginTool('border');await controller.border(2,'#00ff00',4);
+            const borderRecipe=recipe,borderRenderer=await createRasterRenderer(borderRecipe);
+            for(const time of [0,100]){
+                const frame=borderRenderer.render(reader.at(time));
+                const copy=document.createElement('canvas');copy.width=frame.width;copy.height=frame.height;copy.getContext('2d').drawImage(frame,0,0);
+                assert.ok(copy.getContext('2d').getImageData(8,0,1,1).data[1]>200,'border color must replay on every GIF frame');
+                assert.equal(copy.getContext('2d').getImageData(0,0,1,1).data[3],0,'rounded border must clip the corner');
+            }
+            borderRenderer.dispose();await controller.cancelTool();assert.equal(canvas.toDataURL(),beforeBorder,'Cancel border restores artwork');
+            const zoomIn=document.createElement('button');zoomIn.dataset.viewZoomIn='';root.append(zoomIn);
+            const zoomReset=document.createElement('button');zoomReset.dataset.viewReset='';root.append(zoomReset);
+            const zoomBefore=canvas.toDataURL();zoomIn.click();
+            assert.ok(canvas.parentElement.style.transform.includes('scale(1.25)'),'preview zoom changes the displayed view');
+            assert.equal(canvas.toDataURL(),zoomBefore,'preview zoom must not alter artwork');zoomReset.click();
+            assert.ok(canvas.parentElement.style.transform.includes('scale(1)'),'Fit resets preview zoom');
+            const beforePaint = canvas.toDataURL();
+            await controller.beginTool('draw'); controller.settings(5,36,'#00ff00');
+            pointer('pointerdown',8,2);assert.equal(root.querySelector('.cutout-loupe').hidden,false,'magnified view must show while drawing');pointer('pointermove',8,14);pointer('pointerup',8,14);assert.equal(root.querySelector('.cutout-loupe').hidden,true,'magnified view must hide after drawing');
+            await new Promise(resolve=>setTimeout(resolve,30));
+            assert.ok(recipe.edits.some(edit=>edit.type==='paint'),'drawing must produce a reusable paint operation');
+            const painted=latest, paintRenderer=await createRasterRenderer(recipe);
+            for(const time of [0,100]) {
+                const output=paintRenderer.render(reader.at(time));
+                const pixels=document.createElement('canvas');pixels.width=output.width;pixels.height=output.height;
+                pixels.getContext('2d').drawImage(output,0,0);
+                const rgba=pixels.getContext('2d').getImageData(8,8,1,1).data;
+                assert.ok(rgba[1]>240 && rgba[0]<15 && rgba[2]<15,'drawing must appear in every GIF frame');
+            }
+            paintRenderer.dispose();
+            await controller.undo();assert.equal(canvas.toDataURL(),beforePaint,'drawing undo restores artwork');
+            await controller.redo();assert.equal(latest,painted,'drawing redo restores paint');
+            await controller.cancelTool();assert.equal(canvas.toDataURL(),beforePaint,'Cancel drawing restores the prior artwork');
+            await controller.setTool('erase');controller.settings(5,36);
             pointer('pointerdown', 2, 0); pointer('pointermove', 2, 16); pointer('pointerup', 2, 16);
             await new Promise(resolve => setTimeout(resolve, 20));
             const erased = latest;
@@ -199,8 +244,24 @@ async function run(source) {
             const layerRoot = document.createElement('dialog'); layerRoot.className = 'layer-editor-dialog';
             const wrap = document.createElement('div'); wrap.className = 'layer-canvas-wrap';
             const layerCanvas = document.createElement('canvas'); wrap.append(layerCanvas); layerRoot.append(wrap); document.body.append(layerRoot);
-            const layerModule = await import(base + 'layer-editor.js');
+            const layerModule = await import(base + 'layers/layer-editor.js');
             const layerController = layerModule.create(layerCanvas, { invokeMethodAsync: async () => {} });
+            await layerController.open(null);
+            const stillWebp=colorCanvas.toDataURL('image/webp');
+            assert.equal(layerModule.isAnimatedSource(stillWebp),false,'still WebP must not be detected as animation');
+            const stillLayer=await layerController.add('Still WebP',stillWebp);
+            assert.equal(stillLayer.layers[0].isGif,false,'still WebP must open as an image layer');
+            await layerController.addText();
+            await layerController.open(null);await layerController.add('Cutout',object.toDataURL());
+            layerController.beginTool();layerController.update('borderWidth',2);layerController.update('borderColor','#00ff00');
+            const outlineExport=await layerController.export();
+            assert.equal(outlineExport.document.layers[0].borderWidth,2,'object border width is saved with its layer');
+            await layerController.open(outlineExport.document);
+            assert.equal((await layerController.export()).png,outlineExport.png,'object border renders identically after reopen');
+            layerController.beginTool();layerController.update('borderWidth',7);
+            assert.equal(layerController.cancelTool().layers[0].borderWidth,2,'Cancel restores the previous object outline');
+            await layerController.addText();layerController.update('borderWidth',4);layerController.update('borderColor','#00ff00');
+            assert.equal((await layerController.export()).document.layers[1].borderWidth,4,'text layers support object outlines');
             await layerController.open(null); const added = await layerController.add('Animation', source);
             assert.equal(added.layers[0].gifThumbnails.length, 6, 'animated layer must expose timeline thumbnails');
             const layerSeek = seekControl.cloneNode(true), layerSpeed = speedControl.cloneNode(true);
@@ -221,8 +282,17 @@ async function run(source) {
             const editedLayerSource = await session.editLayer(source, 0, 0.2, firstRecipe);
             const nativeReader = await openAnimation(editedLayerSource);
             const nativeSize = [nativeReader.width, nativeReader.height]; nativeReader.dispose?.();
+            layerController.update('borderWidth',3);layerController.update('borderColor','#00ff00');
             await layerController.replaceSource(added.layers[0].id, erased, editedLayerSource);
             const layerExport = await layerController.export();
+            assert.equal(layerExport.document.layers[0].borderWidth,3,'animated layer export retains its object border');
+            const outlinedAnimation=await openAnimation(layerExport.png);
+            for(const time of [0,100]){
+                const pixels=outlinedAnimation.at(time).getContext('2d').getImageData(0,0,512,512).data;
+                assert.ok(pixels.some((v,i)=>i%4===1&&v>180&&pixels[i-1]<100&&pixels[i+1]<100&&pixels[i+2]>100),'object border must appear in each exported animation frame');
+            }
+            outlinedAnimation.dispose?.();
+
             await layerController.action('undo'); const undoSource = layerController.source();
             await layerController.action('redo'); const redoSource = layerController.source();
             await layerController.open(layerExport.document);
@@ -268,6 +338,6 @@ const result = await run(source);
         assert.equal(result.layerRedo, true, 'layer redo must restore the edited animated source');
         assert.equal(result.layerReopen, true, 'edited animations must survive composition export/reopen');
 
-document.getElementById('result').textContent = 'PASS: combined move/resize/rotate handles, animated transform export, hue/strength and all-frame color export, no enlargement, resize handles and aspect lock, tool Apply/Cancel rollback, GIF/WebP/layer frame seeking and slow playback, image adjustments, all-frame cutouts, undo/redo, GIF and WebP export, transparency, isolated cancellation, animated layer apply/undo/redo/export/reopen.\n\n' + JSON.stringify(result, null, 2);
+document.getElementById('result').textContent = 'PASS: per-object outlines, transparent holes, text/image/GIF borders, border undo/cancel/save/reopen and animated export, still WebP layers and text, border replay and rounded corners, preview zoom, drawing on every GIF frame, brush undo/redo/cancel, combined move/resize/rotate handles, animated transform export, hue/strength and all-frame color export, no enlargement, resize handles and aspect lock, tool Apply/Cancel rollback, GIF/WebP/layer frame seeking and slow playback, image adjustments, all-frame cutouts, undo/redo, GIF and WebP export, transparency, isolated cancellation, animated layer apply/undo/redo/export/reopen.\n\n' + JSON.stringify(result, null, 2);
 } catch (error) { document.getElementById('result').textContent = 'FAIL: ' + error.stack; }
 </script>

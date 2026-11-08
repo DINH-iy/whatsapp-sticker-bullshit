@@ -21,12 +21,12 @@ export function createSession() {
             pending.set(id, { resolve, reject, timer });
             const data = { id, action, source, start, end, composition };
             if (typeof OffscreenCanvas === 'undefined') {
-                import('./gif-engine.js').then(engine => pending.has(id) ? engine.process(data) : undefined)
+                import('../codecs/gif-engine.js').then(engine => pending.has(id) ? engine.process(data) : undefined)
                     .then(value => settle(id, value), error => settle(id, null, error.message));
                 return;
             }
             if (!worker) {
-                worker = new Worker(new URL('./gif-worker.js', import.meta.url), { type: 'module' });
+                worker = new Worker(new URL('../codecs/gif-worker.js', import.meta.url), { type: 'module' });
                 worker.onmessage = ({ data }) => settle(data.id, data.value, data.error);
                 worker.onerror = () => reset('Could not process this animation.');
             }

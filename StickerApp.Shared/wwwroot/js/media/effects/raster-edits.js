@@ -1,3 +1,4 @@
+import { applyStickerBorder } from './sticker-border.js';
 import { applyColorEffect } from './color-effect.js';
 // Replay the same spatial edits for every animation frame; masks come from the
 // editor's reference frame, so a traced/erased outline stays fixed during playback.
@@ -30,10 +31,11 @@ export function eraseConnected(context, point, tolerance, referenceColor = null)
 export async function createRasterRenderer(recipe) {
     const masks = new Map();
     for (const edit of recipe.edits ?? []) {
-        if (edit.type !== 'mask' || masks.has(edit.mask)) continue;
-        const blob = await (await fetch(edit.mask)).blob();
-        if (typeof createImageBitmap !== 'undefined') masks.set(edit.mask, await createImageBitmap(blob));
-        else { const image = new Image(); image.src = edit.mask; await image.decode(); masks.set(edit.mask, image); }
+        const source=edit.type==='mask'?edit.mask:edit.type==='paint'?edit.source:null;
+        if(!source||masks.has(source))continue;
+        const blob = await (await fetch(source)).blob();
+        if (typeof createImageBitmap !== 'undefined') masks.set(source, await createImageBitmap(blob));
+        else { const image = new Image(); image.src = source; await image.decode(); masks.set(source, image); }
     }
     const buffers = [makeCanvas(1, 1), makeCanvas(1, 1)];
     return {
@@ -72,6 +74,8 @@ export async function createRasterRenderer(recipe) {
                     context.drawImage(canvas, 0, 0);
                 }
                 context.restore();
+                if(edit.type==='border')applyStickerBorder(context,edit);
+                if(edit.type==='paint')context.drawImage(masks.get(edit.source),0,0,width,height);
                 if (edit.type === 'wand') eraseConnected(context, edit, edit.tolerance, edit.color);
                 if (edit.type === 'mask') {
                     context.globalCompositeOperation = 'destination-in'; context.drawImage(masks.get(edit.mask), 0, 0, width, height);

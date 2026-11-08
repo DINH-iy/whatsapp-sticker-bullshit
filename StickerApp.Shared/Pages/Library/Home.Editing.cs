@@ -40,6 +40,7 @@ public partial class Home
         if (busy) return;
         if (image.CompositionFileName is not null)
         {
+            compositionFromEditor = false;
             compositionStickerId = image.Id;
             compositionStartWithText = false; compositionInitialSource = compositionInitialName = null; compositionInitialNsfw = null;
             showLayerEditor = true;
@@ -137,7 +138,7 @@ public partial class Home
 
     private async Task InspectGif(int session)
     {
-        gifEditor ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/media/gif-editor.js");
+        gifEditor ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/media/animation/gif-editor.js");
         if (session != editorSession || disposed) return;
         gifSession ??= await gifEditor.InvokeAsync<IJSObjectReference>("createSession");
         if (session != editorSession || disposed) return;

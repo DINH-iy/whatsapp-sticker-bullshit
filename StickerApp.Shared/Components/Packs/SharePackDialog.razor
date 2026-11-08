@@ -28,9 +28,9 @@
         <button class="button primary" type="button" @onclick="SaveFile" disabled="@(!isReady || isWorking || WaitingForPreparation)">
             <Icon Name="download" /> @Sharing.FileActionLabel
         </button>
-        <button class="button" type="button" @onclick="PublishLink" disabled="@(!isReady || isWorking || !canPublish || WaitingForPreparation)">
+<OnlineOnly>        <button class="button" type="button" @onclick="PublishLink" disabled="@(!isReady || isWorking || !canPublish || WaitingForPreparation)">
             <Icon Name="link" /> Create share link
-        </button>
+        </button></OnlineOnly>
     </div>
     <p class="helper">Send the pack file through chat, email, or Drive. The recipient imports it with Import pack in the Stickers app.</p>
     @if (canPublish)

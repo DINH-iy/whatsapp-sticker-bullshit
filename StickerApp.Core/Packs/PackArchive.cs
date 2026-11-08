@@ -15,6 +15,7 @@ public static class PackArchive
 
     public sealed class Manifest
     {
+        public bool Public { get; set; }
         public string Format { get; set; } = FormatName;
         public int Version { get; set; } = 1;
         public string Name { get; set; } = "";
@@ -36,7 +37,7 @@ public static class PackArchive
     }
 
     public sealed record ImportedImage(string Name, string Tags, byte[] Bytes, MediaInfo Info, bool Nsfw = false);
-    public sealed record ImportedPack(string Name, bool Animated, IReadOnlyList<ImportedImage> Images, string? CoverImage = null, string Publisher = "Sticker Studio", bool IsWhatsAppFormat = false, bool Nsfw = false);
+    public sealed record ImportedPack(string Name, bool Animated, IReadOnlyList<ImportedImage> Images, string? CoverImage = null, string Publisher = "Sticker Studio", bool IsWhatsAppFormat = false, bool Nsfw = false, bool Public = false);
     public sealed record ExportInfo(string FileName, string Sha256);
 
     public static async Task<ExportInfo> WriteAsync(
@@ -48,7 +49,7 @@ public static class PackArchive
             throw new InvalidDataException("The pack contains too many images or references a missing image.");
 
         if (pack.CoverImage is not null) PackCover.ReadBytes(pack.CoverImage);
-        var manifest = new Manifest { Name = pack.Name, Animated = pack.Animated, CoverImage = pack.CoverImage, Publisher = pack.Publisher, Nsfw = pack.Nsfw };
+        var manifest = new Manifest { Name = pack.Name, Animated = pack.Animated, CoverImage = pack.CoverImage, Publisher = pack.Publisher, Nsfw = pack.Nsfw, Public = pack.Public };
         long totalBytes = 0;
 
         using (var archive = new ZipArchive(destination, ZipArchiveMode.Create, leaveOpen: true))
@@ -147,7 +148,7 @@ public static class PackArchive
             images.Add(new ImportedImage(image.Name.Trim(), image.Tags.Trim(), bytes, info, image.Nsfw));
         }
 
-        return new ImportedPack(manifest.Name.Trim(), images.Any(image => image.Info.Animated), images, manifest.CoverImage, manifest.Publisher, Nsfw: manifest.Nsfw);
+        return new ImportedPack(manifest.Name.Trim(), images.Any(image => image.Info.Animated), images, manifest.CoverImage, manifest.Publisher, Nsfw: manifest.Nsfw, Public: manifest.Public);
     }
 
     public static string FileNameFor(string name, bool whatsAppFormat = false)

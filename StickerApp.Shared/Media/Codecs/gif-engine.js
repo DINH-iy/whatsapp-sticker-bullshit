@@ -1,8 +1,9 @@
-import { applyColorEffect } from './color-effect.js';
-import { fit, encode, animation, dataUrl } from './sticker-converter.js';
+import { drawLayerArtwork } from '../../wwwroot/js/media/effects/object-outline.js';
+import { applyColorEffect } from '../../wwwroot/js/media/effects/color-effect.js';
+import { fit, encode, animation, dataUrl } from '../../wwwroot/js/media/conversion/sticker-converter.js';
 import { parseGIF, decompressFrame } from 'gifuct-js';
-import { openAnimation } from '../wwwroot/js/media/animation-reader.js';
-import { createRasterRenderer } from '../wwwroot/js/media/raster-edits.js';
+import { openAnimation } from '../../wwwroot/js/media/animation/animation-reader.js';
+import { createRasterRenderer } from '../../wwwroot/js/media/effects/raster-edits.js';
 import { GIFEncoder, quantize, applyPalette } from 'gifenc';
 
 let cachedSource, cached;
@@ -253,7 +254,7 @@ async function compose(composition) {
                     }
                     context.save(); context.globalAlpha = layer.opacity; context.translate(layer.x, layer.y);
                     context.rotate(layer.rotation * Math.PI / 180); context.scale(layer.flipX ? -1 : 1, 1);
-                    context.drawImage(source, -layer.width / 2, -layer.height / 2, layer.width, layer.height); context.restore();
+                    drawLayerArtwork(context,source,layer); context.restore();
                 }
                 if (typeof document !== 'undefined' && typeof window !== 'undefined') await new Promise(resolve => setTimeout(resolve, 0));
                 const bytes = await encode(canvas, quality); total += bytes.length + 24;

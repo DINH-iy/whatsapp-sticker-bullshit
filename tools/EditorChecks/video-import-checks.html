@@ -14,8 +14,8 @@ try {
     const file=new File(chunks,mime.includes('mp4')?'test-video.mp4':'test-video.webm',{type:mime.split(';')[0]});
     const sample=document.querySelector('#sample');sample.href=URL.createObjectURL(file);sample.download=file.name;sample.hidden=false;
     const sampleData=await new Promise(resolve=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.readAsDataURL(file);});sample.dataset.fixture=sampleData;
-    const {create}=await import('/_content/StickerApp.Shared/js/media/video-import.js');
-    const {openAnimation}=await import('/_content/StickerApp.Shared/js/media/animation-reader.js');
+    const {create}=await import('/_content/StickerApp.Shared/js/media/video/video-import.js');
+    const {openAnimation}=await import('/_content/StickerApp.Shared/js/media/animation/animation-reader.js');
     let info,error,progress=0,cancelOnProgress=false;
     const controller=create(document.querySelector('video'),document.querySelector('input'),document.querySelector('#root'),{invokeMethodAsync:async(method,...args)=>{
         if(method==='VideoReady')info=args[0];if(method==='VideoFailed')error=args[0];if(method==='VideoProgress'){progress=args[0];if(cancelOnProgress)controller.cancel();}

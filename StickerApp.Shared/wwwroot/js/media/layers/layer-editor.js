@@ -1,14 +1,31 @@
+import { drawLayerArtwork } from '../effects/object-outline.js';
+import { editorView } from '../shared/editor-view.js';
 import { renderText, defaultText, validateTextFont } from './text-layers.js';
-import { rotationGrip } from './rotation-grip.js';
-import { applyColorEffect } from './color-effect.js';
-import { previewControls } from './animation-preview.js';
+import { rotationGrip } from '../shared/rotation-grip.js';
+import { applyColorEffect } from '../effects/color-effect.js';
+import { previewControls } from '../animation/animation-preview.js';
 import { openGif } from './layer-gifs.js';
 import { watchLayerOrder } from './layer-reorder.js';
+// Still WebP stickers must not be opened by the animation decoder.
+export function isAnimatedSource(source) {
+    if(source.startsWith('data:image/gif;base64,'))return true;
+    if(!source.startsWith('data:image/webp;base64,'))return false;
+    const bytes=atob(source.slice(source.indexOf(',')+1));
+    for(let offset=12;offset+8<=bytes.length;) {
+        const kind=bytes.slice(offset,offset+4);
+        const length=(bytes.charCodeAt(offset+4)|(bytes.charCodeAt(offset+5)<<8)|(bytes.charCodeAt(offset+6)<<16)|(bytes.charCodeAt(offset+7)<<24))>>>0;
+        if(offset+8+length>bytes.length)return false;
+        if(kind==='ANIM'||kind==='ANMF')return true;
+        offset+=8+length+(length&1);
+    }
+    return false;
+}
 const size = 512, maxLayers = 10, maxSources = 24 * 1024 * 1024;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 export function create(canvas, reference) {
     const context = canvas.getContext('2d');
+    const view=editorView(canvas,canvas.closest('.layer-editor-dialog'));
     const overlay = document.createElement('div');
     overlay.className = 'layer-handles';
     canvas.parentElement.append(overlay);
@@ -153,7 +170,7 @@ export function create(canvas, reference) {
             context.globalAlpha = layer.opacity;
             context.translate(layer.x, layer.y); context.rotate(layer.rotation * Math.PI / 180);
             context.scale(layer.flipX ? -1 : 1, 1);
-            context.drawImage(source, -layer.width / 2, -layer.height / 2, layer.width, layer.height);
+            drawLayerArtwork(context,source,layer);
             context.restore();
         }
         const layer = active();
@@ -282,10 +299,10 @@ export function create(canvas, reference) {
     }
     function update(property, value, keepRatio = true, record = true) {
         const layer = active(); if (!layer) return state();
-        const ranges = { x: [-2048, 2560], y: [-2048, 2560], width: [1, 2048], height: [1, 2048], rotation: [-180, 180], opacity: [0, 1], hue: [-180, 180], colorStrength: [0, 1] };
-        if (property === 'tint') {
-            if (value !== null && !/^#[0-9a-f]{6}$/i.test(value)) throw new Error('Choose a valid tint color.');
-            if (record) remember(); layer.tint = value;
+        const ranges = { x: [-2048, 2560], y: [-2048, 2560], width: [1, 2048], height: [1, 2048], rotation: [-180, 180], opacity: [0, 1], hue: [-180, 180], colorStrength: [0, 1], borderWidth: [0, 80] };
+        if (property === 'tint' || property === 'borderColor') {
+            if ((property === 'borderColor' && value === null) || (value !== null && !/^#[0-9a-f]{6}$/i.test(value))) throw new Error('Choose a valid tint color.');
+            if (record) remember(); layer[property] = value;
         } else {
             if (!ranges[property] || !Number.isFinite(value)) throw new Error('Enter a valid layer adjustment.');
             if (record) remember(); value = clamp(value, ...ranges[property]);
@@ -329,14 +346,14 @@ export function create(canvas, reference) {
             return;
         }
         if (!property || !active()) return;
-        let value = property === 'tint' ? control.value : Number(control.value);
-        if (control.value === '' || (property !== 'tint' && !Number.isFinite(value))) return;
+        let value = ['tint','borderColor'].includes(property) ? control.value : Number(control.value);
+        if (control.value === '' || (!['tint','borderColor'].includes(property) && !Number.isFinite(value))) return;
         if (['opacity', 'colorStrength'].includes(property)) value /= 100;
         if (editingControl !== control) { remember(); editingControl = control; }
         update(property, value, proportions(), false);
         // Update linked fields locally; publish metadata once the adjustment ends.
         for (const field of root.querySelectorAll('[data-adjustment-scope="layer"] [data-layer-property]')) {
-            if (field === control || field.dataset.layerProperty === 'tint') continue;
+            if (field === control || ['tint','borderColor'].includes(field.dataset.layerProperty)) continue;
             const prop = field.dataset.layerProperty;
             field.value = String(Math.round(active()[prop] * (['opacity', 'colorStrength'].includes(prop) ? 100 : 1) * 100) / 100);
         }
@@ -437,7 +454,7 @@ export function create(canvas, reference) {
             if(placement==='random')placement=Math.random()<0.5?'top':'bottom';
             const content=placement==='top'?'TOP TEXT':placement==='bottom'?'BOTTOM TEXT':'YOUR TEXT';
             const artwork=await textArtwork({...defaultText(),content});const scale=Math.min(1,480/artwork.width,480/artwork.height);
-            const layer={id:`text-${Date.now()}-${Math.random().toString(36).slice(2)}`,name:'Text: '+content,source:artwork.source,text:artwork.text,x:256,y:256,width:artwork.width*scale,height:artwork.height*scale,rotation:0,opacity:1,flipX:false,tint:null,hue:0,colorStrength:1};
+            const layer={id:`text-${Date.now()}-${Math.random().toString(36).slice(2)}`,name:'Text: '+content,source:artwork.source,text:artwork.text,x:256,y:256,width:artwork.width*scale,height:artwork.height*scale,rotation:0,opacity:1,flipX:false,tint:null,hue:0,colorStrength:1,borderWidth:0,borderColor:'#ffffff'};
             remember();positionText(layer,placement);layers.push(layer);images.set(layer.source,artwork.image);selected=layers.length-1;render();return state();
         },
         async updateText(options) {
@@ -471,7 +488,7 @@ export function create(canvas, reference) {
                 for (const layer of composition.layers) {
                     const image = await decode(layer.source);
                     if (disposed) return;
-                    layers.push({ hue: 0, colorStrength: 1, ...layer }); images.set(layer.source, image);
+                    layers.push({ hue: 0, colorStrength: 1, borderWidth:0,borderColor:'#ffffff', ...layer }); images.set(layer.source, image);
                     if (layer.gifSource && !gifs.has(layer.gifSource)) gifs.set(layer.gifSource, await openGif(layer.gifSource));
                 }
                 selected = layers.length - 1;
@@ -480,7 +497,7 @@ export function create(canvas, reference) {
         },
         async add(name, source, fitLimit=400) {
             if (layers.length >= maxLayers) throw new Error('A composition supports up to 10 layers.');
-            const gif = source.startsWith('data:image/gif;base64,') || source.startsWith('data:image/webp;base64,') ? await openGif(source) : null;
+            const gif = isAnimatedSource(source) ? await openGif(source) : null;
             const image = gif ? gif.reader.at(0) : await decode(source);
             if (disposed) return state();
             const sourceWidth = image.naturalWidth || image.width, sourceHeight = image.naturalHeight || image.height;
@@ -497,7 +514,7 @@ export function create(canvas, reference) {
             const id = `layer-${Date.now()}-${Math.random().toString(36).slice(2)}`;
             const layer = { id, name: name.slice(0, 128) || 'Image', source: png, x: 256, y: 256,
                 width: Math.max(1, Math.round(normalized.width * fit)), height: Math.max(1, Math.round(normalized.height * fit)),
-                rotation: 0, opacity: 1, flipX: false, tint: null, hue: 0, colorStrength: 1, gifSource: gif ? source : null,
+                rotation: 0, opacity: 1, flipX: false, tint: null, hue: 0, colorStrength: 1, borderWidth:0,borderColor:'#ffffff', gifSource: gif ? source : null,
                 gifDuration: gif ? gif.reader.duration / 1000 : 0, trimStart: 0, trimEnd: gif ? Math.min(10, gif.reader.duration / 1000) : 0 };
             const still = await decode(png);
             remember(); layers.push(layer); images.set(png, still); if (gif) gifs.set(source, gif); selected = layers.length - 1;
@@ -561,12 +578,12 @@ export function create(canvas, reference) {
                     throw new Error('The sticker is completely transparent. Move a visible layer onto the canvas.');
                 const document = { version: 1, layers: layers.map(layer => ({ ...layer })) };
                 const png = layers.some(layer => layer.gifSource)
-                    ? await (await import('./gif-editor.js')).compose(document)
+                    ? await (await import('../animation/gif-editor.js')).compose(document)
                     : canvas.toDataURL('image/png');
                 return { png, document };
             } finally { exporting = false; render(); animate(); }
         },
-        dispose() {
+        dispose() { view.dispose();
             disposed = true; toolCheckpoint = null; controls.dispose();
             cancelAnimationFrame(animationFrame); orderControls.dispose();
             clearTimeout(notifyTimer);

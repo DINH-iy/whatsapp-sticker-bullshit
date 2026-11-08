@@ -65,7 +65,7 @@ public sealed class StickerPreparationService(LibraryStore store, IJSRuntime js,
                             if (MediaInspector.Inspect(bytes).MimeType == "image/gif")
                                 source = $"data:image/gif;base64,{Convert.ToBase64String(bytes)}";
                         }
-                        worker ??= await js.InvokeAsync<IJSObjectReference>("import", token, "./_content/StickerApp.Shared/js/media/sticker-preparation.js");
+                        worker ??= await js.InvokeAsync<IJSObjectReference>("import", token, "./_content/StickerApp.Shared/js/media/conversion/sticker-preparation.js");
                         var result = await worker.InvokeAsync<string>("prepare", token, source, image.Animated);
                         var output = Convert.FromBase64String(result[(result.IndexOf(',') + 1)..]);
                         var info = MediaInspector.Inspect(output);

@@ -162,7 +162,7 @@
 .layer-editor-dialog { container-type: inline-size; --editor-preview-size: min(512px, 32dvh, calc(100cqw - 140px)); }
 .layer-preview-stage, .layer-preview-stage.opacity-tool-stage, .layer-preview-stage:not(:has(.editor-tool-dock)) {
     display: grid; grid-template-columns: var(--editor-preview-size) 92px; grid-template-rows: var(--editor-preview-size);
-    justify-content: center; align-items: start; gap: 10px; height: calc(var(--editor-preview-size) + 48px); padding: 0 0 48px; border: 0; background: transparent;
+    justify-content: center; align-items: start; gap: 10px; height: var(--editor-preview-size); padding: 0; border: 0; background: transparent;
 }
 .layer-preview-stage .layer-canvas-wrap { width: var(--editor-preview-size); height: var(--editor-preview-size); margin: 0; }
 .layer-preview-stage .editor-tool-dock { width: 92px; height: var(--editor-preview-size); max-height: var(--editor-preview-size); margin: 0; border: 1px solid var(--line); background: var(--surface); overflow: hidden; }
@@ -200,9 +200,8 @@
     .layer-preview-stage:not(:has(.editor-tool-dock)) { --editor-preview-size: min(512px,22dvh,calc(100cqw - 8px)); }
 }
 .layer-more-actions { margin: 10px 0 14px; }
-.layer-more-actions > summary { cursor: pointer; color: var(--muted); margin-bottom: 8px; }
-.layer-more-actions .layer-quick-tools { grid-template-columns: repeat(4,minmax(0,1fr)); margin: 0; }
-.layer-more-actions .layer-quick-tools .button { min-height: 50px; height: auto; font-size: calc(11px * var(--app-font-scale, 1)); }
+.layer-more-actions > summary { cursor: pointer; margin-bottom: 0; }
+.layer-more-actions[open] > summary { margin-bottom: 8px; }
 .layer-footer .layer-save-actions { align-items: center; flex-wrap: nowrap; }
 .layer-footer .layer-save-actions > .icon-button { width: 36px; min-width: 36px; height: 40px; min-height: 40px; padding: 6px; }
 @media (max-width: 700px) {
@@ -214,3 +213,25 @@
     .layer-footer .layer-save-actions > .button:not(.icon-button) { font-size: calc(12px * var(--app-font-scale, 1)); padding-inline: 10px; }
 }
 .layer-rotation-dial text { font-family: var(--app-font-family,system-ui); }
+
+.layer-editor-dialog .folder-dialog-heading { gap: 8px; flex-shrink: 0; }
+.layer-editor-dialog .folder-dialog-heading h2 { flex: 1; }
+.layer-add-menu { position: relative; margin: 0; flex-shrink: 0; }
+.layer-add-menu > summary { list-style: none; cursor: pointer; }
+.layer-add-menu > summary::-webkit-details-marker { display: none; }
+.layer-add-options { position: absolute; top: calc(100% + 6px); right: 0; z-index: 20; width: min(300px,calc(100vw - 120px)); display: grid; gap: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: 0 8px 24px #0004; }
+.layer-add-options .button, .layer-add-options select { width: 100%; min-width: 0; margin: 0; }
+
+.layer-border-controls { display: grid; grid-template-rows: minmax(0,1fr) 26px; gap: 4px; height: 100%; min-height: 0; justify-items: center; }
+.layer-border-controls > label { display: grid; grid-template-rows: auto 28px minmax(0,1fr); gap: 3px; justify-items: center; min-height: 0; margin: 0; font-size: 11px; }
+.layer-preview-stage .editor-tool-dock:has(.layer-border-controls) { display: grid; grid-template-rows: auto minmax(0,1fr) auto; height: max(var(--editor-preview-size),180px); max-height: none; gap: 4px; }
+.layer-preview-stage:has(.layer-border-controls) { min-height: max(var(--editor-preview-size),180px); height: max(var(--editor-preview-size),180px); }
+.editor-tool-dock:has(.layer-border-controls) .editor-tool-values, .editor-tool-dock:has(.layer-border-controls) .layer-adjustments, .editor-tool-dock:has(.layer-border-controls) .editor-adjustments { height: 100%; min-height: 0; overflow: visible; }
+.editor-tool-dock .layer-border-controls input[type="range"]:not(.trim-handle):not(.frame-playhead) { height: 100%; min-height: 0; margin: 0; }
+.layer-border-controls input[type="color"] { width: 64px; min-height: 26px; height: 26px; padding: 2px; margin: 0; }
+
+.layer-add-options > .button, .layer-add-options > select { display: flex; align-items: center; justify-content: flex-start; gap: 10px; width: 100%; min-height: 40px; height: 40px; padding: 8px 10px; font-size: calc(13px * var(--app-font-scale,1)); font-weight: 600; line-height: 1.2; text-align: left; }
+.layer-add-options > select { display: block; font-weight: 400; }
+.layer-add-options > .button .app-icon { width: 20px; height: 20px; flex: 0 0 20px; }
+.layer-add-options > .button:not(:has(.app-icon)) { padding-left: 40px; }
+.layer-panel, .layer-more-actions, .layer-more-actions > div { min-width: 0; max-width: 100%; }

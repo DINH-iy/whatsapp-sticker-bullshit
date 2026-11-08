@@ -1,7 +1,7 @@
 @implements IDisposable
 @inject LibraryStore Store
 
-<div class="spoiler-preview @(Hidden ? "spoiler-hidden" : "")">
+<div class="spoiler-preview @(EyeBeside ? "spoiler-eye-beside" : "") @(Hidden ? "spoiler-hidden" : "")">
     <div class="spoiler-preview-content" inert="@(Hidden ? "" : null)" aria-hidden="@(Hidden ? "true" : null)">@ChildContent</div>
     @if (Hidden)
     {
@@ -15,6 +15,7 @@
 </div>
 
 @code {
+    [Parameter] public bool EyeBeside { get; set; }
     [Parameter] public bool IsSpoiler { get; set; }
     [Parameter] public string Name { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }

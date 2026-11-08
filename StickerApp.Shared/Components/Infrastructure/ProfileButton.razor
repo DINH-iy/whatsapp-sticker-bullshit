@@ -1,0 +1,22 @@
+@implements IDisposable
+@inject LibraryStore Store
+<a class="button icon-button profile-navigation-button" href="profile" aria-label="Your profile" title="Your profile">
+    @if (profile?.Picture is { } picture) { <img src="@picture" alt="" /> }
+    else { <Icon Name="user" /> }
+</a>
+@code {
+    private LocalProfile? profile;
+    private bool disposed;
+    protected override async Task OnInitializedAsync()
+    {
+        Store.Changed += Changed;
+        profile = await Store.ReadProfileAsync();
+    }
+    private void Changed() => _ = InvokeAsync(async () =>
+    {
+        if (disposed) return;
+        profile = await Store.ReadProfileAsync();
+        if (!disposed) StateHasChanged();
+    });
+    public void Dispose() { disposed = true; Store.Changed -= Changed; }
+}

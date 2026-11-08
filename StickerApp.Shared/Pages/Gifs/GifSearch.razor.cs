@@ -84,6 +84,7 @@ public partial class GifSearch
 
     private async Task FetchPage(int page)
     {
+        if (!Connection.Online) { error = "No internet connection. Reconnect to search for GIFs."; return; }
         if (isLoading || IsImporting || client is null)
             return;
 

@@ -11,7 +11,7 @@ try{
         await api.reset();assert(api.get().font==='system'&&api.get().scale===100,'reset must restore defaults');
         document.querySelector('#result').textContent='PASS: app font family, pixel font scaling, bold, line/letter spacing, custom font decoding/cache, persistence across reload, reset, and independent sticker typography.';
     }else{
-        const {renderText,defaultText}=await import('/_content/StickerApp.Shared/js/media/text-layers.js');
+        const {renderText,defaultText}=await import('/_content/StickerApp.Shared/js/media/layers/text-layers.js');
         await api.reset();
         const baseSize=parseFloat(getComputedStyle(document.querySelector('#sample')).fontSize);
         const before=(await renderText({...defaultText(),content:'UNCHANGED 😎'})).source;

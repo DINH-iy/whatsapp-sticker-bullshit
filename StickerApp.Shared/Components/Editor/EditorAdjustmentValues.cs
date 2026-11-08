@@ -12,4 +12,6 @@ public class EditorAdjustmentValues
     public string? Tint { get; set; }
     public double Hue { get; set; }
     public double ColorStrength { get; set; } = 1;
+    public double BorderWidth { get; set; }
+    public string BorderColor { get; set; } = "#ffffff";
 }

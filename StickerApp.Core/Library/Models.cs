@@ -23,6 +23,9 @@ public sealed class Sticker
 
 public sealed class StickerPack
 {
+    public bool Public { get; set; }
+    public long UpdateCount { get; set; }
+    public DateTimeOffset? LastUpdatedUtc { get; set; }
     public string Publisher { get; set; } = "Sticker Studio";
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Name { get; set; } = "";

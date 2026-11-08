@@ -28,6 +28,8 @@ public static class MauiProgram
 
         // Add device-specific services used by the StickerApp.Shared project
         builder.Services.AddSingleton<IFormFactor, FormFactor>();
+        builder.Services.AddSingleton<ConnectionState>();
+        builder.Services.AddSingleton<IInternetStatus, NativeInternetStatus>();
         builder.Services.AddSingleton(new LibraryStore(Path.Combine(FileSystem.AppDataDirectory, "library")));
 #if ANDROID
         builder.Services.AddSingleton<IBulkImageImporter, AndroidBulkImageImporter>();

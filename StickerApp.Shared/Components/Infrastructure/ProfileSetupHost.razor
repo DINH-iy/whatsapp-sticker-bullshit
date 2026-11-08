@@ -1,0 +1,9 @@
+@inject LibraryStore Store
+@if (show)
+{
+    <ProfileEditor Onboarding="true" OnFinished="() => show = false" />
+}
+@code {
+    private bool show;
+    protected override async Task OnInitializedAsync() => show = !(await Store.ReadProfileAsync()).SetupComplete;
+}

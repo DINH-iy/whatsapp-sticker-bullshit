@@ -66,7 +66,7 @@
 // Interface typography is a device preference; sticker canvas fonts are separate.
 (() => {
     const key='stickers.typography';
-    const mediaModule=new URL('../media/text-layers.js',document.currentScript.src).href;
+    const mediaModule=new URL('../media/layers/text-layers.js',document.currentScript.src).href;
     const defaults={font:'system',scale:100,bold:false,spacing:0,lineSpacing:100};
     const families={system:"'Segoe UI', Arial, sans-serif",sans:'sans-serif',serif:'serif',mono:'monospace',meme:'StikMeme, Impact, sans-serif'};
     let current={...defaults},customFace=null,revision=0,previewIndex=0;

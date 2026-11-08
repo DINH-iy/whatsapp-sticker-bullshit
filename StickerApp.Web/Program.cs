@@ -28,6 +28,7 @@ builder.Services.AddSingleton<IWhatsAppExporter, BrowserWhatsAppExporter>();
 builder.Services.AddSingleton<IBulkImageImporter, BrowserBulkImageImporter>();
 builder.Services.AddScoped<IPackFileSaver, BrowserPackFileSaver>();
 builder.Services.AddScoped<PackSharingService>();
+builder.Services.AddScoped<ConnectionState>();
 builder.Services.AddSingleton(_ => new PinterestImportClient());
 builder.Services.AddSingleton<IPinterestShareInbox, EmptyPinterestShareInbox>();
 builder.Services.AddScoped<PinterestShareState>();

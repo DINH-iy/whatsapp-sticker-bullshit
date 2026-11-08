@@ -1,3 +1,4 @@
+@inject NavigationManager Navigation
 @using Microsoft.AspNetCore.Components.Forms
 
 <p class="toolbar-menu-heading">@(PackName is null ? "Add to your library" : $"Add to {PackName}")</p>
@@ -15,12 +16,18 @@
 <button class="toolbar-menu-option" type="button" @onclick="OnLayers" disabled="@StickerImportsDisabled">
     <Icon Name="edit" /><span>Layered image<small>Combine images in the layer editor.</small></span>
 </button>
-<button class="toolbar-menu-option" type="button" @onclick="OnGifSearch" disabled="@StickerImportsDisabled">
+<OnlineOnly><button class="toolbar-menu-option" type="button" @onclick="OnGifSearch" disabled="@StickerImportsDisabled">
     <Icon Name="search" /><span>Find a GIF<small>Search and preview GIFs in a popup.</small></span>
 </button>
-<a class="toolbar-menu-option" href="@(PackId is { } id ? $"pinterest?pack={id}" : "pinterest")">
+</OnlineOnly><OnlineOnly><button type="button" class="toolbar-menu-option" @onclick='()=>Navigation.NavigateTo(PackId is {} id?$"pinterest?pack={id}":"pinterest")'>
     <Icon Name="link" /><span>Import from Pinterest<small>Choose photos and videos from a shared board or selection.</small></span>
-</a>
+</button></OnlineOnly>
+<OnlineOnly><button type="button" class="toolbar-menu-option" @onclick='()=>Navigation.NavigateTo(PackId is {} id?$"imgur?pack={id}":"imgur")'>
+    <Icon Name="link" /><span>Import from Imgur<small>Import an image, GIF, video or album link.</small></span>
+</button></OnlineOnly>
+<button type="button" class="toolbar-menu-option" disabled="@Disabled" @onclick='()=>Navigation.NavigateTo(PackId is {} id?$"discord?pack={id}":"discord")'>
+    <Icon Name="folder-import" /><span>Discord favourites<small>Choose your Discord data ZIP, then select saved GIFs.</small></span>
+</button>
 @if (CanImportFolder)
 {
     <button class="toolbar-menu-option" type="button" @onclick="OnImportFolder" disabled="@StickerImportsDisabled">

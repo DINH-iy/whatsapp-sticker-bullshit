@@ -45,12 +45,20 @@
             <p class="error" role="alert">@themeError</p>
         }
     </section>
+    <ProfileEditor />
     <SpoilerSettings />
+    <LayerWarningSettings />
     <InterfaceFontSettings OnFontsChanged="RefreshFontStats" />
     <TapFeedbackSettings />
     <LibraryStatisticsSettings @ref="fontStatistics" />
     <section class="settings-card faq" id="faq" aria-labelledby="faq-title">
         <h2 id="faq-title">Help &amp; FAQ</h2>
+        <details>
+            <summary>How do I import Discord favourite GIFs on my phone?</summary>
+            <p>In Discord, open You → settings cogwheel → Data &amp; Privacy → Request all of my data. Confirm and wait for the email (up to 30 days). Download its ZIP to Files or Downloads, then choose Add stickers → Discord favourites in Stik-er-in. Choose the ZIP, select GIFs and import them. Videos open the video-to-GIF editor first.</p>
+            <p>The ZIP is read locally. Only the favourites list is passed to the app; your messages and account details are not uploaded. A browser development host downloads selected media and saves stickers on the host computer. No Discord password or account token is needed.</p>
+            <a href="discord">Open Discord import and instructions</a>
+        </details>
         <details>
             <summary>What does a pack need for WhatsApp?</summary>
             <ul>
@@ -80,7 +88,7 @@
         </details>
         <details>
             <summary>Where do I change vibration and intensity?</summary>
-            <p>Open Settings → General → Touch feedback. In the Android and iPhone apps, switch Vibration on or off and adjust Intensity within a gentle range. Releasing the slider plays one preview tap. Your choice is remembered on that device. Some Android motors cannot vary strength and use a short system tap instead.</p>
+            <p>Open Settings → General → Touch feedback. In the Android and iPhone apps, switch Vibration on or off and adjust Intensity. Each slider step gives a short tick. At 50%, Android uses twice the previous maximum amplitude. Your choice is remembered on that device. Some Android motors cannot vary strength and use a short system tap instead.</p>
             <p>Vibration is unavailable in the browser and Home Screen web app, so those controls are disabled there. Changes to native features appear on your phone after installing an updated mobile build.</p>
         </details>
         <details>
@@ -99,7 +107,7 @@
         <details>
             <summary>What works without internet?</summary>
             <p>In the installed Android and iPhone apps, your saved library, packs, and editable layers are local. You can import files already on the device, edit images, combine layers, trim saved GIFs, prepare stickers, set pack covers, import/export local pack files, change settings, and view/export logs without internet. Cloud-only files must be downloaded first.</p>
-            <p>GIF search, Pinterest imports, creating or opening online sharing links, and online country lookup need a connection. A saved GIF can still be edited offline. Sending files through an online messaging service also needs its usual connection.</p>
+            <p>GIF search, Pinterest and Imgur imports, creating or opening online sharing links, and online country lookup need a connection. A saved GIF can still be edited offline. Sending files through an online messaging service also needs its usual connection.</p>
             <p>The browser and Home Screen web app are different: they must stay connected to the computer hosting Stik-er-in. A local host on the same Wi-Fi can work without internet, but if that computer stops or the host connection is lost, editing and saving are unavailable. The reconnect notice refers to that host connection; it does not mean native layer editing needs internet.</p>
         </details>
         <details>

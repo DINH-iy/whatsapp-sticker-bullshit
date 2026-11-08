@@ -6,6 +6,7 @@
   },
   "dependencies": {
     "@jsquash/webp": "1.5.0",
+    "fflate": "0.8.3",
     "gifenc": "1.0.3",
     "gifuct-js": "2.1.2"
   },

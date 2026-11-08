@@ -8,7 +8,7 @@ export function fit(context, image, width, height) {
 
 // One bundled encoder on every platform, including Safari's iPhone WebView.
 export async function encode(canvas, quality) {
-    const software = await import('./webp-encoder.js');
+    const software = await import('../codecs/webp-encoder.js');
     const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
     return software.encode(pixels, quality);
 }
@@ -64,7 +64,7 @@ export function animation(frames, width = 512, height = 512) {
 
 export async function prepare(source, animated) {
     if (animated) {
-        const editor = await import('./gif-editor.js');
+        const editor = await import('../animation/gif-editor.js');
         try { return await editor.prepare(source); }
         finally { editor.dispose(); }
     }

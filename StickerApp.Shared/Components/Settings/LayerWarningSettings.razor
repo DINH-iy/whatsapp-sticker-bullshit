@@ -1,0 +1,16 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+<section class="settings-card" aria-labelledby="layer-warning-title">
+    <h2 id="layer-warning-title">Editing</h2>
+    <label class="toggle-row"><input type="checkbox" checked="@warn" @onchange="Change" disabled="@(module is null)" />Warn before adding text with layers</label>
+    <p class="helper">Show the explanation before switching an image or GIF to layers. You can always use Back to editor to discard the layered attempt.</p>
+    @if(error is not null){<p role="alert" class="error">@error</p>}
+</section>
+@code {
+    private bool warn=true;
+    private string? error;
+    private IJSObjectReference? module;
+    protected override async Task OnAfterRenderAsync(bool firstRender){if(!firstRender)return;module=await JS.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/ui/layer-preferences.js");warn=await module.InvokeAsync<bool>("shouldWarn");StateHasChanged();}
+    private async Task Change(ChangeEventArgs args){try{await module!.InvokeVoidAsync("setWarning",args.Value is true);warn=args.Value is true;error=null;}catch(JSException){error="Could not save this preference on this device.";}}
+    public async ValueTask DisposeAsync(){if(module is not null){try{await module.DisposeAsync();}catch(JSDisconnectedException){}}}
+}

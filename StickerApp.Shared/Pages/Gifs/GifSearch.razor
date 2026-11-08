@@ -1,3 +1,4 @@
+@inject StickerApp.Shared.Services.ConnectionState Connection
 @inject AppLog Log
 @inject LibraryStore Store
 @inject StickerApp.Shared.Services.IFormFactor FormFactor
@@ -25,12 +26,12 @@ else if (!isConfigured)
 }
 else
 {
-    <form class="gif-search-form" @onsubmit="StartSearch" @onsubmit:preventDefault>
+    <OnlineOnly><form class="gif-search-form" @onsubmit="StartSearch" @onsubmit:preventDefault>
         <label class="visually-hidden" for="gif-query">Search KLIPY GIFs</label>
         <input id="gif-query" class="search" @bind="query" @bind:event="oninput"
                placeholder="Search KLIPY" maxlength="200" disabled="@(isLoading || IsImporting)" autofocus="@Embedded" />
         <button class="button primary" type="submit" disabled="@(isLoading || IsImporting || string.IsNullOrWhiteSpace(query))">Search</button>
-    </form>
+    </form></OnlineOnly>
 
     <HelpDisclosure Summary="About importing GIFs">
         <p class="helper">Choose Import to save a GIF to your library, then choose a pack or keep it in All images. Imports use your GIF original-file setting; sticker preparation runs automatically. Maximum file size: 10 MB.</p>
@@ -67,12 +68,12 @@ else
                 <div class="gif-card-footer">
                     <span title="@gif.Title">@gif.Title</span>
                     <div class="gif-card-actions">
-                        <button class="button primary gif-import-button" type="button" @onclick="() => ImportGif(gif)"
+<OnlineOnly>                        <button class="button primary gif-import-button" type="button" @onclick="() => ImportGif(gif)"
                                 disabled="@(IsImporting || string.IsNullOrEmpty(gif.ShareUrl) || importedUrls.Contains(gif.ShareUrl))"
                                 aria-label="@(importedUrls.Contains(gif.ShareUrl) ? $"Imported {gif.Title}" : $"Import {gif.Title}")">
                             <Icon Name="@(importedUrls.Contains(gif.ShareUrl) ? "check" : "plus")" />
                             @(importedUrls.Contains(gif.ShareUrl) ? "Imported" : importingUrl == gif.ShareUrl ? "Importing…" : "Import")
-                        </button>
+                        </button></OnlineOnly>
                         @if (!string.IsNullOrEmpty(gif.ShareUrl))
                         {
                             <a class="button icon-button" href="@gif.ShareUrl" target="_blank" rel="noopener noreferrer"
@@ -98,7 +99,7 @@ else
     @if (hasNextPage)
     {
         <div class="gif-load-more">
-            <button class="button" type="button" @onclick="LoadMore" disabled="@(isLoading || IsImporting)">Load more GIFs</button>
+            <OnlineOnly><button class="button" type="button" @onclick="LoadMore" disabled="@(isLoading || IsImporting)">Load more GIFs</button></OnlineOnly>
         </div>
     }
 }
@@ -109,7 +110,7 @@ else
         <span>@error</span>
         @if (isConfigured)
         {
-            <button class="button" type="button" @onclick="RetrySearch" disabled="@(isLoading || IsImporting)">Try again</button>
+            <OnlineOnly><button class="button" type="button" @onclick="RetrySearch" disabled="@(isLoading || IsImporting)">Try again</button></OnlineOnly>
         }
     </div>
 }

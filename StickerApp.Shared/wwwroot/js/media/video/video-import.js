@@ -1,4 +1,4 @@
-import { previewControls } from './animation-preview.js';
+import { previewControls } from '../animation/animation-preview.js';
 const MAX_VIDEO_BYTES = 100 * 1024 * 1024;
 function waitFor(media,event,signal) {
     return new Promise((resolve,reject)=>{
@@ -68,7 +68,7 @@ export function create(video,input,root,dotnet) {
             const signal=conversionAbort.signal;
             try{
                 await seekWork;signal.throwIfAborted();
-                const {createEncoder}=await import('./video-gif-encoder.js');signal.throwIfAborted();
+                const {createEncoder}=await import('../codecs/video-gif-encoder.js');signal.throwIfAborted();
                 const scale=Math.min(1,512/Math.max(video.videoWidth,video.videoHeight)),canvas=document.createElement('canvas');
                 canvas.width=Math.max(1,Math.round(video.videoWidth*scale));canvas.height=Math.max(1,Math.round(video.videoHeight*scale));
                 const context=canvas.getContext('2d',{willReadFrequently:true}),encoder=createEncoder(canvas.width,canvas.height);

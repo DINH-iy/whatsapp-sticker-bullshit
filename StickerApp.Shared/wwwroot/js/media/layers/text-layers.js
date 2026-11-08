@@ -9,7 +9,7 @@ export async function loadTextFont(id,data) {
     if(families[id] && id!=='meme')return;
     if(!loaded.has(id)){
         const family=id==='meme'?'StikMeme':id;
-        const source=id==='meme'?new URL('../../fonts/Anton-Regular.ttf',import.meta.url).href:data;
+        const source=id==='meme'?new URL('../../../fonts/Anton-Regular.ttf',import.meta.url).href:data;
         if(!source)throw new Error('This custom font is unavailable. Upload it again.');
         const promise=(async()=>{const face=new FontFace(family,`url("${source}")`);await face.load();document.fonts.add(face);})();
         loaded.set(id,promise);

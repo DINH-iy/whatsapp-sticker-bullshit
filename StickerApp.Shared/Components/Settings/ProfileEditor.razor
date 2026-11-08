@@ -1,0 +1,126 @@
+@implements IAsyncDisposable
+@inject LibraryStore Store
+@inject IJSRuntime JS
+
+@if (Onboarding)
+{
+    <dialog @ref="dialog" class="folder-dialog create-pack-dialog" aria-labelledby="profile-setup-title" @oncancel="Skip" @oncancel:preventDefault>
+        <h2 id="profile-setup-title">Welcome to Stik-er-in</h2>
+        <p class="helper">Make it yours. Your profile is stored locally; no account or password needed.</p>
+        @Fields
+    </dialog>
+}
+else
+{
+    <section class="settings-card" aria-labelledby="profile-title">
+        <h2 id="profile-title">Your profile</h2>
+        <a href="profile">View profile &amp; stats</a>
+        <p class="helper">Stored locally in app storage. Your username can be used as the publisher for new packs. Your first name and photo are not included in pack exports.</p>
+        @Fields
+    </section>
+}
+
+@code {
+    [Parameter] public bool Onboarding { get; set; }
+    [Parameter] public EventCallback OnFinished { get; set; }
+    private LocalProfile profile = new();
+    private string username = "", firstName = "", theme = "system";
+    private string? picture, error, notice;
+    private bool saving, ready, blur = true, keepSources = true;
+    private ElementReference dialog, pictureInput;
+    private IJSObjectReference? dialogModule;
+
+    private RenderFragment Fields => @<form @onsubmit="Save" @onsubmit:preventDefault>
+        <label for="profile-username">Username</label>
+        <input id="profile-username" class="new-pack-name" maxlength="40" @bind="username" disabled="@saving" autocomplete="nickname" placeholder="Your public name" />
+        <label for="profile-firstname" class="settings-field-label">First name</label>
+        <input id="profile-firstname" class="new-pack-name" maxlength="80" @bind="firstName" disabled="@saving" autocomplete="given-name" />
+        <div class="pack-details-cover-controls profile-picture-controls">
+            @if (picture is not null) { <img src="@picture" alt="Your profile picture" /> }
+            <label class="button file-button"><Icon Name="image-plus" /><span>Profile picture</span><input type="file" accept="image/*" @ref="pictureInput" @onchange="ChoosePicture" disabled="@saving" aria-label="Choose profile picture" /></label>
+            @if (picture is not null) { <button class="button icon-button" type="button" @onclick="() => picture = null" disabled="@saving" aria-label="Remove profile picture"><Icon Name="trash" /></button> }
+        </div>
+        @if (Onboarding)
+        {
+            <label for="profile-theme" class="settings-field-label">Theme</label>
+            <select id="profile-theme" @bind="theme" disabled="@(!ready || saving)"><option value="system">Use system setting</option><option value="dark">Dark</option><option value="light">Light</option></select>
+            <label class="toggle-row"><input type="checkbox" @bind="blur" disabled="@saving" />Blur NSFW previews</label>
+            <label class="toggle-row"><input type="checkbox" @bind="keepSources" disabled="@saving" />Keep animation originals for editing</label>
+            <p class="helper">Everything else, including fonts and vibration, can be changed in Settings.</p>
+        }
+        @if (error is not null) { <p class="error" role="alert">@error</p> }
+        @if (notice is not null) { <p role="status">@notice</p> }
+        <div class="dialog-actions">
+            @if (Onboarding) { <button class="button" type="button" @onclick="Skip" disabled="@saving">Set up later</button> }
+            <button class="button primary" type="submit" disabled="@(!ready || saving)">@(saving ? "Saving…" : Onboarding ? "Get started" : "Save profile")</button>
+        </div>
+    </form>;
+
+    protected override async Task OnInitializedAsync()
+    {
+        profile = await Store.ReadProfileAsync();
+        username = profile.Username; firstName = profile.FirstName; picture = profile.Picture;
+        blur = Store.BlurNsfwPreviews; keepSources = Store.KeepOriginalAnimations;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        if (Onboarding)
+        {
+            dialogModule = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/dialog.js");
+            await dialogModule.InvokeVoidAsync("open", dialog);
+        }
+        theme = await JS.InvokeAsync<string>("stickerTheme.get");
+        ready = true;
+        StateHasChanged();
+    }
+
+    private async Task ChoosePicture()
+    {
+        saving = true; error = null;
+        try
+        {
+            await using var module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/pack-cover.js");
+            var result = await module.InvokeAsync<string?>("prepare", pictureInput);
+            if (result is not null) picture = PackCover.FromBytes(Convert.FromBase64String(result));
+        }
+        catch (Exception ex) when (ex is JSException or IOException or FormatException) { error = "Choose a JPEG, PNG, or WebP picture under 10 MB."; }
+        finally { saving = false; }
+    }
+
+    private async Task Save()
+    {
+        if (saving || !ready) return;
+        saving = true; error = notice = null;
+        try
+        {
+            if (Onboarding)
+            {
+                if (!await JS.InvokeAsync<bool>("stickerTheme.set", theme)) throw new InvalidOperationException("Could not save your theme. Please try again.");
+                await Store.SetBlurNsfwPreviewsAsync(blur);
+                await Store.SetOriginalRetentionAsync(Store.KeepOriginalStillImages, keepSources);
+            }
+            await Store.SaveProfileAsync(new(username, firstName, picture, true));
+            notice = "Profile saved.";
+            await OnFinished.InvokeAsync();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or JSException) { error = ex.Message; }
+        finally { saving = false; }
+    }
+
+    private async Task Skip()
+    {
+        if (saving) return;
+        saving = true;
+        try { await Store.SaveProfileAsync(profile with { SetupComplete = true }); await OnFinished.InvokeAsync(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { error = ex.Message; }
+        finally { saving = false; }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (dialogModule is null) return;
+        try { await dialogModule.DisposeAsync(); } catch (JSDisconnectedException) { }
+    }
+}

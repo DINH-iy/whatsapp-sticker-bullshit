@@ -15,7 +15,7 @@
     <p class="helper">Images: up to 10 MB each. Videos: up to 100 MB each, converted to GIF clips of at most 10 seconds. A whole batch can download at most 250 MB. You review each video clip before the batch is saved.</p>
     <p class="helper">On iPhone, choose Stickers in the share sheet, save the link, then open Stickers to preview it here.</p>
     </HelpDisclosure>
-    <form @onsubmit="Load" @onsubmit:preventDefault>
+    <OnlineOnly><form @onsubmit="Load" @onsubmit:preventDefault>
         <label for="pinterest-link">Pinterest board or selection link</label>
         <textarea id="pinterest-link" rows="3" maxlength="4096" @bind="text" @bind:event="oninput" readonly="@(pending is not null)" disabled="@busy" placeholder="https://pin.it/…"></textarea>
         <div class="dialog-actions">
@@ -29,7 +29,7 @@
                 <button type="button" class="button" disabled="@busy" @onclick="ReadSharedLink">Check saved links</button>
             }
         </div>
-    </form>
+    </form></OnlineOnly>
 </section>
 @if (error is not null)
 {
@@ -93,7 +93,7 @@
                     <input id="pinterest-pack-publisher" @bind="newPackPublisher" @bind:event="oninput" maxlength="128" placeholder="Your name or brand" disabled="@busy" required />
                 </div>
             }
-            <button class="button primary" type="button" @onclick="Import" disabled="@(busy || selected.Count == 0 || CapacityError is not null || (CreatingPack && (string.IsNullOrWhiteSpace(newPackName) || string.IsNullOrWhiteSpace(newPackPublisher))))">@(CreatingPack ? $"Create pack & import {selected.Count} items" : $"Import {selected.Count} items")</button>
+<OnlineOnly>            <button class="button primary" type="button" @onclick="Import" disabled="@(busy || selected.Count == 0 || CapacityError is not null || (CreatingPack && (string.IsNullOrWhiteSpace(newPackName) || string.IsNullOrWhiteSpace(newPackPublisher))))">@(CreatingPack ? $"Create pack & import {selected.Count} items" : $"Import {selected.Count} items")</button></OnlineOnly>
         </div>
         @if (CapacityError is not null)
         {

@@ -6,7 +6,7 @@ const canvasOf = (width, height) => {
 };
 export async function openAnimation(source) {
     if (source.startsWith('data:image/gif;base64,')) {
-        const engine = await import('./gif-engine.js');
+        const engine = await import('../codecs/gif-engine.js');
         return engine.createReader(source);
     }
     if (!source.startsWith('data:image/webp;base64,')) throw new Error('Choose a GIF or animated WebP.');

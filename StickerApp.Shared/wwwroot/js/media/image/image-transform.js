@@ -1,4 +1,4 @@
-import { rotationGrip } from './rotation-grip.js';
+import { rotationGrip } from '../shared/rotation-grip.js';
 // One retained source for moving, rotating and sizing: dragging never resamples
 // an already resampled preview. Coordinates are always in the 512px workspace.
 export function createTransformHandles(canvas, root, changed, syncPreview) {
@@ -14,6 +14,9 @@ export function createTransformHandles(canvas, root, changed, syncPreview) {
         context.save(); context.translate(value.x, value.y); context.rotate(radians());
         context.drawImage(source, -value.imageWidth / 2, -value.imageHeight / 2, value.imageWidth, value.imageHeight); context.restore();
         syncPreview(); place();
+        for(const field of root.querySelectorAll('[data-image-transform-property]')) {
+            if(field!==document.activeElement)field.value=String(Math.round(value[field.dataset.imageTransformProperty]));
+        }
         const size = root.querySelector('[data-image-resize-size]');
         if (size) size.textContent = `${Math.round(value.imageWidth)} × ${Math.round(value.imageHeight)}`;
         const angle = root.querySelector('[data-image-transform-angle]');
@@ -91,6 +94,15 @@ export function createTransformHandles(canvas, root, changed, syncPreview) {
         button.setAttribute('aria-label',mode==='rotate'?'Rotate image':`Resize image ${name}`);button.dataset.tapFeedback='off';
         const grip=mode==='rotate'?rotationGrip():document.createElement('span');button.append(grip);overlay.append(button);buttons.push({button,x,y,mode});bind(button,mode,x,y);
     }
+    function input(event){
+        if(!source || !event.target.matches('[data-image-transform-property]'))return;
+        const number=Number(event.target.value),property=event.target.dataset.imageTransformProperty;
+        if(!Number.isFinite(number)||event.target.value==='')return;
+        if(property==='imageWidth')limitSize(number,value.imageHeight,true);
+        else if(property==='imageHeight')limitSize(value.imageWidth,number,false);
+        draw();changed(Math.round(value.imageWidth),Math.round(value.imageHeight));
+    }
+    root.addEventListener('input',input);
     const observer=new ResizeObserver(place);observer.observe(wrap);
     function end(){
         if(!source)return null;
@@ -105,6 +117,6 @@ export function createTransformHandles(canvas, root, changed, syncPreview) {
         begin(){end();source=document.createElement('canvas');source.width=canvas.width;source.height=canvas.height;source.getContext('2d').drawImage(canvas,0,0);
             value={x:256,y:256,imageWidth:source.width,imageHeight:source.height,rotation:0};overlay.hidden=false;
             for(const field of root.querySelectorAll('[data-animation-seek]'))field.disabled=true;
-            draw();},end,dispose(){end();observer.disconnect();overlay.remove();}
+            draw();},end,dispose(){end();root.removeEventListener('input',input);observer.disconnect();overlay.remove();}
     };
 }

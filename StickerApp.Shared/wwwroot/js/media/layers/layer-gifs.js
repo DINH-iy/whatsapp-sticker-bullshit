@@ -1,4 +1,4 @@
-import { openAnimation } from './animation-reader.js';
+import { openAnimation } from '../animation/animation-reader.js';
 export async function openGif(source) {
     const reader = await openAnimation(source);
     const thumbnails = [];

@@ -16,13 +16,17 @@ public partial class NewPackDialog
     private string name = "";
     private string publisher = "";
     private string? error;
-    private bool saving, nsfw;
+    private bool saving, nsfw, preparingCover, coverChanged;
+    private ElementReference coverInput;
+    private byte[]? coverBytes;
+    private string? coverPreview;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         name = Pack?.Name ?? "";
+        coverPreview = Pack?.CoverImage;
         nsfw = Pack?.Nsfw ?? false;
-        publisher = Pack?.Publisher ?? "";
+        publisher = Pack?.Publisher ?? (await Store.ReadProfileAsync()).Username;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -34,14 +38,14 @@ public partial class NewPackDialog
 
     private async Task CreatePack()
     {
-        if (saving || string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(publisher)) return;
+        if (saving || preparingCover || string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(publisher)) return;
         saving = true;
         error = null;
         try
         {
             if (Pack is { } pack)
             {
-                await Store.UpdatePackDetailsAsync(pack.Id, name, publisher, nsfw);
+                await Store.UpdatePackDetailsAsync(pack.Id, name, publisher, nsfw, coverChanged, coverBytes);
                 await OnSaved.InvokeAsync(pack.Id);
             }
             else
@@ -57,7 +61,38 @@ public partial class NewPackDialog
         finally { saving = false; }
     }
 
-    private Task Cancel() => saving ? Task.CompletedTask : OnCancel.InvokeAsync();
+    private async Task ChooseCover()
+    {
+        if (saving || preparingCover) return;
+        preparingCover = true;
+        error = null;
+        try
+        {
+            await using var module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/pack-cover.js");
+            var base64 = await module.InvokeAsync<string?>("prepare", coverInput);
+            if (base64 is not null)
+            {
+                var bytes = Convert.FromBase64String(base64);
+                coverPreview = PackCover.FromBytes(bytes);
+                coverBytes = bytes;
+                coverChanged = true;
+            }
+        }
+        catch (Exception exception) when (exception is JSException or IOException or FormatException)
+        {
+            error = "Could not read that cover. Choose a JPEG, PNG, or WebP image under 10 MB.";
+        }
+        finally { preparingCover = false; }
+    }
+
+    private void RemoveCover()
+    {
+        coverBytes = null;
+        coverPreview = null;
+        coverChanged = true;
+    }
+
+    private Task Cancel() => saving || preparingCover ? Task.CompletedTask : OnCancel.InvokeAsync();
     private Task HandleKey(KeyboardEventArgs args) => args.Key == "Escape" ? Cancel() : Task.CompletedTask;
 
     public async ValueTask DisposeAsync()

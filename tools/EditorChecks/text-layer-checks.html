@@ -3,9 +3,9 @@
 const assert=(ok,message)=>{if(!ok)throw new Error(message);};
 const base='/_content/StickerApp.Shared/js/media/';
 try{
-    const {renderText,defaultText}=await import(base+'text-layers.js');
-    const {create}=await import(base+'layer-editor.js');
-    const {openAnimation}=await import(base+'animation-reader.js');
+    const {renderText,defaultText}=await import(base+'layers/text-layers.js');
+    const {create}=await import(base+'layers/layer-editor.js');
+    const {openAnimation}=await import(base+'animation/animation-reader.js');
     const caption=await renderText({...defaultText(),content:'TOP TEXT 😎\nBOTTOM TEXT'});
     assert(caption.width<=1024&&caption.height>100,'multiline meme text and emoji must render');
     const plain=await renderText({...defaultText(),font:'sans',fontSize:80,content:'MMMM',outlineWidth:0,color:'#ff0000'});
@@ -18,7 +18,7 @@ try{
     assert(leftR>leftB&&rightB>rightR,'text fill must interpolate both gradient colors');
     const emoji=await renderText({...defaultText(),content:'😎👩🏽‍💻❤️',fontSize:60});
     assert(emoji.width>80&&emoji.source.length>1000,'emoji and joined sequences must survive rendering');
-    const dialog=document.createElement('dialog'),wrap=document.createElement('div'),canvas=document.createElement('canvas');wrap.className='layer-canvas-wrap';wrap.append(canvas);dialog.append(wrap);document.body.append(dialog);
+    const dialog=document.createElement('dialog'),wrap=document.createElement('div'),canvas=document.createElement('canvas');dialog.className='layer-editor-dialog';wrap.className='layer-canvas-wrap';wrap.append(canvas);dialog.append(wrap);document.body.append(dialog);
     const c=create(canvas,{invokeMethodAsync:async()=>{}});await c.open(null);
     const randomLayer=(await c.addText()).layers[0];
     const isTop=randomLayer.text.content==='TOP TEXT';
@@ -48,7 +48,7 @@ try{
     c.dispose();dialog.remove();
     const gifFixture=await (await fetch('/editor-checks.html')).text();
     const match=gifFixture.match(/data:image\/gif;base64,[A-Za-z0-9+/=]+/);assert(match,'animated fixture must exist');
-    const d=document.createElement('dialog'),w=document.createElement('div'),cv=document.createElement('canvas');w.append(cv);d.append(w);document.body.append(d);
+    const d=document.createElement('dialog'),w=document.createElement('div'),cv=document.createElement('canvas');d.className='layer-editor-dialog';w.className='layer-canvas-wrap';w.append(cv);d.append(w);document.body.append(d);
     const animated=create(cv,{invokeMethodAsync:async()=>{}});await animated.open(null);await animated.add('GIF',match[0],512);await animated.addText('top');
     await animated.updateText({...defaultText(),content:'GIF TEXT',fontSize:40});
     const seek=document.createElement('input');seek.type='range';seek.min='0';seek.max='0.2';seek.step='0.001';seek.dataset.animationSeek='';d.append(seek);

@@ -1,0 +1,73 @@
+@page "/discord"
+@implements IAsyncDisposable
+@inject LibraryStore Store
+@inject IJSRuntime JS
+<PageTitle>Discord favourites · Stik-er-in</PageTitle>
+<header class="page-header"><h1>Discord favourites</h1></header>
+<section class="settings-card">
+    <h2>Bring your saved GIFs</h2>
+    <p>Your Discord ZIP is read on your device. Only the favourites list is passed to the app; messages, account details and the full ZIP are never uploaded.</p>
+    <details class="editor-details" open="@(items.Count == 0)">
+        <summary>How to get your Discord data export on a phone</summary>
+        <ol>
+            <li>Open Discord, tap your avatar (You), then the settings cogwheel.</li>
+            <li>Open <strong>Data &amp; Privacy → Request all of my data</strong> and confirm. If categories are offered, include <strong>Account</strong>.</li>
+            <li>Wait for Discord’s email. This can take up to 30 days.</li>
+            <li>Download the ZIP from the email to Files or Downloads on your phone.</li>
+            <li>Come back here and choose that ZIP. There is no need to unzip it.</li>
+        </ol>
+        <p class="helper">You can also choose Account/user.json or a favourites-only JSON file. No Discord login, password or account token is needed. Some expired or removed media links may no longer work.</p>
+        <a href="https://support.discord.com/hc/en-us/articles/360004027692-Requesting-a-Copy-of-your-Data" target="_blank" rel="noopener noreferrer">Discord’s data export instructions</a>
+    </details>
+    <label class="button file-button"><Icon Name="folder-import" /><span>Choose Discord ZIP or JSON</span><input @ref="fileInput" type="file" accept=".zip,.json,application/zip,application/json" disabled="@(!ready || busy || reading)" aria-label="Choose Discord export" /></label>
+</section>
+@if (error is not null) { <p class="notice notice-error" role="alert">@error</p> }
+@if (notice is not null) { <p class="notice" role="status">@notice <a href="library">Open library</a></p> }
+@if (items.Count > 0)
+{
+    <section class="settings-card">
+        <h2>@items.Count favourites found</h2>
+        <p class="helper">@skipped unsupported entries skipped · @duplicates duplicates removed. Choose up to 30 per batch. Previews load only when you tap Preview.</p>
+        <label>Search favourites<input type="search" @bind="search" @bind:event="oninput" @bind:after="ResetPage" disabled="@busy" /></label>
+        <div class="settings-actions"><button class="button" @onclick="SelectPage" disabled="@busy">Select this page</button><button class="button" @onclick="() => selected.Clear()" disabled="@busy">Clear selection</button></div>
+        <div class="discord-favorites">
+            @foreach (var item in Visible)
+            {
+                <article class="discord-favorite" @key="item.Id">
+                    <label class="toggle-row"><input type="checkbox" checked="@selected.Contains(item.Id)" @onchange="() => Toggle(item)" disabled="@(busy || item.Problem is not null || imported.Contains(item.Id) || !selected.Contains(item.Id) && selected.Count >= 30)" />@item.Name</label>
+                    @if (item.Problem is not null) { <p class="helper">@item.Problem</p> }
+                    @if (imported.Contains(item.Id)) { <p role="status">Imported</p> }
+                    else if (item.Problem is null)
+                    {
+                        <OnlineOnly>
+                            @if (previews.Contains(item.Id))
+                            {
+                                @if (item.Video) { <video src="@item.MediaUrl" controls playsinline muted loop preload="metadata" aria-label="Preview @item.Name"></video> }
+                                else { <img src="@item.MediaUrl" alt="Preview of @item.Name" loading="lazy" /> }
+                                <button class="button" @onclick="() => previews.Remove(item.Id)">Hide preview</button>
+                            }
+                            else { <button class="button" @onclick="() => previews.Add(item.Id)"><Icon Name="play" />Preview</button> }
+                        </OnlineOnly>
+                    }
+                    <a href="@item.PageUrl" target="_blank" rel="noopener noreferrer">Open original</a>
+                </article>
+            }
+        </div>
+        <div class="settings-actions"><button class="button" @onclick="() => page--" disabled="@(page == 0 || busy)">Previous</button><span>Page @(page + 1) of @Pages</span><button class="button" @onclick="() => page++" disabled="@(page + 1 >= Pages || busy)">Next</button></div>
+    </section>
+    <section class="settings-card">
+        <h2>Import @selected.Count selected</h2>
+        <label>Destination<select @bind="destination" disabled="@busy"><option value="">All images</option>@foreach (var pack in packs) { <option value="@pack.Id">@pack.Name (@pack.StickerIds.Count/30)</option> }<option value="new">Create a new pack</option></select></label>
+        @if (destination == "new")
+        {
+            <label>Pack name<input @bind="newPackName" maxlength="128" disabled="@busy" /></label>
+            <label>Publisher<input @bind="publisher" maxlength="128" disabled="@busy" /></label>
+        }
+        @if (Store.AskForOriginalOnImport) { <label class="toggle-row"><input type="checkbox" @bind="keepOriginals" disabled="@busy" />Keep original animation files for editing</label> }
+        <p class="helper">10 MB per image, 100 MB per video, 250 MB per batch. Videos open the existing video-to-GIF editor before saving. Nothing is saved until the whole batch is ready.</p>
+        <OnlineOnly><button class="button primary" @onclick="Import" disabled="@(busy || selected.Count == 0 || destination == "new" && (string.IsNullOrWhiteSpace(newPackName) || string.IsNullOrWhiteSpace(publisher)))"><Icon Name="plus" />Import selected</button></OnlineOnly>
+    </section>
+}
+@if (reading) { <OperationProgressDialog Title="Reading favourites on your device…" Detail="Your account ZIP is not uploaded." OnCancel="CancelReading" /> }
+@if (busy && videoStream is null) { <OperationProgressDialog Title="@(progress.Saving ? "Saving stickers…" : "Importing favourites…")" Detail="@($"{progress.Completed} of {progress.Total} ready · {progress.Total - progress.Completed} left")" Progress="@(progress.Total > 0 ? progress.Completed * 100 / progress.Total : 0)" CanCancel="@(!progress.Saving)" OnCancel="Cancel" /> }
+@if (videoStream is not null) { <VideoImportDialog InitialVideo="videoStream" InitialName="videoName" ImportSource="Discord" OnConverted="ClipReady" OnClose="Cancel" /> }

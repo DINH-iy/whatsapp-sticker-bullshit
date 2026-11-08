@@ -27,7 +27,7 @@
             <circle class="dial-center" cx="100" cy="100" r="39" />
             <text x="100" y="108" text-anchor="middle"><tspan data-layer-readout="rotation">@Number(Value.Rotation)</tspan>°</text>
         </svg>
-        <label><span>Rotation · <span data-layer-readout="rotation">@Number(Value.Rotation)</span>°</span><input aria-label="Rotation" type="range" min="-180" max="180" step="1" value="@Number(Value.Rotation)" data-layer-property="rotation" /></label>
+        <label><span>Rotation · <span data-layer-readout="rotation">@Number(Value.Rotation)</span>°</span><input type="number" aria-label="Rotation value" min="-180" max="180" step="1" value="@Number(Value.Rotation)" data-layer-property="rotation" /><input aria-label="Rotation" type="range" min="-180" max="180" step="1" value="@Number(Value.Rotation)" data-layer-property="rotation" /></label>
         <div class="layer-presets" role="group" aria-label="Rotation presets">
             <button class="button" type="button" @onclick="() => OnRotateBy.InvokeAsync(-90)">−90°</button>
             <button class="button" type="button" @onclick="() => OnRotateBy.InvokeAsync(-45)">−45°</button>
@@ -38,7 +38,7 @@
     }
     else if (Tool == "opacity")
     {
-        <label><span>Opacity · <span data-layer-readout="opacity">@Math.Round(Value.Opacity * 100)</span>%</span><input aria-label="Opacity" type="range" min="0" max="100" step="1" value="@Number(Value.Opacity * 100)" data-layer-property="opacity" /></label>
+        <label><span>Opacity · <span data-layer-readout="opacity">@Math.Round(Value.Opacity * 100)</span>%</span><input type="number" aria-label="Opacity value" min="0" max="100" step="1" value="@Number(Value.Opacity * 100)" data-layer-property="opacity" /><input aria-label="Opacity" type="range" min="0" max="100" step="1" value="@Number(Value.Opacity * 100)" data-layer-property="opacity" /></label>
         <div class="layer-presets" role="group" aria-label="Opacity presets">
             @foreach (var percent in new[] { 0, 25, 50, 75, 100 })
             {
@@ -46,10 +46,17 @@
             }
         </div>
     }
+    else if (Tool == "border")
+    {
+        <div class="layer-border-controls">
+            <label>Width<input type="number" aria-label="Object border width value" min="0" max="80" step="1" value="@Number(Value.BorderWidth)" data-layer-property="borderWidth" /><input type="range" aria-label="Object border width" min="0" max="80" step="1" value="@Number(Value.BorderWidth)" data-layer-property="borderWidth" /></label>
+            <input type="color" aria-label="Object border color" value="@Value.BorderColor" data-layer-property="borderColor" />
+        </div>
+    }
     else if (Tool == "tint")
     {
-        <label><span>Hue · <span data-layer-readout="hue">@Number(Value.Hue)</span>°</span><input aria-label="Hue" type="range" min="-180" max="180" step="1" value="@Number(Value.Hue)" data-layer-property="hue" /></label>
-        <label><span>Strength · <span data-layer-readout="colorStrength">@Math.Round(Value.ColorStrength * 100)</span>%</span><input aria-label="Color strength" type="range" min="0" max="100" step="1" value="@Number(Value.ColorStrength * 100)" data-layer-property="colorStrength" /></label>
+        <label><span>Hue · <span data-layer-readout="hue">@Number(Value.Hue)</span>°</span><input type="number" aria-label="Hue value" min="-180" max="180" step="1" value="@Number(Value.Hue)" data-layer-property="hue" /><input aria-label="Hue" type="range" min="-180" max="180" step="1" value="@Number(Value.Hue)" data-layer-property="hue" /></label>
+        <label><span>Strength · <span data-layer-readout="colorStrength">@Math.Round(Value.ColorStrength * 100)</span>%</span><input type="number" aria-label="Color strength value" min="0" max="100" step="1" value="@Number(Value.ColorStrength * 100)" data-layer-property="colorStrength" /><input aria-label="Color strength" type="range" min="0" max="100" step="1" value="@Number(Value.ColorStrength * 100)" data-layer-property="colorStrength" /></label>
 
     }
 </div>

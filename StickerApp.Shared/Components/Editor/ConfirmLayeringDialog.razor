@@ -1,0 +1,35 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+<dialog @ref="dialog" class="folder-dialog tool-cancel-dialog" aria-labelledby="layering-title" @oncancel="Cancel" @oncancel:preventDefault @onkeydown:stopPropagation>
+    <h2 id="layering-title">Add text with layers?</h2>
+    <p>This creates a layered sticker so the text can be edited separately. Use Back to editor to discard the layer attempt and return to your current image or GIF edits.</p>
+    <label class="toggle-row"><input type="checkbox" @bind="skipWarning" />Don’t show this warning again</label>
+    @if(error is not null){<p class="error" role="alert">@error</p>}
+    <div class="dialog-actions">
+        <button class="button" type="button" @onclick="OnCancel">Cancel</button>
+        <button class="button primary" type="button" @onclick="Continue">Continue to layers</button>
+    </div>
+</dialog>
+@code {
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback OnContinue { get; set; }
+    private bool skipWarning;
+    private string? error;
+    private async Task Continue(){
+        if(skipWarning){try{await using var preferences=await JS.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/ui/layer-preferences.js");await preferences.InvokeVoidAsync("setWarning",false);}catch(JSException){error="Could not remember this preference. You can still continue by leaving the box unchecked.";return;}}
+        await OnContinue.InvokeAsync();
+    }
+    private ElementReference dialog;
+    private IJSObjectReference? helper;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        helper = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/dialog.js");
+        await helper.InvokeVoidAsync("open", dialog);
+    }
+    private Task Cancel() => OnCancel.InvokeAsync();
+    public async ValueTask DisposeAsync()
+    {
+        if (helper is not null) { try { await helper.DisposeAsync(); } catch (JSDisconnectedException) { } }
+    }
+}

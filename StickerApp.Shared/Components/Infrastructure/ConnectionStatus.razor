@@ -1,0 +1,19 @@
+@implements IAsyncDisposable
+@inject StickerApp.Shared.Services.ConnectionState Connection
+@inject IServiceProvider Services
+@inject IJSRuntime JS
+@if(!Connection.Online){<div class="notice offline-notice" role="alert"><strong>No internet connection</strong><span>Saved stickers, editing, device imports and file exports still work in the installed app. GIF search, online imports and publishing download links are unavailable until you reconnect.</span></div>}
+@code {
+    private StickerApp.Shared.Services.IInternetStatus? native;
+    private IJSObjectReference? module, watcher;
+    private DotNetObjectReference<ConnectionStatus>? reference;
+    protected override async Task OnAfterRenderAsync(bool firstRender){
+        if(!firstRender)return;
+        native=Services.GetService(typeof(StickerApp.Shared.Services.IInternetStatus)) as StickerApp.Shared.Services.IInternetStatus;
+        if(native is not null){native.Changed+=NativeChanged;NativeChanged();}
+        else{module=await JS.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/ui/connectivity.js");reference=DotNetObjectReference.Create(this);watcher=await module.InvokeAsync<IJSObjectReference>("watch",reference);}
+    }
+    private void NativeChanged()=>_=InvokeAsync(()=>{Connection.Update(native!.Online);StateHasChanged();});
+    [JSInvokable] public void SetOnline(bool online){Connection.Update(online);StateHasChanged();}
+    public async ValueTask DisposeAsync(){if(native is not null)native.Changed-=NativeChanged;try{if(watcher is not null){await watcher.InvokeVoidAsync("dispose");await watcher.DisposeAsync();}if(module is not null)await module.DisposeAsync();}catch(JSDisconnectedException){}reference?.Dispose();}
+}

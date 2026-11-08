@@ -1,0 +1,76 @@
+@page "/profile"
+@inject LibraryStore Store
+<PageTitle>Your profile · Stik-er-in</PageTitle>
+<header class="page-header"><h1>Your profile</h1><a class="button" href="settings"><Icon Name="settings" />Settings</a></header>
+@if (error is not null) { <p class="notice notice-error" role="alert">@error</p><button class="button" @onclick="Load">Try again</button> }
+@if (overview is { } current)
+{
+    <div class="profile-sections">
+    <section class="settings-card profile-summary" aria-label="Profile overview">
+        <div class="profile-avatar">@if (current.Profile.Picture is { } picture) { <img src="@picture" alt="Your profile picture" /> } else { <Icon Name="user" /> }</div>
+        <div class="profile-summary-text">
+            <h2>@(string.IsNullOrWhiteSpace(current.Profile.Username) ? "Your local profile" : current.Profile.Username)</h2>
+            @if (!string.IsNullOrWhiteSpace(current.Profile.FirstName)) { <p>@current.Profile.FirstName</p> }
+            <small class="helper">Local profile · Sync not connected</small>
+        </div>
+        <button class="button" @onclick="() => editing = !editing" aria-expanded="@editing"><Icon Name="edit" />@(editing ? "Close editor" : "Edit profile")</button>
+    </section>
+    @if (editing) { <ProfileEditor OnFinished="ReloadProfile" /> }
+    <section class="settings-card" aria-labelledby="profile-statistics-title">
+        <div class="storage-section-header"><h2 id="profile-statistics-title">Your stats</h2><button class="button icon-button" @onclick="Load" aria-label="Refresh profile statistics" title="Refresh statistics"><Icon Name="rotate" /></button></div>
+        <p class="helper">Your current library. Stickers count once, even when used in multiple packs.</p>
+        <dl class="profile-statistics-grid">
+            <div><dt>Stickers</dt><dd>@current.Statistics.Stickers</dd></div>
+            <div><dt>Still images</dt><dd>@current.Statistics.StillImages</dd></div>
+            <div><dt>Animated</dt><dd>@current.Statistics.AnimatedImages</dd></div>
+            <div><dt>Layered</dt><dd>@current.Statistics.LayeredStickers</dd></div>
+            <div><dt>Favourites</dt><dd>@current.Statistics.Favorites</dd></div>
+            <div><dt>Packs</dt><dd>@current.Statistics.Packs</dd></div>
+            <div><dt>Public packs</dt><dd>@current.Statistics.PublicPacks</dd></div>
+            <div><dt>Private packs</dt><dd>@current.Statistics.PrivatePacks</dd></div>
+            <div><dt>Pack updates</dt><dd>@current.Statistics.PackUpdates</dd></div>
+            <div><dt>Custom fonts</dt><dd>@current.Statistics.Fonts<small>@Size(current.Statistics.FontBytes)</small></dd></div>
+            <div><dt>Library storage</dt><dd>@Size(current.Statistics.StorageBytes)</dd></div>
+        </dl>
+        @if (current.PackActivity.Count > 0)
+        {
+            <details class="editor-details profile-pack-activity">
+                <summary>Updates by pack</summary>
+                <ul>
+                    @foreach (var activity in current.PackActivity)
+                    {
+                        <li><a href="@($"packs/{activity.Id}")">@activity.Name</a><span>@activity.Updates @(activity.Updates == 1 ? "update" : "updates")</span></li>
+                    }
+                </ul>
+            </details>
+        }
+        <p class="helper">Pack updates are counted from now on, once per saved change to a pack or its stickers. Previous history is unavailable. Totals cover packs currently in your library.</p>
+        <a href="settings#general-settings-panel">Storage and app settings</a>
+    </section>
+    <section class="settings-card" aria-labelledby="profile-sharing-title">
+        <h2 id="profile-sharing-title">Sharing &amp; sync</h2>
+        <p>Your profile and stats are stored locally. Admin syncing and the shared pack overview are not connected yet.</p>
+        <details class="editor-details"><summary>What could be shared later?</summary>
+            <p>Your username, profile picture and public packs can form your shared profile. Your first name, private packs and local storage details belong in private account or admin information, separate from the public overview.</p>
+            <p>A stable local profile ID is ready for linking this installation later. It is an identifier, not a login or proof of identity. Nothing on this page is sent to a server.</p>
+            <dl class="sticker-detail-list"><dt>Local profile ID</dt><dd>@current.Identity.Id</dd></dl>
+        </details>
+        <a class="button" href=""><Icon Name="layers" />Your packs</a>
+    </section>
+    </div>
+}
+else if (error is null) { <p role="status">Loading your profile…</p> }
+@code {
+    private ProfileOverview? overview;
+    private bool editing;
+    private string? error;
+    protected override Task OnInitializedAsync() => Load();
+    private string Size(long bytes) => StorageDisplay.Format(bytes, Store.DecimalStorageUnits);
+    private async Task Load()
+    {
+        error = null;
+        try { overview = await Store.ReadProfileOverviewAsync(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException) { error = "Could not load your profile. " + ex.Message; }
+    }
+    private async Task ReloadProfile() { await Load(); editing = false; }
+}

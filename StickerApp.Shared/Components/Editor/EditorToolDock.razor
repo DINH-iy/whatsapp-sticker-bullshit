@@ -1,7 +1,7 @@
 <aside class="editor-tool-dock @(ActionsOnly ? "actions-only" : "")" aria-label="@($"{Title} controls")">
+    <strong class="editor-tool-title">@Title</strong>
     @if (!ActionsOnly)
     {
-        <strong class="editor-tool-title">@Title</strong>
         <div class="editor-tool-values">@ChildContent</div>
     }
     <div class="editor-tool-actions">

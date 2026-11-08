@@ -12,6 +12,7 @@ public partial class LayerEditorDialog
     [Parameter] public Guid? StickerId { get; set; }
     [Parameter] public Guid? PackId { get; set; }
     [Parameter] public bool StartWithText { get; set; }
+    [Parameter] public bool ReturnToEditor { get; set; }
     [Parameter] public string? InitialSource { get; set; }
     [Parameter] public string? InitialName { get; set; }
     [Parameter] public bool? InitialNsfw { get; set; }
@@ -26,6 +27,7 @@ public partial class LayerEditorDialog
     private IJSObjectReference? module, controller, dialogs, gifTools, gifSession;
     private DotNetObjectReference<LayerEditorDialog>? reference;
     private LayerEditorState state = new();
+    private bool showAddMenu;
     private bool working = true, loading = true, keepRatio = true;
     private string name = "Layered sticker", libraryImageId = "", progress = "Opening layer editor…";
     private string? error;
@@ -36,7 +38,7 @@ public partial class LayerEditorDialog
         state.PreviewPlaying = !state.PreviewPlaying;
         await controller!.InvokeVoidAsync("preview", state.PreviewPlaying);
     });
-    private string PanelTitle => quickPanel switch { "rotate" => "Rotate layer", "opacity" => "Layer opacity", "tint" => "Layer color", _ => "Size & position" };
+    private string PanelTitle => quickPanel switch { "border" => "Object border", "rotate" => "Rotate layer", "opacity" => "Layer opacity", "tint" => "Layer color", _ => "Size & position" };
     private LayerPreview? Selected => state.Selected >= 0 && state.Selected < state.Layers.Count ? state.Layers[state.Selected] : null;
     private LayerPreview? TimelineLayer => Selected?.IsGif == true ? Selected : state.Layers.FirstOrDefault(layer => layer.IsGif);
     private static string Number(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
@@ -58,7 +60,7 @@ public partial class LayerEditorDialog
         {
             dialogs = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/dialog.js");
             await dialogs.InvokeVoidAsync("open", dialog);
-            module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/media/layer-editor.js");
+            module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/media/layers/layer-editor.js");
             reference = DotNetObjectReference.Create(this);
             controller = await module.InvokeAsync<IJSObjectReference>("create", canvas, reference);
             nsfw = InitialNsfw ?? Images.FirstOrDefault(image => image.Id == StickerId)?.Nsfw ?? false;
@@ -121,7 +123,7 @@ public partial class LayerEditorDialog
         if (layerEditAnimated)
         {
             if (layerEditRecipe is null) throw new InvalidOperationException("Wait for the animation editor to open.");
-            gifTools ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/media/gif-editor.js");
+            gifTools ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/media/animation/gif-editor.js");
             gifSession ??= await gifTools.InvokeAsync<IJSObjectReference>("createSession");
             animation = await gifSession.InvokeAsync<string>("editLayer", TimeSpan.FromMinutes(4), layerEditSource, layerTrimStart, layerTrimEnd, layerEditRecipe.Value);
         }
@@ -140,7 +142,7 @@ public partial class LayerEditorDialog
             state = await controller!.InvokeAsync<LayerEditorState>("updateText", next);
         }
     }
-    private Task AddText() => Run("Adding text…", async () => { await FlushText(); state = await controller!.InvokeAsync<LayerEditorState>("addText"); quickPanel = ""; });
+    private Task AddText() => Run("Adding text…", async () => { showAddMenu = false; await FlushText(); state = await controller!.InvokeAsync<LayerEditorState>("addText"); quickPanel = ""; });
     private TextLayerOptions? queuedText;
     private async Task UpdateText(TextLayerOptions text)
     {
@@ -202,6 +204,7 @@ public partial class LayerEditorDialog
     private Task Tint(string? color) => Run("Updating color…", async () => state = await controller!.InvokeAsync<LayerEditorState>("update", "tint", color));
     private Task AddLibraryImage() => Run("Adding layer…", async () =>
     {
+        showAddMenu = false;
         if (!Guid.TryParse(libraryImageId, out var id) || !Previews.TryGetValue(id, out var source)) return;
         var image = Images.First(image => image.Id == id);
         if (image.Animated)
@@ -210,6 +213,7 @@ public partial class LayerEditorDialog
     }, showProgress: true);
     private Task AddFiles(InputFileChangeEventArgs args) => Run("Loading layer images…", async () =>
     {
+        showAddMenu = false;
         foreach (var file in args.GetMultipleFiles(10))
         {
             if (state.Layers.Count >= 10) throw new InvalidOperationException("A composition supports up to 10 layers.");

@@ -12,12 +12,12 @@
     }
     else
     {
-        <p class="helper">A gentle tap when you press buttons. Saved on this device.</p>
+        <p class="helper">Feedback for buttons and slider steps. Saved on this device.</p>
     }
     <label for="tap-intensity">Intensity · @intensity%</label>
     <input id="tap-intensity" class="tap-intensity" type="range" min="1" max="100" step="1"
            value="@intensity" @oninput="PreviewValue" @onchange="SaveIntensity" disabled="@(feedback is null || !enabled)" />
-    <p class="helper">Adjust within a gentle range. One preview tap plays when you release the slider. Strength depends on your device and its system vibration settings.</p>
+    <p class="helper">Each slider step gives a short tick. At 50%, Android uses twice the previous maximum strength. Actual strength depends on your device and system settings.</p>
 </section>
 
 @code {
@@ -40,15 +40,14 @@
         if (enabled && feedback is not null) await feedback.TapAsync();
     }
 
-    private void PreviewValue(ChangeEventArgs args)
+    private async Task PreviewValue(ChangeEventArgs args)
     {
-        if (int.TryParse(args.Value?.ToString(), out var value)) intensity = Math.Clamp(value, 1, 100);
+        if (int.TryParse(args.Value?.ToString(), out var value)) { intensity = Math.Clamp(value, 1, 100); feedback?.Configure(enabled, intensity); if (feedback is not null) await feedback.TapAsync(); }
     }
 
     private async Task SaveIntensity(ChangeEventArgs args)
     {
-        PreviewValue(args);
+        await PreviewValue(args);
         feedback?.Configure(enabled, intensity);
-        if (feedback is not null) await feedback.TapAsync();
     }
 }

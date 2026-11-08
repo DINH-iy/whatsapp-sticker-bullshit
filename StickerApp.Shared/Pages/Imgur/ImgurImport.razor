@@ -1,0 +1,81 @@
+@page "/imgur"
+@implements IAsyncDisposable
+@inject LibraryStore Store
+@inject IJSRuntime JS
+<PageTitle>Imgur · Stik-er-in</PageTitle>
+<header class="page-header"><h1>Import from Imgur</h1></header>
+<section class="settings-card">
+    <h2>Paste an Imgur link</h2>
+    <OnlineOnly><form @onsubmit="Preview" @onsubmit:preventDefault>
+        <label>Image, GIF, video or album link<input type="url" @bind="link" required disabled="@busy" placeholder="https://i.imgur.com/…" /></label>
+        <button class="button primary" type="submit" disabled="@busy">Preview media</button>
+    </form></OnlineOnly>
+    <details class="editor-details"><summary>Post and album access</summary>
+        <p class="helper">Direct i.imgur.com links work without setup. For post and album links, enter your Imgur Client ID. This is a public app identifier; no account password or client secret is needed.</p>
+        <label>Imgur Client ID<input @bind="clientId" @bind:after="SaveClientId" maxlength="64" autocomplete="off" /></label>
+        <a href="https://api.imgur.com/oauth2/addclient" target="_blank" rel="noopener noreferrer">Register an Imgur application</a>
+    </details>
+</section>
+@if(error is not null){<p class="notice notice-error" role="alert">@error</p>}
+@if(notice is not null){<p class="notice" role="status">@notice <a href="library">Open library</a></p>}
+@if(items.Count>0){
+<section class="settings-card">
+    <h2>Choose media</h2>
+    <p class="helper">Images up to 10 MB; videos up to 100 MB. Review video clips before saving. The batch is limited to 250 MB and 30 selected items.</p>
+    @foreach(var item in items){<label class="toggle-row"><input type="checkbox" checked="@selected.Contains(item)" @onchange="()=>Toggle(item)" disabled="@busy" />@item.Name · @(item.Video?"Video":"Image / GIF") <a href="@item.Url" target="_blank" rel="noopener noreferrer">Open</a></label>}
+    <label>Destination<select @bind="destination" disabled="@busy"><option value="">All images</option>@foreach(var pack in packs){<option value="@pack.Id">@pack.Name (@pack.StickerIds.Count/30)</option>}</select></label>
+    <OnlineOnly><button class="button primary" @onclick="Import" disabled="@(busy||selected.Count==0||selected.Count>30)">Import @selected.Count items</button></OnlineOnly>
+</section>
+}
+@if(busy && videoStream is null){<OperationProgressDialog Title="@status" Detail="@detail" CanCancel="true" OnCancel="Cancel" />}
+@if(videoStream is not null){<VideoImportDialog InitialVideo="videoStream" InitialName="videoName" ImportSource="Imgur" OnConverted="ClipReady" OnClose="Cancel" />}
+@code {
+    private readonly ImgurImportClient client=new();
+    private string link="",clientId="",destination="",status="Opening Imgur…",detail="";
+    private string? error,notice,videoName;
+    private bool busy;
+    private IReadOnlyList<ImgurMedia> items=[];
+    private readonly HashSet<ImgurMedia> selected=[];
+    private List<StickerPack> packs=[];
+    private CancellationTokenSource? operation;
+    private IJSObjectReference? preferences;
+    private MemoryStream? videoStream;
+    private TaskCompletionSource<byte[]>? videoCompletion;
+    [SupplyParameterFromQuery(Name="pack")] public Guid? PackId {get;set;}
+    protected override async Task OnAfterRenderAsync(bool firstRender){if(!firstRender)return;preferences=await JS.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/ui/imgur-preferences.js");clientId=await preferences.InvokeAsync<string>("read");packs=(await Store.ReadAsync()).Packs.ToList();destination=PackId?.ToString()??"";StateHasChanged();}
+    private async Task SaveClientId(){if(preferences is not null)await preferences.InvokeVoidAsync("save",clientId);}
+    private void Toggle(ImgurMedia item){if(!selected.Remove(item))selected.Add(item);}
+    private async Task Preview(){
+        busy=true;error=notice=null;status="Opening Imgur…";detail="";operation=new();
+        try{items=await client.PreviewAsync(link,clientId,operation.Token);selected.Clear();foreach(var item in items.Take(30))selected.Add(item);}
+        catch(OperationCanceledException){}catch(Exception ex) when(ex is IOException or HttpRequestException or System.Text.Json.JsonException or InvalidOperationException){error=ex.Message;}
+        finally{busy=false;operation.Dispose();operation=null;}
+    }
+    private async Task Import(){
+        busy=true;error=notice=null;operation=new();var token=operation.Token;
+        var temporary=new List<string>();var files=new List<BatchImportFile>();long downloaded=0,staged=0;
+        try{
+            if(selected.Count is <1 or >30)throw new InvalidDataException("Choose 1 to 30 items.");
+            if(Guid.TryParse(destination,out var packId)){var pack=(await Store.ReadAsync()).Packs.FirstOrDefault(p=>p.Id==packId)??throw new InvalidDataException("This pack no longer exists.");if(pack.StickerIds.Count+selected.Count>30)throw new InvalidDataException("This selection will exceed the pack’s 30-sticker limit.");}
+            var index=0;
+            foreach(var item in selected.ToArray()){
+                status="Importing Imgur media…";detail=$"{index} of {selected.Count} ready · {selected.Count-index} left";StateHasChanged();
+                var bytes=await client.DownloadAsync(item,token);downloaded+=bytes.Length;if(downloaded>250L*1024*1024)throw new InvalidDataException("This batch exceeds 250 MB.");
+                if(item.Video){
+                    videoName=item.Name;videoStream=new(bytes,false);videoCompletion=new(TaskCreationOptions.RunContinuationsAsynchronously);StateHasChanged();
+                    try{bytes=await videoCompletion.Task.WaitAsync(token);}finally{videoStream.Dispose();videoStream=null;videoCompletion=null;}
+                }
+                token.ThrowIfCancellationRequested();staged+=bytes.Length;if(staged>250L*1024*1024)throw new InvalidDataException("This batch exceeds 250 MB.");
+                var info=MediaInspector.Inspect(bytes);var path=Path.Combine(Path.GetTempPath(),"stik-imgur-"+Guid.NewGuid().ToString("N")+info.Extension);temporary.Add(path);await File.WriteAllBytesAsync(path,bytes,token);files.Add(new(item.Name,path));index++;
+            }
+            status="Saving stickers…";detail="";
+            await Store.ImportBatchAsync(files,Guid.TryParse(destination,out var id)?id:null,token);
+            notice=$"Imported {files.Count} items.";items=[];selected.Clear();
+        }catch(OperationCanceledException){notice="Import cancelled. No stickers were saved.";}
+        catch(Exception ex) when(ex is IOException or InvalidOperationException or HttpRequestException or UnauthorizedAccessException){error=ex.Message;}
+        finally{foreach(var path in temporary){try{File.Delete(path);}catch(IOException){}}busy=false;operation.Dispose();operation=null;}
+    }
+    private void Cancel(){operation?.Cancel();videoCompletion?.TrySetCanceled();}
+    private void ClipReady(byte[] bytes)=>videoCompletion?.TrySetResult(bytes);
+    public async ValueTask DisposeAsync(){Cancel();client.Dispose();if(preferences is not null){try{await preferences.DisposeAsync();}catch(JSDisconnectedException){}}}
+}

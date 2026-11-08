@@ -84,11 +84,10 @@
                 <strong>@pack.Name</strong>
                 <small class="pack-card-publisher" title="@pack.Publisher">By @pack.Publisher</small>
                 <small>@pack.StickerIds.Count @(pack.StickerIds.Count == 1 ? "sticker" : "stickers") · @PackTypeLabel(pack)</small>
-                <small class="image-file-summary">@PackSize(pack) stored</small>
+                <small class="image-file-summary">@PackSize(pack) stored · @(pack.Public ? "Public" : "Private")</small>
             </a>
             <div class="pack-card-actions">
-                <PackCoverPicker Pack="@pack" OnChanged="Reload" AllowRemove="false" />
-                <button class="button icon-button" type="button" disabled="@busy" @onclick="() => editingPack = pack" title="Edit pack details" aria-label="Edit details for @pack.Name"><Icon Name="edit" /></button>
+                <button class="button icon-button" type="button" disabled="@busy" @onclick="() => editingPack = pack" title="Edit pack details" aria-label="Edit details for @pack.Name"><Icon Name="edit" /><span>Edit details</span></button>
             </div>
         </article>
     }

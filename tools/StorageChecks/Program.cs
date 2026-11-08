@@ -280,13 +280,18 @@ try
         var source = "data:image/webp;base64," + Convert.ToBase64String(animated);
         var composition = new LayerComposition { Layers = [new CompositionLayer {
             Id = "edited-animation", Name = "Cutout", Source = "data:image/png;base64," + Convert.ToBase64String(png),
-            GifSource = source, GifDuration = 1, TrimStart = 0, TrimEnd = 1, Opacity = 0.5, Hue = 80, ColorStrength = 0.4
+            GifSource = source, GifDuration = 1, TrimStart = 0, TrimEnd = 1, Opacity = 0.5, Hue = 80, ColorStrength = 0.4, BorderWidth = 6, BorderColor = "#44ee77"
         }] };
         var id = await store.SaveCompositionAsync(null, "Animated cutout", animated, composition);
         var reopened = await new LibraryStore(store.DefaultRoot).ReadCompositionAsync(id);
         Require(reopened?.Layers.Single().GifSource == source, "Edited animation source changed on save");
         Require(reopened!.Layers.Single().Opacity == 0.5, "Layer opacity was lost");
         Require(reopened.Layers.Single().Hue == 80 && reopened.Layers.Single().ColorStrength == 0.4, "Layer hue or strength was lost");
+        Require(reopened.Layers.Single().BorderWidth == 6 && reopened.Layers.Single().BorderColor == "#44ee77", "Object outline was lost on save/reopen");
+        reopened.Layers[0].BorderWidth = double.NaN;
+        var invalidOutlineRejected = false;
+        try { reopened.Validate(); } catch (InvalidDataException) { invalidOutlineRejected = true; }
+        Require(invalidOutlineRejected, "Non-finite object outline width was accepted");
         Require(await store.ReadLayerAnimationAsync(id) == source, "Animated WebP cannot be reused as a layer");
         await store.ImportAsync("Original GIF", gif, keepOriginal: true);
         var imported = (await store.ReadAsync()).Stickers.Single(image => image.Name == "Original GIF");
@@ -545,6 +550,92 @@ try
         Require(reopened.DonutStorageChart && !reopened.AskForOriginalOnImport, "Relocation lost chart/import preferences");
         Require(reopened.DecimalStorageUnits, "Relocation lost the storage-unit preference");
         Require(reopened.Root == destination && reopened.KeepOriginalStillImages && !reopened.KeepOriginalAnimations && reopened.StorageLimitBytes == 5 * 1024 * 1024, "Relocation lost preferences");
+    });
+    await Check("pack details and cover commit together and preserve untouched covers", async store =>
+    {
+        var id = await store.CreatePackAsync("Before", "Publisher");
+        await store.UpdatePackDetailsAsync(id, "After", "New publisher", true, true, png);
+        var reopened = new LibraryStore(store.DefaultRoot);
+        var pack = (await reopened.ReadAsync()).Packs.Single();
+        Require(pack.Name == "After" && pack.Publisher == "New publisher" && pack.Nsfw && pack.CoverImage == PackCover.FromBytes(png), "Combined details and cover did not persist");
+        await reopened.UpdatePackDetailsAsync(id, "Renamed", "New publisher");
+        Require((await reopened.ReadAsync()).Packs.Single().CoverImage == pack.CoverImage, "Saving details cleared an untouched cover");
+        try
+        {
+            await reopened.UpdatePackDetailsAsync(id, "Must not save", "Wrong", false, true, [1, 2, 3]);
+            throw new Exception("Invalid cover was accepted");
+        }
+        catch (InvalidDataException) { }
+        Require((await reopened.ReadAsync()).Packs.Single().Name == "Renamed", "Invalid cover partially saved details");
+        await reopened.UpdatePackDetailsAsync(id, "Removed", "Publisher", false, true, null);
+        Require((await new LibraryStore(store.DefaultRoot).ReadAsync()).Packs.Single().CoverImage is null, "Cover removal did not persist");
+    });
+    await Check("local profile survives relocation and is excluded from pack archives", async store =>
+    {
+        Require(!(await store.ReadProfileAsync()).SetupComplete, "First launch should offer setup");
+        await store.SaveProfileAsync(new("  public-name  ", "Private first name", PackCover.FromBytes(png), true));
+        var profile = await new LibraryStore(store.DefaultRoot).ReadProfileAsync();
+        Require(profile.Username == "public-name" && profile.SetupComplete && profile.Picture is not null, "Profile did not persist");
+        var id = await store.CreatePackAsync("Private by default", profile.Username);
+        Require(!(await store.ReadAsync()).Packs.Single().Public, "New packs should default to private");
+        await store.UpdatePackDetailsAsync(id, "Public choice", profile.Username, isPublic: true);
+        await using var archive = new MemoryStream();
+        await store.ExportPackAsync(id, archive);
+        archive.Position = 0;
+        var importedPack = await PackArchive.ReadAsync(archive);
+        Require(importedPack.Public, "Editable pack backup lost public choice");
+        using (var zip = new ZipArchive(archive, ZipArchiveMode.Read, true))
+        using (var reader = new StreamReader(zip.GetEntry("manifest.json")!.Open()))
+            Require(!(await reader.ReadToEndAsync()).Contains("Private first name"), "Private profile leaked into pack export");
+        await store.ChangeFolderAsync(store.Root + "-profile-moved");
+        Require((await new LibraryStore(store.DefaultRoot).ReadProfileAsync()).Username == "public-name", "Relocation lost the profile");
+    });
+    await Check("profile overview counts unique stickers and preserves identity across edits and relocation", async store =>
+    {
+        var first = await store.ReadProfileOverviewAsync();
+        Require(first.Identity.Id != Guid.Empty && first.Statistics.Stickers == 0, "New profile identity or empty stats are invalid");
+        var stillId = await store.ImportAsync("Still.png", png);
+        await store.ImportAsync("Animation.gif", gif);
+        await store.FavoriteAsync(stillId);
+        var publicId = await store.CreatePackAsync("Public", "Publisher", isPublic: true);
+        var privateId = await store.CreatePackAsync("Private", "Publisher");
+        await store.AddToPackAsync(publicId, [stillId]);
+        await store.AddToPackAsync(privateId, [stillId]);
+        await store.SaveProfileAsync(new("Renamed", "Private", null, true));
+        var overview = await new LibraryStore(store.DefaultRoot).ReadProfileOverviewAsync();
+        Require(overview.Identity == first.Identity, "Profile edits regenerated identity");
+        Require(overview.Statistics.Stickers == 2 && overview.Statistics.StillImages == 1 && overview.Statistics.AnimatedImages == 1, "Sticker membership inflated profile counts");
+        Require(overview.Statistics.Packs == 2 && overview.Statistics.PublicPacks == 1 && overview.Statistics.PrivatePacks == 1 && overview.Statistics.Favorites == 1, "Profile pack or favourite counts are incorrect");
+        Require(overview.Statistics.StorageBytes > 0, "Profile storage is missing");
+        await store.ChangeFolderAsync(store.Root + "-identity-moved");
+        Require((await new LibraryStore(store.DefaultRoot).ReadProfileOverviewAsync()).Identity == first.Identity, "Relocation regenerated identity");
+    });
+    await Check("pack updates count committed changes once, exclude no-ops, and survive reopening", async store =>
+    {
+        var packId = await store.CreatePackAsync("Tracked", "Publisher");
+        Require((await store.ReadAsync()).Packs.Single().UpdateCount == 0, "Creating a pack is not an update");
+        var stickerId = await store.ImportAsync("Original.png", png);
+        await store.AddToPackAsync(packId, [stickerId]);
+        await store.AddToPackAsync(packId, [stickerId]);
+        Require((await store.ReadAsync()).Packs.Single().UpdateCount == 1, "No-op membership counted as an update");
+        var source = Path.Combine(store.DefaultRoot, "batch.png");
+        await File.WriteAllBytesAsync(source, png);
+        await store.ImportBatchAsync([new("Batch A", source), new("Batch B", source)], packId);
+        Require((await store.ReadAsync()).Packs.Single().UpdateCount == 2, "A multi-file batch must count once");
+        await store.UpdatePackDetailsAsync(packId, "Renamed", "Publisher");
+        await store.UpdatePackDetailsAsync(packId, "Renamed", "Publisher");
+        await store.SetPackCoverAsync(packId, png);
+        await store.SetPackCoverAsync(packId, png);
+        await store.SetPackPublicAsync(packId, true);
+        await store.SetPackPublicAsync(packId, true);
+        await store.EditStickerAsync(stickerId, "Edited sticker", "new tags");
+        await store.FavoriteAsync(stickerId);
+        await Throws(() => store.UpdatePackDetailsAsync(packId, "Should fail", ""));
+        var overview = await new LibraryStore(store.DefaultRoot).ReadProfileOverviewAsync();
+        var activity = overview.PackActivity.Single();
+        Require(activity.Updates == 6 && overview.Statistics.PackUpdates == 6 && activity.LastUpdatedUtc is not null, "Update totals included no-ops, favourites, or failed writes, or did not persist");
+        await store.ChangeFolderAsync(store.Root + "-activity-moved");
+        Require((await new LibraryStore(store.DefaultRoot).ReadProfileOverviewAsync()).PackActivity.Single().Updates == 6, "Relocation lost update counts");
     });
     Console.WriteLine($"Passed {checks} storage checks.");
 }

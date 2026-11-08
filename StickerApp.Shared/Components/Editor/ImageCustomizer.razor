@@ -5,22 +5,39 @@
 <div class="image-customizer @(Animated ? "animated-customizer" : "")" aria-busy="@working">
     <div class="customizer-preview-dock">
         <div class="customizer-preview-stage @(tool == "adjust" && adjustmentTool == "opacity" ? "opacity-tool-stage" : "")">
-            <div class="customizer-canvas-wrap"><canvas @ref="canvas" aria-label="Image editing canvas. Draw with your finger or pointer." /></div>
+            <div class="editor-viewport"><div class="customizer-canvas-wrap"><canvas @ref="canvas" aria-label="Image editing canvas. Draw with your finger or pointer." /></div></div>
             @if (tool != "")
             {
                 <EditorToolDock Title="@ToolTitle" Disabled="@working" ActionsOnly="@(tool is "crop" or "lasso")" OnApply="ApplyTool" OnCancel="RequestCancelTool">
-                    @if (tool == "erase")
+                    @if (tool == "draw")
                     {
-                        <label class="vertical-tool-setting"><output>@brush</output><input aria-label="Brush size" type="range" min="5" max="256" @bind="brush" @bind:event="oninput" @bind:after="UpdateSettings" disabled="@working" /></label>
+                        <div class="drawing-controls">
+                            <label class="vertical-tool-setting"><span class="visually-hidden">Size</span><input type="number" aria-label="Drawing brush size value" min="2" max="128" @bind="drawBrush" @bind:event="oninput" @bind:after="UpdateSettings" disabled="@working" /><input aria-label="Drawing brush size" type="range" min="2" max="128" @bind="drawBrush" @bind:event="oninput" @bind:after="UpdateSettings" disabled="@working" /></label>
+                            <input type="color" aria-label="Brush color" title="Brush color" @bind="brushColor" @bind:after="UpdateSettings" disabled="@working" />
+                        </div>
+                    }
+                    else if (tool == "border")
+                    {
+                        <div class="border-controls">
+                            <label>Width<input type="number" aria-label="Border thickness" min="0" max="80" @bind="borderWidth" @bind:event="oninput" @bind:after="UpdateBorder" /></label>
+                            <input type="color" aria-label="Border color" @bind="borderColor" @bind:after="UpdateBorder" />
+                            <label>Round<input type="number" aria-label="Border corner radius" min="0" max="256" @bind="borderRadius" @bind:event="oninput" @bind:after="UpdateBorder" /></label>
+                        </div>
+                    }
+                    else if (tool == "erase")
+                    {
+                        <label class="vertical-tool-setting"><input type="number" aria-label="Brush size value" min="5" max="256" @bind="brush" @bind:event="oninput" @bind:after="UpdateSettings" disabled="@working" /><input aria-label="Brush size" type="range" min="5" max="256" @bind="brush" @bind:event="oninput" @bind:after="UpdateSettings" disabled="@working" /></label>
                     }
                     else if (tool == "wand")
                     {
-                        <label class="vertical-tool-setting"><output>@tolerance</output><input aria-label="Color tolerance" type="range" min="0" max="150" @bind="tolerance" @bind:event="oninput" @bind:after="UpdateSettings" disabled="@working" /></label>
+                        <label class="vertical-tool-setting"><input type="number" aria-label="Color tolerance value" min="0" max="150" @bind="tolerance" @bind:event="oninput" @bind:after="UpdateSettings" disabled="@working" /><input aria-label="Color tolerance" type="range" min="0" max="150" @bind="tolerance" @bind:event="oninput" @bind:after="UpdateSettings" disabled="@working" /></label>
                     }
                     else if (tool == "adjust" && adjustmentTool == "transform")
                     {
                         <div class="resize-handle-options">
                             <output data-image-resize-size>@width × @height</output>
+                            <label>W<input type="number" aria-label="Transform width" data-image-transform-property="imageWidth" min="1" max="512" value="@width" /></label>
+                            <label>H<input type="number" aria-label="Transform height" data-image-transform-property="imageHeight" min="1" max="512" value="@height" /></label>
                             <output data-image-transform-angle>0°</output>
                             <label class="layer-check"><input type="checkbox" data-image-resize-ratio @bind="keepRatio" />Keep proportions</label>
                         </div>
@@ -39,6 +56,7 @@
                 </EditorToolDock>
             }
         </div>
+        <EditorViewControls />
         @if (Timeline is not null) { @Timeline(new PlaybackControlState(() => Run("preview", TrimStart, TrimEnd), previewing, working || adjustmentTool == "transform")) }
         @if (Animated && Timeline is null)
         {
@@ -46,13 +64,15 @@
         }
     </div>
     <div class="customizer-controls">
-        <div class="customizer-tools" role="group" aria-label="Image selection tools">
+        @Options
+        <EditorToolSection Title="Cutout tools">
             <button class="button @(tool == "crop" ? "selected-tool" : "")" @onclick='() => SelectTool("crop")' disabled="@working"><Icon Name="crop" /><span>Crop</span></button>
             <button class="button @(tool == "lasso" ? "selected-tool" : "")" @onclick='() => SelectTool("lasso")' disabled="@working"><Icon Name="lasso" /><span>Trace cutout</span></button>
             <button class="button @(tool == "erase" ? "selected-tool" : "")" @onclick='() => SelectTool("erase")' disabled="@working"><Icon Name="eraser" /><span>Eraser</span></button>
             <button class="button @(tool == "wand" ? "selected-tool" : "")" @onclick='() => SelectTool("wand")' disabled="@working"><Icon Name="wand" /><span>Magic wand</span></button>
-        </div>
-        <div class="customizer-tools" role="group" aria-label="Image adjustments">
+        </EditorToolSection>
+        <EditorToolSection Title="Draw &amp; adjust">
+            <button class="button @(tool == "draw" ? "selected-tool" : "")" type="button" @onclick='() => SelectTool("draw")' disabled="@working"><Icon Name="edit" /><span>Draw</span></button>
             @if (OnAddText.HasDelegate)
             {
                 <button class="button" type="button" @onclick="OnAddText" disabled="@working"><Icon Name="text" /><span>Add text</span></button>
@@ -64,11 +84,12 @@
             <button class="button @(adjustmentTool == "opacity" ? "selected-tool" : "")" @onclick='() => SelectAdjustment("opacity")' disabled="@working"><Icon Name="opacity" /><span>Opacity</span></button>
             <button class="button @(adjustmentTool == "tint" ? "selected-tool" : "")" @onclick='() => SelectAdjustment("tint")' disabled="@working"><Icon Name="palette" /><span>Color</span></button>
             <button class="button @(adjustmentTool == "transform" ? "selected-tool" : "")" @onclick='() => SelectAdjustment("transform")' disabled="@working"><Icon Name="crop" /><span>Transform</span></button>
+            <button class="button @(tool == "border" ? "selected-tool" : "")" type="button" @onclick='() => SelectTool("border")' disabled="@working"><Icon Name="image" /><span>Border</span></button>
             <button class="button" @onclick='() => Transform("flip")' disabled="@working"><Icon Name="flip" /><span>Flip</span></button>
             <button class="button" @onclick='() => Run("undo")' disabled="@working"><Icon Name="undo" /><span>Undo</span></button>
             <button class="button" @onclick='() => Run("redo")' disabled="@working"><Icon Name="redo" /><span>Redo</span></button>
             <button class="button" @onclick='() => Run("reset")' disabled="@working"><Icon Name="reset" /><span>Reset image</span></button>
-        </div>
+        </EditorToolSection>
         <HelpDisclosure Summary="Editing help">
             <p class="helper">@ToolHint</p>
             @if (Animated)
@@ -77,7 +98,6 @@
             }
             <p class="helper">Checkerboard areas are transparent. @(Animated ? "Animation edits are saved as animated WebP." : "Cutouts are saved as PNG before automatic sticker preparation.") Images fit the 512 × 512 workspace without enlarging small sources.</p>
         </HelpDisclosure>
-        @Options
         @if (error is not null) { <p class="error" role="alert">@error</p> }
     </div>
 </div>
@@ -114,9 +134,11 @@
     private string tool = "crop";
     private bool confirmToolCancel;
     private bool working = true, keepRatio = true, previewing, isDisposed;
-    private int width = 512, height = 512, brush = 40, tolerance = 36;
-    private string ToolTitle => tool switch { "crop" => "Crop", "lasso" => "Trace cutout", "erase" => "Brush size", "wand" => "Tolerance", "adjust" => adjustmentTool switch { "rotate" => "Rotation", "opacity" => "Opacity", "tint" => "Color", _ => "Transform" }, _ => "Edit" };
+    private int width = 512, height = 512, brush = 40, drawBrush = 12, tolerance = 36;
+    private string brushColor = "#ff4d6d";
+    private string ToolTitle => tool switch { "draw" => "Draw", "border" => "Border", "crop" => "Crop", "lasso" => "Trace cutout", "erase" => "Brush size", "wand" => "Tolerance", "adjust" => adjustmentTool switch { "rotate" => "Rotation", "opacity" => "Opacity", "tint" => "Color", _ => "Transform" }, _ => "Edit" };
     private string ToolHint => tool switch {
+        "draw" => "Draw on the artwork with the selected color and brush size. Strokes stay in the same position on every GIF frame. Apply keeps them; Cancel restores this tool's changes.",
         "lasso" => "Trace around the part you want to keep, then use the checkmark to apply. Everything outside becomes transparent.",
         "erase" => "Brush over unwanted parts to erase them. Use Undo to restore the last stroke.",
         "adjust" when adjustmentTool == "transform" => "Drag the artwork to move it. Drag the edge handles to resize, or the arrow handle to rotate. Apply keeps all three changes together.",
@@ -138,7 +160,7 @@
         loadedSource = Source;
         try {
             await OnBusyChanged.InvokeAsync(true);
-            module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/media/image-customizer.js");
+            module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/media/image/image-customizer.js");
             reference ??= DotNetObjectReference.Create(this);
             controller ??= await module.InvokeAsync<IJSObjectReference>("create", canvas, reference);
             var size = await controller.InvokeAsync<ImageSize>("open", Source, Math.Min(2048, MaxDimension), MaxDimension, Animated);
@@ -182,7 +204,7 @@
     private Task SetHue(double hue) => Run("adjust", "hue", hue);
     private Task SetColorStrength(int strength) => Run("adjust", "colorStrength", strength / 100d);
     private Task SetTint(string? color) => Run("adjust", "tint", color);
-    private async Task SelectTool(string value) { if (controller is null || working) return; if (tool == value) { RequestCancelTool(); return; } adjustmentTool = ""; tool = value; error = null; await controller.InvokeVoidAsync("beginTool", tool); }
+    private async Task SelectTool(string value) { if (controller is null || working) return; if (tool == value) { RequestCancelTool(); return; } adjustmentTool = ""; tool = value; error = null; await controller.InvokeVoidAsync("beginTool", tool); await UpdateSettings(); if(tool == "border") await UpdateBorder(); }
     private async Task ApplyTool()
     {
         await Run("applyTool", adjustmentTool == "transform");
@@ -195,7 +217,10 @@
         await Run("cancelTool");
         if (error is null) { tool = ""; adjustmentTool = ""; }
     }
-    private async Task UpdateSettings() { if (controller is not null) await controller.InvokeVoidAsync("settings", brush, tolerance); }
+    private int borderWidth = 8, borderRadius;
+    private string borderColor = "#ffffff";
+    private Task UpdateBorder() => Run("border", borderWidth, borderColor, borderRadius);
+    private async Task UpdateSettings() { if (controller is not null) await controller.InvokeVoidAsync("settings", tool == "draw" ? drawBrush : brush, tolerance, brushColor); }
     private Task Transform(string action) => Run("transform", action, width, height);
     private async Task Run(string method, params object?[] args)
     {

@@ -260,8 +260,46 @@ Anton is distributed under the SIL Open Font License; its font file and license 
 
 ### NSFW spoiler previews
 
-In a sticker editor, open **Name & file options → NSFW spoiler**, then save. This works for stills, GIFs and editable layered stickers; Cancel keeps the previous tag. Packs can be tagged through **Pack options → Mark pack as NSFW**, or the NSFW checkbox in new/edit pack details. Tagged packs also hide their members in All images. Pack covers are protected if they contain tagged stickers.
+In a sticker editor, open **Sticker options → NSFW spoiler**, then save. This works for stills, GIFs and editable layered stickers; Cancel keeps the previous tag. Packs can be tagged through **Pack options → Mark pack as NSFW**, or the NSFW checkbox in new/edit pack details. Tagged packs also hide their members in All images. Pack covers are protected if they contain tagged stickers.
 
 **Settings → General → NSFW spoilers → Blur NSFW previews** enables/disables blurring without deleting tags (on by default). The eye in the top-right of a preview temporarily reveals/hides that preview. Returning to the page hides it again. The setting is saved with this library/device's preferences. Editable ZIP backups preserve both pack and sticker flags; the WhatsApp archive format does not carry these app-only tags. Media and exported pixels are unchanged.
 
 Animated editors have a timeline visibility toggle. Hiding it preserves the clip range and speed; playback and speed stay on one compact row. The frame scrubber sits above the filmstrip. Save and Cancel remain beside the editor title, outside the scrolling tools.
+
+The shared image/GIF editor includes **Draw** with a brush color and size. Strokes are applied to every animation frame and support Apply, Cancel and Undo/Redo. Tool actions sit at the bottom of their controls panel. **Add text** explains the switch to layers before opening it; **Back to editor** discards the unsaved layered attempt and restores the original editing session.
+
+### Editor tools and offline use
+
+Draw supports a brush color, typed size and slider; strokes replay across GIF frames. Cutout/drawing gestures show a magnified crosshair above the pointer. Preview zoom (25–400%), Pan and Fit work in the image/GIF and layer editors without changing exported pixels. Border adds an inward frame with a chosen width, color and corner radius, replayed across animations. Transform retains handles and also accepts typed width/height.
+
+Add text warns before opening layers. “Don’t show this warning again” remembers the choice on this device; **Settings → General → Editing** restores the warning. **Back to editor** discards the unsaved layered attempt and retains the original editor session.
+
+Native saved libraries, device imports, editing, fonts, media conversion and local pack exports work offline. GIF search/import, Pinterest/Imgur import, publishing/opening sharing links and country lookup need internet. Startup shows an offline notice and remote action controls stay visible but disabled; reconnecting enables them. Detection uses the OS network state on native hosts and browser online/offline events on the web; a captive portal or unreachable individual service can still fail separately. The connected Blazor web/PWA version requires its host computer; its service worker only supplies an offline explanation, not an offline library.
+
+Native slider input produces vibration ticks. Android 50% uses amplitude 140/255, twice the old 100% amplitude (70/255), and 16 ms pulses; 100% caps at hardware amplitude 255. iOS uses heavy impacts with scaled intensity. Old motors may only support system taps. Physical strength needs testing on a phone.
+
+### Imgur import
+
+**Add stickers → Import from Imgur** supports direct HTTPS `i.imgur.com` PNG/JPEG/WebP/GIF/MP4/WebM links (GIFV uses MP4 conversion). Public post/album links use an Imgur Client ID, entered under **Post and album access**, following [Imgur’s public API](https://apidocs.imgur.com/). No client secret or account login is needed. Client IDs stay in device/browser local storage. No separate extraction server is required. Videos reuse the existing trim/conversion dialog. Up to 100 album items can be previewed; choose at most 30. Download limits are 10 MB per image, 100 MB per video and 250 MB per batch. Files are staged and the batch commits atomically after all video reviews. Cancelling leaves the library unchanged.
+
+### Object borders on layers
+
+Select any image, GIF or text layer, then open **Layer actions → Object border**. Set width (slider or typed pixels) and color; width 0 removes the border. The stroke follows the actual alpha silhouette of every object, including disconnected pieces and cutout edges, rather than the source rectangle. A rounded outward stroke is drawn through transparent space while more distant transparency and larger holes remain clear. It follows each GIF frame, moves/rotates with its layer, respects layer opacity and supports Apply/Cancel, Undo/Redo and saved editable projects. Outlines at the edge of the final 512 × 512 canvas are clipped by the sticker canvas; move the layer inward to show the complete border. The image editor’s rectangular frame remains available separately.
+
+### Profiles, pack details and Discord favourites
+
+First launch offers an optional local profile (username, first name, picture), theme, spoiler blur and animation source retention. Edit the profile later in Settings. New-pack details use the profile username as the initial publisher. First name and profile picture are never copied into pack exports. The profile stays in the original application directory when the library moves.
+
+Packs default to Private. Edit pack details includes the cover picker, publisher and NSFW tag. Public/Private is toggled directly in Pack options. Cover and detail changes commit together only on Save details. Public is metadata for the future shared pack overview; it does not publish or upload a pack. Existing shared links remain accessible to anyone with the link. Editable ZIP backups preserve the visibility choice; WhatsApp exports do not carry this app setting.
+
+To import Discord favourites on a phone: open Discord → You → settings cogwheel → Data & Privacy → Request all of my data, confirm, then wait for the email (up to 30 days). Download the ZIP and choose Add stickers → Discord favourites → Choose Discord ZIP or JSON. Select up to 30 favourites and import them to the library, an existing pack or a new pack. Videos reuse the video-to-GIF clip editor. [Discord’s official instructions](https://support.discord.com/hc/en-us/articles/360004027692-Requesting-a-Copy-of-your-Data).
+
+The ZIP reader runs in a browser worker on the device, reads only the ZIP directory and Account/user.json, and returns only the favourite media list. Raw account JSON, messages and the ZIP are never sent to the .NET host. It supports nested favoriteGifs.gifs and favourites-only JSON maps/arrays, bounds the account JSON to 32 MB and caps the list at 5,000 entries. ZIP64 archives require choosing the extracted Account/user.json instead. Preview media loads only on request. Import downloads require internet, validate provider URLs, enforce media/batch limits and save atomically after all video reviews. Expired CDN links may need a fresh export. Full real-account export compatibility has not been verified with a user export. In the browser development host, selected media downloads and library writes run on the host computer.
+
+Checks: `node tools/DiscordChecks/parser-checks.mjs`, `dotnet run --project tools/FeatureChecks`, and `dotnet run --project tools/StorageChecks`.
+
+The top-right profile button opens `/profile`, showing your name/photo, an editor and current library statistics (unique stickers, still/animated/layered stickers, favourites, public/private packs, uploaded fonts and storage). The button updates its avatar when the profile changes. Settings also links to this page.
+
+A stable installation/profile identity is stored separately in `profile-identity.json` under the original application directory and survives profile edits and library relocation. It is a local identifier, not authentication. No admin or shared-overview requests are made. Future sync must explicitly separate public username/avatar/public packs from private first name, private pack metadata and admin/device statistics, and use an authenticated server API. Current counts describe the library, not lifetime activity or server-wide metrics.
+
+Profile sections use a consistent gap. Profile statistics also show committed pack updates, with per-pack counts under “Updates by pack”. A successful library commit increments each existing affected pack once, including batched additions, cover/details/membership changes and sticker edits. Saving unchanged values, toggling favourites, failed writes and creating/importing a new pack do not add updates. Historical counts start at zero for pre-existing libraries; totals describe packs currently present. Counts and last-update timestamps persist in the local library and through library relocation. Pack file imports start a fresh local count.

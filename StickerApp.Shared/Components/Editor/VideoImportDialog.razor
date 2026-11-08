@@ -5,7 +5,7 @@
 
 <dialog @ref="dialog" class="folder-dialog video-import-dialog" aria-labelledby="video-import-title" @onkeydown="HandleKey" @onkeydown:stopPropagation>
     <div class="folder-dialog-heading">
-        <h2 id="video-import-title">@(ClipReview ? "Trim Pinterest video" : "Video to GIF")</h2>
+        <h2 id="video-import-title">@(ClipReview ? $"Trim {ImportSource} video" : "Video to GIF")</h2>
         <button class="button icon-button" type="button" aria-label="Close video import" @onclick="Close" disabled="@saving"><Icon Name="close" /></button>
     </div>
     <div hidden="@(InitialVideo is not null)">
@@ -13,7 +13,7 @@
         <input @ref="fileInput" type="file" accept="video/*,.mp4,.mov,.webm,.m4v" aria-label="Choose video file" disabled="@converting" />
     </label>
     </div>
-    @if (ClipReview) { <p class="helper">Choose up to 10 seconds for this video. Cancel stops the whole Pinterest import; nothing has been saved yet.</p> }
+    @if (ClipReview) { <p class="helper">Choose up to 10 seconds for this video. Cancel stops the whole @ImportSource import; nothing has been saved yet.</p> }
     <div @ref="editorRoot" class="video-import-editor" aria-busy="@(converting ? "true" : "false")">
         <video @ref="video" class="video-import-preview" controls="@(!converting)" playsinline muted preload="auto" aria-label="Video clip preview" hidden="@(!ready)" />
         @if (loading) { <p role="status">Loading video…</p> }
@@ -41,6 +41,7 @@
 }
 
 @code {
+    [Parameter] public string ImportSource { get; set; } = "Pinterest";
     [Parameter] public Guid? PackId { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public EventCallback<Guid> OnImported { get; set; }
@@ -62,7 +63,7 @@
         if (!firstRender) return;
         helper = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/dialog.js");
         await helper.InvokeVoidAsync("open", dialog);
-        module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/media/video-import.js");
+        module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/media/video/video-import.js");
         reference = DotNetObjectReference.Create(this);
         controller = await module.InvokeAsync<IJSObjectReference>("create", video, fileInput, editorRoot, reference);
         if (InitialVideo is not null)

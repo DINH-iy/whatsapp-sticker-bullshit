@@ -376,9 +376,9 @@ public sealed partial class LibraryStore
         finally { gate.Release(); }
     }
 
-    public async Task<Guid> CreatePackAsync(string name, string publisher = "Sticker Studio", bool nsfw = false)
+    public async Task<Guid> CreatePackAsync(string name, string publisher = "Sticker Studio", bool nsfw = false, bool isPublic = false)
     {
-        var pack = new StickerPack { Name = CleanName(name), Publisher = CleanPublisher(publisher), Nsfw = nsfw };
+        var pack = new StickerPack { Name = CleanName(name), Publisher = CleanPublisher(publisher), Nsfw = nsfw, Public = isPublic };
         await MutateAsync(l =>
         {
             if (l.Packs.Count >= 10)
@@ -419,15 +419,22 @@ public sealed partial class LibraryStore
     });
 
     public Task RenamePackAsync(Guid id, string name) => MutateAsync(l => { var p = l.Packs.Single(p => p.Id == id); p.Name = CleanName(name); Touch(p); });
-    public Task UpdatePackDetailsAsync(Guid id, string name, string publisher, bool? nsfw = null) => MutateAsync(library =>
+    public Task UpdatePackDetailsAsync(Guid id, string name, string publisher, bool? nsfw = null,
+        bool updateCover = false, byte[]? coverBytes = null, bool? isPublic = null)
     {
-        var pack = library.Packs.FirstOrDefault(pack => pack.Id == id)
-            ?? throw new InvalidOperationException("This pack no longer exists.");
-        pack.Name = CleanName(name);
-        pack.Publisher = CleanPublisher(publisher);
-        if (nsfw.HasValue) pack.Nsfw = nsfw.Value;
-        Touch(pack);
-    });
+        var cover = updateCover && coverBytes is not null ? PackCover.FromBytes(coverBytes) : null;
+        return MutateAsync(library =>
+        {
+            var pack = library.Packs.FirstOrDefault(pack => pack.Id == id)
+                ?? throw new InvalidOperationException("This pack no longer exists.");
+            pack.Name = CleanName(name);
+            pack.Publisher = CleanPublisher(publisher);
+            if (nsfw.HasValue) pack.Nsfw = nsfw.Value;
+            if (updateCover) pack.CoverImage = cover;
+            if (isPublic.HasValue) pack.Public = isPublic.Value;
+            Touch(pack);
+        });
+    }
     public Task DeletePackAsync(Guid id) => MutateAsync(l => l.Packs.RemoveAll(p => p.Id == id));
     public Task FavoriteAsync(Guid id) => MutateAsync(l => { var s = l.Stickers.Single(s => s.Id == id); s.Favorite = !s.Favorite; });
     public Task EditStickerAsync(Guid id, string name, string tags, bool? nsfw = null) => MutateAsync(l =>
@@ -594,7 +601,7 @@ public sealed partial class LibraryStore
             if (library.Packs.Count >= 10)
                 throw new InvalidOperationException("This build supports up to 10 packs.");
 
-            var pack = new StickerPack { Name = imported.Name, Animated = imported.Animated, CoverImage = imported.CoverImage, Publisher = imported.Publisher, Nsfw = imported.Nsfw };
+            var pack = new StickerPack { Name = imported.Name, Animated = imported.Animated, CoverImage = imported.CoverImage, Publisher = imported.Publisher, Nsfw = imported.Nsfw, Public = imported.Public };
             var images = new List<Sticker>();
             foreach (var image in imported.Images)
             {
