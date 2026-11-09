@@ -29,6 +29,7 @@
         } catch (JSException exception) { Log.Error("Start JavaScript diagnostics", exception); }
     }
     [JSInvokable] public Task ReportError(string message, string? stack) => InvokeAsync(() => {
+        if (IsDisposed) return;
         errorReference = Log.Write("Error", "WebView JavaScript", message + "\n" + stack);
         StateHasChanged();
     });

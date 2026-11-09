@@ -19,7 +19,7 @@
             watcher = await module.InvokeAsync<IJSObjectReference>("watch", reference);
         }
     }
-    private void NativeChanged()=>_=InvokeAsync(()=>{Connection.Update(native!.Online);StateHasChanged();});
-    [JSInvokable] public void SetOnline(bool online){Connection.Update(online);StateHasChanged();}
+    private void NativeChanged()=>_=InvokeAsync(()=>{if(IsDisposed)return;Connection.Update(native!.Online);StateHasChanged();});
+    [JSInvokable] public void SetOnline(bool online){if(IsDisposed)return;Connection.Update(online);StateHasChanged();}
     protected override async ValueTask DisposeInteropAsync(){if(native is not null)native.Changed-=NativeChanged;try{if(watcher is not null){await watcher.InvokeVoidAsync("dispose");await watcher.DisposeAsync();}if(module is not null)await module.DisposeAsync();}catch(JSDisconnectedException){}reference?.Dispose();}
 }

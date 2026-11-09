@@ -16,7 +16,9 @@
         subscription = await module.InvokeAsync<IJSObjectReference>("watch", reference);
         if (IsDisposed) return;
     }
-    [JSInvokable] public Task SetForeground(bool active) { Activity.SetActive(active); return Preparation.SetForegroundAsync(active); }
+    [JSInvokable] public Task SetForeground(bool active) { active &= !IsDisposed; Activity.SetActive(active); return Preparation.SetForegroundAsync(active); }
+    protected override void OnRemoving() => Activity.SetActive(false);
+    protected override async ValueTask StopInteropAsync() => await Preparation.SetForegroundAsync(false);
     protected override async ValueTask DisposeInteropAsync()
     {
         try {

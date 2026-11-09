@@ -35,9 +35,16 @@
     protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
         if (!firstRender) return;
-        try { module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/editor-layout.js"); preferences = await module.InvokeAsync<EditorLayoutPreferences>("read"); ready = true; }
+        try
+        {
+            module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/editor-layout.js");
+            if (IsDisposed) return;
+            preferences = await module.InvokeAsync<EditorLayoutPreferences>("read");
+            if (IsDisposed) return;
+            ready = true;
+        }
         catch (JSException) { error = "Could not load editor layout preferences."; }
-        StateHasChanged();
+        if (!IsDisposed) StateHasChanged();
     }
     private async Task Save()
     {

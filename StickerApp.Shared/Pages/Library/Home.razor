@@ -268,7 +268,7 @@ else
                         <strong>@L[Preparation.GetStatus(image)?.Working == true ? "Preparing sticker…" : "Queued for preparation…"]</strong>
                         <small>@L["Ready to edit when processing finishes."]</small>
                         <div class="processing-actions">
-                            <button class="button" type="button" @onclick="() => Preparation.CancelAsync(image.Id)">@L["Stop processing"]</button>
+                            <button class="button" type="button" @onclick="() => Run(() => Preparation.CancelAsync(image.Id))">@L["Stop processing"]</button>
                             <button class="button danger" type="button" @onclick="() => pendingRemoval = image"><Icon Name="trash" />@L["Remove sticker"]</button>
                         </div>
                     </div>

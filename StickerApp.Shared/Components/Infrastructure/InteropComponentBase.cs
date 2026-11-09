@@ -3,7 +3,7 @@ using Microsoft.JSInterop;
 
 namespace StickerApp.Shared.Components.Infrastructure;
 
-/// <summary>Owns interop initialization until it completes, even if rendering removes the component.</summary>
+/// <summary>Keeps interop references alive until initialization and guarded events finish, even after removal.</summary>
 public abstract class InteropComponentBase : ComponentBase, IAsyncDisposable
 {
     private readonly SemaphoreSlim renderGate = new(1, 1);
