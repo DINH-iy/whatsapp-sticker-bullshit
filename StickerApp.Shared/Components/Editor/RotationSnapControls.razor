@@ -1,0 +1,8 @@
+<div class="rotation-snap-controls">
+    <label class="rotation-snap-toggle"><input type="checkbox" data-rotation-snap @bind="enabled" />@L["Snap rotation"]</label>
+    <label class="rotation-snap-step"><span class="visually-hidden">@L["Rotation snap step"]</span><select aria-label="@L["Rotation snap step"]" data-rotation-snap-step @bind="step" disabled="@(!enabled)"><option value="5">5°</option><option value="15">15°</option><option value="90">90°</option></select></label>
+</div>
+@code {
+    private bool enabled;
+    private int step = 15;
+}

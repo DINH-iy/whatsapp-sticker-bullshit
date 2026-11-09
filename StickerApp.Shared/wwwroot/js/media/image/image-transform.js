@@ -1,3 +1,4 @@
+import { snapRotation, rotationStep } from '../shared/rotation-snap.js';
 import { editorLabel } from '../shared/editor-language.js';
 import { rotationGrip } from '../shared/rotation-grip.js';
 // One retained source for moving, rotating and sizing: dragging never resamples
@@ -70,8 +71,7 @@ export function createTransformHandles(canvas, root, changed, syncPreview) {
             else if(mode==='rotate') {
                 const rect=wrap.getBoundingClientRect();
                 const angle=Math.atan2(event.clientY-rect.top-value.y*drag.scale,event.clientX-rect.left-value.x*drag.scale);
-                value.rotation=drag.start.rotation+(angle-drag.angle)*180/Math.PI;
-                if(event.shiftKey)value.rotation=Math.round(value.rotation/15)*15;
+                value.rotation=snapRotation(root,drag.start.rotation+(angle-drag.angle)*180/Math.PI,event.shiftKey);
             } else {
                 const a=drag.start.rotation*Math.PI/180,localX=dx*Math.cos(a)+dy*Math.sin(a),localY=-dx*Math.sin(a)+dy*Math.cos(a);
                 limitSize(drag.start.imageWidth+2*localX*x,drag.start.imageHeight+2*localY*y,!!x&&(!y||Math.abs(localX)>=Math.abs(localY)));
@@ -84,7 +84,7 @@ export function createTransformHandles(canvas, root, changed, syncPreview) {
             event.preventDefault();event.stopPropagation();
             const step=event.shiftKey?10:1,dx=event.key==='ArrowLeft'?-step:event.key==='ArrowRight'?step:0,dy=event.key==='ArrowUp'?-step:event.key==='ArrowDown'?step:0;
             if(mode==='move'){value.x=Math.max(0,Math.min(512,value.x+dx));value.y=Math.max(0,Math.min(512,value.y+dy));}
-            else if(mode==='rotate')value.rotation+=dx||dy;
+            else if(mode==='rotate')value.rotation=snapRotation(root,value.rotation+((dx||dy)>0?1:-1)*(rotationStep(root)||(event.shiftKey?10:1)));
             else limitSize(value.imageWidth+dx*x,value.imageHeight+dy*y,!!(dx&&x));
             draw();changed(Math.round(value.imageWidth),Math.round(value.imageHeight));
         });
@@ -101,9 +101,10 @@ export function createTransformHandles(canvas, root, changed, syncPreview) {
         if(!Number.isFinite(number)||event.target.value==='')return;
         if(property==='imageWidth')limitSize(number,value.imageHeight,true);
         else if(property==='imageHeight')limitSize(value.imageWidth,number,false);
+        else if(property==='rotation') { value.rotation=snapRotation(root,number); if(event.type==='change')event.target.value=String(value.rotation); }
         draw();changed(Math.round(value.imageWidth),Math.round(value.imageHeight));
     }
-    root.addEventListener('input',input);
+    root.addEventListener('input',input);root.addEventListener('change',input);
     const observer=new ResizeObserver(place);observer.observe(wrap);
     function end(){
         if(!source)return null;
@@ -119,6 +120,6 @@ export function createTransformHandles(canvas, root, changed, syncPreview) {
         begin(){end();source=document.createElement('canvas');source.width=canvas.width;source.height=canvas.height;source.getContext('2d').drawImage(canvas,0,0);
             value={x:256,y:256,imageWidth:source.width,imageHeight:source.height,rotation:0};overlay.hidden=false;
             for(const field of root.querySelectorAll('[data-animation-seek]'))field.disabled=true;
-            draw();},end,dispose(){end();root.removeEventListener('input',input);observer.disconnect();overlay.remove();}
+            draw();},end,dispose(){end();root.removeEventListener('input',input);root.removeEventListener('change',input);observer.disconnect();overlay.remove();}
     };
 }

@@ -36,7 +36,7 @@ public partial class LayerEditorDialog
     private bool showAddMenu;
     private bool working = true, loading = true, keepRatio = true, showOperationProgress;
     private string name = "Layered sticker", libraryImageId = "", progress = "Opening layer editor…";
-    private string? error;
+    private string? error, operationDetail;
     private string quickPanel = "";
     private string layerCategory = "adjust";
     private EditorLayoutPreferences layout = new();
@@ -72,6 +72,9 @@ public partial class LayerEditorDialog
             layout = await layoutModule.InvokeAsync<EditorLayoutPreferences>("read");
             dialogs = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/dialog.js");
             await dialogs.InvokeVoidAsync("open", dialog);
+            showOperationProgress = true;
+            operationDetail = "Restoring images, animation frames and text controls for editing.";
+            StateHasChanged();
             module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/media/layers/layer-editor.js");
             reference = DotNetObjectReference.Create(this);
             controller = await module.InvokeAsync<IJSObjectReference>("create", canvas, reference);
@@ -95,11 +98,16 @@ public partial class LayerEditorDialog
                 }
             }
             showShapes=StartWithShape;
-            if (StartWithText) state = await controller.InvokeAsync<LayerEditorState>("addText");
+            if (StartWithText)
+            {
+                operationDetail = "Creating an editable text layer.";
+                StateHasChanged();
+                state = await controller.InvokeAsync<LayerEditorState>("addText");
+            }
             if (Selected?.Text is not null) layerCategory = "text";
         }
         catch (Exception exception) when (IsExpected(exception)) { Report("Open layer editor", exception); }
-        finally { working = loading = false; StateHasChanged(); }
+        finally { working = loading = showOperationProgress = false; StateHasChanged(); }
     }
 
     [JSInvokable] public void PreviewChanged(bool playing) { state.PreviewPlaying = playing; StateHasChanged(); }
@@ -276,6 +284,9 @@ public partial class LayerEditorDialog
     {
         if (working || controller is null) return;
         working = true; loading = showOperationProgress = showProgress; error = null; progress = message;
+        operationDetail = message == "Rendering sticker and saving layers…"
+            ? "Rendering the finished artwork and saving its editable layers."
+            : "Preparing the layer artwork and its preview.";
         try { await action(); }
         catch (Exception exception) when (IsExpected(exception)) { Report("Layer editor", exception); }
         finally { working = loading = showOperationProgress = false; }

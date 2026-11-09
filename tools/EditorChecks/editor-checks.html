@@ -3,6 +3,24 @@ const assert = { equal(actual, expected, message) { if (actual !== expected) thr
 async function run(source) {
             const base = '/_content/StickerApp.Shared/js/media/';
             const { create } = await import(base + 'image/image-customizer.js');
+            const { renderText, defaultText } = await import(base + 'layers/text-layers.js');
+            const layoutOptions={...defaultText(),font:'sans',fontSize:24,maxWidth:130,outlineWidth:0,content:'Wide caption with several words'};
+            const wrappedText=await renderText({...layoutOptions,wrap:true});
+            const overflowText=await renderText({...layoutOptions,wrap:false});
+            assert.ok(wrappedText.height>overflowText.height,'wrap breaks long captions into multiple lines');
+            assert.ok(overflowText.width>wrappedText.width,'overflow retains a wider single line');
+            const manualLines=await renderText({...layoutOptions,wrap:false,content:'One\nTwo'});
+            assert.ok(manualLines.height>overflowText.height,'overflow retains explicit paragraph breaks');
+            const alignmentStarts=[];
+            for(const align of ['left','center','right']) {
+                const artwork=await renderText({...layoutOptions,content:'Hi',maxWidth:200,align});
+                const pixels=artwork.image.getContext('2d').getImageData(0,0,artwork.width,artwork.height).data;
+                let first=artwork.width;
+                for(let offset=3;offset<pixels.length;offset+=4)if(pixels[offset])first=Math.min(first,(offset-3)/4%artwork.width);
+                alignmentStarts.push(first);
+            }
+            assert.ok(alignmentStarts[0]<alignmentStarts[1]&&alignmentStarts[1]<alignmentStarts[2],'left, center and right align within the text box');
+
             const { createRasterRenderer } = await import(base + 'effects/raster-edits.js');
             const { openAnimation } = await import(base + 'animation/animation-reader.js');
             const { applyColorEffect } = await import(base + 'effects/color-effect.js');
@@ -306,6 +324,17 @@ async function run(source) {
             assert.equal(layerModule.isAnimatedSource(stillWebp),false,'still WebP must not be detected as animation');
             const stillLayer=await layerController.add('Still WebP',stillWebp);
             assert.equal(stillLayer.layers[0].isGif,false,'still WebP must open as an image layer');
+            const snapToggle=document.createElement('input');snapToggle.type='checkbox';snapToggle.dataset.rotationSnap='';snapToggle.checked=true;
+            const snapStep=document.createElement('select');snapStep.dataset.rotationSnapStep='';snapStep.innerHTML='<option>5</option><option>15</option><option>90</option>';
+            layerRoot.append(snapToggle,snapStep);
+            for(const [step,angle,expected] of [['5',12,10],['15',22,15],['90',70,90]]) {
+                snapStep.value=step;
+                assert.equal(layerController.update('rotation',angle).layers[0].rotation,expected,'layer rotation snaps to the selected step');
+            }
+            snapToggle.checked=false;
+            assert.equal(layerController.update('rotation',17).layers[0].rotation,17,'turning snapping off restores free rotation');
+            snapToggle.remove();snapStep.remove();layerController.update('rotation',0);
+
             const stillThumb=new Image();stillThumb.src=stillLayer.layers[0].thumbnail;await stillThumb.decode();
             assert.equal(stillThumb.naturalWidth,128,'layer list thumbnail must be a decodable image');
             await layerController.addText();

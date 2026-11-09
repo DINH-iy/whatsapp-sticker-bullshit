@@ -1834,5 +1834,20 @@
   "This GIF exceeds 20 MiB. Choose a shorter clip or fewer frames per second.": "GIF-ul depășește 20 MiB. Alege un fragment mai scurt sau mai puține cadre pe secundă.",
   "This GIF exceeds the 20 MiB import limit. Choose a smaller GIF.": "Acest GIF depășește limita de import de 20 MiB. Alege un GIF mai mic.",
   "Images must be at most 10 MiB; GIFs at most 20 MiB.": "Imaginile pot avea cel mult 10 MiB; GIF-urile cel mult 20 MiB.",
-  "Preparing sticker…": "Se pregătește abțibildul…"
+  "Preparing sticker…": "Se pregătește abțibildul…",
+  "Snap rotation": "Aliniere rotație",
+  "Rotation snap step": "Pas de rotație",
+  "Size and rotation": "Dimensiune și rotație",
+  "Text flow": "Fluxul textului",
+  "Wrap": "Încadrare",
+  "Overflow": "Depășire",
+  "Text box width": "Lățimea casetei de text",
+  "Wrap starts a new line at the text box width. Overflow keeps each paragraph on one line.": "Încadrarea începe un rând nou la lățimea casetei. Depășirea păstrează fiecare paragraf pe un singur rând.",
+  "This text is too wide. Reduce the font size or turn on wrapping.": "Textul este prea lat. Micșorează fontul sau activează încadrarea.",
+  "Applying your edits to each animation frame so text and shapes stay in place.": "Aplicăm modificările fiecărui cadru al animației, astfel încât textul și formele să rămână la locul lor.",
+  "Preparing your image and animation preview so text and shapes can be edited separately.": "Pregătim imaginea și previzualizarea animației pentru a edita separat textul și formele.",
+  "Restoring images, animation frames and text controls for editing.": "Încărcăm imaginile, cadrele animației și comenzile de text pentru editare.",
+  "Creating an editable text layer.": "Creăm un strat de text editabil.",
+  "Rendering the finished artwork and saving its editable layers.": "Randăm imaginea finală și salvăm straturile editabile.",
+  "Preparing the layer artwork and its preview.": "Pregătim imaginea stratului și previzualizarea."
 }

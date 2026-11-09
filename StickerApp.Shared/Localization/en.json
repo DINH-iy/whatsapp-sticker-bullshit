@@ -1834,5 +1834,20 @@
   "This GIF exceeds 20 MiB. Choose a shorter clip or fewer frames per second.": "This GIF exceeds 20 MiB. Choose a shorter clip or fewer frames per second.",
   "This GIF exceeds the 20 MiB import limit. Choose a smaller GIF.": "This GIF exceeds the 20 MiB import limit. Choose a smaller GIF.",
   "Images must be at most 10 MiB; GIFs at most 20 MiB.": "Images must be at most 10 MiB; GIFs at most 20 MiB.",
-  "Preparing sticker…": "Preparing sticker…"
+  "Preparing sticker…": "Preparing sticker…",
+  "Snap rotation": "Snap rotation",
+  "Rotation snap step": "Rotation snap step",
+  "Size and rotation": "Size and rotation",
+  "Text flow": "Text flow",
+  "Wrap": "Wrap",
+  "Overflow": "Overflow",
+  "Text box width": "Text box width",
+  "Wrap starts a new line at the text box width. Overflow keeps each paragraph on one line.": "Wrap starts a new line at the text box width. Overflow keeps each paragraph on one line.",
+  "This text is too wide. Reduce the font size or turn on wrapping.": "This text is too wide. Reduce the font size or turn on wrapping.",
+  "Applying your edits to each animation frame so text and shapes stay in place.": "Applying your edits to each animation frame so text and shapes stay in place.",
+  "Preparing your image and animation preview so text and shapes can be edited separately.": "Preparing your image and animation preview so text and shapes can be edited separately.",
+  "Restoring images, animation frames and text controls for editing.": "Restoring images, animation frames and text controls for editing.",
+  "Creating an editable text layer.": "Creating an editable text layer.",
+  "Rendering the finished artwork and saving its editable layers.": "Rendering the finished artwork and saving its editable layers.",
+  "Preparing the layer artwork and its preview.": "Preparing the layer artwork and its preview."
 }

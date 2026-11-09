@@ -43,11 +43,11 @@
     <div class="layer-workspace">
         <div class="layer-stage">
             <div class="layer-preview-dock" hidden="@(layerEditSource is not null)">
-                <div class="layer-preview-stage @(quickPanel == "opacity" ? "opacity-tool-stage" : "")">
+                <div class="layer-preview-stage @(quickPanel == "rotate" ? "rotation-tool-stage" : "") @(quickPanel == "opacity" ? "opacity-tool-stage" : "")">
                     <div class="editor-viewport"><div class="layer-canvas-wrap"><canvas @ref="canvas" aria-label="@L["Layer canvas. Drag to move; resize and rotation handles surround the selected layer."]" /></div></div>
                     @if (quickPanel != "" && Selected is { } adjustment)
                     {
-                        <EditorToolDock Title="@PanelTitle" Disabled="@working" OnApply="ApplyQuickTool" OnCancel="RequestQuickToolCancel">
+                        <EditorToolDock ActionsOnly="@(quickPanel == "rotate")" Title="@PanelTitle" Disabled="@working" OnApply="ApplyQuickTool" OnCancel="RequestQuickToolCancel">
                             <fieldset disabled="@working" class="layer-adjustments">
                                 <EditorAdjustments Tool="@quickPanel" Value="@adjustment" LockRatio="@adjustment.IsGroup" Disabled="@working" @bind-KeepRatio="keepRatio"
                                                    OnRotateBy="RotateBy" OnRotation="SetRotation" OnOpacity="SetOpacity" OnTint="Tint" OnHue="SetHue" OnColorStrength="SetColorStrength" />
@@ -55,6 +55,10 @@
                         </EditorToolDock>
                     }
                 </div>
+                @if (quickPanel == "rotate" && Selected is { } rotationLayer)
+                {
+                    <EditorAdjustments Tool="rotate" Value="@rotationLayer" Disabled="@working" OnRotateBy="RotateBy" OnRotation="SetRotation" />
+                }
                 <div class="live-history-row" role="group" aria-label="@L["Layer history and options"]">
                     <button class="button icon-button" type="button" @onclick='() => Action("undo")' disabled="@(working || quickPanel != "" || !state.CanUndo)" aria-label="@L["Undo"]" title="@L["Undo"]"><Icon Name="undo" /></button>
                     <button class="button icon-button" type="button" @onclick='() => Action("redo")' disabled="@(working || quickPanel != "" || !state.CanRedo)" aria-label="@L["Redo"]" title="@L["Redo"]"><Icon Name="redo" /></button>
@@ -190,5 +194,5 @@
 
 @if (showOperationProgress)
 {
-    <OperationProgressDialog Title="@progress" CanCancel="false" />
+    <OperationProgressDialog Title="@progress" Detail="@operationDetail" CanCancel="false" />
 }

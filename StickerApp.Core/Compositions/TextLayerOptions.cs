@@ -7,6 +7,7 @@ public sealed class TextLayerOptions
     public string? FontData { get; set; }
     public double FontSize { get; set; } = 52;
     public double MaxWidth { get; set; } = 460;
+    public bool Wrap { get; set; } = true;
     public double LineHeight { get; set; } = 1.15;
     public string Align { get; set; } = "center";
     public string Color { get; set; } = "#ffffff";

@@ -1,3 +1,4 @@
+import { snapRotation } from '../shared/rotation-snap.js';
 import { editorView, cutoutLoupe } from '../shared/editor-view.js';
 import { applyStickerBorder } from '../effects/sticker-border.js';
 import { applyColorEffect } from '../effects/color-effect.js';
@@ -174,7 +175,7 @@ export function create(canvas, dotnet) {
             throw new Error('Choose a valid image adjustment.');
         beginAdjustments(); if (record) remember();
         if (property === 'hue') adjustment.tint = null;
-        adjustment[property] = property === 'hue' ? Math.max(-180, Math.min(180, value)) : property === 'rotation' ? ((value + 180) % 360 + 360) % 360 - 180
+        adjustment[property] = property === 'hue' ? Math.max(-180, Math.min(180, value)) : property === 'rotation' ? snapRotation(root, value)
             : ['opacity', 'colorStrength'].includes(property) ? Math.max(0, Math.min(1, value)) : value;
         renderAdjustments();
         if (publish) { await publishAdjustments(); await notify(); }

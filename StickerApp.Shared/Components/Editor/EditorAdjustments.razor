@@ -17,23 +17,15 @@
     }
     else if (Tool == "rotate")
     {
-        <svg class="layer-rotation-dial" viewBox="0 0 200 200" role="slider" tabindex="0" aria-label="@L["Rotation dial"]" aria-valuemin="-180" aria-valuemax="180" aria-valuenow="@Number(Value.Rotation)" data-layer-dial>
-            <circle class="dial-track" cx="100" cy="100" r="75" />
-            @for (var tick = 0; tick < 8; tick++)
-            {
-                <line class="dial-tick" x1="100" y1="18" x2="100" y2="29" transform="@($"rotate({tick * 45} 100 100)")" />
-            }
-            <g data-layer-dial-needle transform="@($"rotate({Number(Value.Rotation)} 100 100)")"><line class="dial-needle" x1="100" y1="100" x2="100" y2="30" /><circle class="dial-knob" cx="100" cy="25" r="10" /></g>
-            <circle class="dial-center" cx="100" cy="100" r="39" />
-            <text x="100" y="108" text-anchor="middle"><tspan data-layer-readout="rotation">@Number(Value.Rotation)</tspan>°</text>
-        </svg>
-        <label><span>@L["Rotation ·"] <span data-layer-readout="rotation">@Number(Value.Rotation)</span>°</span><input type="number" aria-label="@L["Rotation value"]" min="-180" max="180" step="1" value="@Number(Value.Rotation)" data-layer-property="rotation" /><input aria-label="@L["Rotation"]" type="range" min="-180" max="180" step="1" value="@Number(Value.Rotation)" data-layer-property="rotation" /></label>
-        <div class="layer-presets" role="group" aria-label="@L["Rotation presets"]">
-            <button class="button" type="button" @onclick="() => OnRotateBy.InvokeAsync(-90)">−90°</button>
-            <button class="button" type="button" @onclick="() => OnRotateBy.InvokeAsync(-45)">−45°</button>
-            <button class="button" type="button" @onclick="() => OnRotation.InvokeAsync(0)">@L["Reset"]</button>
-            <button class="button" type="button" @onclick="() => OnRotateBy.InvokeAsync(45)">+45°</button>
-            <button class="button" type="button" @onclick="() => OnRotateBy.InvokeAsync(90)">+90°</button>
+        <div class="rotation-control-card">
+            <label class="rotation-angle-label">@L["Rotation"]<span class="rotation-angle-input"><input type="number" aria-label="@L["Rotation value"]" min="-180" max="180" step="1" value="@Number(Value.Rotation)" data-layer-property="rotation" /><span aria-hidden="true">°</span></span></label>
+            <input aria-label="@L["Rotation"]" type="range" min="-180" max="180" step="1" value="@Number(Value.Rotation)" data-layer-property="rotation" />
+            <RotationSnapControls />
+            <div class="rotation-quick-actions" role="group" aria-label="@L["Rotation presets"]">
+                <button class="button" type="button" @onclick="() => OnRotateBy.InvokeAsync(-90)">−90°</button>
+                <button class="button" type="button" @onclick="() => OnRotation.InvokeAsync(0)">@L["Reset"]</button>
+                <button class="button" type="button" @onclick="() => OnRotateBy.InvokeAsync(90)">+90°</button>
+            </div>
         </div>
     }
     else if (Tool == "opacity")

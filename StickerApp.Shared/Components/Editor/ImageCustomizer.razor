@@ -14,11 +14,11 @@
         </EditorPopup>
     </div>
     <div class="customizer-preview-dock">
-        <div class="customizer-preview-stage @(tool == "adjust" && adjustmentTool == "opacity" ? "opacity-tool-stage" : "")">
+        <div class="customizer-preview-stage @(tool == "adjust" && adjustmentTool == "transform" ? "transform-tool-stage" : "") @(tool == "adjust" && adjustmentTool == "opacity" ? "opacity-tool-stage" : "")">
             <div class="editor-viewport"><div class="customizer-canvas-wrap"><canvas @ref="canvas" aria-label="@L["Image editing canvas. Draw with your finger or pointer."]" /></div></div>
             @if (tool != "")
             {
-                <EditorToolDock Title="@ToolTitle" Disabled="@working" ActionsOnly="@(tool is "crop" or "lasso")" OnApply="ApplyTool" OnCancel="RequestCancelTool">
+                <EditorToolDock Title="@ToolTitle" Disabled="@working" ActionsOnly="@(tool is "crop" or "lasso" || tool == "adjust" && adjustmentTool == "transform")" OnApply="ApplyTool" OnCancel="RequestCancelTool">
                     @if (tool == "draw")
                     {
                         <div class="drawing-controls">
@@ -43,16 +43,6 @@
                     {
                         <label class="vertical-tool-setting"><input type="number" aria-label="@L["Color tolerance value"]" min="0" max="150" @bind="tolerance" @bind:event="oninput" @bind:after="UpdateSettings" disabled="@working" /><input aria-label="@L["Color tolerance"]" type="range" min="0" max="150" @bind="tolerance" @bind:event="oninput" @bind:after="UpdateSettings" disabled="@working" /></label>
                     }
-                    else if (tool == "adjust" && adjustmentTool == "transform")
-                    {
-                        <div class="resize-handle-options">
-                            <output data-image-resize-size hidden>@width × @height</output>
-                            <label>@L["W"]<input type="number" aria-label="@L["Transform width"]" data-image-transform-property="imageWidth" min="1" max="512" value="@width" /></label>
-                            <label>@L["H"]<input type="number" aria-label="@L["Transform height"]" data-image-transform-property="imageHeight" min="1" max="512" value="@height" /></label>
-                            <output data-image-transform-angle>0°</output>
-                            <label class="layer-check"><input type="checkbox" data-image-resize-ratio @bind="keepRatio" />@L["Keep proportions"]</label>
-                        </div>
-                    }
                     else if (tool == "adjust")
                     {
                         <fieldset class="layer-adjustments" disabled="@working">
@@ -67,6 +57,20 @@
                 </EditorToolDock>
             }
         </div>
+        @if (tool == "adjust" && adjustmentTool == "transform")
+        {
+            <section class="transform-control-card" aria-label="@L["Size and rotation"]">
+                <div class="transform-size-row">
+                    <label>@L["Width"]<input type="number" aria-label="@L["Transform width"]" data-image-transform-property="imageWidth" min="1" max="512" value="@width" /></label>
+                    <label>@L["Height"]<input type="number" aria-label="@L["Transform height"]" data-image-transform-property="imageHeight" min="1" max="512" value="@height" /></label>
+                    <label>@L["Rotation"]<span class="rotation-angle-input"><input type="number" aria-label="@L["Rotation value"]" data-image-transform-property="rotation" min="-180" max="180" value="0" /><span aria-hidden="true">°</span></span></label>
+                </div>
+                <div class="transform-options-row">
+                    <label class="rotation-snap-toggle"><input type="checkbox" data-image-resize-ratio @bind="keepRatio" />@L["Keep proportions"]</label>
+                    <RotationSnapControls />
+                </div>
+            </section>
+        }
         @if (Timeline is not null) { @Timeline(new PlaybackControlState(() => Run("preview", TrimStart, TrimEnd), previewing, working || adjustmentTool == "transform")) }
         @if (Animated && Timeline is null)
         {

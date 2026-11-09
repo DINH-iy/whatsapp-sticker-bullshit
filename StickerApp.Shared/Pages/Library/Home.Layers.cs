@@ -9,6 +9,7 @@ public partial class Home
     private bool? compositionInitialNsfw;
     private string? compositionInitialSource, compositionInitialName;
     private bool openingLayers;
+    private string? layerOpeningDetail;
     private int layerOpeningVersion;
 
     private async Task CancelLayerOpening()
@@ -41,6 +42,9 @@ public partial class Home
         try
         {
             busy = openingLayers = true;
+            layerOpeningDetail = EditingAnimation && (HasTrim || transformed)
+                ? "Applying your edits to each animation frame so text and shapes stay in place."
+                : "Preparing your image and animation preview so text and shapes can be edited separately.";
             editError = null;
             StateHasChanged();
             await Task.Yield();

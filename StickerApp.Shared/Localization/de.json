@@ -1834,5 +1834,20 @@
   "This GIF exceeds 20 MiB. Choose a shorter clip or fewer frames per second.": "Dieses GIF überschreitet 20 MiB. Wähle einen kürzeren Ausschnitt oder weniger Bilder pro Sekunde.",
   "This GIF exceeds the 20 MiB import limit. Choose a smaller GIF.": "Dieses GIF überschreitet die Importgrenze von 20 MiB. Wähle ein kleineres GIF.",
   "Images must be at most 10 MiB; GIFs at most 20 MiB.": "Bilder dürfen höchstens 10 MiB groß sein; GIFs höchstens 20 MiB.",
-  "Preparing sticker…": "Sticker wird vorbereitet…"
+  "Preparing sticker…": "Sticker wird vorbereitet…",
+  "Snap rotation": "Drehung einrasten",
+  "Rotation snap step": "Drehschritt",
+  "Size and rotation": "Größe und Drehung",
+  "Text flow": "Textfluss",
+  "Wrap": "Umbrechen",
+  "Overflow": "Überlaufen",
+  "Text box width": "Textfeldbreite",
+  "Wrap starts a new line at the text box width. Overflow keeps each paragraph on one line.": "Umbrechen beginnt an der Textfeldbreite eine neue Zeile. Überlaufen lässt jeden Absatz in einer Zeile.",
+  "This text is too wide. Reduce the font size or turn on wrapping.": "Dieser Text ist zu breit. Verkleinere die Schrift oder aktiviere den Zeilenumbruch.",
+  "Applying your edits to each animation frame so text and shapes stay in place.": "Deine Änderungen werden auf jedes Animationsbild angewendet, damit Text und Formen an ihrem Platz bleiben.",
+  "Preparing your image and animation preview so text and shapes can be edited separately.": "Dein Bild und die Animationsvorschau werden vorbereitet, damit Text und Formen separat bearbeitet werden können.",
+  "Restoring images, animation frames and text controls for editing.": "Bilder, Animationsbilder und Textsteuerung werden zum Bearbeiten geladen.",
+  "Creating an editable text layer.": "Eine bearbeitbare Textebene wird erstellt.",
+  "Rendering the finished artwork and saving its editable layers.": "Das fertige Motiv wird gerendert und die bearbeitbaren Ebenen werden gespeichert.",
+  "Preparing the layer artwork and its preview.": "Das Ebenenmotiv und seine Vorschau werden vorbereitet."
 }

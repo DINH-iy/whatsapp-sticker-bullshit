@@ -1,6 +1,6 @@
 const loaded = new Map();
 const families = {meme:'StikMeme',sans:'sans-serif',serif:'serif',mono:'monospace'};
-export const defaultText = () => ({content:'YOUR TEXT',font:'meme',fontSize:52,maxWidth:460,lineHeight:1.15,align:'center',color:'#ffffff',gradient:false,gradientColor:'#ff80c0',gradientAngle:90,outlineColor:'#000000',outlineWidth:3,bold:false,italic:false,underline:false,strike:false,uppercase:false,shadow:false,shadowColor:'#000000',background:false,backgroundColor:'#000000'});
+export const defaultText = () => ({content:'YOUR TEXT',font:'meme',fontSize:52,maxWidth:460,wrap:true,lineHeight:1.15,align:'center',color:'#ffffff',gradient:false,gradientColor:'#ff80c0',gradientAngle:90,outlineColor:'#000000',outlineWidth:3,bold:false,italic:false,underline:false,strike:false,uppercase:false,shadow:false,shadowColor:'#000000',background:false,backgroundColor:'#000000'});
 export async function validateTextFont(data) {
     try { await new FontFace('StikFontCheck',`url("${data}")`).load(); }
     catch { throw new Error('This font cannot be read. Try another TTF, OTF, WOFF, or WOFF2 file.'); }
@@ -37,20 +37,22 @@ function linesFor(context,text,maxWidth) {
 }
 export async function renderText(options) {
     const text={...defaultText(),...options};
-    if(typeof text.content!=='string'||text.content.length>1000||text.fontSize<8||text.fontSize>256||text.maxWidth<32||text.maxWidth>1000)throw new Error('Text must be at most 1,000 characters, at 8–256 px, with a 32–1,000 px wrap width.');
+    if(typeof text.wrap!=='boolean'||typeof text.content!=='string'||text.content.length>1000||text.fontSize<8||text.fontSize>256||text.maxWidth<32||text.maxWidth>1000)throw new Error('Text must be at most 1,000 characters, at 8–256 px, with a 32–1,000 px wrap width.');
     await loadTextFont(text.font,text.fontData);
     const canvas=document.createElement('canvas'),context=canvas.getContext('2d');
     const family=families[text.font]??text.font;
     const font=`${text.italic?'italic ':''}${text.bold?'700':'400'} ${text.fontSize}px ${['sans-serif','serif','monospace'].includes(family)?family:`"${family}"`}, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
     context.font=font;
-    const lines=linesFor(context,text.uppercase?text.content.toLocaleUpperCase():text.content,text.maxWidth);
+    const content=text.uppercase?text.content.toLocaleUpperCase():text.content;
+    const lines=text.wrap?linesFor(context,content,text.maxWidth):content.split('\n');
     const padding=Math.ceil(text.outlineWidth+ (text.shadow?14:6)+(text.italic?text.fontSize*.22:0));
     const metrics=lines.map(line=>context.measureText(line));
     const contentWidth=Math.max(1,...metrics.map(m=>m.width));
     const ascent=Math.max(text.fontSize,...metrics.map(m=>m.actualBoundingBoxAscent||0));
     const descent=Math.max(text.fontSize*.25,...metrics.map(m=>m.actualBoundingBoxDescent||0));
     const lineHeight=text.fontSize*text.lineHeight;
-    canvas.width=Math.min(1024,Math.ceil(contentWidth+padding*2));canvas.height=Math.max(1,Math.ceil(ascent+descent+lineHeight*(lines.length-1)+padding*2));
+    if(!text.wrap&&contentWidth+padding*2>1024)throw new Error('This text is too wide. Reduce the font size or turn on wrapping.');
+    canvas.width=Math.min(1024,Math.ceil(Math.max(text.maxWidth,contentWidth)+padding*2));canvas.height=Math.max(1,Math.ceil(ascent+descent+lineHeight*(lines.length-1)+padding*2));
     if(canvas.height>1024)throw new Error('This text is too tall. Use fewer lines, a wider text box, or a smaller font.');
     context.font=font;context.textBaseline='alphabetic';context.textAlign=text.align;context.lineJoin='round';
     if(text.background){context.fillStyle=text.backgroundColor;context.fillRect(0,0,canvas.width,canvas.height);}

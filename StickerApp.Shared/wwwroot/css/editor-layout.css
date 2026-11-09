@@ -207,3 +207,8 @@
 
 .layer-group-checkbox { flex: 0 0 22px; width: 22px; height: 22px; margin: 0 6px 0 0; align-self: center; }
 .layer-stack-item > span > .app-icon { width: 18px; height: 18px; margin-inline-end: 6px; vertical-align: middle; }
+
+/* The workspace owns scrolling; an unconstrained inner panel must not trap swipes. */
+.live-layer-editor .layer-panel { overflow: visible; overscroll-behavior: auto; scrollbar-gutter: auto; }
+.live-layer-editor .text-layer-editor { touch-action: pan-y; }
+.live-layer-editor .rotation-control-card { width: 100%; }

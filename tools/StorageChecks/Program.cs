@@ -331,12 +331,12 @@ try
         Require(stats.StorageSegments.Sum(s => s.Bytes) == stats.MediaBytes + stats.IndexBytes, "Font storage must not be counted twice");
         var scan = await store.ScanLibraryAsync();
         Require(!scan.UnusedFiles.Any(f => f.EndsWith(".font")), "Imported fonts must be protected from cleanup");
-        var text = new TextLayerOptions {Content="TOP TEXT 😎",Font=font.Id,FontData=font.Data,Gradient=true,Bold=true,Underline=true};
+        var text = new TextLayerOptions {Content="TOP TEXT 😎",Wrap=false,Align="right",Font=font.Id,FontData=font.Data,Gradient=true,Bold=true,Underline=true};
         var composition = new LayerComposition {Layers=[new(){Id="caption",Name="Caption",Source="data:image/png;base64,"+Convert.ToBase64String(png),Text=text,Rotation=30}]};
         var id = await store.SaveCompositionAsync(null,"Text sticker",webp,composition, nsfw: true);
         Require((await reopened.ReadAsync()).Stickers.Single(s => s.Id == id).Nsfw, "The layered sticker spoiler tag was lost");
         var caption = (await reopened.ReadCompositionAsync(id))!.Layers.Single();
-        Require(caption.Text!.Content == text.Content && caption.Text.FontData == font.Data && caption.Text.Gradient && caption.Text.Underline && caption.Rotation == 30, "Editable text, emoji, formatting, font or transform was lost");
+        Require(caption.Text!.Content == text.Content && !caption.Text.Wrap && caption.Text.Align == "right" && caption.Text.FontData == font.Data && caption.Text.Gradient && caption.Text.Underline && caption.Rotation == 30, "Editable text, emoji, formatting, font or transform was lost");
         var rejected=false;try{await store.ImportFontAsync("Bad.ttf",png);}catch(InvalidDataException){rejected=true;}
         Require(rejected,"Non-font data must be rejected");
         var count=(await store.ReadAsync()).Fonts.Count;

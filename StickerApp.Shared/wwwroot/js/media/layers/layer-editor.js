@@ -1,3 +1,4 @@
+import { snapRotation, rotationStep } from '../shared/rotation-snap.js';
 import { cloneLayers, leafLayers, groupLayers, transformGroup } from './layer-groups.js';
 import { editorLabel } from '../shared/editor-language.js';
 import { drawLayerArtwork } from '../effects/object-outline.js';
@@ -254,8 +255,7 @@ export function create(canvas, reference) {
             const before = Math.atan2(gesture.point.y - start.y, gesture.point.x - start.x);
             const after = Math.atan2(p.y - start.y, p.x - start.x);
             let degrees = start.rotation + (after - before) * 180 / Math.PI;
-            if (snap) degrees = Math.round(degrees / 15) * 15;
-            layer.rotation = ((degrees + 180) % 360 + 360) % 360 - 180;
+            layer.rotation = snapRotation(root, degrees, snap);
         } else {
             // Work in the original rotated coordinate system and keep the opposite
             // corner/edge fixed, rather than resizing around the image's center.
@@ -304,8 +304,8 @@ export function create(canvas, reference) {
         remember();
         if (handle.rotating) {
             const direction = event.key === 'ArrowRight' || event.key === 'ArrowUp' ? 1 : -1;
-            const degrees = layer.rotation + direction * (event.shiftKey ? 15 : 1);
-            layer.rotation = ((degrees + 180) % 360 + 360) % 360 - 180;
+            const degrees = layer.rotation + direction * (rotationStep(root,event.shiftKey) || 1);
+            layer.rotation = snapRotation(root, degrees, event.shiftKey);
         } else {
             const p = handlePoint(layer, handle), step = event.shiftKey ? 10 : 2;
             const dx = event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0;
@@ -325,6 +325,7 @@ export function create(canvas, reference) {
         } else {
             if (!ranges[property] || !Number.isFinite(value)) throw new Error('Enter a valid layer adjustment.');
             if (record) remember(); value = clamp(value, ...ranges[property]);
+            if (property === 'rotation') value = snapRotation(root, value);
             if ((keepRatio || layer.children?.length) && (property === 'width' || property === 'height')) {
                 const other = property === 'width' ? 'height' : 'width';
                 const ratio = layer[other] / layer[property];
@@ -398,7 +399,7 @@ export function create(canvas, reference) {
         const y = event.clientY - bounds.top - bounds.height / 2;
         if (Math.hypot(x, y) < 10) return null;
         let angle = Math.atan2(x, -y) * 180 / Math.PI;
-        angle = event.shiftKey ? Math.round(angle / 15) * 15 : Math.round(angle);
+        angle = snapRotation(root, Math.round(angle), event.shiftKey);
         return wrapAngle(angle);
     }
     function dialDown(event) {
@@ -427,7 +428,7 @@ export function create(canvas, reference) {
         if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return;
         event.preventDefault(); event.stopPropagation();
         const direction = event.key === 'ArrowRight' || event.key === 'ArrowUp' ? 1 : -1;
-        const angle = event.key === 'Home' ? -180 : event.key === 'End' ? 180 : wrapAngle(active().rotation + direction * (event.shiftKey ? 15 : 1));
+        const angle = event.key === 'Home' ? -180 : event.key === 'End' ? 180 : wrapAngle(active().rotation + direction * (rotationStep(root,event.shiftKey) || 1));
         update('rotation', angle, false); notify()?.catch(() => {});
     }
     root.addEventListener('pointerdown', dialDown);

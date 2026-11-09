@@ -1834,5 +1834,20 @@
   "This GIF exceeds 20 MiB. Choose a shorter clip or fewer frames per second.": "GIF-en overskrider 20 MiB. Velg et kortere klipp eller færre bilder per sekund.",
   "This GIF exceeds the 20 MiB import limit. Choose a smaller GIF.": "Denne GIF-en overskrider importgrensen på 20 MiB. Velg en mindre GIF.",
   "Images must be at most 10 MiB; GIFs at most 20 MiB.": "Bilder kan være på høyst 10 MiB; GIF-er høyst 20 MiB.",
-  "Preparing sticker…": "Klargjør klistremerke…"
+  "Preparing sticker…": "Klargjør klistremerke…",
+  "Snap rotation": "Fest rotasjon",
+  "Rotation snap step": "Rotasjonstrinn",
+  "Size and rotation": "Størrelse og rotasjon",
+  "Text flow": "Tekstflyt",
+  "Wrap": "Bryt linjer",
+  "Overflow": "Uten linjebryting",
+  "Text box width": "Tekstboksbredde",
+  "Wrap starts a new line at the text box width. Overflow keeps each paragraph on one line.": "Linjebryting starter en ny linje ved tekstboksens bredde. Uten linjebryting forblir hvert avsnitt på én linje.",
+  "This text is too wide. Reduce the font size or turn on wrapping.": "Denne teksten er for bred. Reduser skriftstørrelsen eller slå på linjebryting.",
+  "Applying your edits to each animation frame so text and shapes stay in place.": "Bruker endringene på hver animasjonsramme slik at tekst og former holder seg på plass.",
+  "Preparing your image and animation preview so text and shapes can be edited separately.": "Klargjør bildet og animasjonsforhåndsvisningen slik at tekst og former kan redigeres separat.",
+  "Restoring images, animation frames and text controls for editing.": "Laster bilder, animasjonsrammer og tekstkontroller for redigering.",
+  "Creating an editable text layer.": "Oppretter et redigerbart tekstlag.",
+  "Rendering the finished artwork and saving its editable layers.": "Gjengir det ferdige motivet og lagrer de redigerbare lagene.",
+  "Preparing the layer artwork and its preview.": "Klargjør lagmotivet og forhåndsvisningen."
 }

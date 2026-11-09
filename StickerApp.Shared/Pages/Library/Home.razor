@@ -346,7 +346,7 @@ else
 }
 @if (openingLayers || savingEditor)
 {
-    <OperationProgressDialog Title="@(openingLayers ? "Opening layer editor…" : busyText)" CanCancel="@openingLayers" OnCancel="CancelLayerOpening" />
+    <OperationProgressDialog Title="@(openingLayers ? "Opening layer editor…" : busyText)" Detail="@(openingLayers ? layerOpeningDetail : null)" CanCancel="@openingLayers" OnCancel="CancelLayerOpening" />
 }
 
 
