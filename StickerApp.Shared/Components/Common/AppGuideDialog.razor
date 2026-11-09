@@ -1,4 +1,4 @@
-@implements IAsyncDisposable
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
 @inject IJSRuntime JS
 <dialog @ref="dialog" class="folder-dialog app-guide-dialog" aria-labelledby="app-guide-title" @oncancel="OnClose" @oncancel:preventDefault @onkeydown="Key">
     <div class="folder-dialog-heading"><h2 id="app-guide-title">@L["How to use Stik-er-in"]</h2><button class="button icon-button" type="button" @onclick="OnClose" aria-label="@L["Close app guide"]"><Icon Name="close" /></button></div>
@@ -12,17 +12,22 @@
     private ElementReference dialog;
     private IJSObjectReference? module,slides,controller;
     private DotNetObjectReference<AppGuideDialog>? reference;
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
         if(!firstRender)return;
         module=await JS.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/ui/dialog.js");
+        if (IsDisposed) return;
         await module.InvokeVoidAsync("open",dialog);
+        if (IsDisposed) return;
         slides=await JS.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/ui/tutorial-slides.js");
+        if (IsDisposed) return;
         reference=DotNetObjectReference.Create(this);
         controller=await slides.InvokeAsync<IJSObjectReference>("create",dialog,reference);
+        if (IsDisposed) return;
     }
-    private async Task Go(int index){if(controller is not null)await controller.InvokeVoidAsync("go",Math.Clamp(index,0,4));}
-    [JSInvokable] public void SlideChanged(int index){step=Math.Clamp(index,0,4);StateHasChanged();}
+    private Task Go(int index) => RunInteropAsync(async () =>
+    {if(controller is not null)await controller.InvokeVoidAsync("go",Math.Clamp(index,0,4));});
+    [JSInvokable] public void SlideChanged(int index){if(IsDisposed)return;step=Math.Clamp(index,0,4);StateHasChanged();}
     private Task Key(KeyboardEventArgs args)=>args.Key switch{"ArrowRight"=>Go(step+1),"ArrowLeft"=>Go(step-1),_=>Task.CompletedTask};
-    public async ValueTask DisposeAsync(){try{if(controller is not null){await controller.InvokeVoidAsync("dispose");await controller.DisposeAsync();}if(slides is not null)await slides.DisposeAsync();if(module is not null)await module.DisposeAsync();}catch(JSDisconnectedException){}reference?.Dispose();}
+    protected override async ValueTask DisposeInteropAsync(){try{if(controller is not null){await controller.InvokeVoidAsync("dispose");await controller.DisposeAsync();}if(slides is not null)await slides.DisposeAsync();if(module is not null)await module.DisposeAsync();}catch(JSDisconnectedException){}reference?.Dispose();}
 }

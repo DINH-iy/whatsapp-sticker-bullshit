@@ -1,4 +1,4 @@
-@implements IAsyncDisposable
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
 @inject AppLog Log
 @inject IJSRuntime JS
 
@@ -13,15 +13,19 @@
     private string? errorReference;
     private IJSObjectReference? module, subscription, performanceModule, performanceSubscription;
     private DotNetObjectReference<DiagnosticsHost>? reference;
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
         if (!firstRender) return;
         reference = DotNetObjectReference.Create(this);
         try {
             module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/diagnostics.js");
+            if (IsDisposed) return;
             subscription = await module.InvokeAsync<IJSObjectReference>("watch", reference);
+            if (IsDisposed) return;
             performanceModule = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/performance.js");
+            if (IsDisposed) return;
             performanceSubscription = await performanceModule.InvokeAsync<IJSObjectReference>("watch", reference, Log.PerformanceEnabled);
+            if (IsDisposed) return;
         } catch (JSException exception) { Log.Error("Start JavaScript diagnostics", exception); }
     }
     [JSInvokable] public Task ReportError(string message, string? stack) => InvokeAsync(() => {
@@ -29,7 +33,7 @@
         StateHasChanged();
     });
     [JSInvokable] public void ReportTiming(string operation, double milliseconds, string details) => Log.RecordPerformance(operation, milliseconds, details);
-    public async ValueTask DisposeAsync()
+    protected override async ValueTask DisposeInteropAsync()
     {
         try {
             if (subscription is not null) { await subscription.InvokeVoidAsync("dispose"); await subscription.DisposeAsync(); }

@@ -1,4 +1,4 @@
-@implements IAsyncDisposable
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
 @inject IJSRuntime JS
 @if (jobs.Length > 0)
 {
@@ -16,14 +16,16 @@
     private Job[] jobs = [];
     private IJSObjectReference? module, subscription;
     private DotNetObjectReference<ProcessingMenu>? reference;
-    protected override async Task OnAfterRenderAsync(bool firstRender) {
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender) {
         if (!firstRender) return;
         reference = DotNetObjectReference.Create(this);
         module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/foreground.js");
+        if (IsDisposed) return;
         subscription = await module.InvokeAsync<IJSObjectReference>("watchJobs", reference);
+        if (IsDisposed) return;
     }
-    [JSInvokable] public Task JobsChanged(Job[] value) => InvokeAsync(() => { jobs = value; StateHasChanged(); });
-    public async ValueTask DisposeAsync() {
+    [JSInvokable] public Task JobsChanged(Job[] value) => InvokeAsync(() => { if (IsDisposed) return; jobs = value; StateHasChanged(); });
+    protected override async ValueTask DisposeInteropAsync() {
         try {
             if (subscription is not null) { await subscription.InvokeVoidAsync("dispose"); await subscription.DisposeAsync(); }
             if (module is not null) await module.DisposeAsync();

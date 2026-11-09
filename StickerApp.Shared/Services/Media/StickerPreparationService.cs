@@ -7,7 +7,7 @@ namespace StickerApp.Shared.Services;
 /// <summary>One browser/device worker prepares images across page changes, respecting source-retention preferences.</summary>
 public sealed class StickerPreparationService(LibraryStore store, IJSRuntime js, AppLog log) : IAsyncDisposable
 {
-    public sealed record Status(string FileName, bool Working, string? Error = null);
+    public sealed record Status(string FileName, bool Working, string? Error = null, bool Cancelled = false);
     private readonly Dictionary<Guid, Status> statuses = [];
     private readonly Channel<bool> signals = Channel.CreateBounded<bool>(new BoundedChannelOptions(1)
     { FullMode = BoundedChannelFullMode.DropWrite, SingleReader = true });
@@ -18,6 +18,7 @@ public sealed class StickerPreparationService(LibraryStore store, IJSRuntime js,
     private int editorLeases;
     private CancellationTokenSource? jobCancellation;
     private TaskCompletionSource? jobFinished;
+    private Guid? activeId;
     public async Task SetForegroundAsync(bool value)
     {
         foreground = value;
@@ -68,6 +69,33 @@ public sealed class StickerPreparationService(LibraryStore store, IJSRuntime js,
         Changed?.Invoke(false);
     }
 
+    public async Task CancelAsync(Guid id)
+    {
+        // Pause selection while the worker is being stopped, so cancellation
+        // cannot accidentally target the next sticker in the queue.
+        ++editorLeases;
+        try
+        {
+            var image = (await store.ReadAsync()).Stickers.FirstOrDefault(image => image.Id == id);
+            if (image is null || !NeedsPreparation(image)) return;
+            statuses[id] = new(image.FileName, false, Cancelled: true);
+            if (activeId == id)
+            {
+                jobCancellation?.Cancel();
+                if (worker is not null)
+                {
+                    using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+                    try { await worker.InvokeVoidAsync("cancel", timeout.Token); }
+                    catch (OperationCanceledException) when (timeout.IsCancellationRequested) { }
+                    catch (JSDisconnectedException) { }
+                    catch (JSException exception) { log.Error("Stop sticker preparation", exception); }
+                }
+            }
+            Changed?.Invoke(false);
+        }
+        finally { --editorLeases; Queue(); }
+    }
+
     private async Task ProcessAsync()
     {
         var token = lifetime.Token;
@@ -84,13 +112,17 @@ public sealed class StickerPreparationService(LibraryStore store, IJSRuntime js,
                     token.ThrowIfCancellationRequested();
                     if (!foreground || editorLeases > 0) break;
                     if (GetStatus(image) is not null) continue;
+                    // A queued snapshot can outlive a deletion or replacement.
+                    if (!(await store.ReadAsync()).Stickers.Any(current => current.Id == image.Id && current.FileName == image.FileName)) continue;
+                    if (!foreground || editorLeases > 0 || GetStatus(image) is not null) continue;
                     log.Info("Automatic sticker preparation", $"Started image {image.Id}; {image.Width}x{image.Height}; {image.MimeType}; {image.Bytes} bytes.");
                     ActiveName = image.Name;
                     statuses[image.Id] = new(image.FileName, true);
-                    Changed?.Invoke(false);
                     using var job = CancellationTokenSource.CreateLinkedTokenSource(token);
                     jobCancellation = job;
+                    activeId = image.Id;
                     jobFinished = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                    Changed?.Invoke(false);
                     var jobToken = job.Token;
                     using var performance = log.Measure("Sticker preparation: total", $"animated={image.Animated}; bytes={image.Bytes}; pixels={image.Width}x{image.Height}");
                     try
@@ -119,8 +151,8 @@ public sealed class StickerPreparationService(LibraryStore store, IJSRuntime js,
                         Changed?.Invoke(true);
                         if (!saved) Queue();
                     }
-                    catch (OperationCanceledException) when (jobToken.IsCancellationRequested) { statuses.Remove(image.Id); }
-                    catch (JSException) when (jobToken.IsCancellationRequested) { statuses.Remove(image.Id); }
+                    catch (OperationCanceledException) when (jobToken.IsCancellationRequested) { ClearInterruptedStatus(image); }
+                    catch (JSException) when (jobToken.IsCancellationRequested) { ClearInterruptedStatus(image); }
                     catch (JSDisconnectedException) { return; }
                     catch (Exception exception) when (exception is IOException or InvalidDataException or InvalidOperationException or JSException or UnauthorizedAccessException or FormatException)
                     {
@@ -133,6 +165,7 @@ public sealed class StickerPreparationService(LibraryStore store, IJSRuntime js,
                     }
                     finally {
                         jobCancellation = null;
+                        activeId = null;
                         jobFinished.TrySetResult(); jobFinished = null;
                         ActiveName = null; Changed?.Invoke(false);
                     }
@@ -140,6 +173,11 @@ public sealed class StickerPreparationService(LibraryStore store, IJSRuntime js,
             }
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+    }
+
+    private void ClearInterruptedStatus(Sticker image)
+    {
+        if (GetStatus(image)?.Cancelled != true) statuses.Remove(image.Id);
     }
 
     public async ValueTask DisposeAsync()

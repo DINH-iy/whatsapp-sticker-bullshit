@@ -1,12 +1,12 @@
-@implements IAsyncDisposable
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
 @inject IJSRuntime JS
 @code {
     private IJSObjectReference? module;
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
         if (firstRender) module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/navigation.js");
     }
-    public async ValueTask DisposeAsync()
+    protected override async ValueTask DisposeInteropAsync()
     {
         try { if (module is not null) await module.DisposeAsync(); }
         catch (JSDisconnectedException) { }

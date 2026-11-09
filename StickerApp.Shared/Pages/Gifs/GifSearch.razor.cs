@@ -45,7 +45,7 @@ public partial class GifSearch
         public bool HasNextPage { get; set; }
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
         if (!firstRender)
             return;
@@ -53,7 +53,9 @@ public partial class GifSearch
         try
         {
             client = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/klipy-client.js");
+            if (IsDisposed) return;
             isConfigured = await client.InvokeAsync<bool>("hasApiKey");
+            if (IsDisposed) return;
             isReady = true;
         }
         catch (JSException)
@@ -204,7 +206,16 @@ public partial class GifSearch
             try { await importSession.InvokeVoidAsync("cancel"); } catch (JSDisconnectedException) { }
     }
 
-    public async ValueTask DisposeAsync()
+    protected override void OnRemoving()
+    {
+        isDisposed = true;
+        if (!importCommitting) importCancellation?.Cancel();
+    }
+    protected override async ValueTask StopInteropAsync()
+    {
+        if (client is not null) await client.InvokeVoidAsync("cancelSearch");
+    }
+    protected override async ValueTask DisposeInteropAsync()
     {
         isDisposed = true;
         if (!importCommitting) importCancellation?.Cancel();

@@ -1,4 +1,4 @@
-@implements IAsyncDisposable
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
 @inject IJSRuntime JS
 @using System.Globalization
 
@@ -44,14 +44,16 @@
     [Parameter] public RenderFragment? PlaybackControl { get; set; }
     private bool showTimeline = true;
     private IJSObjectReference? layoutModule;
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
         if (!firstRender) return;
         layoutModule = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/editor-layout.js");
+        if (IsDisposed) return;
         showTimeline = (await layoutModule.InvokeAsync<EditorLayoutPreferences>("read")).ShowTimeline;
+        if (IsDisposed) return;
         StateHasChanged();
     }
-    public async ValueTask DisposeAsync()
+    protected override async ValueTask DisposeInteropAsync()
     {
         if (layoutModule is not null) { try { await layoutModule.DisposeAsync(); } catch (JSDisconnectedException) { } }
     }

@@ -1,4 +1,4 @@
-@implements IAsyncDisposable
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
 @inject IJSRuntime JS
 
 <div @ref="root" class="factory-reset-progress" role="status" aria-live="polite" aria-busy="true" data-reset-update="@(Progress.Stage + ":" + Progress.CompletedFiles + ":" + Step)">
@@ -20,16 +20,17 @@
     [Parameter] public int Step {get;set;}=1;
     private ElementReference root;
     private IJSObjectReference? module, watcher;
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
         if(!firstRender)return;
         module=await JS.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/ui/factory-reset.js");
+        if (IsDisposed) return;
         watcher=await module.InvokeAsync<IJSObjectReference>("watchProgress",root,new {
             elapsed=L["Elapsed: {0} s"],
             stalled=L["No progress update for {0} seconds. This may be taking longer than usual. If it stays stuck, reopen the app. Some data may already have been erased."]
         });
     }
-    public async ValueTask DisposeAsync()
+    protected override async ValueTask DisposeInteropAsync()
     {
         try {if(watcher is not null){await watcher.InvokeVoidAsync("dispose");await watcher.DisposeAsync();}if(module is not null)await module.DisposeAsync();}
         catch(JSDisconnectedException) { }

@@ -1,4 +1,4 @@
-@implements IAsyncDisposable
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
 @inject IJSRuntime JS
 <span class="app-color-picker">
     <button class="button icon-button color-swatch" type="button" style="--swatch: @Value" disabled="@Disabled" aria-label="@L[Label]" title="@L[Label]" @onclick="Open"><Icon Name="palette" /></button>
@@ -24,15 +24,19 @@
     private IJSObjectReference? module;
     private void Open() { show = opening = true; }
     private void Close() { show = opening = false; }
-    private async Task Change(string color) {
+    private Task Change(string color) => RunInteropAsync(async () =>
+    {
         Value = AllowAlpha ? color : color[..7];
         await ValueChanged.InvokeAsync(Value);
+        if (IsDisposed) return;
         if (Property is not null && module is not null) await module.InvokeVoidAsync("colorChanged", bridge, Value);
-    }
-    protected override async Task OnAfterRenderAsync(bool firstRender) {
+    });
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender) {
         if (!opening) return; opening = false;
         module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/dialog.js");
+        if (IsDisposed) return;
         await module.InvokeVoidAsync("open", dialog);
+        if (IsDisposed) return;
     }
-    public async ValueTask DisposeAsync() { try { if (module is not null) await module.DisposeAsync(); } catch (JSDisconnectedException) { } }
+    protected override async ValueTask DisposeInteropAsync() { try { if (module is not null) await module.DisposeAsync(); } catch (JSDisconnectedException) { } }
 }

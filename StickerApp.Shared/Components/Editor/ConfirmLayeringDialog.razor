@@ -1,4 +1,4 @@
-@implements IAsyncDisposable
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
 @inject IJSRuntime JS
 <dialog @ref="dialog" class="folder-dialog tool-cancel-dialog" aria-labelledby="layering-title" @oncancel="Cancel" @oncancel:preventDefault @onkeydown:stopPropagation>
     <h2 id="layering-title">@L[AddingShape ? "Add shapes with layers?" : "Add text with layers?"]</h2>
@@ -22,14 +22,16 @@
     }
     private ElementReference dialog;
     private IJSObjectReference? helper;
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
         if (!firstRender) return;
         helper = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/dialog.js");
+        if (IsDisposed) return;
         await helper.InvokeVoidAsync("open", dialog);
+        if (IsDisposed) return;
     }
     private Task Cancel() => OnCancel.InvokeAsync();
-    public async ValueTask DisposeAsync()
+    protected override async ValueTask DisposeInteropAsync()
     {
         if (helper is not null) { try { await helper.DisposeAsync(); } catch (JSDisconnectedException) { } }
     }

@@ -1,6 +1,6 @@
 @inject StickerApp.Shared.Services.ForegroundActivity Activity
 @page "/imgur"
-@implements IAsyncDisposable
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
 @inject LibraryStore Store
 @inject IJSRuntime JS
 <PageTitle>@L["Imgur · Stik-er-in"]</PageTitle>
@@ -43,7 +43,18 @@
     private MemoryStream? videoStream;
     private TaskCompletionSource<byte[]>? videoCompletion;
     [SupplyParameterFromQuery(Name="pack")] public Guid? PackId {get;set;}
-    protected override async Task OnAfterRenderAsync(bool firstRender){if(!firstRender)return;preferences=await JS.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/ui/imgur-preferences.js");clientId=await preferences.InvokeAsync<string>("read");packs=(await Store.ReadAsync()).Packs.ToList();destination=PackId?.ToString()??"";StateHasChanged();}
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        preferences = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/imgur-preferences.js");
+        if (IsDisposed) return;
+        clientId = await preferences.InvokeAsync<string>("read");
+        if (IsDisposed) return;
+        packs = (await Store.ReadAsync()).Packs.ToList();
+        if (IsDisposed) return;
+        destination = PackId?.ToString() ?? "";
+        StateHasChanged();
+    }
     private async Task SaveClientId(){if(preferences is not null)await preferences.InvokeVoidAsync("save",clientId);}
     private void Toggle(ImgurMedia item){if(!selected.Remove(item))selected.Add(item);}
     private async Task Preview(){
@@ -78,5 +89,5 @@
     }
     private void Cancel(){operation?.Cancel();videoCompletion?.TrySetCanceled();}
     private void ClipReady(byte[] bytes)=>videoCompletion?.TrySetResult(bytes);
-    public async ValueTask DisposeAsync(){Cancel();client.Dispose();if(preferences is not null){try{await preferences.DisposeAsync();}catch(JSDisconnectedException){}}}
+    protected override async ValueTask DisposeInteropAsync(){Cancel();client.Dispose();if(preferences is not null){try{await preferences.DisposeAsync();}catch(JSDisconnectedException){}}}
 }

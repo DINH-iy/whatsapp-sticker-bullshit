@@ -161,6 +161,8 @@ var preparationNotice=await renderer.Dispatcher.InvokeAsync(async()=>
 Check(preparationNotice.Contains("<aside")&&!preparationNotice.Contains("<dialog")&&!preparationNotice.Contains("<button")&&preparationNotice.Contains("Example GIF"),"background encoding shows a notice without blocking the current editor");
 passed+=await ImportDownloadChecks.RunAsync();
 passed+=await GifImportRecoveryChecks.RunAsync();
+passed+=await ProgressDialogLifecycleChecks.RunAsync();
+passed+=await PopupLifecycleChecks.RunAsync();
 passed+=await GifSizeChecks.RunAsync();
 passed+=await ResetRestartChecks.RunAsync();
 passed+=await PreparationLifecycleChecks.RunAsync();

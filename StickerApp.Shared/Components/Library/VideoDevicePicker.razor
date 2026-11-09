@@ -1,4 +1,4 @@
-@implements IAsyncDisposable
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
 @inject IJSRuntime JS
 <label class="toolbar-menu-option file-button">
     <Icon Name="animation" /><span>@L["Video from device"]<small>@L["Turn a video clip into an animated sticker."]</small></span>
@@ -7,20 +7,19 @@
 @code {
     [Parameter] public bool Disabled { get; set; }
     [Parameter] public EventCallback OnPicked { get; set; }
-    private bool disposed;
     private ElementReference input;
     private IJSObjectReference? module, picker;
     private DotNetObjectReference<VideoDevicePicker>? reference;
-    protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (!firstRender || disposed) return;
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender) {
+        if (!firstRender) return;
         module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/media/video/video-import.js");
-        if (disposed) { await module.DisposeAsync(); module = null; return; }
+        if (IsDisposed) return;
         reference = DotNetObjectReference.Create(this);
         picker = await module.InvokeAsync<IJSObjectReference>("createPicker", input, reference);
+        if (IsDisposed) return;
     }
-    [JSInvokable] public Task Picked() => OnPicked.InvokeAsync();
-    public async ValueTask DisposeAsync() {
-        disposed = true;
+    [JSInvokable] public Task Picked() => IsDisposed ? Task.CompletedTask : OnPicked.InvokeAsync();
+    protected override async ValueTask DisposeInteropAsync() {
         try {
             if (picker is not null) { await picker.InvokeVoidAsync("dispose"); await picker.DisposeAsync(); }
             if (module is not null) await module.DisposeAsync();

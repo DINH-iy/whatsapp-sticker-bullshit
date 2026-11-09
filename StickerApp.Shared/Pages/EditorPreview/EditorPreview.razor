@@ -1,6 +1,6 @@
 @page "/editor-preview"
 @using StickerApp.Shared.Components.Editor.DesignPreview
-@implements IAsyncDisposable
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
 @inject IJSRuntime JS
 <PageTitle>@L["Editor preview · Stik-er-in"]</PageTitle>
 <header class="page-header demo-page-heading"><div><h1>@L["Editor preview"]</h1><small class="helper">@L["Interactive layout example · sample artwork"]</small></div><a class="button" href="settings#editor-layout"><Icon Name="settings" />@L["Layout settings"]</a></header>
@@ -11,12 +11,12 @@
     private EditorLayoutPreferences preferences = new();
     private IJSObjectReference? module;
     private string? error;
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
         if (!firstRender) return;
         try { module = await JS.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/ui/editor-layout.js"); preferences = await module.InvokeAsync<EditorLayoutPreferences>("read"); }
         catch (JSException) { error = "Could not read layout settings. Showing the default preview."; }
         StateHasChanged();
     }
-    public async ValueTask DisposeAsync() { if(module is not null) { try { await module.DisposeAsync(); } catch(JSDisconnectedException) { } } }
+    protected override async ValueTask DisposeInteropAsync() { if(module is not null) { try { await module.DisposeAsync(); } catch(JSDisconnectedException) { } } }
 }

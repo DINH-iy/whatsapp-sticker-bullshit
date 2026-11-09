@@ -6,12 +6,14 @@
 }
 else
 {
-    <section class="notice notice-error" role="alert">
+    <section class="app-error-card notice-error" role="alert">
         <h2>@L["Something went wrong"]</h2>
         <p>@L["Please contact the developer and send your diagnostic logs from Settings → Diagnostics."]</p>
         <p>@L["Reference:"] @reference</p>
-        <a class="button primary" href="" data-enhance-nav="false">@L["Reload"]</a>
-        <button class="button" type="button" @onclick="OpenDiagnostics">@L["Open diagnostics"]</button>
+        <div class="app-error-actions">
+            <a class="button primary" href="" data-enhance-nav="false">@L["Reload"]</a>
+            <button class="button" type="button" @onclick="OpenDiagnostics">@L["Open diagnostics"]</button>
+        </div>
     </section>
 }
 @code {

@@ -9,15 +9,17 @@ public partial class LocationSurprise
     private bool isVisible;
     private bool isDisposed;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
         if (!firstRender) return;
 
         try
         {
             module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/location-surprises.js");
+            if (IsDisposed) return;
             reference = DotNetObjectReference.Create(this);
             await module.InvokeVoidAsync("start", reference);
+            if (IsDisposed) return;
         }
         catch (JSException)
         {
@@ -41,7 +43,7 @@ public partial class LocationSurprise
         return InvokeAsync(StateHasChanged);
     }
 
-    public async ValueTask DisposeAsync()
+    protected override async ValueTask DisposeInteropAsync()
     {
         isDisposed = true;
         try

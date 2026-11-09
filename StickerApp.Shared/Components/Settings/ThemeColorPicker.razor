@@ -1,4 +1,4 @@
-@implements IAsyncDisposable
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
 @inject IJSRuntime JS
 <div class="theme-custom-picker">
     <div class="theme-color-wheel" @ref="wheel" role="slider" aria-label="@L["Custom theme color wheel. Left/right changes hue; up/down changes saturation."]" aria-valuemin="0" aria-valuemax="359" aria-valuenow="0" tabindex="0"><span class="theme-color-knob"></span></div>
@@ -55,9 +55,16 @@
         hexDraft = input.ToLowerInvariant();
         await ValueChanged.InvokeAsync(AllowAlpha ? hexDraft : hexDraft[..7]);
     }
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
-        if(firstRender) { module = await JS.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/ui/theme-color-wheel.js"); reference = DotNetObjectReference.Create(this); controller = await module.InvokeAsync<IJSObjectReference>("create",wheel,reference); }
+        if (firstRender)
+        {
+            module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/theme-color-wheel.js");
+            if (IsDisposed) return;
+            reference = DotNetObjectReference.Create(this);
+            controller = await module.InvokeAsync<IJSObjectReference>("create", wheel, reference);
+            if (IsDisposed) return;
+        }
         if(controller is not null) await controller.InvokeVoidAsync("set",Value);
     }
     private int Channel(int index) => index == 3 && Value.Length == 7 ? 255 : Convert.ToInt32(Value.Substring(1 + index * 2, 2), 16);
@@ -69,5 +76,5 @@
         channels[index] = index == 3 ? (int)Math.Round(Math.Clamp(number, 0, 100) * 255.0 / 100) : Math.Clamp(number, 0, 255);
         return ValueChanged.InvokeAsync("#" + string.Concat(channels.Take(AllowAlpha ? 4 : 3).Select(value => value.ToString("x2"))));
     }
-    public async ValueTask DisposeAsync() { try { if(controller is not null) {await controller.InvokeVoidAsync("dispose");await controller.DisposeAsync();} if(module is not null)await module.DisposeAsync();}catch(JSDisconnectedException){} reference?.Dispose(); }
+    protected override async ValueTask DisposeInteropAsync() { try { if(controller is not null) {await controller.InvokeVoidAsync("dispose");await controller.DisposeAsync();} if(module is not null)await module.DisposeAsync();}catch(JSDisconnectedException){} reference?.Dispose(); }
 }

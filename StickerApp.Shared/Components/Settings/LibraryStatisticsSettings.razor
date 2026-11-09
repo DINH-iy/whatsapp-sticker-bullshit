@@ -1,7 +1,7 @@
 @inject LibraryStore Store
 @inject AppLog Log
 @inject IJSRuntime JS
-@implements IAsyncDisposable
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
 
 <section @ref="statisticsElement" class="settings-card library-statistics-card @(customizingStats ? "quick-stats-editing" : "")" aria-labelledby="library-statistics-title" aria-busy="@(busy || layoutSaving ? "true" : "false")">
     <h2 id="library-statistics-title" class="visually-hidden">@L["Library statistics & storage"]</h2>

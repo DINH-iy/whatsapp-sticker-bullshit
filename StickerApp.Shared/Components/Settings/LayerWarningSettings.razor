@@ -1,4 +1,4 @@
-@implements IAsyncDisposable
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
 @inject IJSRuntime JS
 <section class="settings-card" aria-labelledby="layer-warning-title">
     <h2 id="layer-warning-title">@L["Editing"]</h2>
@@ -10,7 +10,14 @@
     private bool warn=true;
     private string? error;
     private IJSObjectReference? module;
-    protected override async Task OnAfterRenderAsync(bool firstRender){if(!firstRender)return;module=await JS.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/ui/layer-preferences.js");warn=await module.InvokeAsync<bool>("shouldWarn");StateHasChanged();}
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/layer-preferences.js");
+        if (IsDisposed) return;
+        warn = await module.InvokeAsync<bool>("shouldWarn");
+        if (!IsDisposed) StateHasChanged();
+    }
     private async Task Change(ChangeEventArgs args){try{await module!.InvokeVoidAsync("setWarning",args.Value is true);warn=args.Value is true;error=null;}catch(JSException){error="Could not save this preference on this device.";}}
-    public async ValueTask DisposeAsync(){if(module is not null){try{await module.DisposeAsync();}catch(JSDisconnectedException){}}}
+    protected override async ValueTask DisposeInteropAsync(){if(module is not null){try{await module.DisposeAsync();}catch(JSDisconnectedException){}}}
 }

@@ -1,6 +1,6 @@
 @inject StickerApp.Shared.Services.ForegroundActivity Activity
 @page "/discord"
-@implements IAsyncDisposable
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
 @inject LibraryStore Store
 @inject IJSRuntime JS
 <PageTitle>@L["Import from Discord · Stik-er-in"]</PageTitle>

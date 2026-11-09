@@ -26,16 +26,20 @@ public partial class DiscordImport
     private MemoryStream? videoStream;
     private TaskCompletionSource<byte[]>? videoCompletion;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
         if (!firstRender) return;
         packs = (await Store.ReadAsync()).Packs;
+        if (IsDisposed) return;
         destination = PackId?.ToString() ?? "";
         publisher = (await Store.ReadProfileAsync()).Username;
+        if (IsDisposed) return;
         keepOriginals = Store.KeepOriginalAnimations;
         module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/imports/discord/discord-export.js");
+        if (IsDisposed) return;
         reference = DotNetObjectReference.Create(this);
         watcher = await module.InvokeAsync<IJSObjectReference>("watch", fileInput, reference);
+        if (IsDisposed) return;
         ready = true; StateHasChanged();
     }
     [JSInvokable] public Task DiscordExportReading() => InvokeAsync(() => { reading = true; error = notice = null; StateHasChanged(); });
@@ -88,7 +92,7 @@ public partial class DiscordImport
     }
     private void ClipReady(byte[] bytes) => videoCompletion?.TrySetResult(bytes);
     private void Cancel() { if (!progress.Saving) { operation?.Cancel(); videoCompletion?.TrySetCanceled(); } }
-    public async ValueTask DisposeAsync()
+    protected override async ValueTask DisposeInteropAsync()
     {
         disposed = true; operation?.Cancel(); videoCompletion?.TrySetCanceled();
         try { if (watcher is not null) { await watcher.InvokeVoidAsync("dispose"); await watcher.DisposeAsync(); } if (module is not null) await module.DisposeAsync(); }

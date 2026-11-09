@@ -9,10 +9,11 @@ public partial class Home
 {
     private IDisposable? preparationLease;
     private bool editorToolActive;
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
-        if (editing is null) return;
+        if (editing is null || IsDisposed) return;
         editDialogHelper ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/dialog.js");
+        if (IsDisposed || editing is null) return;
         await editDialogHelper.InvokeVoidAsync("open", editDialog);
     }
 

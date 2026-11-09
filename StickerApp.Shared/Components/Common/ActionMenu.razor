@@ -1,4 +1,4 @@
-@implements IAsyncDisposable
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
 @inject IJSRuntime JS
 @using Microsoft.AspNetCore.Components.Web
 
@@ -29,20 +29,23 @@
     private bool open;
     private ElementReference trigger, dropdown;
     private IJSObjectReference? module, placement;
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
         if (open && placement is null)
         {
             module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/action-menu.js");
+            if (IsDisposed) return;
             if (!open) return;
             placement = await module.InvokeAsync<IJSObjectReference>("watch", trigger, dropdown);
+            if (IsDisposed) return;
         }
         else if (!open && placement is not null)
         {
             await placement.InvokeVoidAsync("dispose"); await placement.DisposeAsync(); placement = null;
+            if (IsDisposed) return;
         }
     }
-    public async ValueTask DisposeAsync()
+    protected override async ValueTask DisposeInteropAsync()
     {
         try {
             if (placement is not null) { await placement.InvokeVoidAsync("dispose"); await placement.DisposeAsync(); }

@@ -13,7 +13,7 @@ public partial class LayerEditorDialog
     [Parameter] public Guid? PackId { get; set; }
     [Parameter] public bool StartWithText { get; set; }
     [Parameter] public bool StartWithShape { get; set; }
-    private bool IsPreparing(Sticker image) => StickerApp.Shared.Services.StickerPreparationService.NeedsPreparation(image) && Preparation.GetStatus(image)?.Error is null;
+    private bool IsPreparing(Sticker image) => StickerApp.Shared.Services.StickerPreparationService.NeedsPreparation(image) && Preparation.GetStatus(image) is not { Error: not null } and not { Cancelled: true };
     private IDisposable? preparationLease;
     private bool showShapes;
     private string shapeColor="#80d4b0", shapeOutlineColor="#1b1b1b";
@@ -61,7 +61,7 @@ public partial class LayerEditorDialog
         public LayerComposition Document { get; set; } = new();
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
         if (!firstRender)
         {
@@ -72,16 +72,23 @@ public partial class LayerEditorDialog
         try
         {
             preparationLease = await Preparation.SuspendForEditingAsync();
+            if (IsDisposed) return;
             layoutModule = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/editor-layout.js");
+            if (IsDisposed) return;
             layout = await layoutModule.InvokeAsync<EditorLayoutPreferences>("read");
+            if (IsDisposed) return;
             dialogs = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/dialog.js");
+            if (IsDisposed) return;
             await dialogs.InvokeVoidAsync("open", dialog);
+            if (IsDisposed) return;
             showOperationProgress = true;
             operationDetail = "Restoring images, animation frames and text controls for editing.";
             StateHasChanged();
             module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/media/layers/layer-editor.js");
+            if (IsDisposed) return;
             reference = DotNetObjectReference.Create(this);
             controller = await module.InvokeAsync<IJSObjectReference>("create", canvas, reference);
+            if (IsDisposed) return;
             nsfw = InitialNsfw ?? Images.FirstOrDefault(image => image.Id == StickerId)?.Nsfw ?? false;
             LayerComposition? composition = null;
             if (StickerId is { } id)
@@ -89,19 +96,24 @@ public partial class LayerEditorDialog
                 name = Images.FirstOrDefault(image => image.Id == id)?.Name ?? name;
                 using var readTiming = Log.Measure("Layer editor: read composition");
                 composition = await Store.ReadCompositionAsync(id);
+                if (IsDisposed) return;
             }
             using (Log.Measure("Layer editor: transfer and open composition"))
                 state = await controller.InvokeAsync<LayerEditorState>("open", composition);
+            if (IsDisposed) return;
             fonts = (await Store.ReadAsync()).Fonts;
+            if (IsDisposed) return;
             if (composition is null && (InitialSource is not null || StickerId is not null))
             {
                 var image = Images.FirstOrDefault(image => image.Id == StickerId);
                 var source = InitialSource ?? (image?.Animated == true ? await Store.ReadLayerAnimationAsync(image.Id) : image is not null ? await Store.PreviewAsync(image) : null);
+                if (IsDisposed) return;
                 if (source is not null)
                 {
                     name = InitialName ?? image?.Name ?? name;
                     using var addTiming = Log.Measure("Layer editor: transfer and add image");
                     state = await controller.InvokeAsync<LayerEditorState>("add", name, source, 512);
+                    if (IsDisposed) return;
                 }
             }
             showShapes=StartWithShape;
@@ -110,16 +122,17 @@ public partial class LayerEditorDialog
                 operationDetail = "Creating an editable text layer.";
                 StateHasChanged();
                 state = await controller.InvokeAsync<LayerEditorState>("addText");
+                if (IsDisposed) return;
             }
             if (Selected?.Text is not null) layerCategory = "text";
         }
         catch (Exception exception) when (IsExpected(exception)) { Report("Open layer editor", exception); }
-        finally { working = loading = showOperationProgress = false; StateHasChanged(); }
+        finally { working = loading = showOperationProgress = false; if (!IsDisposed) StateHasChanged(); }
     }
 
-    [JSInvokable] public void PreviewChanged(bool playing) { state.PreviewPlaying = playing; StateHasChanged(); }
+    [JSInvokable] public void PreviewChanged(bool playing) { if (IsDisposed) return; state.PreviewPlaying = playing; StateHasChanged(); }
 
-    [JSInvokable] public Task LayersChanged(LayerEditorState updated) => InvokeAsync(() => { state = updated; StateHasChanged(); });
+    [JSInvokable] public Task LayersChanged(LayerEditorState updated) => InvokeAsync(() => { if (IsDisposed) return; state = updated; StateHasChanged(); });
 
     private string? layerEditSource, layerEditResult, layerEditId;
     private bool editingLayerBusy, layerEditAnimated;
@@ -289,7 +302,7 @@ public partial class LayerEditorDialog
         var id = await Store.SaveCompositionAsync(StickerId, name, bytes, export.Document, PackId, nsfw);
         await OnSaved.InvokeAsync(id);
     }, showProgress: true);
-    private async Task Run(string message, Func<Task> action, bool showProgress = false)
+    private Task Run(string message, Func<Task> action, bool showProgress = false) => RunInteropAsync(async () =>
     {
         if (working || controller is null) return;
         working = true; loading = showOperationProgress = showProgress; error = null; progress = message;
@@ -299,7 +312,7 @@ public partial class LayerEditorDialog
         try { await action(); }
         catch (Exception exception) when (IsExpected(exception)) { Report("Layer editor", exception); }
         finally { working = loading = showOperationProgress = false; }
-    }
+    });
     private static bool IsExpected(Exception exception) => exception is JSException or IOException or InvalidDataException or InvalidOperationException or NotSupportedException or UnauthorizedAccessException or System.Text.Json.JsonException or FormatException;
     private void Report(string operation, Exception exception)
     {
@@ -314,7 +327,11 @@ public partial class LayerEditorDialog
         if (quickPanel != "") return RequestQuickToolCancel();
         return Cancel();
     }
-    public async ValueTask DisposeAsync()
+    protected override async ValueTask StopInteropAsync()
+    {
+        if (controller is not null) await controller.InvokeVoidAsync("dispose");
+    }
+    protected override async ValueTask DisposeInteropAsync()
     {
         preparationLease?.Dispose(); preparationLease = null;
         try

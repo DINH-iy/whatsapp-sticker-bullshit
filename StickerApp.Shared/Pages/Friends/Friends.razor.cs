@@ -28,7 +28,7 @@ public partial class Friends
     public sealed record Overview(List<PackCard> Items,int Total,Guid MemberId,string Username);
     protected override void OnInitialized()=>StickerApp.Core.GroupInviteInbox.Changed+=NativeInviteReady;
     private void NativeInviteReady()=>_ = InvokeAsync(StateHasChanged);
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
         if(StickerApp.Core.FriendsFeature.UnderMaintenance)return;
         if(!firstRender)
@@ -36,6 +36,7 @@ public partial class Friends
             if(ready && !connected)
             {
                 var applied=await module!.InvokeAsync<bool>("applyPending",serverInput,inviteInput);
+                if (IsDisposed) return;
                 if(StickerApp.Core.GroupInviteInbox.Take() is { } native){await module!.InvokeVoidAsync("applyInvitation",serverInput,inviteInput,native.ServerUrl,native.Code);applied=true;}
                 if(applied){notice="Invitation loaded. Review it before joining.";StateHasChanged();}
             }
@@ -44,16 +45,20 @@ public partial class Friends
             return;
         }
         module=await JS.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/ui/friends.js");
+        if (IsDisposed) return;
         var connection=await module!.InvokeAsync<Connection>("connection");connected=connection.Connected;serverUrl=string.IsNullOrEmpty(connection.ServerUrl)?serverUrl:connection.ServerUrl;username=connection.Username;ready=true;
+        if (IsDisposed) return;
         if(connected)
         {
             await Load();
+            if (IsDisposed) return;
             if(StickerApp.Core.GroupInviteInbox.Peek() is not null || await module!.InvokeAsync<bool>("hasPendingInvitation"))
             {pendingNoticeShown=true;notice="You’re already connected to a group. Leave it first if you want to use another invitation.";}
         }
         else
         {
             await module!.InvokeAsync<bool>("applyPending",serverInput,inviteInput);
+            if (IsDisposed) return;
             if(StickerApp.Core.GroupInviteInbox.Take() is { } native)await module!.InvokeVoidAsync("applyInvitation",serverInput,inviteInput,native.ServerUrl,native.Code);
         }
         StateHasChanged();
@@ -102,5 +107,5 @@ public partial class Friends
     private void Reveal(string id){if(!revealed.Remove(id))revealed.Add(id);}
     private async Task Next(){offset+=12;await Load();}
     private async Task Previous(){offset=Math.Max(0,offset-12);await Load();}
-    public async ValueTask DisposeAsync(){StickerApp.Core.GroupInviteInbox.Changed-=NativeInviteReady;if(module is not null)try{await module!.InvokeVoidAsync("clearPreviews");await module.DisposeAsync();}catch(JSDisconnectedException){}}
+    protected override async ValueTask DisposeInteropAsync(){StickerApp.Core.GroupInviteInbox.Changed-=NativeInviteReady;if(module is not null)try{await module!.InvokeVoidAsync("clearPreviews");await module.DisposeAsync();}catch(JSDisconnectedException){}}
 }

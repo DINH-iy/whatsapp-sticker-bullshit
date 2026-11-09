@@ -41,8 +41,8 @@ public partial class Home
     private Guid? infoImageId;
     private Sticker? InfoImage => library.Stickers.FirstOrDefault(image => image.Id == infoImageId);
     private IEnumerable<Sticker> PreparationImages => CurrentPack is null ? library.Stickers : PackImages;
-    private bool IsPreparing(Sticker image) => StickerApp.Shared.Services.StickerPreparationService.NeedsPreparation(image) && Preparation.GetStatus(image)?.Error is null;
-    private int PendingPreparationCount => PreparationImages.Count(image => StickerApp.Shared.Services.StickerPreparationService.NeedsPreparation(image) && Preparation.GetStatus(image)?.Error is null);
+    private bool IsPreparing(Sticker image) => StickerApp.Shared.Services.StickerPreparationService.NeedsPreparation(image) && Preparation.GetStatus(image) is not { Error: not null } and not { Cancelled: true };
+    private int PendingPreparationCount => PreparationImages.Count(IsPreparing);
     private int AttentionCount => PreparationImages.Count(image => Preparation.GetStatus(image)?.Error is not null);
     private bool deletePack;
     private ElementReference editDialog;
@@ -247,7 +247,10 @@ public partial class Home
             Navigation.NavigateTo("/");
         }
         else if (pendingRemoval is not null)
+        {
+            await Preparation.CancelAsync(pendingRemoval.Id);
             await Store.DeleteStickersAsync([pendingRemoval.Id]);
+        }
         CancelRemoval();
     });
 
@@ -261,7 +264,8 @@ public partial class Home
                 : "Pack export is ready. Open the Android or iPhone app to add it to WhatsApp.";
         }
     });
-    public async ValueTask DisposeAsync()
+    protected override void OnRemoving() => disposed = true;
+    protected override async ValueTask DisposeInteropAsync()
     {
         disposed = true;
         preparationLease?.Dispose(); preparationLease = null;

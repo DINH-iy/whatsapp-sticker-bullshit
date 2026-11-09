@@ -20,13 +20,15 @@ public partial class PackSharingSettings
         public bool HasToken { get; set; }
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
         if (!firstRender) return;
         try
         {
             module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/pack-sharing.js");
+            if (IsDisposed) return;
             await ReloadSettings();
+            if (IsDisposed) return;
             isReady = true;
         }
         catch (JSException)
@@ -76,7 +78,7 @@ public partial class PackSharingSettings
         }
     }
 
-    public async ValueTask DisposeAsync()
+    protected override async ValueTask DisposeInteropAsync()
     {
         if (module is null) return;
         try { await module.DisposeAsync(); }

@@ -1,4 +1,4 @@
-@implements IAsyncDisposable
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
 @inject IJSRuntime JS
 <button class="button @(IconOnly ? "icon-button" : "") editor-popup-trigger" type="button" disabled="@Disabled" @onclick="Open" aria-haspopup="dialog" aria-label="@L[Title]" title="@L[Title]"><Icon Name="@IconName" />@if (!IconOnly) { <span>@L[Label]</span> }</button>
 @if (show)
@@ -23,12 +23,14 @@
     private IJSObjectReference? module;
     private void Open() { show = opening = true; }
     private void Close() { show = opening = false; }
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
         if (!opening) return;
         opening = false;
         module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/dialog.js");
+        if (IsDisposed) return;
         await module.InvokeVoidAsync("open", dialog);
+        if (IsDisposed) return;
     }
-    public async ValueTask DisposeAsync() { if (module is not null) { try { await module.DisposeAsync(); } catch (JSDisconnectedException) { } } }
+    protected override async ValueTask DisposeInteropAsync() { if (module is not null) { try { await module.DisposeAsync(); } catch (JSDisconnectedException) { } } }
 }

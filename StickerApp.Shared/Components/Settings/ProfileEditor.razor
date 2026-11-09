@@ -1,4 +1,4 @@
-@implements IAsyncDisposable
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
 @inject LibraryStore Store
 @inject IJSRuntime JS
 
@@ -66,15 +66,18 @@ else
         blur = Store.BlurNsfwPreviews; keepSources = Store.KeepOriginalAnimations;
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
         if (!firstRender) return;
         if (Onboarding)
         {
             dialogModule = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/dialog.js");
+            if (IsDisposed) return;
             await dialogModule.InvokeVoidAsync("open", dialog);
+            if (IsDisposed) return;
         }
         theme = await JS.InvokeAsync<string>("stickerTheme.get");
+        if (IsDisposed) return;
         ready = true;
         StateHasChanged();
     }
@@ -121,7 +124,7 @@ else
         finally { saving = false; }
     }
 
-    public async ValueTask DisposeAsync()
+    protected override async ValueTask DisposeInteropAsync()
     {
         if (dialogModule is null) return;
         try { await dialogModule.DisposeAsync(); } catch (JSDisconnectedException) { }

@@ -12,7 +12,7 @@ public partial class GifSearchSettings
     private string? error;
     private string? notice;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
         if (!firstRender)
             return;
@@ -20,7 +20,9 @@ public partial class GifSearchSettings
         try
         {
             client = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/klipy-client.js");
+            if (IsDisposed) return;
             isConfigured = await client.InvokeAsync<bool>("hasApiKey");
+            if (IsDisposed) return;
             isReady = true;
         }
         catch (JSException)
@@ -70,7 +72,7 @@ public partial class GifSearchSettings
         }
     }
 
-    public async ValueTask DisposeAsync()
+    protected override async ValueTask DisposeInteropAsync()
     {
         if (client is null)
             return;

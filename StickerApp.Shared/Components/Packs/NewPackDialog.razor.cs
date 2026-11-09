@@ -29,11 +29,13 @@ public partial class NewPackDialog
         publisher = Pack?.Publisher ?? (await Store.ReadProfileAsync()).Username;
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
         if (!firstRender) return;
         dialogHelper = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/dialog.js");
+        if (IsDisposed) return;
         await dialogHelper.InvokeVoidAsync("open", dialog);
+        if (IsDisposed) return;
     }
 
     private async Task CreatePack()
@@ -95,7 +97,7 @@ public partial class NewPackDialog
     private Task Cancel() => saving || preparingCover ? Task.CompletedTask : OnCancel.InvokeAsync();
     private Task HandleKey(KeyboardEventArgs args) => args.Key == "Escape" ? Cancel() : Task.CompletedTask;
 
-    public async ValueTask DisposeAsync()
+    protected override async ValueTask DisposeInteropAsync()
     {
         if (dialogHelper is null) return;
         try { await dialogHelper.DisposeAsync(); }

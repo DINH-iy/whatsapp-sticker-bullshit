@@ -21,12 +21,14 @@ public partial class FolderPicker
 
     protected override void OnInitialized() => Navigate(InitialFolder);
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
         if (!firstRender)
             return;
         module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/dialog.js");
+        if (IsDisposed) return;
         await module.InvokeVoidAsync("open", dialog);
+        if (IsDisposed) return;
     }
 
     private void Navigate(string path)
@@ -89,7 +91,7 @@ public partial class FolderPicker
     private Task Choose() => OnSelected.InvokeAsync(current);
     private Task Cancel() => OnCancel.InvokeAsync();
     private Task HandleKey(KeyboardEventArgs e) => e.Key == "Escape" ? Cancel() : Task.CompletedTask;
-    public async ValueTask DisposeAsync()
+    protected override async ValueTask DisposeInteropAsync()
     {
         if (module is null)
             return;

@@ -1,4 +1,4 @@
-@implements IAsyncDisposable
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
 @inject IJSRuntime JS
 
 @if (Blocking)
@@ -38,21 +38,20 @@ else
     private readonly string titleId = "operation-progress-" + Guid.NewGuid().ToString("N");
     [Parameter] public EventCallback OnCancel { get; set; }
     private ElementReference dialog;
-    private IJSObjectReference? helper;
-    private bool disposed;
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
-        if (!firstRender || disposed) return;
-        helper = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/dialog.js");
-        if (disposed) { await helper.DisposeAsync(); helper = null; return; }
-        if (Blocking) await helper.InvokeVoidAsync("open", dialog);
-        await helper.InvokeVoidAsync("watchElapsed", dialog, L["Elapsed: {0} s"]);
+        if (!firstRender || IsDisposed) return;
+        // Rendering can remove this overlay during either interop await. Keep the
+        // module alive until initialization finishes; disposal only marks us gone.
+        try
+        {
+            await using var helper = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/dialog.js");
+            if (IsDisposed) return;
+            if (Blocking) await helper.InvokeVoidAsync("open", dialog);
+            if (IsDisposed) return;
+            await helper.InvokeVoidAsync("watchElapsed", dialog, L["Elapsed: {0} s"]);
+        }
+        catch (JSDisconnectedException) { }
     }
     private Task Cancel() => CanCancel ? OnCancel.InvokeAsync() : Task.CompletedTask;
-    public async ValueTask DisposeAsync()
-    {
-        disposed = true;
-        if (helper is null) return;
-        try { await helper.DisposeAsync(); } catch (JSDisconnectedException) { }
-    }
 }

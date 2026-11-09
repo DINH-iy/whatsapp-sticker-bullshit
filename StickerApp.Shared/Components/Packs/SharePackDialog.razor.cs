@@ -26,15 +26,19 @@ public partial class SharePackDialog
     private string? error;
     private string? copyNotice;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
         if (!firstRender) return;
         try
         {
             dialogHelper = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/dialog.js");
+            if (IsDisposed) return;
             await dialogHelper.InvokeVoidAsync("open", dialog);
+            if (IsDisposed) return;
             sharingClient = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/pack-sharing.js");
+            if (IsDisposed) return;
             var settings = await sharingClient.InvokeAsync<PackSharingSettings.SharingSettings>("getSettings");
+            if (IsDisposed) return;
             canPublish = settings.HasToken;
             isReady = true;
         }
@@ -89,7 +93,7 @@ public partial class SharePackDialog
     private Task Close() => isWorking ? Task.CompletedTask : OnClose.InvokeAsync();
     private Task HandleKey(KeyboardEventArgs args) => args.Key == "Escape" ? Close() : Task.CompletedTask;
 
-    public async ValueTask DisposeAsync()
+    protected override async ValueTask DisposeInteropAsync()
     {
         try
         {

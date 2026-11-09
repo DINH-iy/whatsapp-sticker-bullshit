@@ -1,4 +1,4 @@
-@implements IAsyncDisposable
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
 @inject StickerApp.Shared.Services.StickerPreparationService Preparation
 @inject IJSRuntime JS
 @inject StickerApp.Shared.Services.ForegroundActivity Activity
@@ -6,16 +6,18 @@
 @code {
     private IJSObjectReference? module, subscription;
     private DotNetObjectReference<StickerPreparationHost>? reference;
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
         if (!firstRender) return;
         Preparation.Start();
         reference = DotNetObjectReference.Create(this);
         module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/foreground.js");
+        if (IsDisposed) return;
         subscription = await module.InvokeAsync<IJSObjectReference>("watch", reference);
+        if (IsDisposed) return;
     }
     [JSInvokable] public Task SetForeground(bool active) { Activity.SetActive(active); return Preparation.SetForegroundAsync(active); }
-    public async ValueTask DisposeAsync()
+    protected override async ValueTask DisposeInteropAsync()
     {
         try {
             await Preparation.SetForegroundAsync(false);

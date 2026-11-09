@@ -36,14 +36,16 @@ public partial class LibraryStatisticsSettings
     private IReadOnlyList<LibraryStatistic> QuickStats => quickStats
         .Select(id => AllStats.FirstOrDefault(stat => stat.Id == id)).OfType<LibraryStatistic>().ToList();
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
         if (statistics is null || layoutInitializing) return;
         layoutInitializing = true;
         try
         {
             layoutModule = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/quick-statistics.js");
+            if (IsDisposed) return;
             var preferences = await layoutModule.InvokeAsync<QuickStatPreferences?>("load");
+            if (IsDisposed) return;
             if (preferences?.Selected is { } selected)
             {
                 var valid = AllStats.Select(stat => stat.Id).ToHashSet();
@@ -51,6 +53,7 @@ public partial class LibraryStatisticsSettings
             }
             layoutReference = DotNetObjectReference.Create(this);
             layoutController = await layoutModule.InvokeAsync<IJSObjectReference>("connect", statisticsElement, layoutReference);
+            if (IsDisposed) return;
             layoutReady = true;
         }
         catch (JSDisconnectedException) { return; }
@@ -121,7 +124,7 @@ public partial class LibraryStatisticsSettings
         await SaveQuickStats();
     }
 
-    public async ValueTask DisposeAsync()
+    protected override async ValueTask DisposeInteropAsync()
     {
         try
         {

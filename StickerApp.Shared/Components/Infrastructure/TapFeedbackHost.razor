@@ -1,4 +1,4 @@
-@implements IAsyncDisposable
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
 @inject IServiceProvider Services
 @inject IJSRuntime JS
 
@@ -7,19 +7,21 @@
     private IJSObjectReference? module, subscription;
     private DotNetObjectReference<TapFeedbackHost>? reference;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
         if (!firstRender) return;
         feedback = Services.GetService(typeof(StickerApp.Shared.Services.ITapFeedback)) as StickerApp.Shared.Services.ITapFeedback;
         if (feedback is null) return;
         reference = DotNetObjectReference.Create(this);
         module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/tap-feedback.js");
+        if (IsDisposed) return;
         subscription = await module.InvokeAsync<IJSObjectReference>("watch", reference);
+        if (IsDisposed) return;
     }
 
     [JSInvokable] public Task Tap() => feedback?.TapAsync() ?? Task.CompletedTask;
 
-    public async ValueTask DisposeAsync()
+    protected override async ValueTask DisposeInteropAsync()
     {
         try
         {

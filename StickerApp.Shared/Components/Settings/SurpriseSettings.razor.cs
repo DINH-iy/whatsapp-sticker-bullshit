@@ -10,14 +10,16 @@ public partial class SurpriseSettings
     private bool isReady;
     private string? error;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
         if (!firstRender) return;
 
         try
         {
             module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/location-surprises.js");
+            if (IsDisposed) return;
             enabled = await module.InvokeAsync<bool>("isEnabled");
+            if (IsDisposed) return;
             isReady = true;
         }
         catch (JSException)
@@ -58,7 +60,7 @@ public partial class SurpriseSettings
         }
     }
 
-    public async ValueTask DisposeAsync()
+    protected override async ValueTask DisposeInteropAsync()
     {
         if (module is null) return;
 

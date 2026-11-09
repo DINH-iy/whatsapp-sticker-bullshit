@@ -1,5 +1,5 @@
 @page "/requests"
-@implements IAsyncDisposable
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
 @inject IJSRuntime JS
 @inject StickerApp.Shared.Services.IPackFileSaver FileSaver
 @inject StickerApp.Shared.Services.IFormFactor FormFactor
@@ -30,7 +30,7 @@
     private string? error,notice;
     private Guid? editing,removing;
     private bool ready,busy;
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
         if(!firstRender)return;
         await Run(async()=>{module=await JS.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/ui/feature-requests.js");drafts=await module.InvokeAsync<List<Draft>>("read");ready=true;});
@@ -41,5 +41,5 @@
     private Task Remove(Guid id)=>Run(async()=>{drafts=await module!.InvokeAsync<List<Draft>>("remove",id.ToString());if(editing==id)Clear();removing=null;notice="Draft removed.";});
     private Task Export(Draft draft)=>Run(async()=>{var text=$"Stik-er-in feature request\n\n{draft.Title}\nType: {draft.Category}\n\n{draft.Details}\n";using var stream=new MemoryStream(System.Text.Encoding.UTF8.GetBytes(text));await FileSaver.SaveAsync($"stikerin-idea-{draft.Id:N}.txt",stream,"text/plain");notice="Export prepared. You choose where to save or share the file; nothing was submitted to a server.";});
     private async Task Run(Func<Task> action){if(busy)return;busy=true;error=notice=null;try{await action();}catch(Exception ex) when(ex is JSException or IOException or InvalidOperationException or UnauthorizedAccessException){error=ex.Message.Split('\n')[0];}finally{busy=false;StateHasChanged();}}
-    public async ValueTask DisposeAsync(){if(module is not null)try{await module.DisposeAsync();}catch(JSDisconnectedException){}}
+    protected override async ValueTask DisposeInteropAsync(){if(module is not null)try{await module.DisposeAsync();}catch(JSDisconnectedException){}}
 }

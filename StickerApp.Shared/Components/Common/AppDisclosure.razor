@@ -1,4 +1,4 @@
-@implements IAsyncDisposable
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
 @inject IJSRuntime JS
 <details @ref="root" @attributes="Attributes" class="app-disclosure @Class @(Popup ? "app-disclosure-popup" : "")" open="@expanded">
     <summary class="@SummaryClass" aria-label="@(Label is null ? null : L[Label])" @onclick="Toggle" @onclick:preventDefault>
@@ -28,15 +28,17 @@
     private ElementReference root;
     private IJSObjectReference? module, controller;
     private DotNetObjectReference<AppDisclosure>? reference;
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
         if (!firstRender || !Popup) return;
         module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/disclosure.js");
+        if (IsDisposed) return;
         reference = DotNetObjectReference.Create(this);
         controller = await module.InvokeAsync<IJSObjectReference>("create", root, reference);
+        if (IsDisposed) return;
     }
-    [JSInvokable] public async Task ClosePopup() { expanded = false; await OpenChanged.InvokeAsync(false); StateHasChanged(); }
-    public async ValueTask DisposeAsync()
+    [JSInvokable] public async Task ClosePopup() { if (IsDisposed) return; expanded = false; await OpenChanged.InvokeAsync(false); if (!IsDisposed) StateHasChanged(); }
+    protected override async ValueTask DisposeInteropAsync()
     {
         try { if (controller is not null) { await controller.InvokeVoidAsync("dispose"); await controller.DisposeAsync(); } if (module is not null) await module.DisposeAsync(); }
         catch (JSDisconnectedException) { }

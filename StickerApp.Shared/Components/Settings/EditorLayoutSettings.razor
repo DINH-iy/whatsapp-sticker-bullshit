@@ -1,5 +1,5 @@
 @using StickerApp.Shared.Components.Editor.DesignPreview
-@implements IAsyncDisposable
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
 @inject IJSRuntime JS
 <section class="settings-card" id="editor-layout" aria-labelledby="editor-layout-title">
     <h2 id="editor-layout-title">@L["Editor layout"]</h2>
@@ -32,7 +32,7 @@
     private IJSObjectReference? module;
     private bool ready, saved;
     private string? error;
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
         if (!firstRender) return;
         try { module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/editor-layout.js"); preferences = await module.InvokeAsync<EditorLayoutPreferences>("read"); ready = true; }
@@ -58,5 +58,5 @@
         try { preferences = await module.InvokeAsync<EditorLayoutPreferences>("reset"); saved = true; error = null; }
         catch (JSException) { error = "Could not reset editor layout."; }
     }
-    public async ValueTask DisposeAsync() { if(module is not null) { try { await module.DisposeAsync(); } catch(JSDisconnectedException) { } } }
+    protected override async ValueTask DisposeInteropAsync() { if(module is not null) { try { await module.DisposeAsync(); } catch(JSDisconnectedException) { } } }
 }

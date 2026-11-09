@@ -1,5 +1,5 @@
 @inject AppLog Log
-@implements IAsyncDisposable
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
 @inject IJSRuntime JS
 
 <div class="image-customizer live-editor live-tools-@(layout.ToolsPosition) live-controls-@(layout.ControlsPosition) live-size-@(layout.ButtonSize) @(Animated ? "animated-customizer" : "")" data-editor-labels="@L.EditorLabels()" aria-busy="@working">
@@ -151,13 +151,15 @@
         "adjust" => "Adjust the image beside the preview. Apply keeps the changes; Cancel restores the image from before this tool.",
         "wand" => "Tap a background color to remove its connected area. Increase tolerance to include more similar colors.",
         _ => "Drag a rectangle over the image, then use the checkmark to apply." };
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
         if (isDisposed) return;
         if (firstRender)
         {
             layoutModule = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/editor-layout.js");
+            if (IsDisposed) return;
             layout = await layoutModule.InvokeAsync<EditorLayoutPreferences>("read");
+            if (IsDisposed) return;
         }
         if (loadedSource == Source)
         {
@@ -165,24 +167,32 @@
             {
                 previewStart = TrimStart; previewEnd = TrimEnd;
                 await controller.InvokeVoidAsync("setPreviewRange", TrimStart, TrimEnd);
+                if (IsDisposed) return;
             }
             return;
         }
         loadedSource = Source;
         try {
             await OnBusyChanged.InvokeAsync(true);
+            if (IsDisposed) return;
             module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/media/image/image-customizer.js");
+            if (IsDisposed) return;
             reference ??= DotNetObjectReference.Create(this);
             controller ??= await module.InvokeAsync<IJSObjectReference>("create", canvas, reference);
+            if (IsDisposed) return;
             var size = await controller.InvokeAsync<ImageSize>("open", Source, Math.Min(2048, MaxDimension), MaxDimension, Animated);
+            if (IsDisposed) return;
             if (isDisposed) return;
             width = size.Width; height = size.Height;
             tool = InitialTool;
             category = tool is "draw" or "border" ? "draw" : "cutout";
             await controller.InvokeVoidAsync("beginTool", tool);
+            if (IsDisposed) return;
             await OnToolActiveChanged.InvokeAsync(tool != "");
+            if (IsDisposed) return;
             adjustment.Width = width; adjustment.Height = height;
             await OnEditsChanged.InvokeAsync(size.Recipe);
+            if (IsDisposed) return;
         }
         catch (JSException exception) { if (isDisposed) return; Log.Error("Open image editor", exception); error = "Could not open this image for editing."; }
         finally { if (!isDisposed) { working = false; await OnReady.InvokeAsync(); await OnBusyChanged.InvokeAsync(false); StateHasChanged(); } }
@@ -244,9 +254,10 @@
     private int borderWidth = 8, borderRadius;
     private string borderColor = "#ffffff";
     private Task UpdateBorder() => Run("border", borderWidth, borderColor, borderRadius);
-    private async Task UpdateSettings() { if (controller is not null) await controller.InvokeVoidAsync("settings", tool == "draw" ? drawBrush : brush, tolerance, brushColor, brushType); }
+    private Task UpdateSettings() => RunInteropAsync(async () =>
+    { if (controller is not null) await controller.InvokeVoidAsync("settings", tool == "draw" ? drawBrush : brush, tolerance, brushColor, brushType); });
     private Task Transform(string action) => Run("transform", action, width, height);
-    private async Task Run(string method, params object?[] args)
+    private Task Run(string method, params object?[] args) => RunInteropAsync(async () =>
     {
         if (working || controller is null) return;
         working = true; error = null;
@@ -254,8 +265,13 @@
         try { await controller.InvokeVoidAsync(method, args); }
         catch (JSException exception) { Log.Error("Image customization", exception); error = exception.Message.Split('\n')[0]; }
         finally { working = false; await OnBusyChanged.InvokeAsync(false); }
+    });
+    protected override void OnRemoving() => isDisposed = true;
+    protected override async ValueTask StopInteropAsync()
+    {
+        if (controller is not null) await controller.InvokeVoidAsync("dispose");
     }
-    public async ValueTask DisposeAsync()
+    protected override async ValueTask DisposeInteropAsync()
     {
         isDisposed = true;
         try {

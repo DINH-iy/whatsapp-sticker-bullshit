@@ -1,4 +1,4 @@
-@implements IAsyncDisposable
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
 @inject IJSRuntime JS
 @inject StickerApp.Shared.Services.StickerPreparationService Preparation
 
@@ -22,7 +22,14 @@
         </section>
         <HelpDisclosure Summary="@L["Technical details and reference"]"><p class="technical-error" lang="en">@error</p></HelpDisclosure>
     }
-    else { <p class="helper" role="status">@L.Message(StatusText)</p> }
+    else
+    {
+        <p class="helper" role="status">@L.Message(StatusText)</p>
+        @if (State?.Cancelled == true)
+        {
+            <button class="button" type="button" @onclick="() => Preparation.Retry(Image.Id)">@L["Resume processing"]</button>
+        }
+    }
     <dl class="sticker-detail-list">
         <dt>@L["Dimensions"]</dt><dd>@Image.Width × @Image.Height @L["pixels"]</dd>
         <dt>@L["File size"]</dt><dd>@(Math.Ceiling(Image.Bytes / 1024d)) KB</dd>
@@ -37,7 +44,7 @@
     <HelpDisclosure Summary="@L["About sticker preparation"]"><p class="helper">@L["Images are fitted into 512 × 512 WebP automatically without cropping or stretching. Still pictures stay visually still when exported in an animated pack."]</p></HelpDisclosure>
     @if (State?.Error is null) {
         <div class="dialog-actions">
-            <button class="button" type="button" @onclick="() => OnEdit.InvokeAsync()" disabled="@(State?.Working == true || StickerApp.Shared.Services.StickerPreparationService.NeedsPreparation(Image))">@L["Edit image"]</button>
+            <button class="button" type="button" @onclick="() => OnEdit.InvokeAsync()" disabled="@(State?.Working == true || (State?.Cancelled != true && StickerApp.Shared.Services.StickerPreparationService.NeedsPreparation(Image)))">@L["Edit image"]</button>
             <button class="button primary" type="button" @onclick="Close">@L["Done"]</button>
         </div>
     }
@@ -49,22 +56,25 @@
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public EventCallback OnEdit { get; set; }
     protected override void OnInitialized() => Preparation.Changed += PreparationChanged;
-    private void PreparationChanged(bool mediaChanged) => _ = InvokeAsync(StateHasChanged);
+    private void PreparationChanged(bool mediaChanged) { if (!IsDisposed) _ = InvokeAsync(() => { if (!IsDisposed) StateHasChanged(); }); }
     private ElementReference dialog;
     private IJSObjectReference? helper;
     private StickerApp.Shared.Services.StickerPreparationService.Status? State => Preparation.GetStatus(Image);
     private string StatusText => !StickerApp.Shared.Services.StickerPreparationService.NeedsPreparation(Image)
         ? "Ready for WhatsApp."
-        : State?.Working == true ? "Preparing in the background…" : State?.Error is not null ? "Needs attention. Your image is kept." : "Queued for automatic preparation…";
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+        : State?.Cancelled == true ? "Processing stopped. Resume when you are ready, or remove this sticker." : State?.Working == true ? "Preparing in the background…" : State?.Error is not null ? "Needs attention. Your image is kept." : "Queued for automatic preparation…";
+    protected override void OnRemoving() => Preparation.Changed -= PreparationChanged;
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
         if (!firstRender) return;
         helper = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/dialog.js");
+        if (IsDisposed) return;
         await helper.InvokeVoidAsync("open", dialog);
+        if (IsDisposed) return;
     }
     private Task Close() => OnClose.InvokeAsync();
     private Task HandleKey(KeyboardEventArgs args) => args.Key == "Escape" ? Close() : Task.CompletedTask;
-    public async ValueTask DisposeAsync()
+    protected override async ValueTask DisposeInteropAsync()
     {
         Preparation.Changed -= PreparationChanged;
         if (helper is null) return;

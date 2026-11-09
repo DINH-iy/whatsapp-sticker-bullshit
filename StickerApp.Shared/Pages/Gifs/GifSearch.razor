@@ -4,7 +4,7 @@
 @inject LibraryStore Store
 @inject StickerApp.Shared.Services.IFormFactor FormFactor
 @page "/gifs"
-@implements IAsyncDisposable
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
 @inject IJSRuntime JS
 
 @if (!Embedded)

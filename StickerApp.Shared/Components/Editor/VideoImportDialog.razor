@@ -1,4 +1,4 @@
-@implements IAsyncDisposable
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
 @inject IJSRuntime JS
 @inject LibraryStore Store
 @inject AppLog Log
@@ -108,7 +108,8 @@
     private async Task UseSmallerFrameRate() { fps = 8; await Validate(); }
     private string validationMessage = "Checking clip…";
     public sealed class ClipValidation { public bool Valid { get; set; } public int Frames { get; set; } public string Message { get; set; } = ""; }
-    private async Task Validate() {
+    private Task Validate() => RunInteropAsync(async () =>
+    {
         if (controller is null || !ready || disposed) return;
         var version = ++validationVersion;
         estimateDelay?.Cancel();
@@ -136,17 +137,22 @@
             if (ReferenceEquals(estimateDelay, delay)) estimateDelay = null;
             if (version == validationVersion && !disposed) { estimating = false; StateHasChanged(); }
         }
-    }
+    });
     private string[] thumbnails = [];
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
         if (!firstRender) return;
         helper = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/dialog.js");
+        if (IsDisposed) return;
         await helper.InvokeVoidAsync("open", dialog);
+        if (IsDisposed) return;
         module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/media/video/video-import.js");
+        if (IsDisposed) return;
         reference = DotNetObjectReference.Create(this);
         controller = await module.InvokeAsync<IJSObjectReference>("create", video, fileInput, editorRoot, reference);
+        if (IsDisposed) return;
         if (LoadPicked) await controller.InvokeVoidAsync("loadPicked");
+        if (IsDisposed) return;
         if (InitialVideo is not null)
         {
             if (InitialVideo.CanSeek && InitialVideo.Length > LibraryStore.MaxVideoImportBytes) { error = "This video exceeds the 20 MB limit. Choose a smaller video or trim it in your gallery first."; StateHasChanged(); return; }
@@ -154,20 +160,25 @@
             {
                 using var stream = new DotNetStreamReference(InitialVideo, leaveOpen: true);
                 await controller.InvokeVoidAsync("loadStream", TimeSpan.FromMinutes(3), stream, (InitialName ?? "Pinterest video") + ".mp4");
+                if (IsDisposed) return;
             }
             catch (JSException exception) { if (!disposed) { error = exception.Message.Split('\n')[0]; loading = false; StateHasChanged(); } }
         }
     }
     public sealed class VideoInfo { public string Name { get; set; } = "Video clip"; public double Duration { get; set; } public double NativeFps { get; set; } public int Width { get; set; } public int Height { get; set; } public string[] Thumbnails { get; set; } = []; }
-    [JSInvokable] public void VideoLoading() { ++validationVersion; estimateDelay?.Cancel(); sizeEstimate = null; estimating = false; ready = false; loading = true; error = null; StateHasChanged(); }
-    [JSInvokable] public async Task VideoReady(VideoInfo info) { name = info.Name.Length > 128 ? info.Name[..128] : info.Name; duration = info.Duration; start = 0; end = Math.Min(5, duration); thumbnails = info.Thumbnails; nativeFps = info.NativeFps; fps = nativeFps > 0 && nativeFps <= 125 ? 0 : 12; end = Math.Min(end, Math.Floor(100 / (fps == 0 ? nativeFps : fps) * 10) / 10); ready = true; loading = false; StateHasChanged(); await Validate(); StateHasChanged(); }
-    [JSInvokable] public void VideoFailed(string message) { error = message; loading = false; StateHasChanged(); }
-    [JSInvokable] public void VideoPlayback(bool value) { playing = value; StateHasChanged(); }
-    [JSInvokable] public void VideoProgress(int value) { progress = value; StateHasChanged(); }
-    private async Task ChangeStart(double value) { start = Math.Clamp(value, 0, Math.Max(0, duration - 0.1)); end = Math.Clamp(end, start + 0.1, Math.Min(duration, start + 5)); await controller!.InvokeVoidAsync("setRange", start, end); await Validate(); }
-    private async Task ChangeEnd(double value) { end = Math.Clamp(value, 0.1, duration); start = Math.Clamp(start, Math.Max(0, end - 5), end - 0.1); await controller!.InvokeVoidAsync("setRange", start, end); await Validate(); }
-    private async Task Preview() { try { await controller!.InvokeVoidAsync("preview", start, end); } catch (JSException) { error = "Could not play this video on this device."; } }
-    private async Task Convert()
+    [JSInvokable] public void VideoLoading() { if (IsDisposed) return; ++validationVersion; estimateDelay?.Cancel(); sizeEstimate = null; estimating = false; ready = false; loading = true; error = null; StateHasChanged(); }
+    [JSInvokable] public Task VideoReady(VideoInfo info) => RunInteropAsync(async () =>
+    { if (IsDisposed) return; name = info.Name.Length > 128 ? info.Name[..128] : info.Name; duration = info.Duration; start = 0; end = Math.Min(5, duration); thumbnails = info.Thumbnails; nativeFps = info.NativeFps; fps = nativeFps > 0 && nativeFps <= 125 ? 0 : 12; end = Math.Min(end, Math.Floor(100 / (fps == 0 ? nativeFps : fps) * 10) / 10); ready = true; loading = false; StateHasChanged(); await Validate(); if (!IsDisposed) StateHasChanged(); });
+    [JSInvokable] public void VideoFailed(string message) { if (IsDisposed) return; error = message; loading = false; StateHasChanged(); }
+    [JSInvokable] public void VideoPlayback(bool value) { if (IsDisposed) return; playing = value; StateHasChanged(); }
+    [JSInvokable] public void VideoProgress(int value) { if (IsDisposed) return; progress = value; StateHasChanged(); }
+    private Task ChangeStart(double value) => RunInteropAsync(async () =>
+    { start = Math.Clamp(value, 0, Math.Max(0, duration - 0.1)); end = Math.Clamp(end, start + 0.1, Math.Min(duration, start + 5)); await controller!.InvokeVoidAsync("setRange", start, end); await Validate(); });
+    private Task ChangeEnd(double value) => RunInteropAsync(async () =>
+    { end = Math.Clamp(value, 0.1, duration); start = Math.Clamp(start, Math.Max(0, end - 5), end - 0.1); await controller!.InvokeVoidAsync("setRange", start, end); await Validate(); });
+    private Task Preview() => RunInteropAsync(async () =>
+    { try { await controller!.InvokeVoidAsync("preview", start, end); } catch (JSException) { error = "Could not play this video on this device."; } });
+    private Task Convert() => RunInteropAsync(async () =>
     {
         if (controller is null || converting || !ready || !validClip || estimating || sizeEstimate is null || sizeEstimate.TooLarge) return;
         converting = true; error = null; progress = 0;
@@ -199,10 +210,19 @@
             if (!disposed) { Log.Error("Video import", ex); error = ex is JSException ? ex.Message.Split('\n')[0] : ex.Message; }
         }
         finally { converting = saving = false; }
-    }
-    private async Task Close() { if (saving) return; ++validationVersion; estimateDelay?.Cancel(); if (controller is not null) await controller.InvokeVoidAsync("cancel"); await OnClose.InvokeAsync(); }
+    });
+    private Task Close() => RunInteropAsync(async () =>
+    { if (saving) return; ++validationVersion; estimateDelay?.Cancel(); if (controller is not null) await controller.InvokeVoidAsync("cancel"); await OnClose.InvokeAsync(); });
     private Task HandleKey(KeyboardEventArgs args) => args.Key == "Escape" ? Close() : Task.CompletedTask;
-    public async ValueTask DisposeAsync()
+    protected override void OnRemoving()
+    {
+        disposed = true; ++validationVersion; estimateDelay?.Cancel();
+    }
+    protected override async ValueTask StopInteropAsync()
+    {
+        if (controller is not null) await controller.InvokeVoidAsync("dispose");
+    }
+    protected override async ValueTask DisposeInteropAsync()
     {
         disposed = true; ++validationVersion; estimateDelay?.Cancel();
         try { if (controller is not null) { await controller.InvokeVoidAsync("dispose"); await controller.DisposeAsync(); } if (module is not null) await module.DisposeAsync(); if (helper is not null) await helper.DisposeAsync(); }

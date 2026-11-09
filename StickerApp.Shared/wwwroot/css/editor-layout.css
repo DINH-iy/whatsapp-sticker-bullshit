@@ -259,6 +259,8 @@
 .image-card-processing .image-card-content > * { opacity: .25; }
 .sticker-processing-overlay { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 12px; border-radius: inherit; text-align: center; background: color-mix(in srgb,var(--surface) 88%,transparent); cursor: wait; }
 .sticker-processing-overlay .feedback-spinner { width: 28px; height: 28px; }
+.processing-actions { display: flex; flex-direction: column; gap: 12px; width: 100%; margin-top: 12px; }
+.processing-actions .button { width: 100%; min-width: 0; white-space: normal; cursor: pointer; }
 .sticker-processing-overlay strong, .sticker-processing-overlay small { white-space: normal; }
 
 .sticker-preparation-problem { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); }

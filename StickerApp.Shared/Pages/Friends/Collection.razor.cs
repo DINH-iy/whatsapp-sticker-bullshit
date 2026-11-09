@@ -16,7 +16,7 @@ public partial class Collection
     private Dictionary<Guid,string> previews=[];
     private readonly HashSet<Guid> revealed=[];
     private static readonly string[] emojiChoices=["🔥","❤️","😂","👍","😮","💀"];
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
         if(StickerApp.Core.FriendsFeature.UnderMaintenance)return;
         if(!firstRender)return;module=await JS.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/ui/friends.js");await Refresh();
@@ -50,5 +50,5 @@ public partial class Collection
     });
     private Task Delete()=>Run(async()=>{await module!.InvokeVoidAsync("removeCollection",CollectionId.ToString());Navigation.NavigateTo("friends");});
     private void Reveal(Guid id){if(!revealed.Remove(id))revealed.Add(id);}
-    public async ValueTask DisposeAsync(){if(module is not null)try{await module!.InvokeVoidAsync("clearPreviews");await module.DisposeAsync();}catch(JSDisconnectedException){}}
+    protected override async ValueTask DisposeInteropAsync(){if(module is not null)try{await module!.InvokeVoidAsync("clearPreviews");await module.DisposeAsync();}catch(JSDisconnectedException){}}
 }

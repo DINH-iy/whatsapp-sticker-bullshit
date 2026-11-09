@@ -1,4 +1,4 @@
-@implements IAsyncDisposable
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
 @inject IJSRuntime JS
 
 <dialog @ref="dialog" class="folder-dialog import-original-dialog" aria-labelledby="import-original-title" @onkeydown="HandleKey">
@@ -37,16 +37,18 @@
     private IJSObjectReference? helper;
     private bool useDefaults;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
         if (!firstRender) return;
         helper = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/dialog.js");
+        if (IsDisposed) return;
         await helper.InvokeVoidAsync("open", dialog);
+        if (IsDisposed) return;
     }
 
     private Task HandleKey(KeyboardEventArgs args) => args.Key == "Escape" ? OnCancel.InvokeAsync() : Task.CompletedTask;
 
-    public async ValueTask DisposeAsync()
+    protected override async ValueTask DisposeInteropAsync()
     {
         if (helper is null) return;
         try { await helper.DisposeAsync(); }
