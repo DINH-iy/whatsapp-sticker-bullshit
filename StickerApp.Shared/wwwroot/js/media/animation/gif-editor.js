@@ -6,7 +6,7 @@ export function createSession() {
     const pending = new Map();
     function reset(message) {
         worker?.terminate(); worker = undefined;
-        for (const entry of pending.values()) { clearTimeout(entry.timer); entry.reject(new Error(message)); }
+        for (const entry of pending.values()) { clearTimeout(entry.timer); entry.controller.abort(); entry.reject(new Error(message)); }
         pending.clear();
     }
     function settle(id, value, error) {
@@ -18,11 +18,12 @@ export function createSession() {
     function request(action, source, start, end, composition) {
         return new Promise((resolve, reject) => {
             const id = ++sequence;
-            const timer = setTimeout(() => reset('Animation processing timed out. Use a smaller animation.'), ['compose', 'edit'].includes(action) ? 180000 : 60000);
-            pending.set(id, { resolve, reject, timer });
+            const controller = new AbortController();
+            const timer = setTimeout(() => reset('Animation processing timed out. Use a smaller animation.'), ['compose', 'edit', 'stage'].includes(action) ? 180000 : 60000);
+            pending.set(id, { resolve, reject, timer, controller });
             const data = { id, action, source, start, end, composition };
             if (typeof OffscreenCanvas === 'undefined') {
-                import('../codecs/gif-engine.js').then(engine => pending.has(id) ? engine.process(data) : undefined)
+                import('../codecs/gif-engine.js').then(engine => pending.has(id) ? engine.process({ ...data, signal: controller.signal }) : undefined)
                     .then(value => settle(id, value), error => settle(id, null, error.message));
                 return;
             }
@@ -37,6 +38,7 @@ export function createSession() {
     return {
         editLayer(source, start, end, recipe) { return request('edit', source, start, end, { ...recipe, layer: true }); },
         edit(source, start, end, recipe) { return request('edit', source, start, end, recipe); },
+        stage(source, start, end, recipe) { return request('stage', source, start, end, recipe); },
         inspect(source) { return request('inspect', source); },
         trim(source, start, end) { return request('trim', source, start, end); },
         prepare(source) { return request('prepare', source); },

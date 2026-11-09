@@ -1,6 +1,6 @@
 import { drawLayerArtwork } from '../../wwwroot/js/media/effects/object-outline.js';
 import { applyColorEffect } from '../../wwwroot/js/media/effects/color-effect.js';
-import { fit, encode, animation, dataUrl } from '../../wwwroot/js/media/conversion/sticker-converter.js';
+import { fit, encode, encodeWorkingFrame, animation, dataUrl } from '../../wwwroot/js/media/conversion/sticker-converter.js';
 import { parseGIF, decompressFrame } from 'gifuct-js';
 import { openAnimation } from '../../wwwroot/js/media/animation/animation-reader.js';
 import { createRasterRenderer } from '../../wwwroot/js/media/effects/raster-edits.js';
@@ -288,7 +288,7 @@ async function inspectAnimation(source) {
     } finally { reader.dispose?.(); }
 }
 
-async function editAnimation(source, startSeconds, endSeconds, recipe) {
+async function editAnimation(source, startSeconds, endSeconds, recipe, working = false, signal) {
     const reader = await openAnimation(source), renderer = await createRasterRenderer(recipe);
     try {
         const start = Math.round(startSeconds * 1000), end = Math.round(endSeconds * 1000);
@@ -309,25 +309,28 @@ async function editAnimation(source, startSeconds, endSeconds, recipe) {
         if (times.length === 1) { const item = times.pop(); const half = Math.floor(item.duration / 2); times.push({ time: item.time, duration: half }, { time: item.time, duration: item.duration - half }); }
         const canvas = makeCanvas(512, 512), context = canvas.getContext('2d');
         let visible = false;
-        for (const quality of [0.8, 0.55, 0.3, 0.1]) {
+        const limit = working ? 20 * 1024 * 1024 : 500 * 1024;
+        for (const quality of working ? [0.9] : [0.8, 0.55, 0.3, 0.1]) {
             const output = []; let total = 0;
             for (const item of times) {
+                if (signal?.aborted) throw new Error('Animation editor closed.');
                 const frame = renderer.render(reader.at(item.time));
                 if (recipe.layer) {
                     canvas.width = frame.width; canvas.height = frame.height; context.drawImage(frame, 0, 0);
                 } else fit(context, frame, frame.width, frame.height);
                 if (!visible) visible = context.getImageData(0, 0, canvas.width, canvas.height).data.some((value, index) => index % 4 === 3 && value > 0);
                 if (typeof document !== 'undefined') await new Promise(resolve => setTimeout(resolve, 0));
-                const bytes = await encode(canvas, quality); total += bytes.length + 24;
-                if (total > 500 * 1024) break;
+                const bytes = await (working ? encodeWorkingFrame(canvas, quality) : encode(canvas, quality)); total += bytes.length + 24;
+                if (signal?.aborted) throw new Error('Animation editor closed.');
+                if (total > limit) break;
                 output.push({ bytes, duration: item.duration });
             }
-            if (total <= 500 * 1024) {
+            if (total <= limit) {
                 if (!visible) throw new Error('The animation is completely transparent. Undo a cutout or increase opacity.');
-                const bytes = animation(output, canvas.width, canvas.height); if (bytes.length <= 500 * 1024) return dataUrl(bytes);
+                const bytes = animation(output, canvas.width, canvas.height); if (bytes.length <= limit) return dataUrl(bytes);
             }
         }
-        throw new Error('This animation exceeds 500 KB. Choose a shorter selection.');
+        throw new Error(working ? 'This GIF exceeds the 20 MiB import limit. Choose a smaller GIF.' : 'This animation exceeds 500 KB. Choose a shorter selection.');
     } finally { reader.dispose?.(); renderer.dispose(); }
 }
 
@@ -341,6 +344,7 @@ export async function process(data) {
         reader.dispose?.(); return editAnimation(data.source, 0, duration / 1000, recipe);
     }
     if (data.action === 'inspect') return inspectAnimation(data.source);
-    if (data.action === 'edit') return editAnimation(data.source, data.start, data.end, data.composition);
+    if (data.action === 'stage') return editAnimation(data.source, data.start, data.end, data.composition, true, data.signal);
+    if (data.action === 'edit') return editAnimation(data.source, data.start, data.end, data.composition, false, data.signal);
     return trim(data.source, data.start, data.end);
 }

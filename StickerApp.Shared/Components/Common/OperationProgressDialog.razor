@@ -1,8 +1,20 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 
-<dialog @ref="dialog" class="operation-progress-overlay" aria-labelledby="@titleId" @oncancel="Cancel" @oncancel:preventDefault @onkeydown:stopPropagation>
-    <div class="operation-progress-card">
+@if (Blocking)
+{
+    <dialog @ref="dialog" class="operation-progress-overlay" aria-labelledby="@titleId" @oncancel="Cancel" @oncancel:preventDefault @onkeydown:stopPropagation>
+        @Card
+    </dialog>
+}
+else
+{
+    <aside @ref="dialog" class="operation-progress-notice" aria-labelledby="@titleId">@Card</aside>
+}
+
+@code {
+    [Parameter] public bool Blocking { get; set; } = true;
+    private RenderFragment Card => @<div class="operation-progress-card">
         <span class="feedback-spinner" aria-hidden="true"></span>
         <h2 id="@titleId" role="status">@L.Message(Title)</h2>
         @if (!string.IsNullOrWhiteSpace(Detail)) { <p class="operation-progress-detail" role="status">@L.Message(Detail)</p> }
@@ -14,11 +26,9 @@
             </div>
         }
         @if (!string.IsNullOrWhiteSpace(Estimate)) { <p class="operation-progress-estimate">@L.Message(Estimate)</p> }
-        <button class="button" type="button" @onclick="Cancel" disabled="@(!CanCancel)">@L["Cancel"]</button>
-    </div>
-</dialog>
-
-@code {
+        <p class="operation-progress-estimate" data-operation-elapsed>@L.Format("Elapsed: {0} s", 0)</p>
+        @if (Blocking) { <button class="button" type="button" @onclick="Cancel" disabled="@(!CanCancel)">@L["Cancel"]</button> }
+    </div>;
     [Parameter] public string Title { get; set; } = "Loading…";
     [Parameter] public string? Detail { get; set; }
     [Parameter] public string? Estimate { get; set; }
@@ -33,7 +43,8 @@
     {
         if (!firstRender) return;
         helper = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/dialog.js");
-        await helper.InvokeVoidAsync("open", dialog);
+        if (Blocking) await helper.InvokeVoidAsync("open", dialog);
+        await helper.InvokeVoidAsync("watchElapsed", dialog, L["Elapsed: {0} s"]);
     }
     private Task Cancel() => CanCancel ? OnCancel.InvokeAsync() : Task.CompletedTask;
     public async ValueTask DisposeAsync()

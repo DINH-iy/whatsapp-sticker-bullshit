@@ -187,3 +187,8 @@
         <ConfirmToolCancel OnKeep="() => confirmQuickToolCancel = false" OnDiscard="CancelQuickTool" />
     }
 </dialog>
+
+@if (showOperationProgress)
+{
+    <OperationProgressDialog Title="@progress" CanCancel="false" />
+}

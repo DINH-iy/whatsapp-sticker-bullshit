@@ -1833,5 +1833,6 @@
   "The converted GIF exceeds 20 MiB. Choose a shorter clip.": "GIF-ul convertit depășește 20 MiB. Alege un fragment mai scurt.",
   "This GIF exceeds 20 MiB. Choose a shorter clip or fewer frames per second.": "GIF-ul depășește 20 MiB. Alege un fragment mai scurt sau mai puține cadre pe secundă.",
   "This GIF exceeds the 20 MiB import limit. Choose a smaller GIF.": "Acest GIF depășește limita de import de 20 MiB. Alege un GIF mai mic.",
-  "Images must be at most 10 MiB; GIFs at most 20 MiB.": "Imaginile pot avea cel mult 10 MiB; GIF-urile cel mult 20 MiB."
+  "Images must be at most 10 MiB; GIFs at most 20 MiB.": "Imaginile pot avea cel mult 10 MiB; GIF-urile cel mult 20 MiB.",
+  "Preparing sticker…": "Se pregătește abțibildul…"
 }

@@ -57,3 +57,18 @@ function syncScrollLock() {
 const scrollLockObserver = new MutationObserver(syncScrollLock);
 scrollLockObserver.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['open'] });
 syncScrollLock();
+
+// Keep elapsed feedback ticking independently of rendering and stop on removal.
+export function watchElapsed(element, label) {
+    const output = element.querySelector('[data-operation-elapsed]');
+    if (!output) return;
+    const started = performance.now();
+    const update = () => { output.textContent = label.replace('{0}', String(Math.floor((performance.now() - started) / 1000))); };
+    const timer = setInterval(update, 1000);
+    const observer = new MutationObserver(() => {
+        if (element.isConnected && (element.tagName !== 'DIALOG' || element.open)) return;
+        clearInterval(timer); observer.disconnect();
+    });
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['open'] });
+    update();
+}

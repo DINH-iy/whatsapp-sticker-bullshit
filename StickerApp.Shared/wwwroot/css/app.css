@@ -2462,3 +2462,8 @@ button.danger, a.danger, .button.danger { color: var(--error-text) !important; b
 .factory-reset-progress progress::-webkit-progress-value { background: var(--accent); transition: width .15s ease; }
 .factory-reset-progress progress::-moz-progress-bar { background: var(--accent); }
 @media (prefers-reduced-motion: reduce) { .factory-reset-progress progress::-webkit-progress-value { transition: none; } }
+
+.operation-progress-notice { position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 900; max-width: calc(100vw - 32px); }
+.operation-progress-notice .operation-progress-card { width: min(300px, calc(100vw - 32px)); box-sizing: border-box; padding: 16px; gap: 10px; }
+.operation-progress-notice .feedback-spinner { width: 24px; height: 24px; border-width: 3px; }
+.operation-progress-notice h2 { font-size: 16px; }

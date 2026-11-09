@@ -233,6 +233,33 @@ async function run(source) {
                 assert.ok(center[time===0?0:2]>200,'transformed animation must retain both source frames');
             }
             transformedFrames.dispose();
+            // Opening layers uses a fast working animation, preserving the edits
+            // without running final sticker compression before text can be edited.
+            const stagedSource = await session.stage(source, 0, 0.2, transformRecipe);
+            const staged = await openAnimation(stagedSource);
+            assert.equal(staged.frameCount, 2, 'working animation retains every frame');
+            assert.equal(staged.duration, 200, 'working animation retains timing');
+            for (const time of [0, 100]) {
+                const ctx = staged.at(time).getContext('2d');
+                assert.equal(ctx.getImageData(240,240,1,1).data[3], 0, 'working animation retains transparent transformed workspace');
+                assert.ok(ctx.getImageData(266,266,1,1).data[time === 0 ? 0 : 2] > 200, 'working animation retains transformed frame colors');
+            }
+            staged.dispose();
+            const { encodeWorkingFrame, animation, dataUrl } = await import(base + 'conversion/sticker-converter.js');
+            const noisy = document.createElement('canvas'); noisy.width = noisy.height = 512;
+            const noisyContext = noisy.getContext('2d'), noiseFrames = []; let noiseSeed = 17;
+            for (let frame = 0; frame < 4; frame++) {
+                const pixels = noisyContext.createImageData(512,512);
+                for (let index = 0; index < pixels.data.length; index += 4) {
+                    for (let channel = 0; channel < 3; channel++) { noiseSeed = (Math.imul(noiseSeed,1664525) + 1013904223) >>> 0; pixels.data[index + channel] = noiseSeed >>> 24; }
+                    pixels.data[index + 3] = 255;
+                }
+                noisyContext.putImageData(pixels,0,0);
+                noiseFrames.push({bytes:await encodeWorkingFrame(noisy),duration:100});
+            }
+            const largeWorking = await session.stage(dataUrl(animation(noiseFrames)),0,0.4,{width:512,height:512,edits:[]});
+            assert.ok(atob(largeWorking.split(',')[1]).length > 500*1024, 'working artwork must not be rejected by the final 500 KB budget');
+
             const hueRecipe = {width:16,height:16,edits:[{type:'adjust',rotation:0,opacity:1,hue:120,colorStrength:0.5}]};
             const hueFrames = await openAnimation(await session.editLayer(source,0,0.2,hueRecipe));
             const hueExpected = await createRasterRenderer(hueRecipe);
@@ -415,6 +442,20 @@ async function run(source) {
                 const pendingFallback = cancelledSession.inspect(source).then(() => false, () => true);
                 cancelledSession.dispose(); fallbackCancelled = await pendingFallback;
                 fallbackDuration = (await fallback.inspect(secondExport)).duration; fallback.dispose();
+                const toBlob = HTMLCanvasElement.prototype.toBlob;
+                const stagedSession = createSession(); let started, encoded = 0;
+                const encoding = new Promise(resolve => started = resolve);
+                HTMLCanvasElement.prototype.toBlob = function(callback,type,quality) {
+                    encoded++; started();
+                    toBlob.call(this, blob => setTimeout(() => callback(blob), 40), type, quality);
+                };
+                try {
+                    const pendingStage = stagedSession.stage(source,0,0.2,transformRecipe).then(() => false, () => true);
+                    await encoding; stagedSession.dispose();
+                    assert.equal(await pendingStage, true, 'in-flight main-thread working conversion cancels');
+                    await new Promise(resolve => setTimeout(resolve,100));
+                    assert.equal(encoded, 1, 'cancelled working conversion stops before encoding another frame');
+                } finally { HTMLCanvasElement.prototype.toBlob = toBlob; stagedSession.dispose(); }
             } finally { window.OffscreenCanvas = offscreen; }
             other.dispose(); controller.dispose(); renderer.dispose(); animated.dispose?.(); reopened.dispose?.(); root.remove();
             return { backgrounds, fallbackCancelled, fallbackDuration, nativeSize, layerUndo: undoSource === source, layerRedo: redoSource === editedLayerSource, layerReopen, restoredAlpha, redoMatches, firstMatches, frames, frameCount: inspected.frameCount, halfAlpha, cancelled, independentDuration: independentInfo.duration };
@@ -442,6 +483,6 @@ const result = await run(source);
         assert.equal(result.layerRedo, true, 'layer redo must restore the edited animated source');
         assert.equal(result.layerReopen, true, 'edited animations must survive composition export/reopen');
 
-document.getElementById('result').textContent = 'PASS: editable layer groups, collective transforms, grouped GIF export, ungroup/undo/redo/duplicate/reopen, seven shape presets and editable shape transform/backups, distinct decimal-size drawing tips, magnifier toggle, per-object outlines, transparent holes, text/image/GIF borders, border undo/cancel/save/reopen and animated export, still WebP layers and text, border replay and rounded corners, preview zoom, drawing on every GIF frame, brush undo/redo/cancel, combined move/resize/rotate handles, animated transform export, hue/strength and all-frame color export, no enlargement, resize handles and aspect lock, tool Apply/Cancel rollback, GIF/WebP/layer frame seeking and slow playback, image adjustments, all-frame cutouts, undo/redo, GIF and WebP export, transparency, isolated cancellation, animated layer apply/undo/redo/export/reopen.\n\n' + JSON.stringify(result, null, 2);
+document.getElementById('result').textContent = 'PASS: fast working animation handoff, separate editor/export size budgets, cancellation during main-thread encoding, editable layer groups, collective transforms, grouped GIF export, ungroup/undo/redo/duplicate/reopen, seven shape presets and editable shape transform/backups, distinct decimal-size drawing tips, magnifier toggle, per-object outlines, transparent holes, text/image/GIF borders, border undo/cancel/save/reopen and animated export, still WebP layers and text, border replay and rounded corners, preview zoom, drawing on every GIF frame, brush undo/redo/cancel, combined move/resize/rotate handles, animated transform export, hue/strength and all-frame color export, no enlargement, resize handles and aspect lock, tool Apply/Cancel rollback, GIF/WebP/layer frame seeking and slow playback, image adjustments, all-frame cutouts, undo/redo, GIF and WebP export, transparency, isolated cancellation, animated layer apply/undo/redo/export/reopen.\n\n' + JSON.stringify(result, null, 2);
 } catch (error) { document.getElementById('result').textContent = 'FAIL: ' + error.stack; }
 </script>

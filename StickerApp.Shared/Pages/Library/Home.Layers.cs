@@ -8,6 +8,15 @@ public partial class Home
     private bool compositionStartWithText,compositionStartWithShape,pendingLayeredShape;
     private bool? compositionInitialNsfw;
     private string? compositionInitialSource, compositionInitialName;
+    private bool openingLayers;
+    private int layerOpeningVersion;
+
+    private async Task CancelLayerOpening()
+    {
+        ++layerOpeningVersion;
+        openingLayers = busy = false;
+        if (gifSession is not null) await gifSession.InvokeVoidAsync("dispose");
+    }
     private async Task RequestAddText() {
         if(busy || customizing)return;
         pendingLayeredShape=false;
@@ -28,10 +37,22 @@ public partial class Home
     private async Task OpenEditedLayers(bool startWithText,bool startWithShape=false)
     {
         if (busy || customizing || editing is null) return;
+        var version = ++layerOpeningVersion;
         try
         {
-            busy = true;
-            var source = EditingAnimation && (HasTrim || transformed) ? await BuildTrim() : EditingAnimation ? editSource : editPreview;
+            busy = openingLayers = true;
+            editError = null;
+            StateHasChanged();
+            await Task.Yield();
+            string source;
+            if (EditingAnimation && (HasTrim || transformed))
+            {
+                ValidateTrim();
+                if (editRecipe is null) throw new InvalidOperationException("Wait for the animation editor to finish opening.");
+                source = await gifSession!.InvokeAsync<string>("stage", TimeSpan.FromMinutes(4), editSource, trimStart, trimEnd, editRecipe.Value);
+            }
+            else source = EditingAnimation ? editSource : editPreview;
+            if (version != layerOpeningVersion || editing is null || disposed) return;
             compositionStickerId = editing.Id;
             compositionInitialSource = source; compositionInitialName = editName;
             compositionStartWithText = startWithText;compositionStartWithShape=startWithShape;
@@ -39,9 +60,13 @@ public partial class Home
             compositionFromEditor = true;
             showLayerEditor = true;
         }
-        catch (Exception exception) when (exception is Microsoft.JSInterop.JSException or InvalidOperationException or IOException)
-        { editError = exception.Message.Split('\n')[0]; }
-        finally { busy = false; }
+        catch (Exception exception)
+        {
+            if (version != layerOpeningVersion || disposed) return;
+            Log.Error("Open edited layers", exception);
+            editError = exception.Message.Split('\n')[0];
+        }
+        finally { if (version == layerOpeningVersion) busy = openingLayers = false; }
     }
 
     private void NewComposition()

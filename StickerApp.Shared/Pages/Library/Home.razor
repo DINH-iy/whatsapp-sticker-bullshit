@@ -274,7 +274,7 @@ else
         <div class="editor-dialog-heading">
             <h2 id="edit-title">@L[IsGif ? "Edit GIF" : editing.Animated || replacementAnimated ? "Edit animated image" : "Edit image"]</h2>
             <div class="editor-header-actions" hidden="@editorToolActive">
-                <button class="button icon-button" type="button" @onclick="CancelEditing" disabled="@((busy && !editorLoading) || (customizing && !editorToolsLoading))" aria-label="@L["Cancel"]" title="@L["Cancel editing"]"><Icon Name="close" /></button>
+                <button class="button icon-button" type="button" @onclick="CancelEditing" disabled="@((busy && !editorLoading && !openingLayers) || (customizing && !editorToolsLoading))" aria-label="@L["Cancel"]" title="@L["Cancel editing"]"><Icon Name="close" /></button>
                 @if (!EditorOpening) { <button class="button primary icon-button" type="button" @onclick="Save" disabled="@(busy || customizing)" aria-label="@L["Save"]" title="@L["Save sticker"]"><Icon Name="check" /></button> }
             </div>
         </div>
@@ -285,7 +285,7 @@ else
                 <strong>@L.Message(busyText)</strong>
             </div>
         }
-        <div class="editor-dialog-body" hidden="@EditorOpening">
+        <div class="editor-dialog-body" hidden="@(EditorOpening || openingLayers)">
             @if (EditingStill || EditingAnimation)
             {
                 <ImageCustomizer @key="editSource" Source="@editSource" OnReady="EditorToolsReady" OnAddText="RequestAddText" OnAddShape="RequestAddShape" OnMakeLayered="MakeEditedLayered" Animated="@EditingAnimation" TrimStart="@trimStart" TrimEnd="@(gifDuration > 0 ? trimEnd : null)" OnEditsChanged="recipe => editRecipe = recipe" OnChanged="CustomizeImage" OnBusyChanged="value => customizing = value" OnToolActiveChanged="value => editorToolActive = value">
@@ -344,6 +344,11 @@ else
         @if (editError is not null) { <p class="error" role="alert">@L.Error(editError)</p> }
     </dialog>
 }
+@if (openingLayers || savingEditor)
+{
+    <OperationProgressDialog Title="@(openingLayers ? "Opening layer editor…" : busyText)" CanCancel="@openingLayers" OnCancel="CancelLayerOpening" />
+}
+
 
 @if (pendingRemoval is not null || deletePack)
 {

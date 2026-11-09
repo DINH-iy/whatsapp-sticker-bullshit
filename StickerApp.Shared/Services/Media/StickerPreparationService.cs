@@ -15,6 +15,7 @@ public sealed class StickerPreparationService(LibraryStore store, IJSRuntime js,
     private IJSObjectReference? worker;
     private Task? runner;
     public event Action<bool>? Changed;
+    public string? ActiveName { get; private set; }
 
     public static bool NeedsPreparation(Sticker image) => image.MimeType != "image/webp" || image.Width != 512 ||
         image.Height != 512 || image.Bytes <= 0 || image.Bytes > (image.Animated ? 500 : 100) * 1024 ||
@@ -54,6 +55,7 @@ public sealed class StickerPreparationService(LibraryStore store, IJSRuntime js,
                     token.ThrowIfCancellationRequested();
                     if (GetStatus(image) is not null) continue;
                     log.Info("Automatic sticker preparation", $"Started image {image.Id}; {image.Width}x{image.Height}; {image.MimeType}; {image.Bytes} bytes.");
+                    ActiveName = image.Name;
                     statuses[image.Id] = new(image.FileName, true);
                     Changed?.Invoke(false);
                     try
@@ -82,7 +84,7 @@ public sealed class StickerPreparationService(LibraryStore store, IJSRuntime js,
                         if (!saved) Queue();
                     }
                     catch (JSDisconnectedException) { return; }
-                    catch (Exception exception) when (exception is IOException or InvalidOperationException or JSException or UnauthorizedAccessException or FormatException)
+                    catch (Exception exception) when (exception is IOException or InvalidDataException or InvalidOperationException or JSException or UnauthorizedAccessException or FormatException)
                     {
                         var reference = log.Error("Automatic sticker preparation", exception);
                         var message = exception is JSException ? exception.Message.Split('\n')[0] : exception.Message;
@@ -91,6 +93,7 @@ public sealed class StickerPreparationService(LibraryStore store, IJSRuntime js,
                         statuses[image.Id] = new(image.FileName, false, message + $" Reference: {reference}.");
                         Changed?.Invoke(false);
                     }
+                    finally { ActiveName = null; Changed?.Invoke(false); }
                 }
             }
         }

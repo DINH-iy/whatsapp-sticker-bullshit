@@ -1833,5 +1833,6 @@
   "The converted GIF exceeds 20 MiB. Choose a shorter clip.": "De omgezette GIF overschrijdt 20 MiB. Kies een korter fragment.",
   "This GIF exceeds 20 MiB. Choose a shorter clip or fewer frames per second.": "Deze GIF overschrijdt 20 MiB. Kies een korter fragment of minder frames per seconde.",
   "This GIF exceeds the 20 MiB import limit. Choose a smaller GIF.": "Deze GIF overschrijdt de importlimiet van 20 MiB. Kies een kleinere GIF.",
-  "Images must be at most 10 MiB; GIFs at most 20 MiB.": "Afbeeldingen mogen maximaal 10 MiB zijn; GIF’s maximaal 20 MiB."
+  "Images must be at most 10 MiB; GIFs at most 20 MiB.": "Afbeeldingen mogen maximaal 10 MiB zijn; GIF’s maximaal 20 MiB.",
+  "Preparing sticker…": "Sticker voorbereiden…"
 }

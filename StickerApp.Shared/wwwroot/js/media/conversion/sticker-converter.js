@@ -13,6 +13,16 @@ export async function encode(canvas, quality) {
     return software.encode(pixels, quality);
 }
 
+// Intermediate editor artwork does not need the final sticker's size budget.
+// Prefer the browser's fast encoder here; final export uses the shared encoder.
+export async function encodeWorkingFrame(canvas, quality = 0.9) {
+    const blob = canvas.convertToBlob
+        ? await canvas.convertToBlob({ type: 'image/webp', quality })
+        : await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', quality));
+    if (blob?.type === 'image/webp') return new Uint8Array(await blob.arrayBuffer());
+    return encode(canvas, quality);
+}
+
 export function dataUrl(bytes) {
     let binary = '';
     for (let i = 0; i < bytes.length; i += 32768)

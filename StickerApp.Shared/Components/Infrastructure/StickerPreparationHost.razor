@@ -1,6 +1,15 @@
+@implements IDisposable
 @inject StickerApp.Shared.Services.StickerPreparationService Preparation
 
+@if (Preparation.ActiveName is { } activeName)
+{
+    <OperationProgressDialog @key="activeName" Blocking="false" Title="Preparing sticker…" Detail="@activeName" CanCancel="false" />
+}
+
 @code {
+    protected override void OnInitialized() => Preparation.Changed += PreparationChanged;
+    private void PreparationChanged(bool _) => InvokeAsync(StateHasChanged);
+    public void Dispose() => Preparation.Changed -= PreparationChanged;
     protected override Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender) Preparation.Start();

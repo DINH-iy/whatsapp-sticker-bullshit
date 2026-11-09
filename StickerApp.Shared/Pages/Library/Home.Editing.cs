@@ -27,7 +27,8 @@ public partial class Home
     private int editorSession;
     private async Task CancelEditing()
     {
-        if ((busy && !editorLoading) || (customizing && !editorToolsLoading)) return;
+        if ((busy && !editorLoading && !openingLayers) || (customizing && !editorToolsLoading)) return;
+        if (openingLayers) await CancelLayerOpening();
         ++editorSession; // Late file reads or GIF results belong to the closed editor.
         editing = null;
         editorToolsLoading = customizing = false;
@@ -192,11 +193,13 @@ public partial class Home
         return trimmedPreview ??= await gifSession!.InvokeAsync<string>("edit", TimeSpan.FromMinutes(4), editSource, trimStart, trimEnd, editRecipe.Value);
     }
 
+    private bool savingEditor;
     private async Task Save()
     {
         if (busy || customizing || editing is null)
             return;
-        busy = true;
+        busy = savingEditor = true;
+        busyText = "Saving stickers…";
         editError = null;
         try
         {
@@ -225,7 +228,7 @@ public partial class Home
         }
         finally
         {
-            busy = false;
+            busy = savingEditor = false;
             busyText = "Processing…";
         }
     }

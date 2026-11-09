@@ -34,7 +34,7 @@ public partial class LayerEditorDialog
     private DotNetObjectReference<LayerEditorDialog>? reference;
     private LayerEditorState state = new();
     private bool showAddMenu;
-    private bool working = true, loading = true, keepRatio = true;
+    private bool working = true, loading = true, keepRatio = true, showOperationProgress;
     private string name = "Layered sticker", libraryImageId = "", progress = "Opening layer editor…";
     private string? error;
     private string quickPanel = "";
@@ -143,7 +143,7 @@ public partial class LayerEditorDialog
         }
         state = await controller!.InvokeAsync<LayerEditorState>("replaceSource", layerEditId, layerEditResult, animation);
         CancelLayerImage();
-    });
+    }, showProgress: true);
 
     private async Task FlushText()
     {
@@ -275,12 +275,12 @@ public partial class LayerEditorDialog
     private async Task Run(string message, Func<Task> action, bool showProgress = false)
     {
         if (working || controller is null) return;
-        working = true; loading = showProgress; error = null; progress = message;
+        working = true; loading = showOperationProgress = showProgress; error = null; progress = message;
         try { await action(); }
         catch (Exception exception) when (IsExpected(exception)) { Report("Layer editor", exception); }
-        finally { working = loading = false; }
+        finally { working = loading = showOperationProgress = false; }
     }
-    private static bool IsExpected(Exception exception) => exception is JSException or IOException or InvalidOperationException or NotSupportedException or UnauthorizedAccessException or System.Text.Json.JsonException or FormatException;
+    private static bool IsExpected(Exception exception) => exception is JSException or IOException or InvalidDataException or InvalidOperationException or NotSupportedException or UnauthorizedAccessException or System.Text.Json.JsonException or FormatException;
     private void Report(string operation, Exception exception)
     {
         var id = Log.Error(operation, exception);

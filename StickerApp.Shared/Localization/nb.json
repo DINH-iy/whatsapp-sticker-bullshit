@@ -1833,5 +1833,6 @@
   "The converted GIF exceeds 20 MiB. Choose a shorter clip.": "Den konverterte GIF-en overskrider 20 MiB. Velg et kortere klipp.",
   "This GIF exceeds 20 MiB. Choose a shorter clip or fewer frames per second.": "GIF-en overskrider 20 MiB. Velg et kortere klipp eller færre bilder per sekund.",
   "This GIF exceeds the 20 MiB import limit. Choose a smaller GIF.": "Denne GIF-en overskrider importgrensen på 20 MiB. Velg en mindre GIF.",
-  "Images must be at most 10 MiB; GIFs at most 20 MiB.": "Bilder kan være på høyst 10 MiB; GIF-er høyst 20 MiB."
+  "Images must be at most 10 MiB; GIFs at most 20 MiB.": "Bilder kan være på høyst 10 MiB; GIF-er høyst 20 MiB.",
+  "Preparing sticker…": "Klargjør klistremerke…"
 }
