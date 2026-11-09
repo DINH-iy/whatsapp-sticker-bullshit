@@ -12,6 +12,7 @@ public static partial class PinterestShareLink
         url = null!;
         if (string.IsNullOrWhiteSpace(text) || text.Length > MaxTextLength)
             return false;
+        text = text.Replace(@"https\://", "https://", StringComparison.OrdinalIgnoreCase);
         foreach (Match match in Links().Matches(text))
         {
             var value = match.Value.TrimEnd('.', ',', '!', '?', ')', ']', '}');

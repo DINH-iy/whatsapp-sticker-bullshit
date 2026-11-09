@@ -6,7 +6,13 @@ namespace StickerApp.Core;
 // The browser host uses its device-side JavaScript downloader instead.
 public static class KlipyGifDownloadClient
 {
-    public static async Task<byte[]> DownloadAsync(HttpClient client, string url, CancellationToken cancellationToken = default)
+    // Android's response/stream disposal can drain unread network data synchronously,
+    // including when a size/status check fails. Keep the entire lifetime off the UI
+    // thread, even when SendAsync or a stream read completes synchronously.
+    public static Task<byte[]> DownloadAsync(HttpClient client, string url, CancellationToken cancellationToken = default)
+        => Task.Run(() => DownloadCoreAsync(client, url, cancellationToken), cancellationToken);
+
+    private static async Task<byte[]> DownloadCoreAsync(HttpClient client, string url, CancellationToken cancellationToken)
     {
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps ||
             !uri.IsDefaultPort || uri.UserInfo.Length != 0 ||
