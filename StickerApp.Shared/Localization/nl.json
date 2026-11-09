@@ -1472,6 +1472,8 @@
   "The local profile identity could not be read.": "De lokale profielidentiteit kon niet worden gelezen.",
   "The local profile identity is invalid.": "De lokale profielidentiteit is ongeldig.",
   "The media request timed out. No stickers were saved; try a smaller batch.": "Het mediaverzoek duurde te lang. Er zijn geen stickers opgeslagen; probeer een kleinere import.",
+  "The native app window is unavailable. Close and reopen the app to finish resetting.": "Het appvenster is niet beschikbaar. Sluit en heropen de app om het resetten af te ronden.",
+  "The native application is unavailable. Close and reopen the app to finish resetting.": "De app is niet beschikbaar. Sluit en heropen de app om het resetten af te ronden.",
   "The pack archive contains unexpected or repeated files.": "Het pakketarchief bevat onverwachte of herhaalde bestanden.",
   "The pack archive contains unlisted files.": "Het pakketarchief bevat niet-vermelde bestanden.",
   "The pack contains invalid editable layer metadata.": "Het pakket bevat ongeldige metadata voor lagen.",

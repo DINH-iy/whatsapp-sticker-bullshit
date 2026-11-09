@@ -15,6 +15,8 @@ public partial class MainPage : ContentPage
 #endif
     }
 
+    internal void DisconnectBlazorHost() => blazorWebView.Handler?.DisconnectHandler();
+
 #if ANDROID
     protected override bool OnBackButtonPressed()
     {

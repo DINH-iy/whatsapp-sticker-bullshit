@@ -144,6 +144,7 @@ if(Environment.GetEnvironmentVariable("STIK_RESET_PREVIEW_PATH") is {} previewPa
     var labels=System.Text.Json.JsonSerializer.Serialize(new {elapsed="Elapsed: {0} s",stalled="No progress update for {0} seconds. This may be taking longer than usual. If it stays stuck, reopen the app. Some data may already have been erased."});
     await File.WriteAllTextAsync(previewPath,"<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>Reset progress preview</title><link rel=stylesheet href='/_content/StickerApp.Shared/css/app.css'><style>body{min-height:100vh;display:grid;place-items:center;padding:20px;box-sizing:border-box}.factory-reset-dialog{position:relative;margin:0;box-sizing:border-box}.qa-note{margin:0 0 24px;font-size:13px;color:var(--muted)}</style><dialog open class='folder-dialog factory-reset-dialog'><p class=qa-note>Preview only · no data is deleted</p><h2>Resetting the app…</h2>"+resetPreview+"</dialog><script type=module>import {watchProgress} from '/_content/StickerApp.Shared/js/ui/factory-reset.js';watchProgress(document.querySelector('.factory-reset-progress'),"+labels+");</script>");
 }
+passed+=await ResetRestartChecks.RunAsync();
 Console.WriteLine($"{passed} feature checks passed.");
 sealed class NoJs:IJSRuntime{
     public ValueTask<T> InvokeAsync<T>(string identifier,object?[]? args)=>throw new NotSupportedException();

@@ -1472,6 +1472,8 @@
   "The local profile identity could not be read.": "Kunne ikke lese den lokale profilidentiteten.",
   "The local profile identity is invalid.": "Den lokale profilidentiteten er ugyldig.",
   "The media request timed out. No stickers were saved; try a smaller batch.": "Medieforespørselen ble tidsavbrutt. Ingen klistremerker ble lagret; prøv en mindre import.",
+  "The native app window is unavailable. Close and reopen the app to finish resetting.": "Det native appvinduet er utilgjengelig. Lukk og åpne appen igjen for å fullføre tilbakestillingen.",
+  "The native application is unavailable. Close and reopen the app to finish resetting.": "Den native appen er utilgjengelig. Lukk og åpne appen igjen for å fullføre tilbakestillingen.",
   "The pack archive contains unexpected or repeated files.": "Pakkearkivet inneholder uventede eller gjentatte filer.",
   "The pack archive contains unlisted files.": "Pakkearkivet inneholder filer som ikke er oppført.",
   "The pack contains invalid editable layer metadata.": "Pakken inneholder ugyldige metadata for redigerbare lag.",

@@ -58,9 +58,10 @@
         working = true; error = errorDetail = null;resetStep=1;resetProgress=new("Waiting for library operations…");
         await InvokeAsync(StateHasChanged);
         var erased = false;
+        IJSObjectReference? module=null;
         try
         {
-            await using var module = await JS.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/ui/factory-reset.js");
+            module = await JS.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/ui/factory-reset.js");
             var progress=new Progress<FactoryResetProgress>(value => {
                 if(!disposed && working && resetStep==1){resetProgress=value;StateHasChanged();}
             });
@@ -70,7 +71,13 @@
             (Services.GetService(typeof(StickerApp.Shared.Services.ITapFeedback)) as StickerApp.Shared.Services.ITapFeedback)?.Configure(true,25);
             Log.Clear();
             resetStep=3;resetProgress=new("Restarting the app…");await InvokeAsync(StateHasChanged);
-            await module.InvokeVoidAsync("restart");
+            if(Services.GetService(typeof(StickerApp.Shared.Services.IAppRestart)) is StickerApp.Shared.Services.IAppRestart nativeRestart)
+            {
+                // Release JS references while the old native renderer is still alive.
+                await module.DisposeAsync();module=null;
+                await nativeRestart.RestartAsync();
+            }
+            else await module.InvokeVoidAsync("restart");
         }
         catch(Exception ex) when(ex is IOException or UnauthorizedAccessException or InvalidOperationException or JSException or System.Text.Json.JsonException)
         {
@@ -78,6 +85,10 @@
             errorDetail=ex.Message;
             error = erased ? "Library data was erased, but resetting preferences did not finish. Close other app tabs, then try again. " : "Reset did not finish. Some files may already have been erased. ";
             working = false;
+        }
+        finally
+        {
+            if(module is not null)try{await module.DisposeAsync();}catch(JSDisconnectedException){}
         }
     }
     public async ValueTask DisposeAsync() { disposed=true; if(dialogHelper is not null) { try { await dialogHelper.DisposeAsync(); } catch(JSDisconnectedException) { } } }

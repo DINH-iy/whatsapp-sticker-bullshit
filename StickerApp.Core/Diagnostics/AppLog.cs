@@ -67,7 +67,8 @@ public sealed class AppLog(string directory)
     {
         lock (gate)
         {
-            for (var i = 0; i <= Archives; i++) File.Delete(FileName(i));
+            if (Directory.Exists(directory))
+                for (var i = 0; i <= Archives; i++) File.Delete(FileName(i));
             StorageError = null;
         }
     }

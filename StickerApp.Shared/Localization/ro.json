@@ -1472,6 +1472,8 @@
   "The local profile identity could not be read.": "Identitatea locală a profilului nu a putut fi citită.",
   "The local profile identity is invalid.": "Identitatea locală a profilului este nevalidă.",
   "The media request timed out. No stickers were saved; try a smaller batch.": "Cererea media a expirat. Nu s-au salvat autocolante; încearcă un import mai mic.",
+  "The native app window is unavailable. Close and reopen the app to finish resetting.": "Fereastra aplicației native nu este disponibilă. Închide și redeschide aplicația pentru a termina resetarea.",
+  "The native application is unavailable. Close and reopen the app to finish resetting.": "Aplicația nativă nu este disponibilă. Închide și redeschide aplicația pentru a termina resetarea.",
   "The pack archive contains unexpected or repeated files.": "Arhiva pachetului conține fișiere neașteptate sau repetate.",
   "The pack archive contains unlisted files.": "Arhiva pachetului conține fișiere nelistate.",
   "The pack contains invalid editable layer metadata.": "Pachetul conține metadate nevalide ale straturilor.",

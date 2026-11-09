@@ -1472,6 +1472,8 @@
   "The local profile identity could not be read.": "Die lokale Profilidentität konnte nicht gelesen werden.",
   "The local profile identity is invalid.": "Die lokale Profilidentität ist ungültig.",
   "The media request timed out. No stickers were saved; try a smaller batch.": "Zeitlimit der Medienanfrage überschritten. Keine Sticker gespeichert; versuche einen kleineren Import.",
+  "The native app window is unavailable. Close and reopen the app to finish resetting.": "Das native App-Fenster ist nicht verfügbar. Schließe und öffne die App erneut, um das Zurücksetzen abzuschließen.",
+  "The native application is unavailable. Close and reopen the app to finish resetting.": "Die native App ist nicht verfügbar. Schließe und öffne die App erneut, um das Zurücksetzen abzuschließen.",
   "The pack archive contains unexpected or repeated files.": "Das Paketarchiv enthält unerwartete oder doppelte Dateien.",
   "The pack archive contains unlisted files.": "Das Paketarchiv enthält nicht aufgeführte Dateien.",
   "The pack contains invalid editable layer metadata.": "Das Paket enthält ungültige Ebenenmetadaten.",
