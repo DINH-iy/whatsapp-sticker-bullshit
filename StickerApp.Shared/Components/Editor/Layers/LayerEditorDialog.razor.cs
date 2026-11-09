@@ -254,7 +254,7 @@ public partial class LayerEditorDialog
         foreach (var file in args.GetMultipleFiles(10))
         {
             if (state.Layers.Count >= 10) throw new InvalidOperationException("A composition supports up to 10 layers.");
-            await using var stream = file.OpenReadStream(LibraryStore.MaxImportBytes);
+            await using var stream = file.OpenReadStream(LibraryStore.MaxGifImportBytes);
             using var memory = new MemoryStream();
             await stream.CopyToAsync(memory);
             var bytes = memory.ToArray();

@@ -140,8 +140,8 @@ public partial class GifSearch
             if (FormFactor.GetFormFactor() == "Web" || OperatingSystem.IsBrowser())
             {
                 importSession ??= await client.InvokeAsync<IJSObjectReference>("createImportSession");
-                await using var reference = await importSession.InvokeAsync<IJSStreamReference>("download", token, gif.ShareUrl, LibraryStore.MaxImportBytes);
-                await using var input = await reference.OpenReadStreamAsync(LibraryStore.MaxImportBytes, token);
+                await using var reference = await importSession.InvokeAsync<IJSStreamReference>("download", token, gif.ShareUrl, LibraryStore.MaxGifImportBytes);
+                await using var input = await reference.OpenReadStreamAsync(LibraryStore.MaxGifImportBytes, token);
                 using var memory = new MemoryStream();
                 await input.CopyToAsync(memory, token);
                 bytes = memory.ToArray();
@@ -168,7 +168,10 @@ public partial class GifSearch
             await client.InvokeVoidAsync("registerShare", gif.Slug, activeQuery);
         }
         catch (OperationCanceledException) { if (!isDisposed) importNotice = "GIF import cancelled."; }
-        catch (Exception exception) when (exception is JSException or IOException or InvalidOperationException or UnauthorizedAccessException or TimeoutException or HttpRequestException)
+        // This is a UI event boundary: a failed import must not tear down the
+        // renderer and leave the modal inert. InvalidDataException (including
+        // the download size limit) does not derive from IOException.
+        catch (Exception exception)
         {
             if (!isDisposed)
             {

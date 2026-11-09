@@ -93,7 +93,7 @@
         {
             await using var result = await controller.InvokeAsync<IJSStreamReference>("convert", TimeSpan.FromMinutes(5), start, end, fps);
             if (disposed) return;
-            await using var stream = await result.OpenReadStreamAsync(LibraryStore.MaxImportBytes);
+            await using var stream = await result.OpenReadStreamAsync(LibraryStore.MaxGifImportBytes);
             using var memory = new MemoryStream(); await stream.CopyToAsync(memory);
             if (disposed) return;
             saving = true; StateHasChanged();

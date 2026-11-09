@@ -64,8 +64,8 @@ public static partial class PackArchive
             {
                 var image = images[index];
                 await using var source = openImage(image);
-                var bytes = await ReadBoundedAsync(source, LibraryStore.MaxImportBytes);
-                var info = MediaInspector.Inspect(bytes);
+                var bytes = await ReadBoundedAsync(source, LibraryStore.MaxGifImportBytes);
+                var info = LibraryStore.InspectImport(bytes);
 
                 totalBytes += bytes.Length;
                 if (totalBytes > MaxArchiveBytes)
@@ -149,21 +149,21 @@ public static partial class PackArchive
             var image = manifest.Images[index];
             var entry = archive.GetEntry(image.File)
                 ?? throw new InvalidDataException($"The image “{image.Name}” is missing.");
-            if (entry.Length > LibraryStore.MaxImportBytes)
-                throw new InvalidDataException("A pack image exceeds the 10 MB image limit.");
+            if (entry.Length > LibraryStore.MaxGifImportBytes)
+                throw new InvalidDataException("A pack image exceeds the 20 MiB file limit.");
             totalBytes += entry.Length;
             if (totalBytes > MaxArchiveBytes)
                 throw new InvalidDataException("The unpacked images exceed the 100 MB pack limit.");
 
             await using var input = entry.Open();
-            var bytes = await ReadBoundedAsync(input, LibraryStore.MaxImportBytes);
+            var bytes = await ReadBoundedAsync(input, LibraryStore.MaxGifImportBytes);
             if (bytes.LongLength != entry.Length)
                 throw new InvalidDataException("An image has an incorrect length.");
             var hash = Convert.ToHexString(SHA256.HashData(bytes));
             if (!string.Equals(hash, image.Sha256, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException($"The image “{image.Name}” failed its checksum. Download the pack again.");
 
-            var info = MediaInspector.Inspect(bytes);
+            var info = LibraryStore.InspectImport(bytes);
             if (image.File != $"media/{index:D2}{info.Extension}")
                 throw new InvalidDataException("An image does not match the pack format.");
 

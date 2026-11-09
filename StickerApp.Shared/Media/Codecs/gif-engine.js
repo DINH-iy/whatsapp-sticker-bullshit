@@ -13,7 +13,7 @@ function load(source) {
     if (source === cachedSource) return cached;
     if (!source.startsWith('data:image/gif;base64,')) throw new Error('Select a GIF.');
     const binary = atob(source.slice(source.indexOf(',') + 1));
-    if (binary.length > 10 * 1024 * 1024) throw new Error('Maximum file size: 10 MB.');
+    if (binary.length > 20 * 1024 * 1024) throw new Error('Maximum file size: 20 MiB.');
     const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
     const gif = parseGIF(bytes.buffer);
     const frames = gif.frames.filter(frame => frame.image);
@@ -105,7 +105,7 @@ async function trim(source, startSeconds, endSeconds, thumbnail = false, onFrame
     if (onFrame) return;
     encoder.finish();
     const output = encoder.bytes();
-    if (output.length > 10 * 1024 * 1024) throw new Error('Result exceeds 10 MB. Shorten the selection.');
+    if (output.length > 20 * 1024 * 1024) throw new Error('Result exceeds 20 MiB. Shorten the selection.');
     let binary = '';
     for (let i = 0; i < output.length; i += 32768) binary += String.fromCharCode(...output.subarray(i, i + 32768));
     return 'data:image/gif;base64,' + btoa(binary);

@@ -29,7 +29,7 @@ internal static class ImportDownloadChecks
                     OffUi();
                     if (mode == "cancel") { cancellation.Cancel(); cancellation.Token.ThrowIfCancellationRequested(); }
                 }));
-                if (mode == "oversized") content.Headers.ContentLength = LibraryStore.MaxImportBytes + 1;
+                if (mode == "oversized") content.Headers.ContentLength = LibraryStore.MaxGifImportBytes + 1;
                 return new HttpResponseMessage(mode == "status" ? HttpStatusCode.BadGateway : HttpStatusCode.OK) { Content = content };
             }));
             Task<byte[]> operation;

@@ -152,11 +152,11 @@ export async function registerShare(slug, query) {
 export function createImportSession() {
     let active = null, disposed = false;
     return {
-        async download(url, maxBytes = 10 * 1024 * 1024) {
+        async download(url, maxBytes = 20 * 1024 * 1024) {
             if (disposed) throw new Error('This GIF search has closed.');
             if (active) throw new Error('Wait for the current GIF import to finish.');
             if (!mediaUrl(url)) throw new Error('This GIF does not have a supported KLIPY download URL.');
-            maxBytes = Math.min(10 * 1024 * 1024, maxBytes);
+            maxBytes = Math.min(20 * 1024 * 1024, maxBytes);
             const controller = new AbortController(); active = controller;
             const timeout = setTimeout(() => controller.abort(), 45000);
             let reader;
@@ -164,7 +164,7 @@ export function createImportSession() {
                 const response = await fetch(url, { signal: controller.signal, credentials: 'omit', cache: 'no-store', redirect: 'error' });
                 if (!response.ok) throw new Error('KLIPY could not deliver this GIF. Try another result.');
                 const length = Number(response.headers.get('content-length'));
-                if (length > maxBytes) throw new Error('This GIF exceeds the 10 MB import limit.');
+                if (length > maxBytes) throw new Error('This GIF exceeds the 20 MiB import limit. Choose a smaller GIF.');
                 if (!response.body) throw new Error('The GIF download was empty. Try another result.');
                 reader = response.body.getReader();
                 let bytes = 0; const chunks = [];
@@ -172,7 +172,7 @@ export function createImportSession() {
                     const { done, value } = await reader.read();
                     if (done) break;
                     bytes += value.byteLength;
-                    if (bytes > maxBytes) throw new Error('This GIF exceeds the 10 MB import limit.');
+                    if (bytes > maxBytes) throw new Error('This GIF exceeds the 20 MiB import limit. Choose a smaller GIF.');
                     chunks.push(value);
                 }
                 if (controller.signal.aborted || disposed) throw new DOMException('Cancelled', 'AbortError');

@@ -522,13 +522,13 @@ try
         await RejectDownload(() => KlipyGifDownloadClient.DownloadAsync(client, "https://static.klipy.com/not-a-gif"));
         using var oversized = new HttpClient(new FixtureHttpHandler((request, token) =>
         {
-            var content = new ByteArrayContent(gif); content.Headers.ContentLength = LibraryStore.MaxImportBytes + 1;
+            var content = new ByteArrayContent(gif); content.Headers.ContentLength = LibraryStore.MaxGifImportBytes + 1;
             return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = content });
         }));
         await RejectDownload(() => KlipyGifDownloadClient.DownloadAsync(oversized, "https://static.klipy.com/too-large.gif"));
         using var unknownSize = new HttpClient(new FixtureHttpHandler((request, token) =>
         {
-            var content = new StreamContent(new MemoryStream(new byte[LibraryStore.MaxImportBytes + 1]));
+            var content = new StreamContent(new MemoryStream(new byte[LibraryStore.MaxGifImportBytes + 1]));
             content.Headers.ContentLength = null;
             return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = content });
         }));

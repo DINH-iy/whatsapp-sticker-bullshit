@@ -8,6 +8,18 @@ public sealed record BatchImportFile(string Name, string Path, bool? KeepOrigina
 public sealed partial class LibraryStore
 {
     public const int MaxImportBytes = 10 * 1024 * 1024;
+    public const int MaxGifImportBytes = 20 * 1024 * 1024;
+    public const string GifSizeError = "This GIF exceeds the 20 MiB import limit. Choose a smaller GIF.";
+
+    public static int ImportLimit(string mimeType) => mimeType == "image/gif" ? MaxGifImportBytes : MaxImportBytes;
+
+    public static MediaInfo InspectImport(ReadOnlySpan<byte> bytes)
+    {
+        var gif = bytes.Length >= 6 && (bytes[..6].SequenceEqual("GIF87a"u8) || bytes[..6].SequenceEqual("GIF89a"u8));
+        if (bytes.Length == 0 || bytes.Length > (gif ? MaxGifImportBytes : MaxImportBytes))
+            throw new InvalidDataException(gif ? GifSizeError : "Choose a file smaller than 10 MB.");
+        return MediaInspector.Inspect(bytes);
+    }
     private readonly SemaphoreSlim gate = new(1, 1);
     public event Action? Changed;
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true };
@@ -240,9 +252,7 @@ public sealed partial class LibraryStore
         await gate.WaitAsync();
         try
         {
-            if (bytes.Length is 0 or > MaxImportBytes)
-                throw new InvalidDataException("Choose a file smaller than 10 MB.");
-            var info = MediaInspector.Inspect(bytes);
+            var info = InspectImport(bytes);
             var s = new Sticker
             {
                 Name = CleanName(Path.GetFileNameWithoutExtension(name)),
@@ -323,11 +333,11 @@ public sealed partial class LibraryStore
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 await using var input = File.OpenRead(file.Path);
-                if (input.Length is 0 or > MaxImportBytes)
-                    throw new InvalidDataException("Choose images smaller than 10 MB.");
+                if (input.Length is 0 or > MaxGifImportBytes)
+                    throw new InvalidDataException("Images must be at most 10 MiB; GIFs at most 20 MiB.");
                 var bytes = new byte[(int)input.Length];
                 await input.ReadExactlyAsync(bytes, cancellationToken);
-                var info = MediaInspector.Inspect(bytes);
+                var info = InspectImport(bytes);
                 var sticker = new Sticker
                 {
                     Name = CleanName(file.Name), MimeType = info.MimeType,
@@ -458,9 +468,7 @@ public sealed partial class LibraryStore
                 var current = (await ReadInternalAsync()).Stickers.FirstOrDefault(image => image.Id == id);
                 if (current is null || current.FileName != expectedFileName) return false;
             }
-            if (bytes.Length is 0 or > MaxImportBytes)
-                throw new InvalidDataException("Maximum file size: 10 MB.");
-            var info = MediaInspector.Inspect(bytes);
+            var info = InspectImport(bytes);
             var fileName = Guid.NewGuid().ToString("N") + info.Extension;
             var path = MediaPath(fileName);
             var obsoleteFiles = new List<string>();

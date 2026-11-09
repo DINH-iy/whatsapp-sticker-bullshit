@@ -24,7 +24,10 @@ public partial class Home
 
     private static async Task<byte[]> ReadFile(IBrowserFile file)
     {
-        await using var stream = file.OpenReadStream(LibraryStore.MaxImportBytes);
+        var gif = file.ContentType == "image/gif" || Path.GetExtension(file.Name).Equals(".gif", StringComparison.OrdinalIgnoreCase);
+        if (file.Size > (gif ? LibraryStore.MaxGifImportBytes : LibraryStore.MaxImportBytes))
+            throw new InvalidDataException(gif ? LibraryStore.GifSizeError : "Choose a file smaller than 10 MB.");
+        await using var stream = file.OpenReadStream(LibraryStore.MaxGifImportBytes);
         using var memory = new MemoryStream();
         await stream.CopyToAsync(memory);
         return memory.ToArray();
@@ -85,7 +88,7 @@ public partial class Home
                     useDefaults ? null : file.Choice.KeepOriginal);
                 imported++;
             }
-            catch (Exception exception) when (exception is IOException or InvalidOperationException or UnauthorizedAccessException)
+            catch (Exception exception) when (exception is IOException or InvalidDataException or InvalidOperationException or UnauthorizedAccessException)
             {
                 Log.Error("Image import", exception);
                 errors.Add($"{file.Choice.Name}: {exception.Message}");

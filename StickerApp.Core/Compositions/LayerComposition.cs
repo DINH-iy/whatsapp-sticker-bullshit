@@ -48,7 +48,7 @@ public sealed class LayerComposition
                     try { gif = Convert.FromBase64String(layer.GifSource[(layer.GifSource.IndexOf(',') + 1)..]); }
                     catch (FormatException) { throw new InvalidDataException("A GIF layer is damaged."); }
                     var animation = MediaInspector.Inspect(gif);
-                    if (gif.Length > LibraryStore.MaxImportBytes || animation.MimeType is not ("image/gif" or "image/webp") || !animation.Animated ||
+                    if (gif.Length > LibraryStore.ImportLimit(animation.MimeType) || animation.MimeType is not ("image/gif" or "image/webp") || !animation.Animated ||
                         !Within(layer.GifDuration, 0.02, 600) || !Within(layer.TrimStart, 0, layer.GifDuration) ||
                         !Within(layer.TrimEnd, layer.TrimStart + 0.02, layer.GifDuration + 0.001) || layer.TrimEnd - layer.TrimStart > 10.001)
                         throw new InvalidDataException("Choose a valid GIF selection of at most 10 seconds.");

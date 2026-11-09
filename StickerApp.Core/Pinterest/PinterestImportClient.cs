@@ -138,7 +138,7 @@ public sealed class PinterestImportClient : IDisposable
                     progress?.Report(new(files.Count, images.Count, IsConvertingVideo: true));
                     var converted = await convertVideo!(image, path, timeout.Token);
                     timeout.Token.ThrowIfCancellationRequested();
-                    if (converted.Length > LibraryStore.MaxImportBytes) throw new InvalidDataException("The converted GIF exceeds 10 MB. Choose a shorter clip.");
+                    if (converted.Length > LibraryStore.MaxGifImportBytes) throw new InvalidDataException("The converted GIF exceeds 20 MiB. Choose a shorter clip.");
                     var info = MediaInspector.Inspect(converted);
                     if (!info.Animated || info.MimeType is not ("image/gif" or "image/webp") || info.DurationMs > 10_100)
                         throw new InvalidDataException("Choose an animated clip of at most 10 seconds.");

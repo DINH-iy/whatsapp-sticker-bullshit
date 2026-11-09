@@ -24,16 +24,16 @@ public static class KlipyGifDownloadClient
         using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         if (!response.IsSuccessStatusCode)
             throw new HttpRequestException("KLIPY could not deliver this GIF. Try another result.");
-        if (response.Content.Headers.ContentLength > LibraryStore.MaxImportBytes)
-            throw new InvalidDataException("This GIF exceeds the 10 MB import limit.");
+        if (response.Content.Headers.ContentLength > LibraryStore.MaxGifImportBytes)
+            throw new InvalidDataException(LibraryStore.GifSizeError);
         await using var input = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var memory = new MemoryStream();
         var buffer = new byte[64 * 1024];
         int count;
         while ((count = await input.ReadAsync(buffer, cancellationToken)) != 0)
         {
-            if (memory.Length + count > LibraryStore.MaxImportBytes)
-                throw new InvalidDataException("This GIF exceeds the 10 MB import limit.");
+            if (memory.Length + count > LibraryStore.MaxGifImportBytes)
+                throw new InvalidDataException(LibraryStore.GifSizeError);
             memory.Write(buffer, 0, count);
         }
         var bytes = memory.ToArray();

@@ -1825,5 +1825,13 @@
   "{name}: animation is {seconds} seconds; WhatsApp allows up to 10 seconds and at least 8 ms per frame. Replace it with a shorter GIF, then trim and save it. Preparation runs automatically.": "{name}: animation is {seconds} seconds; WhatsApp allows up to 10 seconds and at least 8 ms per frame. Replace it with a shorter GIF, then trim and save it. Preparation runs automatically.",
   "{name}: this file is empty. Open Edit and replace it with the original image.": "{name}: this file is empty. Open Edit and replace it with the original image.",
   "{name}: {changes}. Automatic preparation is pending; open sticker details for its status.": "{name}: {changes}. Automatic preparation is pending; open sticker details for its status.",
-  "← Friends’ packs": "← Friends’ packs"
+  "← Friends’ packs": "← Friends’ packs",
+  "A pack image exceeds the 20 MiB file limit.": "A pack image exceeds the 20 MiB file limit.",
+  "Choose Import to save a GIF to your library, then choose a pack or keep it in My Library. Imports use your GIF original-file setting; sticker preparation runs automatically. Maximum file size: 20 MiB.": "Choose Import to save a GIF to your library, then choose a pack or keep it in My Library. Imports use your GIF original-file setting; sticker preparation runs automatically. Maximum file size: 20 MiB.",
+  "Maximum file size: 20 MiB.": "Maximum file size: 20 MiB.",
+  "Result exceeds 20 MiB. Shorten the selection.": "Result exceeds 20 MiB. Shorten the selection.",
+  "The converted GIF exceeds 20 MiB. Choose a shorter clip.": "The converted GIF exceeds 20 MiB. Choose a shorter clip.",
+  "This GIF exceeds 20 MiB. Choose a shorter clip or fewer frames per second.": "This GIF exceeds 20 MiB. Choose a shorter clip or fewer frames per second.",
+  "This GIF exceeds the 20 MiB import limit. Choose a smaller GIF.": "This GIF exceeds the 20 MiB import limit. Choose a smaller GIF.",
+  "Images must be at most 10 MiB; GIFs at most 20 MiB.": "Images must be at most 10 MiB; GIFs at most 20 MiB."
 }
