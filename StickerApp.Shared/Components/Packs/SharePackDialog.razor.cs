@@ -35,7 +35,7 @@ public partial class SharePackDialog
             if (IsDisposed) return;
             await dialogHelper.InvokeVoidAsync("open", dialog);
             if (IsDisposed) return;
-            sharingClient = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/pack-sharing.js");
+            sharingClient = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/packs/pack-sharing.js");
             if (IsDisposed) return;
             var settings = await sharingClient.InvokeAsync<PackSharingSettings.SharingSettings>("getSettings");
             if (IsDisposed) return;

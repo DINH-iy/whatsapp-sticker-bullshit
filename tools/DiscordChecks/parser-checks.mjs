@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import {writeFileSync} from 'node:fs';
 import {parseDiscordExport,extractFavorites,safeUrl} from '../../StickerApp.Shared/wwwroot/js/imports/discord/discord-parser.js';
-const require=createRequire(import.meta.url),{zipSync,strToU8}=require('../gif/node_modules/fflate');
+const require=createRequire(import.meta.url),{zipSync,strToU8}=require('../MediaBuild/node_modules/fflate');
 const account={email:'private@example.invalid',messages:['not favourites'],settings:{favoriteGifs:{gifs:{
  'https://tenor.com/view/happy-gif-123456':{src:'https://media.tenor.com/test.mp4',format:2,order:10},
  'https://tenor.com/view/smile-gif-123457':{src:'https://media.tenor.com/smile.gif',order:20},

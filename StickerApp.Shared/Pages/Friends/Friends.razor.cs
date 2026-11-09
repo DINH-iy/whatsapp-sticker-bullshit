@@ -44,7 +44,7 @@ public partial class Friends
             {pendingNoticeShown=true;notice="You’re already connected to a group. Leave it first if you want to use another invitation.";StateHasChanged();}
             return;
         }
-        module=await JS.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/ui/friends.js");
+        module=await JS.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/friends/friends.js");
         if (IsDisposed) return;
         var connection=await module!.InvokeAsync<Connection>("connection");connected=connection.Connected;serverUrl=string.IsNullOrEmpty(connection.ServerUrl)?serverUrl:connection.ServerUrl;username=connection.Username;ready=true;
         if (IsDisposed) return;

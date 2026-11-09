@@ -87,7 +87,7 @@ else
         saving = true; error = null;
         try
         {
-            await using var module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/pack-cover.js");
+            await using var module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/packs/pack-cover.js");
             var result = await module.InvokeAsync<string?>("prepare", pictureInput);
             if (result is not null) picture = PackCover.FromBytes(Convert.FromBase64String(result));
         }

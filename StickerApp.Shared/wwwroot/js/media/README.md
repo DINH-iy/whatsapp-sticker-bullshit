@@ -7,13 +7,13 @@
 | `layers/` | Layer composition, reordering, animated layers and text rendering |
 | `effects/` | Color, cutouts, rectangular borders and object outlines |
 | `conversion/` | Sticker preparation, conversion and its worker |
-| `video/` | Video loading, trimming and GIF capture |
+| `video/` | Video loading/review, direct WebP encoding, batch conversion and bounded frame workers |
 | `shared/` | Zoom/pan, magnifier and rotation grip shared by editors |
 | `codecs/` | Generated codec bundles, codec worker and WebP WASM |
 | `codecs/licenses/` | Third-party codec licenses |
 
 Edit codec sources in `StickerApp.Shared/Media/Codecs/`, then run
-`node tools/gif/build.cjs` from the repository root. Do not hand-edit generated
+`node tools/MediaBuild/build.cjs` from the repository root. Do not hand-edit generated
 codec bundles. The build resolves app-owned imports to the modules above.
 
 Razor/C# interop imports reference these folders directly. Workers and fonts use

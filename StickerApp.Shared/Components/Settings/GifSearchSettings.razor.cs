@@ -19,7 +19,7 @@ public partial class GifSearchSettings
 
         try
         {
-            client = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/klipy-client.js");
+            client = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/imports/klipy/klipy-client.js");
             if (IsDisposed) return;
             isConfigured = await client.InvokeAsync<bool>("hasApiKey");
             if (IsDisposed) return;

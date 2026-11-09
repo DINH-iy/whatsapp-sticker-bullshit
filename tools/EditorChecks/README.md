@@ -1,8 +1,10 @@
-# Browser editor checks
+# Editor and browser checks
 
-Serve `editor-checks.html` from a temporary development host that also serves `/_content/StickerApp.Shared`. Open it in the built-in local browser; it reports PASS or the first failed assertion. No external browser or automation dependency is needed.
+`browser/` contains HTML fixtures. `node/` contains Node checks; run them all with `node tools/check.mjs` from the repository root.
 
-For an isolated check, create `/tmp/stickit-editor-check/wwwroot`, copy this HTML there, build `StickerApp.Web`, then run its DLL with `ASPNETCORE_ENVIRONMENT=Development`, `--contentRoot /tmp/stickit-editor-check`, and a free localhost URL. Open `/editor-checks.html` at that URL. The temporary content root keeps manual UI-test imports separate from the personal library. Do not add the check page to production assets.
+Serve `browser/editor-checks.html` from a temporary development host that also serves `/_content/StickerApp.Shared`. Open it in the built-in local browser; it reports PASS or the first failed assertion. No external browser or automation dependency is needed.
+
+For an isolated check, create `/tmp/stickit-editor-check/wwwroot`, copy `tools/EditorChecks/browser/*.html` there, build `StickerApp.Web`, then run its DLL with `ASPNETCORE_ENVIRONMENT=Development`, `--contentRoot /tmp/stickit-editor-check`, and a free localhost URL. Open `/editor-checks.html` at that URL. The temporary content root keeps manual UI-test imports separate from the personal library. Do not add the check page to production assets.
 
 The page generates no library writes. It checks actual image/animation modules with a two-frame fixture, including cutout masks on every frame, recoverable opacity, PNG/replayed-frame agreement, animated WebP re-editing, partial transparency, layer apply/undo/redo/export/reopen, and isolated worker/main-thread cancellation. The standard storage checks separately verify saved composition data.
 
@@ -28,6 +30,6 @@ After integrating direct worker encoding, the generated-clip desktop comparison 
 
 Pinterest imports stage all selected sources before video review. Review stores source Blobs and clip settings without full conversion; the final summary starts one mixed video/GIF batch. At most two decoders run concurrently, dividing the configured total worker allowance between videos; GIFs use one worker per lane. Cancellation, foreground loss, failure and disposal release all active workers. The library commit remains atomic after all outputs pass sticker validation.
 
-Run `video-batch-checks.html` for real mixed-media conversion, 1/2/4-worker total caps, cancellation/background/failure cleanup and first-frame PNG pack covers. `node tools/EditorChecks/preparation-cancellation-checks.mjs` verifies the preparation cancellation path calls worker termination and interrupts the old-WebView image-decoding fallback. A synchronous main-thread encoder call cannot be preempted, but cancellation checks prevent later encoding attempts.
+Run `video-batch-checks.html` for real mixed-media conversion, 1/2/4-worker total caps, cancellation/background/failure cleanup and first-frame PNG pack covers. `node tools/EditorChecks/node/preparation-cancellation-checks.mjs` verifies the preparation cancellation path calls worker termination and interrupts the old-WebView image-decoding fallback. A synchronous main-thread encoder call cannot be preempted, but cancellation checks prevent later encoding attempts.
 
 Pack deletion keeps stickers by default. The optional library deletion removes the pack's stickers from every pack that references them and deletes their current/source/composition files. Preparation is cancelled before removal, and queued snapshots cannot restore or process deleted stickers. Feature/storage checks cover shared memberships, unrelated-file retention, pending encoder replies and atomic import cancellation.

@@ -70,7 +70,7 @@ public partial class NewPackDialog
         error = null;
         try
         {
-            await using var module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/pack-cover.js");
+            await using var module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/packs/pack-cover.js");
             var base64 = await module.InvokeAsync<string?>("prepare", coverInput);
             if (base64 is not null)
             {

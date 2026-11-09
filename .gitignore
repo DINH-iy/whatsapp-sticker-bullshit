@@ -8,6 +8,8 @@
 *.apk
 *.aab
 **/node_modules/
+.DS_Store
+**/.npm-cache/
 
 # Rules from origin/main
 ## A streamlined .gitignore for modern .NET projects

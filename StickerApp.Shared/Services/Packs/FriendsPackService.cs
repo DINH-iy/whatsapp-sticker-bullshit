@@ -8,7 +8,7 @@ public sealed class FriendsPackService(LibraryStore store, IJSRuntime js)
     public async Task<int> SyncPublicPacksAsync(Action<string> progress)
     {
         if(FriendsFeature.UnderMaintenance)throw new InvalidOperationException("Friends’ packs is under maintenance and will be added later.");
-        await using var module = await js.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/friends.js");
+        await using var module = await js.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/friends/friends.js");
         var library = await store.ReadAsync();
         var publicPacks = library.Packs.Where(pack => pack.Public && pack.StickerIds.Count > 0).ToList();
         var mine = await module.InvokeAsync<string[]>("mine");
@@ -36,14 +36,14 @@ public sealed class FriendsPackService(LibraryStore store, IJSRuntime js)
         await using var stream=new FileStream(path,FileMode.CreateNew,FileAccess.ReadWrite,FileShare.None,65536,FileOptions.DeleteOnClose);
         await store.ExportPackAsync(packId,stream);
         using var reference=new DotNetStreamReference(stream,leaveOpen:true);
-        await using var module=await js.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/ui/friends.js");
+        await using var module=await js.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/friends/friends.js");
         var result=await module.InvokeAsync<StickerApp.Shared.Pages.Friends.GroupCollectionCard>("updateCollection",link.CollectionId.ToString(),link.Revision,link.ServerUrl,reference);
         await store.LinkCollectionAsync(packId,link with {Revision=result.Revision});
     }
 
     public static async Task UnpublishAsync(IJSRuntime js, Guid id)
     {
-        await using var module = await js.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/friends.js");
+        await using var module = await js.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/friends/friends.js");
         await module.InvokeVoidAsync("unpublish", id.ToString());
     }
 }

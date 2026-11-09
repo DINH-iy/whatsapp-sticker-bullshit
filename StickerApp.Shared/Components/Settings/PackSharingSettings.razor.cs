@@ -25,7 +25,7 @@ public partial class PackSharingSettings
         if (!firstRender) return;
         try
         {
-            module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/pack-sharing.js");
+            module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/packs/pack-sharing.js");
             if (IsDisposed) return;
             await ReloadSettings();
             if (IsDisposed) return;

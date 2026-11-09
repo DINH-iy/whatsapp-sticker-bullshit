@@ -1,0 +1,49 @@
+<!doctype html><meta charset="utf-8"><title>KLIPY import checks</title><style>body{font:16px system-ui;padding:24px}pre{white-space:pre-wrap}</style><h1>KLIPY import checks</h1><pre id="result">Running…</pre><script type="module">
+const result = document.querySelector('#result');
+const originalFetch = window.fetch;
+const assert = (value, message) => { if (!value) throw new Error(message); };
+const rejects = async (operation, pattern) => { try { await operation(); } catch (error) { assert(pattern.test(error.message), error.message); return; } throw new Error('Expected download failure'); };
+try {
+    const { createImportSession } = await import('/_content/StickerApp.Shared/js/imports/klipy/klipy-client.js');
+    const bytes = Uint8Array.from(atob('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'), c => c.charCodeAt(0));
+    const url = 'https://static1.klipy.com/fixture.gif?delivery=preserve-this';
+    let requests = 0;
+    window.fetch = async (actual, options) => {
+        requests++;
+        assert(actual === url, 'Provider URL must be preserved');
+        assert(options.credentials === 'omit' && options.cache === 'no-store' && options.redirect === 'error', 'Downloads must omit credentials, caches and redirects');
+        return new Response(bytes, { status: 200 });
+    };
+    const session = createImportSession();
+    const blob = await session.download(url);
+    assert(blob.size === bytes.length && (await blob.text()).startsWith('GIF89a'), 'Must stream the original GIF bytes');
+    for (const unsafe of ['http://static.klipy.com/a.gif', 'https://evil.example/a.gif', 'https://static.klipy.com.evil.example/a.gif', 'https://user@static.klipy.com/a.gif', 'https://static.klipy.com:8443/a.gif'])
+        await rejects(() => session.download(unsafe), /supported KLIPY/);
+    assert(requests === 1, 'Unsafe URLs must not reach the network');
+    window.fetch = async () => new Response('not a GIF');
+    await rejects(() => session.download(url), /invalid GIF/);
+    window.fetch = async () => new Response(bytes, { headers: { 'content-length': '10485761' } });
+    await rejects(() => session.download(url), /10 MB/);
+    window.fetch = async () => new Response(new ReadableStream({ start(controller) { controller.enqueue(new Uint8Array(100)); controller.enqueue(new Uint8Array(100)); controller.close(); } }));
+    await rejects(() => session.download(url, 150), /10 MB/);
+    window.fetch = async () => new Response('', { status: 503 });
+    await rejects(() => session.download(url), /could not deliver/);
+    window.fetch = async () => { throw new TypeError('secret URL must not leak'); };
+    await rejects(() => session.download(url), /download this GIF directly/);
+    window.fetch = (url, options) => new Promise((resolve, reject) => options.signal.addEventListener('abort', () => reject(new DOMException('cancelled','AbortError')), { once: true }));
+    const pending = session.download(url); session.cancel();
+    await rejects(() => pending, /cancelled/);
+    let index = 0;
+    window.fetch = (url, options) => ++index === 1
+        ? new Promise((resolve, reject) => options.signal.addEventListener('abort', () => reject(new DOMException('cancelled','AbortError')), { once:true }))
+        : Promise.resolve(new Response(bytes));
+    const first = createImportSession(), second = createImportSession();
+    const cancelled = first.download(url), unaffected = second.download(url); first.dispose();
+    await rejects(() => cancelled, /cancelled/);
+    assert((await unaffected).size === bytes.length, 'Cancelling one search must not affect another');
+    await rejects(() => first.download(url), /closed/);
+    second.dispose(); session.dispose();
+    result.textContent = 'PASS: direct GIF streaming, unchanged provider URLs, credential omission, URL validation, invalid/oversized responses, network/CORS errors, cancellation, independent import sessions.';
+} catch (error) { result.textContent = 'FAIL: ' + error.stack; }
+finally { window.fetch = originalFetch; }
+</script>

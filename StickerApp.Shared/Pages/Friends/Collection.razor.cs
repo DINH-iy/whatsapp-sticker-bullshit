@@ -19,7 +19,7 @@ public partial class Collection
     protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
         if(StickerApp.Core.FriendsFeature.UnderMaintenance)return;
-        if(!firstRender)return;module=await JS.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/ui/friends.js");await Refresh();
+        if(!firstRender)return;module=await JS.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/friends/friends.js");await Refresh();
     }
     protected override Task OnParametersSetAsync()=>module is null?Task.CompletedTask:Refresh();
     private async Task Run(Func<Task> action)

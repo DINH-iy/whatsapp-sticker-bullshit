@@ -46,7 +46,7 @@
     protected override async Task OnAfterRenderInteropAsync(bool firstRender)
     {
         if (!firstRender) return;
-        preferences = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/imgur-preferences.js");
+        preferences = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/imports/imgur/imgur-preferences.js");
         if (IsDisposed) return;
         clientId = await preferences.InvokeAsync<string>("read");
         if (IsDisposed) return;

@@ -29,22 +29,24 @@ Core files are grouped under `Library`, `Media`, `Packs`, `Pinterest`, `WhatsApp
 
 Razor namespaces match their folders. Shared `_Imports.razor` makes the component groups available to screens and layouts. `Routes.razor` and `Layout` remain the common routing/shell entry points.
 
-`Services` is grouped into `Abstractions`, `Diagnostics`, `Media`, `Packs`, and `Pinterest`. These keep the `StickerApp.Shared.Services` namespace; each host supplies its platform-specific implementations through dependency injection.
+`Services` is grouped into `Abstractions`, `Diagnostics`, `Infrastructure`, `Localization`, `Media`, `Packs`, and `Pinterest`. These keep the `StickerApp.Shared.Services` namespace; each host supplies its platform-specific implementations through dependency injection.
 
 ## Browser assets
 
 - `wwwroot/css`: shared layout, theme styles, and subtle effects in `motion.css`.
-- `wwwroot/js/ui`: dialogs, menus, navigation, appearance, diagnostics, cover/sharing helpers, and external-provider clients.
+- `wwwroot/js/ui`: dialogs, menus, navigation, appearance, diagnostics and foreground lifecycle.
+- `wwwroot/js/imports`: KLIPY, Imgur and Discord import helpers and generated ZIP parsing.
+- `wwwroot/js/packs` and `wwwroot/js/friends`: cover generation, sharing, friends API and invite bootstrapping.
 - `wwwroot/js/media`: image customization, GIF editing, preparation workers, encoder bundles, WebAssembly and vendor licenses. Related worker files remain together so module-relative imports work in both browser and native WebView hosts.
-- `Media`: readable source for bundled GIF and WebP modules. Edit these sources, then run `npm run build --prefix tools/gif` from the repository root. Install the tool dependencies with `npm ci --ignore-scripts --prefix tools/gif` when needed. The generated assets are included in the repository; ordinary .NET builds do not require Node.
+- `Media`: readable source for bundled GIF and WebP modules. Edit these sources, then run `npm run build --prefix tools/MediaBuild` from the repository root. Install the tool dependencies with `npm ci --ignore-scripts --prefix tools/MediaBuild` when needed. The generated assets are included in the repository; ordinary .NET builds do not require Node.
 
 Both `StickerApp.Web/Components/App.razor` and `StickerApp/wwwroot/index.html` reference the shared styles and startup theme script. Dynamic imports use `_content/StickerApp.Shared/js/...`. Update both hosts when moving shared assets.
 
 ## Local checks
 
-Build the browser host with `dotnet build StickerApp.Web/StickerApp.Web.csproj`, then manually check the affected screens. No test suite is required. Build Android APKs and iOS apps only when requested.
+Build the browser host with `dotnet build StickerApp.Web/StickerApp.Web.csproj`. Run the relevant feature/storage suites and `node tools/check.mjs` after structural changes. See [the tools guide](../tools/README.md) for suite ownership and browser fixtures. Native Android/iOS compilation and actual phone testing are separate checks; build native apps when requested.
 
-Hosting, synchronization, the friends dashboard and other future features are tracked separately in [IDEAS.md](../IDEAS.md).
+Hosting, synchronization, the friends dashboard and other future features are tracked separately in [IDEAS.md](IDEAS.md).
 
 ## Touch feedback
 
@@ -70,7 +72,7 @@ The layer editor footer keeps common actions visible while the canvas, layer sta
 
 `image-customizer.js` records spatial operations and reference-frame alpha masks. `raster-edits.js` replays them across all animation frames for preview and export. Trace/eraser edits use fixed masks; wand edits flood-fill the reference color independently on each frame. `animation-reader.js` uses the GIF engine or decodes/composites WebP ANMF chunks, including blend/disposal behavior, without requiring WebCodecs. Animation edits preserve retained frame durations; layer exports preserve artwork dimensions, while standalone sticker edits fit to 512 × 512. `sticker-converter.js` supports both canvas sizes when encoding/muxing. `gif-editor.js` creates isolated cancellable sessions for each visible editor, including the main-thread fallback. Background preparation uses a separate shared session.
 
-`tools/EditorChecks/editor-checks.html` exercises the real browser modules with generated fixtures: frame cutouts, adjustable opacity, undo/redo, GIF/WebP export and reopening, layer source round trips, and session cancellation. Serve it from a temporary local host that also serves the shared assets; see the checks README. Persistence checks in `tools/StorageChecks` cover animated WebP composition sources and current-sticker selection over retained backups.
+`tools/EditorChecks/browser/editor-checks.html` exercises the real browser modules with generated fixtures: frame cutouts, adjustable opacity, undo/redo, GIF/WebP export and reopening, layer source round trips, and session cancellation. Serve it from a temporary local host that also serves the shared assets; see the checks README. Persistence checks in `tools/StorageChecks` cover animated WebP composition sources and current-sticker selection over retained backups.
 
 `AnimationTimeline` supplies the shared thumbnail strip, range handles, and compact time readout for ordinary animations and layers. `ImageCustomizer` accepts `Timeline` and `Options` fragments. Its preview region remains separate from the vertically scrolling tool area, so controls cannot cover the canvas or timeline. `HelpDisclosure` keeps optional explanations under native keyboard-accessible details/summary controls, also used by GIF search and Pinterest importing. Labels, loading/error states, and warnings for discarding originals remain visible at their relevant actions.
 
@@ -86,7 +88,9 @@ The raster editor uses a fixed 512-unit square presentation frame independent of
 
 ### Video import
 
-`VideoImportDialog` owns the local file picker, shared animation timeline, clip bounds, conversion progress, and library commit. `video-import.js` retains only an object URL for the video; it seeks and draws one frame at a time, then passes the pixels to the bundled `video-gif-encoder.js` (gifenc). The video stays on the device. Sampling preserves the selected duration at centisecond GIF precision, retains aspect ratio without upscaling, and yields between frames for cancellation. Input is bounded at 100 MB, output at 10 MB, clip duration at 10 seconds, and sampling at 20 fps. Browser/WebView codec support determines which containers play. Native playback controls are disabled during conversion to avoid changing the sampled frame. Closing aborts decoding/conversion and revokes the URL. No library mutation occurs before conversion and bounded stream reading succeed. `LibraryStore.ImportAsync` returns the committed sticker ID so the parent opens precisely the imported GIF. JS stream return values are raw Blobs; Blazor creates the IJSStreamReference automatically.
+`VideoImportDialog` owns video selection, preview, frame-rate/clip review and single-sticker imports. `wwwroot/js/media/video` encodes frames directly into animated WebP using a bounded worker pool. Native timing is supported for compatible MP4/MOV files; fixed frame-rate choices remain available. Video input is capped at 20 MB, clips at 5 seconds/100 frames, and final stickers at 500 KB. The worker preference is a total concurrency budget, and foreground loss terminates active workers.
+
+`Components/Pinterest/PinterestAnimationBatchDialog` reviews all staged videos before starting mixed video/GIF conversion. `video-batch.js` allows at most two decoding lanes and shares the total worker allowance across them. All animations must convert and pass validation before the atomic library commit. Retained GIF originals are copied separately; downloaded MP4s remain temporary. Pack covers use `StillPackCover` and `js/packs/pack-cover-still.js` to render a static first frame.
 
 The rotation grip uses the same SVG stroke style as application icons. Its offset is fixed in artwork coordinates and continuously clamped to the workspace; it never chooses a new side while rotating.
 
@@ -100,4 +104,4 @@ The rotation grip uses the same SVG stroke style as application icons. Its offse
 
 `InterfaceFontSettings` reuses the font library for app typography. The startup `theme.js` applies bounded local preferences before rendering and loads the selected custom face from a single-entry IndexedDB cache (up to the font import limit). CSS font sizes and line heights use scale variables, with separate family, weight, and letter spacing preferences. Only UI typography changes; explicit canvas text metrics remain independent. Interface uploads refresh font storage statistics immediately. Library font files remain counted in library storage; browser preference/cache data, like other browser caches, is device-local and outside that library total.
 
-Media JavaScript is grouped by purpose under `wwwroot/js/media/`: `animation`, `image`, `layers`, `effects`, `conversion`, `video`, `shared` and generated `codecs`. See that directory’s README for ownership and build instructions. Codec sources live in `StickerApp.Shared/Media/Codecs`; `tools/gif/build.cjs` rebuilds the bundled outputs and copies the WASM and license files.
+Media JavaScript is grouped by purpose under `wwwroot/js/media/`: `animation`, `image`, `layers`, `effects`, `conversion`, `video`, `shared` and generated `codecs`. See that directory’s README for ownership and build instructions. Codec sources live in `StickerApp.Shared/Media/Codecs`; `tools/MediaBuild/build.cjs` rebuilds the bundled outputs and copies the WASM and license files.

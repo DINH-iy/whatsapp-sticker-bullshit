@@ -20,7 +20,7 @@ else
         var source = loadedSource = Source;
         try
         {
-            module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/pack-cover-still.js");
+            module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/packs/pack-cover-still.js");
             if (IsDisposed) return;
             var result = await module.InvokeAsync<string>("firstFrame", source);
             if (!IsDisposed && source == Source) { poster = result; StateHasChanged(); }

@@ -17,7 +17,7 @@ public sealed class PackSharingService(LibraryStore store, IPackFileSaver fileSa
 
     public Task<ShareResult> PublishAsync(Guid packId, bool whatsAppFormat = true) => WithArchiveAsync(packId, whatsAppFormat, async (info, stream) =>
     {
-        await using var module = await js.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/pack-sharing.js");
+        await using var module = await js.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/packs/pack-sharing.js");
         using var reference = new DotNetStreamReference(stream, leaveOpen: true);
         using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(5));
         var result = await module.InvokeAsync<PublishedLink>("publish", timeout.Token, reference);
@@ -44,7 +44,7 @@ public sealed class PackSharingService(LibraryStore store, IPackFileSaver fileSa
             var pack = library.Packs.Single(pack => pack.Id == packId);
             var first = library.Stickers.FirstOrDefault(image => pack.StickerIds.Contains(image.Id))
                 ?? throw new InvalidOperationException("Add a sticker before sharing this pack.");
-            await using var module = await js.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/pack-cover.js");
+            await using var module = await js.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/packs/pack-cover.js");
             var source = pack.CoverImage ?? await store.PreviewAsync(first);
             cover = Convert.FromBase64String(await module.InvokeAsync<string>("trayIcon", source));
         }
