@@ -48,11 +48,11 @@
     </ChildContent></AppDisclosure>
     <AppDisclosure><Header>@L["Color & gradient"]</Header><ChildContent>
         <div class="text-format-grid">
-            <label>@L["Text color"]<input type="color" aria-label="@L["Text color"]" @bind="draft.Color" @bind:after="Changed" /></label>
+            <label>@L["Text color"]<ColorPicker @bind-Value="draft.Color" @bind-Value:after="Changed" Label="Text color" /></label>
             <label><input type="checkbox" @bind="draft.Gradient" @bind:after="Changed" />@L["Gradient"]</label>
             @if (draft.Gradient)
             {
-                <label>@L["Second color"]<input type="color" aria-label="@L["Second text color"]" @bind="draft.GradientColor" @bind:after="Changed" /></label>
+                <label>@L["Second color"]<ColorPicker @bind-Value="draft.GradientColor" @bind-Value:after="Changed" Label="Second text color" /></label>
                 <label>@L["Gradient angle"]<input type="range" aria-label="@L["Text gradient angle"]" min="-180" max="180" @bind="draft.GradientAngle" @bind:event="oninput" @bind:after="Changed" /></label>
             }
         </div>
@@ -60,11 +60,11 @@
     <AppDisclosure><Header>@L["Outline, shadow & background"]</Header><ChildContent>
         <div class="text-format-grid">
             <label>@L["Outline width"]<input type="number" min="0" max="16" @bind="draft.OutlineWidth" @bind:after="Changed" /></label>
-            <label>@L["Outline color"]<input type="color" @bind="draft.OutlineColor" @bind:after="Changed" /></label>
+            <label>@L["Outline color"]<ColorPicker @bind-Value="draft.OutlineColor" @bind-Value:after="Changed" Label="Color" /></label>
             <label><input type="checkbox" @bind="draft.Shadow" @bind:after="Changed" />@L["Shadow"]</label>
-            <label>@L["Shadow color"]<input type="color" @bind="draft.ShadowColor" @bind:after="Changed" /></label>
+            <label>@L["Shadow color"]<ColorPicker @bind-Value="draft.ShadowColor" @bind-Value:after="Changed" Label="Color" /></label>
             <label><input type="checkbox" @bind="draft.Background" @bind:after="Changed" />@L["Background"]</label>
-            <label>@L["Background color"]<input type="color" @bind="draft.BackgroundColor" @bind:after="Changed" /></label>
+            <label>@L["Background color"]<ColorPicker @bind-Value="draft.BackgroundColor" @bind-Value:after="Changed" Label="Color" /></label>
         </div>
     </ChildContent></AppDisclosure>
     <p class="helper">@L["Use the canvas handles to resize and rotate. Emoji appearance follows your device."]</p>

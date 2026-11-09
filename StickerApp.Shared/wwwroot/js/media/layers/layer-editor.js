@@ -1,3 +1,4 @@
+import { onForegroundChanged, isForeground } from '../../ui/foreground.js';
 import { snapRotation, rotationStep } from '../shared/rotation-snap.js';
 import { cloneLayers, leafLayers, groupLayers, transformGroup } from './layer-groups.js';
 import { editorLabel } from '../shared/editor-language.js';
@@ -66,6 +67,9 @@ export function create(canvas, reference) {
     const syncGroups = () => { for (const layer of layers.filter(item => item.children?.length)) { const before = groupFrames.get(layer.id); if (before) transformGroup(layer, before); groupFrames.set(layer.id, { ...layer }); } };
     const images = new Map(), tints = new Map(), thumbnails = new WeakMap(), gifs = new Map();
     let animationFrame, animationTime = 0, playbackOrigin = performance.now(), exporting = false, paused = false, pausedTime = 0, playbackOffset = 0, playbackRate = 1;
+    const unwatchForeground = onForegroundChanged(active => {
+        if (!active) { pausedTime = elapsed(); paused = true; cancelAnimationFrame(animationFrame); animationFrame = undefined; reference.invokeMethodAsync('PreviewChanged', false).catch(() => {}); }
+    });
     const elapsed = () => paused ? pausedTime : playbackOffset + (performance.now() - playbackOrigin) * playbackRate;
     const controls = previewControls(root, {
         seek(seconds) {
@@ -82,8 +86,8 @@ export function create(canvas, reference) {
     });
     function play(now) {
         animationFrame = undefined;
-        if (disposed || exporting || paused || !leafLayers(layers).some(layer => layer.gifSource)) return;
-        if (now - animationTime >= 50) { animationTime = now; render(); }
+        if (!isForeground() || disposed || exporting || paused || !leafLayers(layers).some(layer => layer.gifSource)) return;
+        if (now - animationTime >= 16) { animationTime = now; render(); }
         animationFrame = requestAnimationFrame(play);
     }
     function animate() { if (!animationFrame && !disposed && !exporting) animationFrame = requestAnimationFrame(play); }
@@ -625,7 +629,7 @@ export function create(canvas, reference) {
                 return { png, document };
             } finally { exporting = false; render(); animate(); }
         },
-        dispose() { view.dispose();
+        dispose() { unwatchForeground(); view.dispose();
             disposed = true; toolCheckpoint = null; controls.dispose();
             cancelAnimationFrame(animationFrame); orderControls.dispose();
             clearTimeout(notifyTimer);

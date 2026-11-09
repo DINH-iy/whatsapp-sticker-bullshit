@@ -2501,3 +2501,13 @@ button.danger, a.danger, .button.danger { color: var(--error-text) !important; b
 .text-segmented-control .button { flex: 1; min-width: 0; min-height: 38px; border: 0; background: transparent; box-shadow: none; }
 .text-segmented-control .button[aria-pressed="true"] { background: var(--surface); color: var(--accent); box-shadow: 0 1px 4px #0002; }
 .text-layout-controls .helper { margin: 0; }
+
+/* Keep online features visible and clearly unavailable without a connection. */
+.online-feature.is-offline .online-feature-controls { filter: grayscale(1); opacity: .5; }
+.online-feature.is-offline .offline-reason { display: flex; align-items: center; gap: 6px; }
+.offline-reason .app-icon { width: 16px; height: 16px; flex: 0 0 16px; }
+.app-nav .offline-nav-item { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; color: var(--muted); font-weight: 600; cursor: not-allowed; opacity: .55; }
+.app-nav .offline-nav-item .app-icon { width: 18px; height: 18px; flex: 0 0 18px; }
+.app-navigation .app-nav .offline-nav-item { white-space: nowrap; font-size: calc(14px * var(--app-font-scale,1)); border-radius: 8px; }
+@media(min-width:1201px) { .app-navigation .app-nav .offline-nav-item { padding: 0 7px; font-size: calc(12px * var(--app-font-scale,1)); } }
+@media(max-width:1200px) { .app-navigation .app-nav .offline-nav-item { width: 100%; justify-content: flex-start; box-sizing: border-box; } }

@@ -31,9 +31,11 @@ await using var renderer=new HtmlRenderer(services,services.GetRequiredService<I
 var offline=await renderer.Dispatcher.InvokeAsync(async()=>{
     var view=await renderer.RenderComponentAsync<OnlineOnly>(ParameterView.FromDictionary(new Dictionary<string,object?>{{"ChildContent",(RenderFragment)(b=>b.AddMarkupContent(0,"<button>Online import</button>"))}}));
     return view.ToHtmlString();});
-Check(offline.Contains("disabled")&&offline.Contains("No internet connection")&&offline.Contains("Online import"),"offline controls remain visible, disabled and explained");
+Check(offline.Contains("disabled")&&offline.Contains("No internet connection")&&offline.Contains("Online import")&&offline.Contains("is-offline")&&offline.Contains("<svg"),"offline controls remain visible, disabled and explained");
 var banner=await renderer.Dispatcher.InvokeAsync(async()=> (await renderer.RenderComponentAsync<ConnectionStatus>()).ToHtmlString());
 Check(banner.Contains("No internet connection")&&banner.Contains("Saved stickers"),"offline startup warns and explains local functionality");
+var offlineNav=await renderer.Dispatcher.InvokeAsync(async()=> (await renderer.RenderComponentAsync<OnlineNavLink>(ParameterView.FromDictionary(new Dictionary<string,object?>{{"Href","gifs"},{"Label","GIF search"}}))).ToHtmlString());
+Check(offlineNav.Contains("aria-disabled=\"true\"")&&offlineNav.Contains("<svg")&&!offlineNav.Contains("href="),"offline navigation shows a disconnected icon and cannot navigate");
 connection.Update(true);
 var online=await renderer.Dispatcher.InvokeAsync(async()=> (await renderer.RenderComponentAsync<OnlineOnly>()).ToHtmlString());
 Check(!online.Contains("disabled")&&!online.Contains("No internet connection"),"connection restoration enables online controls");
@@ -158,6 +160,7 @@ passed+=await ImportDownloadChecks.RunAsync();
 passed+=await GifImportRecoveryChecks.RunAsync();
 passed+=await GifSizeChecks.RunAsync();
 passed+=await ResetRestartChecks.RunAsync();
+passed+=await PreparationLifecycleChecks.RunAsync();
 Console.WriteLine($"{passed} feature checks passed.");
 sealed class NoJs:IJSRuntime{
     public ValueTask<T> InvokeAsync<T>(string identifier,object?[]? args)=>throw new NotSupportedException();

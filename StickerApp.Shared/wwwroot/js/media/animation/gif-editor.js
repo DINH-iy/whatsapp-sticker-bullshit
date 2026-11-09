@@ -1,3 +1,4 @@
+import { requireForeground, onForegroundChanged, startJob } from '../../ui/foreground.js';
 import { leafLayers } from '../layers/layer-groups.js';
 // Each visible editor owns a session, so cancelling it cannot stop preparation
 // or another editor. The module-level session serves background conversion.
@@ -6,21 +7,23 @@ export function createSession() {
     const pending = new Map();
     function reset(message) {
         worker?.terminate(); worker = undefined;
-        for (const entry of pending.values()) { clearTimeout(entry.timer); entry.controller.abort(); entry.reject(new Error(message)); }
+        for (const entry of pending.values()) { clearTimeout(entry.timer); entry.finish(); entry.controller.abort(); entry.reject(new Error(message)); }
         pending.clear();
     }
+    const unwatch = onForegroundChanged(active => { if (!active) reset('Processing stopped because the app is in the background. Try again when you return.'); });
     function settle(id, value, error) {
         const entry = pending.get(id);
         if (!entry) return;
-        clearTimeout(entry.timer); pending.delete(id);
+        clearTimeout(entry.timer); entry.finish(); pending.delete(id);
         if (error) entry.reject(new Error(error)); else entry.resolve(value);
     }
     function request(action, source, start, end, composition) {
+        requireForeground();
         return new Promise((resolve, reject) => {
             const id = ++sequence;
             const controller = new AbortController();
             const timer = setTimeout(() => reset('Animation processing timed out. Use a smaller animation.'), ['compose', 'edit', 'stage'].includes(action) ? 180000 : 60000);
-            pending.set(id, { resolve, reject, timer, controller });
+            pending.set(id, { resolve, reject, timer, controller, finish: startJob(action === 'inspect' ? 'Reading animation…' : 'Processing animation…') });
             const data = { id, action, source, start, end, composition };
             if (typeof OffscreenCanvas === 'undefined') {
                 import('../codecs/gif-engine.js').then(engine => pending.has(id) ? engine.process({ ...data, signal: controller.signal }) : undefined)
@@ -43,7 +46,8 @@ export function createSession() {
         trim(source, start, end) { return request('trim', source, start, end); },
         prepare(source) { return request('prepare', source); },
         compose(composition) { return request('compose', null, null, null, {...composition,layers:leafLayers(composition.layers)}); },
-        dispose() { reset('Animation editor closed.'); }
+        dispose() { reset('Animation editor closed.'); },
+        release() { unwatch(); reset('Animation editor closed.'); }
     };
 }
 

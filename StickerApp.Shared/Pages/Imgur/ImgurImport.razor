@@ -1,3 +1,4 @@
+@inject StickerApp.Shared.Services.ForegroundActivity Activity
 @page "/imgur"
 @implements IAsyncDisposable
 @inject LibraryStore Store
@@ -46,13 +47,13 @@
     private async Task SaveClientId(){if(preferences is not null)await preferences.InvokeVoidAsync("save",clientId);}
     private void Toggle(ImgurMedia item){if(!selected.Remove(item))selected.Add(item);}
     private async Task Preview(){
-        busy=true;error=notice=null;status="Opening Imgur…";detail="";operation=new();
+        busy=true;error=notice=null;status="Opening Imgur…";detail="";operation=Activity.BeginOperation();
         try{items=await client.PreviewAsync(link,clientId,operation.Token);selected.Clear();foreach(var item in items.Take(30))selected.Add(item);}
         catch(OperationCanceledException){}catch(Exception ex) when(ex is IOException or HttpRequestException or System.Text.Json.JsonException or InvalidOperationException){error=ex.Message;}
         finally{busy=false;operation.Dispose();operation=null;}
     }
     private async Task Import(){
-        busy=true;error=notice=null;operation=new();var token=operation.Token;
+        busy=true;error=notice=null;operation=Activity.BeginOperation();var token=operation.Token;
         var temporary=new List<string>();var files=new List<BatchImportFile>();long downloaded=0,staged=0;
         try{
             if(selected.Count is <1 or >30)throw new InvalidDataException("Choose 1 to 30 items.");

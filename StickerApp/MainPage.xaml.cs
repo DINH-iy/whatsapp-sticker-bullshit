@@ -15,6 +15,29 @@ public partial class MainPage : ContentPage
 #endif
     }
 
+    private int foregroundVersion;
+    internal void SetForeground(bool active)
+    {
+        var version = ++foregroundVersion;
+        const string stop = "window.stickerSetForeground?.(false);document.querySelectorAll('video,audio').forEach(media=>media.pause());";
+#if ANDROID
+        if (blazorWebView.Handler?.PlatformView is Android.Webkit.WebView webView)
+        {
+            if (active) { webView.ResumeTimers(); webView.OnResume(); webView.EvaluateJavascript("window.stickerSetForeground?.(true)", null); }
+            else webView.EvaluateJavascript(stop, new BackgroundResult(webView, () => version == foregroundVersion));
+        }
+#elif IOS || MACCATALYST
+        if (blazorWebView.Handler?.PlatformView is WebKit.WKWebView webView)
+            webView.EvaluateJavaScript(active ? "window.stickerSetForeground?.(true)" : stop, (result, error) => { });
+#endif
+    }
+#if ANDROID
+    private sealed class BackgroundResult(Android.Webkit.WebView webView, Func<bool> stillBackground) : Java.Lang.Object, Android.Webkit.IValueCallback
+    {
+        public void OnReceiveValue(Java.Lang.Object? value) { if (stillBackground()) { webView.OnPause(); webView.PauseTimers(); } }
+    }
+#endif
+
     internal void DisconnectBlazorHost() => blazorWebView.Handler?.DisconnectHandler();
 
 #if ANDROID

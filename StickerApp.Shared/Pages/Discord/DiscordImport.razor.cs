@@ -63,7 +63,7 @@ public partial class DiscordImport
     {
         if (busy) return;
         var batch = items.Where(item => selected.Contains(item.Id)).ToArray();
-        busy = true; error = notice = null; operation = new(); progress = new(0, batch.Length);
+        busy = true; error = notice = null; operation = Activity.BeginOperation(); progress = new(0, batch.Length);
         try
         {
             var reporter = new Progress<DiscordImportProgress>(value => { if (!disposed) { progress = value; _ = InvokeAsync(StateHasChanged); } });

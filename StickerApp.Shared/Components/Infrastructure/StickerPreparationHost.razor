@@ -1,18 +1,27 @@
-@implements IDisposable
+@implements IAsyncDisposable
 @inject StickerApp.Shared.Services.StickerPreparationService Preparation
-
-@if (Preparation.ActiveName is { } activeName)
-{
-    <OperationProgressDialog @key="activeName" Blocking="false" Title="Preparing sticker…" Detail="@activeName" CanCancel="false" />
-}
+@inject IJSRuntime JS
+@inject StickerApp.Shared.Services.ForegroundActivity Activity
 
 @code {
-    protected override void OnInitialized() => Preparation.Changed += PreparationChanged;
-    private void PreparationChanged(bool _) => InvokeAsync(StateHasChanged);
-    public void Dispose() => Preparation.Changed -= PreparationChanged;
-    protected override Task OnAfterRenderAsync(bool firstRender)
+    private IJSObjectReference? module, subscription;
+    private DotNetObjectReference<StickerPreparationHost>? reference;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender) Preparation.Start();
-        return Task.CompletedTask;
+        if (!firstRender) return;
+        Preparation.Start();
+        reference = DotNetObjectReference.Create(this);
+        module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/foreground.js");
+        subscription = await module.InvokeAsync<IJSObjectReference>("watch", reference);
+    }
+    [JSInvokable] public Task SetForeground(bool active) { Activity.SetActive(active); return Preparation.SetForegroundAsync(active); }
+    public async ValueTask DisposeAsync()
+    {
+        try {
+            await Preparation.SetForegroundAsync(false);
+            if (subscription is not null) { await subscription.InvokeVoidAsync("dispose"); await subscription.DisposeAsync(); }
+            if (module is not null) await module.DisposeAsync();
+        } catch (JSDisconnectedException) { }
+        reference?.Dispose();
     }
 }

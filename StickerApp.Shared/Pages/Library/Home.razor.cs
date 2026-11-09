@@ -40,6 +40,7 @@ public partial class Home
     private Guid? infoImageId;
     private Sticker? InfoImage => library.Stickers.FirstOrDefault(image => image.Id == infoImageId);
     private IEnumerable<Sticker> PreparationImages => CurrentPack is null ? library.Stickers : PackImages;
+    private bool IsPreparing(Sticker image) => StickerApp.Shared.Services.StickerPreparationService.NeedsPreparation(image) && Preparation.GetStatus(image)?.Error is null;
     private int PendingPreparationCount => PreparationImages.Count(image => StickerApp.Shared.Services.StickerPreparationService.NeedsPreparation(image) && Preparation.GetStatus(image)?.Error is null);
     private int AttentionCount => PreparationImages.Count(image => Preparation.GetStatus(image)?.Error is not null);
     private bool deletePack;
@@ -249,6 +250,7 @@ public partial class Home
     public async ValueTask DisposeAsync()
     {
         disposed = true;
+        preparationLease?.Dispose(); preparationLease = null;
         ++editorSession;
         Preparation.Changed -= OnPreparationChanged;
         try
@@ -256,7 +258,7 @@ public partial class Home
             if (editDialogHelper is not null) await editDialogHelper.DisposeAsync();
             if (gifSession is not null)
             {
-                await gifSession.InvokeVoidAsync("dispose");
+                await gifSession.InvokeVoidAsync("release");
                 await gifSession.DisposeAsync();
             }
             if (gifEditor is not null) await gifEditor.DisposeAsync();

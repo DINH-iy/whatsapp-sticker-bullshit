@@ -72,3 +72,9 @@ export function watchElapsed(element, label) {
     observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['open'] });
     update();
 }
+
+export function colorChanged(input, color) {
+    input.value = color;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+}

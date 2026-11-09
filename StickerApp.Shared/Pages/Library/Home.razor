@@ -212,7 +212,9 @@ else
         }
         @foreach (var image in visibleImages)
         {
-            <article class="image-card" @key="image.Id" @onclick="() => Edit(image)">
+            var processing = IsPreparing(image);
+            <article class="image-card @(processing ? "image-card-processing" : "")" @key="image.Id" @onclick="() => Edit(image)" aria-busy="@(processing ? "true" : "false")" aria-disabled="@(processing ? "true" : "false")">
+                <div class="image-card-content" inert="@processing">
                 <input type="checkbox" class="image-select" @onclick:stopPropagation aria-label="@L.Format("Select {0}", image.Name)"
                        checked="@selected.Contains(image.Id)" @onchange="() => Toggle(image.Id)" />
                 <SpoilerPreview IsSpoiler="@library.IsNsfw(image)" Name="@image.Name">
@@ -242,6 +244,15 @@ else
                         </button>
                     </div>
                 </div>
+                </div>
+                @if (processing)
+                {
+                    <div class="sticker-processing-overlay" role="status" @onclick:stopPropagation>
+                        <span class="feedback-spinner" aria-hidden="true"></span>
+                        <strong>@L[Preparation.GetStatus(image)?.Working == true ? "Preparing sticker…" : "Queued for preparation…"]</strong>
+                        <small>@L["Ready to edit when processing finishes."]</small>
+                    </div>
+                }
             </article>
         }
     </div>
@@ -385,7 +396,7 @@ else
 
 @if (showVideoImport)
 {
-    <VideoImportDialog PackId="@activePack" OnClose="() => showVideoImport = false" OnImported="VideoImported" />
+    <VideoImportDialog LoadPicked="true" PackId="@activePack" OnClose="() => showVideoImport = false" OnImported="VideoImported" />
 }
 
 @code {

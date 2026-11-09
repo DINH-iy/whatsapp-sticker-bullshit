@@ -1,0 +1,38 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+<span class="app-color-picker">
+    <button class="button icon-button color-swatch" type="button" style="--swatch: @Value" disabled="@Disabled" aria-label="@L[Label]" title="@L[Label]" @onclick="Open"><Icon Name="palette" /></button>
+    @if (Property is not null) { <input @ref="bridge" type="hidden" value="@Value" data-layer-property="@Property" /> }
+</span>
+@if (show)
+{
+    <dialog @ref="dialog" class="folder-dialog color-picker-dialog" aria-label="@L[Label]" @oncancel="Close" @oncancel:preventDefault @onkeydown:stopPropagation>
+        <div class="folder-dialog-heading"><h2>@L[Label]</h2><button class="button icon-button" type="button" @onclick="Close" aria-label="@L["Close"]"><Icon Name="close" /></button></div>
+        <ThemeColorPicker Value="@Value" ValueChanged="Change" AllowAlpha="@AllowAlpha" />
+        <div class="dialog-actions"><button class="button primary" type="button" @onclick="Close">@L["Done"]</button></div>
+    </dialog>
+}
+@code {
+    [Parameter] public string Value { get; set; } = "#ffffff";
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public string Label { get; set; } = "Color";
+    [Parameter] public string? Property { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool AllowAlpha { get; set; }
+    private bool show, opening;
+    private ElementReference dialog, bridge;
+    private IJSObjectReference? module;
+    private void Open() { show = opening = true; }
+    private void Close() { show = opening = false; }
+    private async Task Change(string color) {
+        Value = AllowAlpha ? color : color[..7];
+        await ValueChanged.InvokeAsync(Value);
+        if (Property is not null && module is not null) await module.InvokeVoidAsync("colorChanged", bridge, Value);
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!opening) return; opening = false;
+        module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/dialog.js");
+        await module.InvokeVoidAsync("open", dialog);
+    }
+    public async ValueTask DisposeAsync() { try { if (module is not null) await module.DisposeAsync(); } catch (JSDisconnectedException) { } }
+}

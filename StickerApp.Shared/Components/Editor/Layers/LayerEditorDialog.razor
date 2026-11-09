@@ -1,3 +1,4 @@
+@inject StickerApp.Shared.Services.StickerPreparationService Preparation
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 @inject LibraryStore Store
@@ -17,7 +18,7 @@
         </label>
         <select aria-label="@L["Choose a library image for a layer"]" @bind="libraryImageId" disabled="@(working || layerEditSource is not null)">
             <option value="">@L["Choose from library…"]</option>
-            @foreach (var image in Images) { <option value="@image.Id">@image.Name@(image.Animated ? " (animated)" : "")</option> }
+            @foreach (var image in Images) { <option value="@image.Id" disabled="@IsPreparing(image)">@image.Name@(IsPreparing(image) ? " · " + L["Preparing…"] : image.Animated ? " (animated)" : "")</option> }
         </select>
         <button class="button" type="button" @onclick="AddLibraryImage" disabled="@(working || layerEditSource is not null || libraryImageId == "" || state.Layers.Count >= 10)"><Icon Name="layers" />@L["Add layer"]</button>
     </div>
@@ -30,10 +31,10 @@
             <div class="shape-picker-heading"><h3>@L["Add shape"]</h3><button class="button icon-button" type="button" @onclick="() => showShapes=false" aria-label="@L["Close shape picker"]"><Icon Name="close" /></button></div>
             <div class="shape-style-controls">
                 <label class="toggle-row"><input type="checkbox" @bind="shapeFilled" @bind:after="EnsureShapeOutline" />@L["Filled shape"]</label>
-                @if(shapeFilled){<label>@L["Fill color"]<input type="color" aria-label="@L["Shape fill color"]" @bind="shapeColor" /></label>}
+                @if(shapeFilled){<label>@L["Fill color"]<ColorPicker @bind-Value="shapeColor" Label="Shape fill color" /></label>}
                 <label>@L["Outline thickness"]<input type="number" inputmode="decimal" min="0" max="64" step="0.5" @bind="shapeThickness" /></label>
                 <label>@L["Corner rounding"]<input type="number" inputmode="decimal" min="0" max="100" step="1" @bind="shapeRounding" /></label>
-                <label>@L["Outline color"]<input type="color" aria-label="@L["Shape outline color"]" @bind="shapeOutlineColor" /></label>
+                <label>@L["Outline color"]<ColorPicker @bind-Value="shapeOutlineColor" Label="Shape outline color" /></label>
             </div>
             <div class="shape-picker-grid">@foreach(var shape in Shapes){<button class="button" type="button" @onclick="() => AddShape(shape.Kind,shape.Name)" disabled="@(working || !shapeFilled && shapeThickness<=0)" aria-label="@L[shape.Name]" title="@L[shape.Name]"><ShapePreview Kind="@shape.Kind" Fill="@(shapeFilled?shapeColor:"none")" Stroke="@shapeOutlineColor" Thickness="@shapeThickness" Rounding="@shapeRounding" /></button>}</div>
         </section>
@@ -94,8 +95,8 @@
                             <button class="button" type="button" data-layer-tool="border" aria-expanded="@(quickPanel == "border" ? "true" : "false")" @onclick='() => ToggleTool("border")' disabled="@(working || layerEditSource is not null || Selected is null || Selected.IsGroup)"><Icon Name="image" /><span>@L["Object border"]</span></button>
                             break;
                         case "adjust":
-                            <button class="button" type="button" data-layer-tool="transform" aria-expanded="@(quickPanel == "transform" ? "true" : "false")" @onclick='() => ToggleTool("transform")' disabled="@(working || layerEditSource is not null || Selected is null)"><Icon Name="crop" /><span>@L["Size / pos."]</span></button>
-                            <button class="button" type="button" data-layer-tool="rotate" aria-expanded="@(quickPanel == "rotate" ? "true" : "false")" @onclick='() => ToggleTool("rotate")' disabled="@(working || layerEditSource is not null || Selected is null)"><Icon Name="rotate" /><span>@L["Rotate"]</span></button>
+                            <button class="button" type="button" data-layer-tool="transform" aria-expanded="@(quickPanel == "transform" ? "true" : "false")" @onclick='() => ToggleTool("transform")' disabled="@(working || layerEditSource is not null || Selected is null)"><Icon Name="crop" /><span>@L["Transform"]</span></button>
+
                             <button class="button" type="button" data-layer-tool="opacity" aria-expanded="@(quickPanel == "opacity" ? "true" : "false")" @onclick='() => ToggleTool("opacity")' disabled="@(working || layerEditSource is not null || Selected is null)"><Icon Name="opacity" /><span>@L["Opacity"]</span></button>
                             <button class="button" type="button" data-layer-tool="tint" aria-expanded="@(quickPanel == "tint" ? "true" : "false")" @onclick='() => ToggleTool("tint")' disabled="@(working || layerEditSource is not null || Selected is null || Selected.IsGroup)"><Icon Name="palette" /><span>@L["Color"]</span></button>
                             <button class="button" type="button" @onclick='() => Action("flip")' disabled="@(working || layerEditSource is not null || Selected is null)" title="@L["Flip selected layer"]"><Icon Name="flip" /><span>@L["Flip"]</span></button>

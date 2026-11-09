@@ -1,3 +1,4 @@
+import { trackRequest } from './foreground.js';
 const settingsKey = 'stickers.packSharing';
 
 function readSettings() {
@@ -64,6 +65,9 @@ export async function publish(streamReference) {
     }
 
     const bytes = await streamReference.arrayBuffer();
+    const controller = new AbortController(), finishRequest = trackRequest(controller, 'Sharing pack…');
+    const timer = setTimeout(() => controller.abort(), 120000);
+    try {
     let response;
     try {
         response = await fetch(`${settings.serverUrl}/api/packs`, {
@@ -71,7 +75,7 @@ export async function publish(streamReference) {
             headers: { Authorization: `Bearer ${settings.token}`, 'Content-Type': 'application/zip' },
             body: new Blob([bytes], { type: 'application/zip' }),
             credentials: 'omit',
-            signal: AbortSignal.timeout(120000)
+            signal: controller.signal
         });
     } catch {
         throw new Error('Could not reach the sharing server. Check its URL, HTTPS, and network connection.');
@@ -88,6 +92,7 @@ export async function publish(streamReference) {
         throw new Error('The sharing server returned an invalid link.');
     }
     return { url: `${settings.serverUrl}${result.path}`, sha256: result.sha256 };
+    } finally { clearTimeout(timer); finishRequest(); }
 }
 
 export async function copyText(value) {

@@ -2,7 +2,15 @@
 @inject AppLog Log
 @inject IJSRuntime JS
 
+@if (errorReference is not null) {
+    <div class="notice notice-error" role="alert">
+        <p>@L["Something went wrong. Please contact the developer and send your logs from Settings → Diagnostics."] @errorReference</p>
+        <a class="button" href="settings#diagnostics">@L["Open diagnostics"]</a>
+        <button class="button" type="button" @onclick="() => errorReference = null">@L["Close"]</button>
+    </div>
+}
 @code {
+    private string? errorReference;
     private IJSObjectReference? module, subscription;
     private DotNetObjectReference<DiagnosticsHost>? reference;
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -14,7 +22,10 @@
             subscription = await module.InvokeAsync<IJSObjectReference>("watch", reference);
         } catch (JSException exception) { Log.Error("Start JavaScript diagnostics", exception); }
     }
-    [JSInvokable] public void ReportError(string message, string? stack) => Log.Write("Error", "WebView JavaScript", message + "\n" + stack);
+    [JSInvokable] public Task ReportError(string message, string? stack) => InvokeAsync(() => {
+        errorReference = Log.Write("Error", "WebView JavaScript", message + "\n" + stack);
+        StateHasChanged();
+    });
     public async ValueTask DisposeAsync()
     {
         try {

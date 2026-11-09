@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import { readVideoTiming, planFrames } from '../../StickerApp.Shared/wwwroot/js/media/video/video-timing.js';
+const word = n => { const b = new Uint8Array(4); new DataView(b.buffer).setUint32(0,n); return b; };
+const box = (name,...parts) => { const bytes=parts.flatMap(p=>[...p]); return new Uint8Array([...word(bytes.length+8),...new TextEncoder().encode(name),...bytes]); };
+const mdhd = box('mdhd',new Uint8Array(12),word(30000),word(90000));
+const hdlr = box('hdlr',new Uint8Array(8),new TextEncoder().encode('vide'));
+const stts = box('stts',word(0),word(2),word(30),word(1000),word(40),word(1500));
+const file = new Blob([box('mdat',new Uint8Array(20)),box('moov',box('trak',box('mdia',mdhd,hdlr,box('minf',box('stbl',stts)))))]);
+const timing = await readVideoTiming(file);
+assert.ok(Math.abs(timing.fps - 70/3)<.001);
+assert.equal(planFrames(0,1,0,timing,512,512).length,30);
+assert.equal(planFrames(1,2,0,timing,512,512).length,20);
+assert.equal(planFrames(0,10,30,null,512,512).length,300);
+assert.throws(()=>planFrames(0,10,0,{runs:[{frames:600,seconds:1/60}]},512,512),/50 fps/);
+assert.throws(()=>planFrames(0,10,0,{runs:[{frames:500,seconds:.02}]},512,512),/pixels/);
+assert.throws(()=>planFrames(0,1,0,null,512,512),/unavailable/);
+assert.equal(await readVideoTiming(new Blob(['invalid'])),null);
+console.log('PASS MP4 native/variable timing, selected frame counts, 30 fps, unavailable timing, GIF rate and editor-memory preflight');

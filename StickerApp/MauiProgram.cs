@@ -61,6 +61,7 @@ public static class MauiProgram
         builder.Services.AddSingleton(_ => new PinterestImportClient());
         builder.Services.AddSingleton<PinterestShareState>();
         builder.Services.AddScoped<StickerPreparationService>();
+        builder.Services.AddSingleton<ForegroundActivity>();
 #if IOS
         builder.Services.AddSingleton<IPinterestShareInbox, IosPinterestShareInbox>();
 #else

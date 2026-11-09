@@ -1,0 +1,27 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+<label class="toolbar-menu-option file-button">
+    <Icon Name="animation" /><span>@L["Video from device"]<small>@L["Turn a video clip into a GIF."]</small></span>
+    <input @ref="input" type="file" accept="video/*,.mp4,.mov,.webm,.m4v" disabled="@Disabled" aria-label="@L["Choose video file"]" />
+</label>
+@code {
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public EventCallback OnPicked { get; set; }
+    private ElementReference input;
+    private IJSObjectReference? module, picker;
+    private DotNetObjectReference<VideoDevicePicker>? reference;
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!firstRender) return;
+        module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/media/video/video-import.js");
+        reference = DotNetObjectReference.Create(this);
+        picker = await module.InvokeAsync<IJSObjectReference>("createPicker", input, reference);
+    }
+    [JSInvokable] public Task Picked() => OnPicked.InvokeAsync();
+    public async ValueTask DisposeAsync() {
+        try {
+            if (picker is not null) { await picker.InvokeVoidAsync("dispose"); await picker.DisposeAsync(); }
+            if (module is not null) await module.DisposeAsync();
+        } catch (JSDisconnectedException) { }
+        reference?.Dispose();
+    }
+}

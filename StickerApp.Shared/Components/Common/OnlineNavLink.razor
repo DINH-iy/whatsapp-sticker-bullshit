@@ -1,0 +1,19 @@
+@implements IDisposable
+@inject StickerApp.Shared.Services.ConnectionState Connection
+@if (Connection.Online)
+{
+    <NavLink href="@Href">@L[Label]</NavLink>
+}
+else
+{
+    <span class="offline-nav-item" role="link" aria-disabled="true" title="@L["No internet connection"]">
+        <span>@L[Label]</span><Icon Name="wifi-off" /><span class="visually-hidden">@L["No internet connection"]</span>
+    </span>
+}
+@code {
+    [Parameter, EditorRequired] public string Href { get; set; } = "";
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+    protected override void OnInitialized() => Connection.Changed += Changed;
+    private void Changed() => _ = InvokeAsync(StateHasChanged);
+    public void Dispose() => Connection.Changed -= Changed;
+}

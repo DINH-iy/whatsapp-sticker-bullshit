@@ -3,17 +3,7 @@
 <div class="editor-adjustments" data-adjustment-scope="@Scope">
     @if (Tool == "transform")
     {
-        <div class="layer-pair">
-            @if (ShowPosition)
-            {
-                <label>@L["X position"]<input aria-label="@L["X position"]" type="number" min="-2048" max="2560" step="1" value="@Number(Value.X)" data-layer-property="x" /></label>
-                <label>@L["Y position"]<input aria-label="@L["Y position"]" type="number" min="-2048" max="2560" step="1" value="@Number(Value.Y)" data-layer-property="y" /></label>
-            }
-            <label>@L["Width"]<input aria-label="@L["Width"]" type="number" min="1" max="@MaxSize" value="@Number(Value.Width)" data-layer-property="width" /></label>
-            <label>@L["Height"]<input aria-label="@L["Height"]" type="number" min="1" max="@MaxSize" value="@Number(Value.Height)" data-layer-property="height" /></label>
-        </div>
-        <label class="layer-check"><input type="checkbox" data-layer-ratio disabled="@LockRatio" checked="@(LockRatio || KeepRatio)" @onchange="args => KeepRatioChanged.InvokeAsync(args.Value is true)" /> @L["Keep proportions"]</label>
-        <p class="helper">@L[LockRatio ? "Groups keep their proportions. Ungroup to stretch individual layers." : ShowPosition ? "Turn off to stretch. On-image handles remain available." : "Turn off to stretch. Apply size to resize the image."]</p>
+        <TransformControls Width="@Value.Width" Height="@Value.Height" X="@Value.X" Y="@Value.Y" Rotation="@Value.Rotation" KeepRatio="@KeepRatio" KeepRatioChanged="KeepRatioChanged" LockRatio="@LockRatio" />
     }
     else if (Tool == "rotate")
     {
@@ -42,7 +32,7 @@
     {
         <div class="layer-border-controls">
             <label>@L["Width"]<input type="number" aria-label="@L["Object border width value"]" min="0" max="80" step="1" value="@Number(Value.BorderWidth)" data-layer-property="borderWidth" /><input type="range" aria-label="@L["Object border width"]" min="0" max="80" step="1" value="@Number(Value.BorderWidth)" data-layer-property="borderWidth" /></label>
-            <input type="color" aria-label="@L["Object border color"]" value="@Value.BorderColor" data-layer-property="borderColor" />
+            <ColorPicker Label="Object border color" Value="@Value.BorderColor" Property="borderColor" />
         </div>
     }
     else if (Tool == "tint")

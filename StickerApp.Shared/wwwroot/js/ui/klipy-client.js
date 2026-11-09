@@ -1,3 +1,4 @@
+import { trackRequest } from './foreground.js';
 // KLIPY requires API calls and media loads to come directly from the user's device.
 // Keep the API key here: it never needs to pass through the Blazor server or library files.
 const apiBaseUrl = 'https://api.klipy.com/api/v1/';
@@ -72,6 +73,7 @@ export async function search(query, page = 1) {
 
     cancelSearch();
     const controller = new AbortController();
+    const finishRequest = trackRequest(controller);
     activeSearch = controller;
     const timeout = setTimeout(() => controller.abort(), 15000);
     if (!query.trim()) throw new Error('Enter a search term.');
@@ -114,7 +116,7 @@ export async function search(query, page = 1) {
         if (error instanceof SyntaxError) throw new Error('KLIPY returned an unreadable response. Please try again.');
         throw error;
     } finally {
-        clearTimeout(timeout);
+        finishRequest(); clearTimeout(timeout);
         if (activeSearch === controller) activeSearch = null;
     }
 }
@@ -135,13 +137,15 @@ export async function registerShare(slug, query) {
 
     // Sharing should still succeed when optional provider reporting is unavailable.
     try {
-        await fetch(`${apiBaseUrl}${encodeURIComponent(apiKey)}/gifs/share/${encodeURIComponent(slug)}`, {
+        const controller = new AbortController(), finish = trackRequest(controller);
+        const timer = setTimeout(() => controller.abort(),10000);
+        try { await fetch(`${apiBaseUrl}${encodeURIComponent(apiKey)}/gifs/share/${encodeURIComponent(slug)}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ q: query }),
             credentials: 'omit',
-            signal: AbortSignal.timeout(10000)
-        });
+            signal: controller.signal
+        }); } finally { clearTimeout(timer); finish(); }
     } catch {
         // No retry queue: do not retain a history of the user's GIF selections.
     }
@@ -157,7 +161,8 @@ export function createImportSession() {
             if (active) throw new Error('Wait for the current GIF import to finish.');
             if (!mediaUrl(url)) throw new Error('This GIF does not have a supported KLIPY download URL.');
             maxBytes = Math.min(20 * 1024 * 1024, maxBytes);
-            const controller = new AbortController(); active = controller;
+            const controller = new AbortController();
+            const finishRequest = trackRequest(controller, 'Downloading GIF…'); active = controller;
             const timeout = setTimeout(() => controller.abort(), 45000);
             let reader;
             try {
@@ -187,7 +192,7 @@ export function createImportSession() {
                 if (error instanceof TypeError) throw new Error('Could not download this GIF directly. Check your connection; KLIPY may be blocking downloads from this browser.');
                 throw error;
             } finally {
-                clearTimeout(timeout);
+                finishRequest(); clearTimeout(timeout);
                 if (reader) { try { await reader.cancel(); } catch { } reader.releaseLock(); }
                 controller.abort();
                 if (active === controller) active = null;

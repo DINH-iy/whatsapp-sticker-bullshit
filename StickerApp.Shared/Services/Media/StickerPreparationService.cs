@@ -14,6 +14,34 @@ public sealed class StickerPreparationService(LibraryStore store, IJSRuntime js,
     private readonly CancellationTokenSource lifetime = new();
     private IJSObjectReference? worker;
     private Task? runner;
+    private bool foreground;
+    private int editorLeases;
+    private CancellationTokenSource? jobCancellation;
+    private TaskCompletionSource? jobFinished;
+    public async Task SetForegroundAsync(bool value)
+    {
+        foreground = value;
+        if (!value) await StopJobAsync();
+        else Queue();
+    }
+    private async Task StopJobAsync()
+    {
+        var finished = jobFinished?.Task;
+        jobCancellation?.Cancel();
+        if (worker is not null) await worker.InvokeVoidAsync("cancel");
+        if (finished is not null) await finished;
+    }
+    public async Task<IDisposable> SuspendForEditingAsync()
+    {
+        ++editorLeases;
+        try { await StopJobAsync(); return new EditorLease(this); }
+        catch { --editorLeases; Queue(); throw; }
+    }
+    private sealed class EditorLease(StickerPreparationService owner) : IDisposable
+    {
+        private StickerPreparationService? service = owner;
+        public void Dispose() { if (service is not { } current) return; service = null; --current.editorLeases; current.Queue(); }
+    }
     public event Action<bool>? Changed;
     public string? ActiveName { get; private set; }
 
@@ -47,35 +75,42 @@ public sealed class StickerPreparationService(LibraryStore store, IJSRuntime js,
         {
             await foreach (var signal in signals.Reader.ReadAllAsync(token))
             {
+                if (!foreground || editorLeases > 0) continue;
                 var library = await store.ReadAsync();
                 foreach (var id in statuses.Keys.Where(id => library.Stickers.All(image => image.Id != id)).ToList())
                     statuses.Remove(id);
                 foreach (var image in library.Stickers.Where(NeedsPreparation))
                 {
                     token.ThrowIfCancellationRequested();
+                    if (!foreground || editorLeases > 0) break;
                     if (GetStatus(image) is not null) continue;
                     log.Info("Automatic sticker preparation", $"Started image {image.Id}; {image.Width}x{image.Height}; {image.MimeType}; {image.Bytes} bytes.");
                     ActiveName = image.Name;
                     statuses[image.Id] = new(image.FileName, true);
                     Changed?.Invoke(false);
+                    using var job = CancellationTokenSource.CreateLinkedTokenSource(token);
+                    jobCancellation = job;
+                    jobFinished = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                    var jobToken = job.Token;
                     try
                     {
                         var source = await store.PreviewAsync(image);
                         if (image.Animated && image.MimeType == "image/webp" && image.OriginalFileName is { } original)
                         {
-                            var bytes = await File.ReadAllBytesAsync(store.MediaPath(original), token);
+                            var bytes = await File.ReadAllBytesAsync(store.MediaPath(original), jobToken);
                             if (MediaInspector.Inspect(bytes).MimeType == "image/gif")
                                 source = $"data:image/gif;base64,{Convert.ToBase64String(bytes)}";
                         }
-                        worker ??= await js.InvokeAsync<IJSObjectReference>("import", token, "./_content/StickerApp.Shared/js/media/conversion/sticker-preparation.js");
-                        var result = await worker.InvokeAsync<string>("prepare", token, source, image.Animated);
+                        worker ??= await js.InvokeAsync<IJSObjectReference>("import", jobToken, "./_content/StickerApp.Shared/js/media/conversion/sticker-preparation.js");
+                        var result = await worker.InvokeAsync<string>("prepare", jobToken, source, image.Animated);
+                        jobToken.ThrowIfCancellationRequested();
                         var output = Convert.FromBase64String(result[(result.IndexOf(',') + 1)..]);
                         var info = MediaInspector.Inspect(output);
                         if (info.MimeType != "image/webp" || info.Width != 512 || info.Height != 512 ||
                             info.Animated != image.Animated || output.Length > (image.Animated ? 500 : 100) * 1024 ||
                             (info.Animated && (info.DurationMs is <= 0 or > 10_000 || info.MinimumFrameMs < 8)))
                             throw new InvalidDataException("This image could not be prepared safely. Open Edit to adjust or replace it. Your original is unchanged.");
-                        var saved = await store.ReplaceImageAsync(image.Id, output, image.FileName, token);
+                        var saved = await store.ReplaceImageAsync(image.Id, output, image.FileName, jobToken);
                         statuses.Remove(image.Id);
                         log.Info("Automatic sticker preparation", $"Image {image.Id}: {(saved ? "saved" : "changed during preparation; output discarded")}; {output.Length} bytes.");
                         // Another window or an edit may have replaced this image while encoding.
@@ -83,6 +118,8 @@ public sealed class StickerPreparationService(LibraryStore store, IJSRuntime js,
                         Changed?.Invoke(true);
                         if (!saved) Queue();
                     }
+                    catch (OperationCanceledException) when (jobToken.IsCancellationRequested) { statuses.Remove(image.Id); }
+                    catch (JSException) when (jobToken.IsCancellationRequested) { statuses.Remove(image.Id); }
                     catch (JSDisconnectedException) { return; }
                     catch (Exception exception) when (exception is IOException or InvalidDataException or InvalidOperationException or JSException or UnauthorizedAccessException or FormatException)
                     {
@@ -93,7 +130,11 @@ public sealed class StickerPreparationService(LibraryStore store, IJSRuntime js,
                         statuses[image.Id] = new(image.FileName, false, message + $" Reference: {reference}.");
                         Changed?.Invoke(false);
                     }
-                    finally { ActiveName = null; Changed?.Invoke(false); }
+                    finally {
+                        jobCancellation = null;
+                        jobFinished.TrySetResult(); jobFinished = null;
+                        ActiveName = null; Changed?.Invoke(false);
+                    }
                 }
             }
         }

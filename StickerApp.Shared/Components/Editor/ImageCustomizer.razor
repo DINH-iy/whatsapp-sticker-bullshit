@@ -18,20 +18,20 @@
             <div class="editor-viewport"><div class="customizer-canvas-wrap"><canvas @ref="canvas" aria-label="@L["Image editing canvas. Draw with your finger or pointer."]" /></div></div>
             @if (tool != "")
             {
-                <EditorToolDock Title="@ToolTitle" Disabled="@working" ActionsOnly="@(tool is "crop" or "lasso" || tool == "adjust" && adjustmentTool == "transform")" OnApply="ApplyTool" OnCancel="RequestCancelTool">
+                <EditorToolDock Title="@ToolTitle" Disabled="@working" ActionsOnly="@(tool is "crop" or "lasso")" OnApply="ApplyTool" OnCancel="RequestCancelTool">
                     @if (tool == "draw")
                     {
                         <div class="drawing-controls">
                             <label class="live-brush-size">@L["Size"]<input type="number" inputmode="decimal" aria-label="@L["Drawing brush size"]" min="0.5" max="256" step="0.5" @bind="drawBrush" @bind:after="UpdateSettings" disabled="@working" /></label>
-                            <label>@L["Tip"]<select aria-label="@L["Drawing pencil type"]" @bind="brushType" @bind:after="UpdateSettings"><option value="pen">@L["Pen"]</option><option value="pencil">@L["Pencil"]</option><option value="brush">@L["Brush"]</option><option value="marker">@L["Marker"]</option></select></label>
-                            <input type="color" aria-label="@L["Brush color"]" title="@L["Brush color"]" @bind="brushColor" @bind:after="UpdateSettings" disabled="@working" />
+                            <label class="brush-tip"><Icon Name="edit" /><select aria-label="@L["Drawing pencil type"]" @bind="brushType" @bind:after="UpdateSettings"><option value="pen">✒</option><option value="pencil">✎</option><option value="brush">🖌</option><option value="marker">▰</option></select></label>
+                            <ColorPicker @bind-Value="brushColor" @bind-Value:after="UpdateSettings" Label="Brush color" Disabled="@working" />
                         </div>
                     }
                     else if (tool == "border")
                     {
                         <div class="border-controls">
                             <label>@L["Width"]<input type="number" aria-label="@L["Border thickness"]" min="0" max="80" @bind="borderWidth" @bind:event="oninput" @bind:after="UpdateBorder" /></label>
-                            <input type="color" aria-label="@L["Border color"]" @bind="borderColor" @bind:after="UpdateBorder" />
+                            <ColorPicker @bind-Value="borderColor" @bind-Value:after="UpdateBorder" Label="Border color" />
                             <label>@L["Round"]<input type="number" aria-label="@L["Border corner radius"]" min="0" max="256" @bind="borderRadius" @bind:event="oninput" @bind:after="UpdateBorder" /></label>
                         </div>
                     }
@@ -46,8 +46,12 @@
                     else if (tool == "adjust")
                     {
                         <fieldset class="layer-adjustments" disabled="@working">
+                            @if (adjustmentTool == "transform") { <TransformControls Image="true" Width="@width" Height="@height" @bind-KeepRatio="keepRatio" /> }
+                            else {
+
                             <EditorAdjustments Tool="@adjustmentTool" Scope="image" Value="@adjustment" ShowPosition="false" MaxSize="@MaxDimension"
                                                Disabled="@working" @bind-KeepRatio="keepRatio" OnRotateBy="RotateBy" OnRotation="SetRotation" OnOpacity="SetOpacity" OnTint="SetTint" OnHue="SetHue" OnColorStrength="SetColorStrength" />
+                            }
                         </fieldset>
                     }
                     else
@@ -57,20 +61,6 @@
                 </EditorToolDock>
             }
         </div>
-        @if (tool == "adjust" && adjustmentTool == "transform")
-        {
-            <section class="transform-control-card" aria-label="@L["Size and rotation"]">
-                <div class="transform-size-row">
-                    <label>@L["Width"]<input type="number" aria-label="@L["Transform width"]" data-image-transform-property="imageWidth" min="1" max="512" value="@width" /></label>
-                    <label>@L["Height"]<input type="number" aria-label="@L["Transform height"]" data-image-transform-property="imageHeight" min="1" max="512" value="@height" /></label>
-                    <label>@L["Rotation"]<span class="rotation-angle-input"><input type="number" aria-label="@L["Rotation value"]" data-image-transform-property="rotation" min="-180" max="180" value="0" /><span aria-hidden="true">°</span></span></label>
-                </div>
-                <div class="transform-options-row">
-                    <label class="rotation-snap-toggle"><input type="checkbox" data-image-resize-ratio @bind="keepRatio" />@L["Keep proportions"]</label>
-                    <RotationSnapControls />
-                </div>
-            </section>
-        }
         @if (Timeline is not null) { @Timeline(new PlaybackControlState(() => Run("preview", TrimStart, TrimEnd), previewing, working || adjustmentTool == "transform")) }
         @if (Animated && Timeline is null)
         {

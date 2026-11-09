@@ -19,7 +19,7 @@ internal static class GifImportRecoveryChecks
             var store = new LibraryStore(root);
             var log = new AppLog(Path.Combine(root, "logs"));
             await using var services = new ServiceCollection().AddLogging().AddSingleton(store).AddSingleton(log)
-                .AddSingleton<AppLanguage>().AddSingleton<ConnectionState>()
+                .AddSingleton<AppLanguage>().AddSingleton<ConnectionState>().AddSingleton<ForegroundActivity>()
                 .AddSingleton<IFormFactor, NativeFormFactor>().AddSingleton<IJSRuntime, FakeJs>().BuildServiceProvider();
             await using var renderer = new ImportRenderer(services);
             var component = await renderer.MountAsync();

@@ -183,7 +183,7 @@ public partial class PinterestImport
         importProgress = null;
         error = null;
         success = null;
-        using var cancellation = new CancellationTokenSource();
+        using var cancellation = Activity.BeginOperation();
         operation = cancellation;
         try
         {

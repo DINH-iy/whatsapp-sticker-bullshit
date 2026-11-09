@@ -7,6 +7,7 @@ namespace StickerApp.Shared.Pages.Library;
 
 public partial class Home
 {
+    private IDisposable? preparationLease;
     private bool editorToolActive;
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -31,6 +32,7 @@ public partial class Home
         if (openingLayers) await CancelLayerOpening();
         ++editorSession; // Late file reads or GIF results belong to the closed editor.
         editing = null;
+        preparationLease?.Dispose(); preparationLease = null;
         editorToolsLoading = customizing = false;
         if (gifSession is not null) await gifSession.InvokeVoidAsync("dispose");
         busy = editorLoading = false;
@@ -39,7 +41,7 @@ public partial class Home
 
     private async Task Edit(Sticker image)
     {
-        if (busy) return;
+        if (busy || IsPreparing(image)) return;
         if (image.CompositionFileName is not null)
         {
             compositionFromEditor = false;
@@ -69,12 +71,23 @@ public partial class Home
         await Task.Yield();
         try
         {
+            var lease = await Preparation.SuspendForEditingAsync();
+            if (session != editorSession || disposed) { lease.Dispose(); return; }
+            preparationLease?.Dispose(); preparationLease = lease;
+            // Preparation may have completed just before the lease was acquired.
+            var current = (await Store.ReadAsync()).Stickers.FirstOrDefault(item => item.Id == image.Id)
+                ?? throw new InvalidOperationException("This image is no longer available.");
+            var source = await Store.PreviewAsync(current);
+            if (session != editorSession || disposed) return;
+            editing = current;
+            editSource = editPreview = source;
+            StateHasChanged();
             // Edit the current animation, including saved cutouts. The retained
             // original is a backup and must not silently replace the edited sticker.
             if (session != editorSession || disposed) return;
             if (EditingAnimation) await InspectGif(session);
         }
-        catch (JSException exception)
+        catch (Exception exception)
         {
             if (session != editorSession || disposed) return;
             Log.Error("GIF inspection", exception);
@@ -220,6 +233,7 @@ public partial class Home
             await Store.EditStickerAsync(editing.Id, editName, editing.Tags, editNsfw);
             await Reload();
             editing = null;
+            preparationLease?.Dispose(); preparationLease = null;
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or InvalidOperationException or JSException)
         {

@@ -27,16 +27,17 @@
             }
         </svg>
     </button>
+    <ProcessingMenu />
     <ProfileButton />
     </div>
     <nav id="main-navigation" class="app-nav @(menuOpen ? "navigation-open" : "")" aria-label="@L["Main navigation"]" @onclick="CloseMenu">
         <NavLink href="" Match="NavLinkMatch.All" class="@(Navigation.ToBaseRelativePath(Navigation.Uri).StartsWith("packs/") ? "active" : null)">@L["My Packs"]</NavLink>
         @if(FriendsFeature.UnderMaintenance){<div class="navigation-maintenance" @onclick:stopPropagation><span aria-disabled="true">@L["Friends’ packs"]<small>@L["Under maintenance"]</small></span><EditorPopup Title="@L["Friends’ packs · Under maintenance"]" IconName="info" IconOnly="true" CloseLabel="Close"><FriendsGuideContent /></EditorPopup></div>}
-        else{<NavLink href="friends">@L["Friends’ packs"]</NavLink>}
+        else{<OnlineNavLink Href="friends" Label="Friends’ packs" />}
         <NavLink href="library">@L["My Library"]</NavLink>
-        <NavLink href="gifs">@L["GIF search"]</NavLink>
-        <NavLink href="pinterest">@L["Import from Pinterest"]</NavLink>
-        <NavLink href="imgur">@L["Import from Imgur"]</NavLink>
+        <OnlineNavLink Href="gifs" Label="GIF search" />
+        <OnlineNavLink Href="pinterest" Label="Import from Pinterest" />
+        <OnlineNavLink Href="imgur" Label="Import from Imgur" />
         <NavLink href="discord">@L["Import from Discord"]</NavLink>
         <NavLink href="requests">@L["Feature requests"]</NavLink>
         <NavLink class="navigation-settings-link" href="settings">@L["Settings"]</NavLink>
@@ -59,7 +60,7 @@
 <TapFeedbackHost />
 <DiagnosticsHost />
 <NavigationHost />
-<div id="blazor-error-ui">@L["Error."] <a href="">@L["Reload"]</a></div>
+<div id="blazor-error-ui">@L["Something went wrong. Please contact the developer and send your logs from Settings → Diagnostics."] <a href="">@L["Reload"]</a></div>
 
 </div>
 

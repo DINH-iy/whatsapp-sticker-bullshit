@@ -1,3 +1,4 @@
+import { onForegroundChanged } from '../../ui/foreground.js';
 import { snapRotation } from '../shared/rotation-snap.js';
 import { editorView, cutoutLoupe } from '../shared/editor-view.js';
 import { applyStickerBorder } from '../effects/sticker-border.js';
@@ -14,6 +15,7 @@ export function create(canvas, dotnet) {
     let adjustmentBase = null, adjustment = { rotation: 0, opacity: 1, tint: null, hue: 0, colorStrength: 1 }, editingControl = null, maxSize = 4096;
     let toolCheckpoint = null, pendingControl = null;
     let operations = [], initialWidth = 0, initialHeight = 0, cutoutMask = null, paintLayer = null, animationReader = null, playback = null;
+    const unwatchForeground = onForegroundChanged(active => { if (!active) { stopPreview(); ++seekVersion; dotnet.invokeMethodAsync('PreviewChanged', false).catch(() => {}); } });
     const adjustmentEdit = () => ({ type: 'adjust', ...adjustment, maxSize });
     const hasAdjustment = () => adjustmentBase && (adjustment.rotation !== 0 || adjustment.opacity !== 1 || adjustment.tint !== null || adjustment.hue !== 0 && adjustment.colorStrength > 0);
     const recipe = () => ({ width: initialWidth, height: initialHeight, edits: [...operations, ...(hasAdjustment() ? [adjustmentEdit()] : [])] });
@@ -398,7 +400,7 @@ export function create(canvas, dotnet) {
         async redo() { resizer.end(); stopPreview(); clearSelection(); if (redo.length) { history.push(state()); await restore(redo.pop()); } },
         async reset() { resizer.end(); stopPreview(); clearSelection(); remember(); await load(original); adjustmentBase = null; operations = []; await commitAdjustments(); await notify(); },
         dispose() {
-            disposed = true; view.dispose(); loupe.dispose(); ++seekVersion; legacyResizer.dispose(); transformer.dispose(); canvasObserver.disconnect(); controls.dispose(); stopPreview(); animationReader?.dispose?.(); animationReader = null;
+            unwatchForeground(); disposed = true; view.dispose(); loupe.dispose(); ++seekVersion; legacyResizer.dispose(); transformer.dispose(); canvasObserver.disconnect(); controls.dispose(); stopPreview(); animationReader?.dispose?.(); animationReader = null;
             root.removeEventListener('input', input); root.removeEventListener('change', change);
             root.removeEventListener('pointerdown', dialDown); root.removeEventListener('pointermove', dialMove);
             root.removeEventListener('pointerup', dialUp); root.removeEventListener('pointercancel', dialUp); root.removeEventListener('keydown', dialKey);

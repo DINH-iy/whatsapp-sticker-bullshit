@@ -18,8 +18,8 @@ public partial class Home
     {
         showVideoImport = false;
         await Reload();
-        var image = library.Stickers.FirstOrDefault(s => s.Id == id);
-        if (image is not null) await Edit(image);
+        notice = "GIF added. It will be ready to edit when sticker preparation finishes.";
+        noticeIsError = false;
     }
 
     private static async Task<byte[]> ReadFile(IBrowserFile file)

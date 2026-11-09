@@ -4,7 +4,12 @@ const canvasOf = (width, height) => {
     if (typeof OffscreenCanvas !== 'undefined') return new OffscreenCanvas(width, height);
     const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height; return canvas;
 };
+function checkForeground() {
+    if (typeof document !== 'undefined' && (document.hidden || window.stickerForeground === false))
+        throw new Error('Animation loading stopped because the app is in the background. Try again when you return.');
+}
 export async function openAnimation(source) {
+    checkForeground();
     if (source.startsWith('data:image/gif;base64,')) {
         const engine = await import('../codecs/gif-engine.js');
         return engine.createReader(source);
@@ -35,6 +40,7 @@ export async function openAnimation(source) {
     const decoded = [];
     try {
         for (const frame of frames) {
+            checkForeground();
             if (frame.x + frame.width > width || frame.y + frame.height > height) throw new Error('Invalid WebP frame bounds.');
             // VP8X is needed for frame payloads containing a separate ALPH chunk.
             const alpha = String.fromCharCode(...frame.chunks.subarray(0, 4)) === 'ALPH';

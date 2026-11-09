@@ -130,7 +130,7 @@ public partial class GifSearch
     private async Task ImportGif(GifResult gif)
     {
         if (client is null || IsImporting || isDisposed || importedUrls.Contains(gif.ShareUrl)) return;
-        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(90));
+        using var cancellation = Activity.BeginOperation(TimeSpan.FromSeconds(90));
         importCancellation = cancellation;
         importingUrl = gif.ShareUrl; importNotice = importError = null;
         try

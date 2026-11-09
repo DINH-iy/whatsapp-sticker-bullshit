@@ -1,0 +1,31 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+<details class="processing-menu">
+    <summary class="button" aria-label="@L["App processing"]"><Icon Name="animation" /><span>@L["Processing"] (@jobs.Length)</span></summary>
+    <div class="processing-menu-content" role="status">
+        <strong>@L["App processing"]</strong>
+        @if (jobs.Length == 0) { <p>@L["No active jobs."]</p> }
+        @foreach (var job in jobs) { <p @key="job.Id"><span class="feedback-spinner" aria-hidden="true"></span> @L[job.Name]</p> }
+        <p class="helper">@L["Processing stops when you leave the app. Interrupted edits can be retried when you return."]</p>
+    </div>
+</details>
+@code {
+    public sealed class Job { public int Id { get; set; } public string Name { get; set; } = ""; }
+    private Job[] jobs = [];
+    private IJSObjectReference? module, subscription;
+    private DotNetObjectReference<ProcessingMenu>? reference;
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!firstRender) return;
+        reference = DotNetObjectReference.Create(this);
+        module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/foreground.js");
+        subscription = await module.InvokeAsync<IJSObjectReference>("watchJobs", reference);
+    }
+    [JSInvokable] public Task JobsChanged(Job[] value) => InvokeAsync(() => { jobs = value; StateHasChanged(); });
+    public async ValueTask DisposeAsync() {
+        try {
+            if (subscription is not null) { await subscription.InvokeVoidAsync("dispose"); await subscription.DisposeAsync(); }
+            if (module is not null) await module.DisposeAsync();
+        } catch (JSDisconnectedException) { }
+        reference?.Dispose();
+    }
+}

@@ -38,6 +38,7 @@ builder.Services.AddSingleton(_ => new PinterestImportClient());
 builder.Services.AddSingleton<IPinterestShareInbox, EmptyPinterestShareInbox>();
 builder.Services.AddScoped<PinterestShareState>();
 builder.Services.AddScoped<StickerPreparationService>();
+builder.Services.AddScoped<ForegroundActivity>();
 
 var app = builder.Build();
 

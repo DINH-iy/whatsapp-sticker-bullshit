@@ -10,9 +10,7 @@
     <Icon Name="image" /><span>@L["GIF from device"]<small>@L["Choose saved animated GIF files."]</small></span>
     <InputFile OnChange="OnImport" accept="image/gif,.gif" multiple disabled="@StickerImportsDisabled" aria-label="@L["Choose GIF files"]" />
 </label>
-<button class="toolbar-menu-option" type="button" @onclick="OnVideo" disabled="@StickerImportsDisabled">
-    <Icon Name="animation" /><span>@L["Video from device"]<small>@L["Turn a video clip into a GIF."]</small></span>
-</button>
+<VideoDevicePicker Disabled="@StickerImportsDisabled" OnPicked="OnVideo" />
 <button class="toolbar-menu-option" type="button" @onclick="OnLayers" disabled="@StickerImportsDisabled">
     <Icon Name="edit" /><span>@L["Layered image"]<small>@L["Combine images in the layer editor."]</small></span>
 </button>

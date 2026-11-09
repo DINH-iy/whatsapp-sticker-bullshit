@@ -27,7 +27,7 @@ function load(source) {
     return cached;
 }
 
-async function trim(source, startSeconds, endSeconds, thumbnail = false, onFrame = null) {
+async function trim(source, startSeconds, endSeconds, thumbnail = false, onFrame = null, signal) {
     const { gif, frames, width, height, duration } = load(source);
     const start = Math.round(startSeconds * 1000 / 10) * 10;
     const end = Math.round(endSeconds * 1000 / 10) * 10;
@@ -51,6 +51,7 @@ async function trim(source, startSeconds, endSeconds, thumbnail = false, onFrame
     }
 
     for (const raw of frames) {
+        signal?.throwIfAborted();
         if (clock >= end) break;
         // Earlier frames still need compositing: the first retained frame may only be a patch.
         const frame = decompressFrame(raw, gif.gct, true);
@@ -118,7 +119,7 @@ function makeCanvas(width, height) {
     return canvas;
 }
 
-async function prepare(source) {
+async function prepare(source, signal) {
     const { duration } = load(source);
     if (duration > 10000)
         throw new Error('This GIF is longer than 10 seconds. Open Edit GIF, choose a section of at most 10 seconds, save, then prepare again.');
@@ -136,11 +137,13 @@ async function prepare(source) {
                 fit(canvas.getContext('2d'), sourceCanvas, width, height);
                 // Let iOS paint controls between frames when a worker canvas is unavailable.
                 if (typeof document !== 'undefined') await new Promise(resolve => setTimeout(resolve, 0));
+                signal?.throwIfAborted();
                 const bytes = await encode(canvas, quality);
+                signal?.throwIfAborted();
                 total += bytes.length + 24;
                 if (total > 500 * 1024) throw new Error('size');
                 frames.push({ bytes, duration: delay });
-            });
+            }, signal);
             const bytes = animation(frames);
             if (bytes.length <= 500 * 1024) return dataUrl(bytes);
         } catch (error) { if (error.message !== 'size') throw error; }
@@ -224,7 +227,7 @@ export function createReader(source) {
     };
 }
 
-async function compose(composition) {
+async function compose(composition, signal) {
     const layers = composition.layers;
     const readers = new Map(), stills = new Map();
     const duration = Math.min(10000, Math.max(...layers.filter(layer => layer.gifSource).map(layer => (layer.trimEnd - layer.trimStart) * 1000)));
@@ -237,12 +240,27 @@ async function compose(composition) {
         }
         const canvas = makeCanvas(512, 512), context = canvas.getContext('2d');
         const tintCanvas = makeCanvas(1, 1), tintContext = tintCanvas.getContext('2d');
-        const frameCount = Math.max(2, Math.ceil(duration / 100));
-        const frameDuration = duration / frameCount;
+        const changes = new Set([0, Math.round(duration)]);
+        for (const layer of layers.filter(layer => layer.gifSource)) {
+            const reader = readers.get(layer.id), start = layer.trimStart * 1000, length = (layer.trimEnd - layer.trimStart) * 1000;
+            for (let repeat = 0; repeat < duration; repeat += length) {
+                let time = 0;
+                for (const delay of reader.frameDurations) {
+                    const change = repeat + time - start;
+                    if (time >= start && time < start + length && change < duration) changes.add(Math.round(change));
+                    time += delay;
+                }
+                if (repeat > 0) changes.add(Math.round(repeat));
+            }
+        }
+        const times = [...changes].filter(time => time >= 0 && time <= duration).sort((a,b) => a-b);
+        if (times.length === 2) times.splice(1,0,Math.round(duration/2));
+        const frameCount = times.length - 1;
         for (const quality of [0.65, 0.4, 0.2, 0.08]) {
             const output = []; let total = 0;
             for (let frameIndex = 0; frameIndex < frameCount; frameIndex++) {
-                const clock = Math.round(frameIndex * frameDuration);
+                signal?.throwIfAborted();
+                const clock = times[frameIndex];
                 context.clearRect(0, 0, 512, 512);
                 for (const layer of layers) {
                     let source = layer.gifSource ? readers.get(layer.id).at(layer.trimStart * 1000 + clock % ((layer.trimEnd - layer.trimStart) * 1000)) : stills.get(layer.id);
@@ -259,7 +277,7 @@ async function compose(composition) {
                 if (typeof document !== 'undefined' && typeof window !== 'undefined') await new Promise(resolve => setTimeout(resolve, 0));
                 const bytes = await encode(canvas, quality); total += bytes.length + 24;
                 if (total > 500 * 1024) break;
-                output.push({ bytes, duration: Math.round((frameIndex + 1) * frameDuration) - clock });
+                output.push({ bytes, duration: times[frameIndex + 1] - clock });
             }
             if (total <= 500 * 1024) {
                 const result = animation(output);
@@ -336,15 +354,15 @@ async function editAnimation(source, startSeconds, endSeconds, recipe, working =
 
 // The same engine can run on the main thread on iOS versions without OffscreenCanvas.
 export async function process(data) {
-    if (data.action === 'compose') return compose(data.composition);
+    if (data.action === 'compose') return compose(data.composition, data.signal);
     if (data.action === 'prepare') {
-        if (data.source.startsWith('data:image/gif;')) return prepare(data.source);
+        if (data.source.startsWith('data:image/gif;')) return prepare(data.source, data.signal);
         const reader = await openAnimation(data.source);
         const recipe = { width: reader.width, height: reader.height, edits: [] }, duration = reader.duration;
-        reader.dispose?.(); return editAnimation(data.source, 0, duration / 1000, recipe);
+        reader.dispose?.(); return editAnimation(data.source, 0, duration / 1000, recipe, false, data.signal);
     }
     if (data.action === 'inspect') return inspectAnimation(data.source);
     if (data.action === 'stage') return editAnimation(data.source, data.start, data.end, data.composition, true, data.signal);
     if (data.action === 'edit') return editAnimation(data.source, data.start, data.end, data.composition, false, data.signal);
-    return trim(data.source, data.start, data.end);
+    return trim(data.source, data.start, data.end, false, null, data.signal);
 }

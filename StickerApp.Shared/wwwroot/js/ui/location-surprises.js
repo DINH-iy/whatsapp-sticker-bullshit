@@ -1,3 +1,4 @@
+import { trackRequest } from './foreground.js';
 // Country lookup is optional. Only a country code is kept for the current session;
 // the app never stores an IP address or asks for GPS access.
 const preferenceKey = 'stickers.locationSurprises';
@@ -40,6 +41,7 @@ async function getCountry() {
 
     pendingLookup?.abort();
     const controller = new AbortController();
+    const finishRequest = trackRequest(controller);
     pendingLookup = controller;
     const timeout = setTimeout(() => controller.abort(), 5000);
 
@@ -65,7 +67,7 @@ async function getCountry() {
         // An unavailable lookup must never stop someone using their stickers.
         return null;
     } finally {
-        clearTimeout(timeout);
+        finishRequest(); clearTimeout(timeout);
         if (pendingLookup === controller) pendingLookup = null;
     }
 }

@@ -13,6 +13,8 @@ public partial class LayerEditorDialog
     [Parameter] public Guid? PackId { get; set; }
     [Parameter] public bool StartWithText { get; set; }
     [Parameter] public bool StartWithShape { get; set; }
+    private bool IsPreparing(Sticker image) => StickerApp.Shared.Services.StickerPreparationService.NeedsPreparation(image) && Preparation.GetStatus(image)?.Error is null;
+    private IDisposable? preparationLease;
     private bool showShapes;
     private string shapeColor="#80d4b0", shapeOutlineColor="#1b1b1b";
     private double shapeThickness=0, shapeRounding=0;
@@ -48,7 +50,7 @@ public partial class LayerEditorDialog
         state.PreviewPlaying = !state.PreviewPlaying;
         await controller!.InvokeVoidAsync("preview", state.PreviewPlaying);
     });
-    private string PanelTitle => quickPanel switch { "border" => "Object border", "rotate" => "Rotate layer", "opacity" => "Layer opacity", "tint" => "Layer color", _ => "Size & position" };
+    private string PanelTitle => quickPanel switch { "border" => "Object border", "rotate" => "Rotate layer", "opacity" => "Layer opacity", "tint" => "Layer color", _ => "Transform" };
     private LayerPreview? Selected => state.Selected >= 0 && state.Selected < state.Layers.Count ? state.Layers[state.Selected] : null;
     private LayerPreview? TimelineLayer => Selected?.IsGif == true ? Selected : state.Layers.FirstOrDefault(layer => layer.IsGif);
     private static string Number(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
@@ -68,6 +70,7 @@ public partial class LayerEditorDialog
         }
         try
         {
+            preparationLease = await Preparation.SuspendForEditingAsync();
             layoutModule = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/editor-layout.js");
             layout = await layoutModule.InvokeAsync<EditorLayoutPreferences>("read");
             dialogs = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/dialog.js");
@@ -252,6 +255,7 @@ public partial class LayerEditorDialog
         showAddMenu = false;
         if (!Guid.TryParse(libraryImageId, out var id) || !Previews.TryGetValue(id, out var source)) return;
         var image = Images.First(image => image.Id == id);
+        if (IsPreparing(image)) throw new InvalidOperationException("Wait for sticker preparation to finish before adding this image.");
         if (image.Animated)
             source = await Store.ReadLayerAnimationAsync(id) ?? throw new InvalidOperationException("This animation source is unavailable. Import its GIF or animated WebP file again.");
         state = await controller!.InvokeAsync<LayerEditorState>("add", image.Name, source);
@@ -307,10 +311,11 @@ public partial class LayerEditorDialog
     }
     public async ValueTask DisposeAsync()
     {
+        preparationLease?.Dispose(); preparationLease = null;
         try
         {
             if (controller is not null) { await controller.InvokeVoidAsync("dispose"); await controller.DisposeAsync(); }
-            if (gifSession is not null) { await gifSession.InvokeVoidAsync("dispose"); await gifSession.DisposeAsync(); }
+            if (gifSession is not null) { await gifSession.InvokeVoidAsync("release"); await gifSession.DisposeAsync(); }
             if (gifTools is not null) await gifTools.DisposeAsync();
             if (module is not null) await module.DisposeAsync();
             if (layoutModule is not null) await layoutModule.DisposeAsync();

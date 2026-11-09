@@ -24,15 +24,17 @@
             </AnimationTimeline>
             <div class="video-import-options">
                 @if (!ClipReview) { <label>@L["GIF name"]<input @bind="name" maxlength="128" disabled="@converting" /></label> }
-                <label>@L["Frames per second"]<select @bind="fps" disabled="@converting"><option value="8">@L["8 · smaller file"]</option><option value="12">12</option><option value="20">@L["20 · smoother"]</option></select></label>
+                <label>@L["Frames per second"]<select @bind="fps" @bind:after="Validate" disabled="@converting"><option value="0" disabled="@(nativeFps <= 0)">@L["Follow source · native timing"] @(nativeFps > 0 ? $"({nativeFps:0.##} fps)" : L["· unavailable"])</option><option value="30">@L["30 · smoother"]</option><option value="8">@L["8 · smaller file"]</option><option value="12">12</option><option value="20">@L["20 · smoother"]</option></select></label>
             </div>
+            <p class="@(validClip ? "helper" : "notice notice-error")" role="status">@L[validationMessage] @if(validClip){<span> @frameCount @L["frames"]</span>}</p>
+            <p class="helper">@L["GIF timing is rounded to 10 milliseconds. Native timing is available for supported MP4/MOV files up to 50 fps. Final file size depends on the video content; it cannot be guaranteed before encoding."]</p>
             <HelpDisclosure Summary="@L["Video import help"]"><p class="helper">@L["Choose all or part of the video, up to 10 seconds. Conversion happens on your device, without sound. Videos up to 100 MB are supported when your device can play their format. The GIF fits within 512 × 512 without enlargement."]</p></HelpDisclosure>
         }
         @if (error is not null) { <p class="notice notice-error" role="alert">@L.Error(error)</p> }
     </div>
     <div class="dialog-actions">
         <button class="button" type="button" @onclick="Close" disabled="@saving">@L["Cancel"]</button>
-        <button class="button primary" type="button" @onclick="Convert" disabled="@(!ready || converting || string.IsNullOrWhiteSpace(name))"><Icon Name="check" />@L[ClipReview ? "Use clip" : "Create GIF"]</button>
+        <button class="button primary" type="button" @onclick="Convert" disabled="@(!ready || !validClip || converting || string.IsNullOrWhiteSpace(name))"><Icon Name="check" />@L[ClipReview ? "Use clip" : "Create GIF"]</button>
     </div>
 </dialog>
 @if (converting)
@@ -41,6 +43,7 @@
 }
 
 @code {
+    [Parameter] public bool LoadPicked { get; set; }
     [Parameter] public string ImportSource { get; set; } = "Pinterest";
     [Parameter] public Guid? PackId { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
@@ -56,7 +59,16 @@
     private double duration, start, end;
     private string name = "Video clip";
     private string? error;
-    private int fps = 12, progress;
+    private int fps = 30, progress, frameCount;
+    private double nativeFps;
+    private bool validClip;
+    private string validationMessage = "Checking clip…";
+    public sealed class ClipValidation { public bool Valid { get; set; } public int Frames { get; set; } public string Message { get; set; } = ""; }
+    private async Task Validate() {
+        if (controller is null || !ready) return;
+        var result = await controller.InvokeAsync<ClipValidation>("validate", start, end, fps);
+        validClip = result.Valid; frameCount = result.Frames; validationMessage = result.Message;
+    }
     private string[] thumbnails = [];
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -66,6 +78,7 @@
         module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/media/video/video-import.js");
         reference = DotNetObjectReference.Create(this);
         controller = await module.InvokeAsync<IJSObjectReference>("create", video, fileInput, editorRoot, reference);
+        if (LoadPicked) await controller.InvokeVoidAsync("loadPicked");
         if (InitialVideo is not null)
         {
             try
@@ -76,18 +89,18 @@
             catch (JSException exception) { if (!disposed) { error = exception.Message.Split('\n')[0]; loading = false; StateHasChanged(); } }
         }
     }
-    public sealed class VideoInfo { public string Name { get; set; } = "Video clip"; public double Duration { get; set; } public string[] Thumbnails { get; set; } = []; }
+    public sealed class VideoInfo { public string Name { get; set; } = "Video clip"; public double Duration { get; set; } public double NativeFps { get; set; } public int Width { get; set; } public int Height { get; set; } public string[] Thumbnails { get; set; } = []; }
     [JSInvokable] public void VideoLoading() { ready = false; loading = true; error = null; StateHasChanged(); }
-    [JSInvokable] public void VideoReady(VideoInfo info) { name = info.Name.Length > 128 ? info.Name[..128] : info.Name; duration = info.Duration; start = 0; end = Math.Min(10, duration); thumbnails = info.Thumbnails; ready = true; loading = false; StateHasChanged(); }
+    [JSInvokable] public async Task VideoReady(VideoInfo info) { name = info.Name.Length > 128 ? info.Name[..128] : info.Name; duration = info.Duration; start = 0; end = Math.Min(10, duration); thumbnails = info.Thumbnails; nativeFps = info.NativeFps; fps = nativeFps > 0 && nativeFps <= 50 ? 0 : 30; ready = true; loading = false; await Validate(); StateHasChanged(); }
     [JSInvokable] public void VideoFailed(string message) { error = message; loading = false; StateHasChanged(); }
     [JSInvokable] public void VideoPlayback(bool value) { playing = value; StateHasChanged(); }
     [JSInvokable] public void VideoProgress(int value) { progress = value; StateHasChanged(); }
-    private async Task ChangeStart(double value) { start = Math.Clamp(value, 0, Math.Max(0, duration - 0.1)); end = Math.Clamp(end, start + 0.1, Math.Min(duration, start + 10)); await controller!.InvokeVoidAsync("setRange", start, end); }
-    private async Task ChangeEnd(double value) { end = Math.Clamp(value, 0.1, duration); start = Math.Clamp(start, Math.Max(0, end - 10), end - 0.1); await controller!.InvokeVoidAsync("setRange", start, end); }
+    private async Task ChangeStart(double value) { start = Math.Clamp(value, 0, Math.Max(0, duration - 0.1)); end = Math.Clamp(end, start + 0.1, Math.Min(duration, start + 10)); await controller!.InvokeVoidAsync("setRange", start, end); await Validate(); }
+    private async Task ChangeEnd(double value) { end = Math.Clamp(value, 0.1, duration); start = Math.Clamp(start, Math.Max(0, end - 10), end - 0.1); await controller!.InvokeVoidAsync("setRange", start, end); await Validate(); }
     private async Task Preview() { try { await controller!.InvokeVoidAsync("preview", start, end); } catch (JSException) { error = "Could not play this video on this device."; } }
     private async Task Convert()
     {
-        if (controller is null || converting || !ready) return;
+        if (controller is null || converting || !ready || !validClip) return;
         converting = true; error = null; progress = 0;
         try
         {

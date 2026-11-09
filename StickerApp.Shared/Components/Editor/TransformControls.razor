@@ -1,0 +1,35 @@
+<section class="transform-control-card" aria-label="@L["Transform"]">
+    <div class="transform-size-row">
+        @if (Image)
+        {
+            <label>@L["Width"]<input type="number" aria-label="@L["Transform width"]" data-image-transform-property="imageWidth" min="1" max="512" value="@Number(Width)" /></label>
+            <label>@L["Height"]<input type="number" aria-label="@L["Transform height"]" data-image-transform-property="imageHeight" min="1" max="512" value="@Number(Height)" /></label>
+            <label>@L["Rotation"]<input type="number" aria-label="@L["Rotation value"]" data-image-transform-property="rotation" min="-180" max="180" value="@Number(Rotation)" /></label>
+        }
+        else
+        {
+            <label>@L["Width"]<input type="number" aria-label="@L["Width"]" data-layer-property="width" min="1" max="2048" value="@Number(Width)" /></label>
+            <label>@L["Height"]<input type="number" aria-label="@L["Height"]" data-layer-property="height" min="1" max="2048" value="@Number(Height)" /></label>
+            <label>@L["Rotation"]<input type="number" aria-label="@L["Rotation value"]" data-layer-property="rotation" min="-180" max="180" value="@Number(Rotation)" /></label>
+            <label>@L["X position"]<input type="number" aria-label="@L["X position"]" data-layer-property="x" min="-2048" max="2560" value="@Number(X)" /></label>
+            <label>@L["Y position"]<input type="number" aria-label="@L["Y position"]" data-layer-property="y" min="-2048" max="2560" value="@Number(Y)" /></label>
+        }
+    </div>
+    <div class="transform-options-row">
+        @if (Image) { <label class="rotation-snap-toggle"><input type="checkbox" data-image-resize-ratio checked="@KeepRatio" @onchange="e => KeepRatioChanged.InvokeAsync(e.Value is true)" />@L["Keep proportions"]</label> }
+        else { <label class="rotation-snap-toggle"><input type="checkbox" data-layer-ratio checked="@(KeepRatio || LockRatio)" disabled="@LockRatio" @onchange="e => KeepRatioChanged.InvokeAsync(e.Value is true)" />@L["Keep proportions"]</label> }
+        <RotationSnapControls />
+    </div>
+</section>
+@code {
+    [Parameter] public bool Image { get; set; }
+    [Parameter] public double Width { get; set; }
+    [Parameter] public double Height { get; set; }
+    [Parameter] public double Rotation { get; set; }
+    [Parameter] public double X { get; set; }
+    [Parameter] public double Y { get; set; }
+    [Parameter] public bool KeepRatio { get; set; } = true;
+    [Parameter] public bool LockRatio { get; set; }
+    [Parameter] public EventCallback<bool> KeepRatioChanged { get; set; }
+    private static string Number(double value) => value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+}

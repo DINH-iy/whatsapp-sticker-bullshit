@@ -1,3 +1,11 @@
+import { readVideoTiming, planFrames } from './video-timing.js';
+import { onForegroundChanged, requireForeground, startJob } from '../../ui/foreground.js';
+let pickedVideo;
+export function createPicker(input, reference) {
+    const choose = () => { if (!input.files?.[0]) return; pickedVideo = input.files[0]; input.value = ''; reference.invokeMethodAsync('Picked').catch(() => { pickedVideo = null; }); };
+    input.addEventListener('change', choose);
+    return { dispose() { input.removeEventListener('change', choose); } };
+}
 import { previewControls } from '../animation/animation-preview.js';
 const MAX_VIDEO_BYTES = 100 * 1024 * 1024;
 function waitFor(media,event,signal) {
@@ -17,7 +25,9 @@ async function seekFrame(video,time,signal) {
     if(video.readyState<2)await waitFor(video,'loadeddata',signal);
 }
 export function create(video,input,root,dotnet) {
+    let timing, outputWidth=0, outputHeight=0;
     let url,disposed=false,fileAbort,conversionAbort,converting=false,version=0,rangeEnd=0,nextSeek=null,seekWork=Promise.resolve();
+    const unwatchForeground=onForegroundChanged(active=>{if(!active){video.pause();fileAbort?.abort();conversionAbort?.abort();}});
     const notify=(method,...args)=>disposed?Promise.resolve():dotnet.invokeMethodAsync(method,...args);
     const fail=error=>{if(error.name!=='AbortError')return notify('VideoFailed',error.message);};
     function queueSeek(time){
@@ -40,18 +50,23 @@ export function create(video,input,root,dotnet) {
             url=URL.createObjectURL(file);video.src=url;video.load();await ready;
             if(!Number.isFinite(video.duration)||video.duration<0.1||!video.videoWidth||!video.videoHeight)throw new Error('Choose a video with a readable duration of at least 0.1 seconds.');
             if(current!==version||disposed)return;
+            timing=await readVideoTiming(file).catch(()=>null);
+            const outputScale=Math.min(1,512/Math.max(video.videoWidth,video.videoHeight));
+            outputWidth=Math.max(1,Math.round(video.videoWidth*outputScale)); outputHeight=Math.max(1,Math.round(video.videoHeight*outputScale));
             rangeEnd=Math.min(10,video.duration);
             const thumbs=[],canvas=document.createElement('canvas'),scale=Math.min(1,96/Math.max(video.videoWidth,video.videoHeight));
             canvas.width=Math.max(1,Math.round(video.videoWidth*scale));canvas.height=Math.max(1,Math.round(video.videoHeight*scale));
             for(let i=0;i<6;i++){await seekFrame(video,video.duration*i/6,fileAbort.signal);canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);thumbs.push(canvas.toDataURL('image/jpeg',0.65));}
             await seekFrame(video,0,fileAbort.signal);
-            if(current===version&&!disposed)await notify('VideoReady',{name:file.name.replace(/\.[^.]+$/,'')||'Video clip',duration:video.duration,thumbnails:thumbs});
-        }catch(error){if(current===version)await fail(error);}
+            if(current===version&&!disposed)await notify('VideoReady',{name:file.name.replace(/\.[^.]+$/,'')||'Video clip',duration:video.duration,thumbnails:thumbs,nativeFps:timing?.fps??0,width:outputWidth,height:outputHeight});
+        }catch(error){if(current===version&&!disposed){if(error.name==='AbortError')await notify('VideoFailed','Video loading stopped. Choose the video again when you return to the app.');else await fail(error);}}
     }
     const choose=()=>{if(input.files?.[0])loadFile(input.files[0]).catch(fail);};input.addEventListener('change',choose);
     return {
         // Also used by the browser regression fixture with a synthetic local video.
         loadFile,
+        async loadPicked(){const file=pickedVideo;pickedVideo=null;if(file)await loadFile(file);},
+        validate(start,end,fps){try{const frames=planFrames(start,end,fps,timing,outputWidth,outputHeight);return {valid:true,frames:frames.length,message:'Ready to create. Final compressed file size is checked during conversion and sticker preparation.'};}catch(error){return {valid:false,frames:0,message:error.message};}},
         async loadStream(stream,name='Pinterest video.mp4') {
             const bytes=await stream.arrayBuffer();
             if(disposed)return;
@@ -60,10 +75,12 @@ export function create(video,input,root,dotnet) {
         },
         setRange(start,end){rangeEnd=end;if(!converting&&(video.currentTime<start||video.currentTime>end))queueSeek(start).catch(fail);},
         async preview(start,end){rangeEnd=end;if(!video.paused){video.pause();return;}await seekWork;if(video.currentTime<start||video.currentTime>=end)await seekFrame(video,start,fileAbort?.signal);await video.play();},
-        async convert(start,end,fps=12){
+        async convert(start,end,fps=30){
+            requireForeground();
             if(converting||!url)throw new Error('Choose a video first.');
             if(!Number.isFinite(start)||!Number.isFinite(end)||start<0||end>video.duration+0.001||end-start<0.1||end-start>10.001)throw new Error('Choose a clip between 0.1 and 10 seconds, within the video.');
-            if(![8,12,20].includes(fps))throw new Error('Choose 8, 12, or 20 frames per second.');
+            const frames=planFrames(start,end,fps,timing,outputWidth,outputHeight);
+            const finishJob=startJob('Creating GIF…');
             converting=true;conversionAbort=new AbortController();video.pause();nextSeek=null;
             const signal=conversionAbort.signal;
             try{
@@ -72,18 +89,18 @@ export function create(video,input,root,dotnet) {
                 const scale=Math.min(1,512/Math.max(video.videoWidth,video.videoHeight)),canvas=document.createElement('canvas');
                 canvas.width=Math.max(1,Math.round(video.videoWidth*scale));canvas.height=Math.max(1,Math.round(video.videoHeight*scale));
                 const context=canvas.getContext('2d',{willReadFrequently:true}),encoder=createEncoder(canvas.width,canvas.height);
-                const count=Math.max(2,Math.ceil((end-start)*fps)),total=Math.round((end-start)*100),delay=total/count;
+                const count=frames.length;
                 for(let i=0;i<count;i++){
-                    signal.throwIfAborted();await seekFrame(video,start+(end-start)*i/count,signal);
+                    signal.throwIfAborted();await seekFrame(video,frames[i].time,signal);
                     context.drawImage(video,0,0,canvas.width,canvas.height);
-                    encoder.add(context.getImageData(0,0,canvas.width,canvas.height).data,(Math.round((i+1)*delay)-Math.round(i*delay))*10);
+                    encoder.add(context.getImageData(0,0,canvas.width,canvas.height).data,(Math.round((frames[i].end-start)*100)-Math.round((frames[i].time-start)*100))*10);
                     if(i%4===0||i===count-1)await notify('VideoProgress',Math.round((i+1)/count*100));
                     await new Promise(resolve=>setTimeout(resolve,0));
                 }
                 signal.throwIfAborted();return new Blob([encoder.finish()],{type:'image/gif'});
-            }finally{converting=false;conversionAbort=null;}
+            }finally{finishJob();converting=false;conversionAbort=null;}
         },
         cancel(){conversionAbort?.abort();},
-        dispose(){disposed=true;++version;fileAbort?.abort();conversionAbort?.abort();controls.dispose();input.removeEventListener('change',choose);video.pause();video.removeEventListener('timeupdate',update);video.removeEventListener('play',playback);video.removeEventListener('pause',playback);video.removeAttribute('src');video.load();if(url)URL.revokeObjectURL(url);}
+        dispose(){unwatchForeground();disposed=true;++version;fileAbort?.abort();conversionAbort?.abort();controls.dispose();input.removeEventListener('change',choose);video.pause();video.removeEventListener('timeupdate',update);video.removeEventListener('play',playback);video.removeEventListener('pause',playback);video.removeAttribute('src');video.load();if(url)URL.revokeObjectURL(url);}
     };
 }

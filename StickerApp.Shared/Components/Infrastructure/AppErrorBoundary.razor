@@ -1,0 +1,22 @@
+@inherits ErrorBoundary
+@inject AppLog Log
+@if (CurrentException is null)
+{
+    @ChildContent
+}
+else
+{
+    <section class="notice notice-error" role="alert">
+        <h2>@L["Something went wrong"]</h2>
+        <p>@L["Please contact the developer and send your diagnostic logs from Settings → Diagnostics."]</p>
+        <p>@L["Reference:"] @reference</p>
+        <a class="button primary" href="" data-enhance-nav="false">@L["Reload"]</a>
+        <button class="button" type="button" @onclick="OpenDiagnostics">@L["Open diagnostics"]</button>
+    </section>
+}
+@code {
+    [Inject] private NavigationManager Navigation { get; set; } = default!;
+    private string? reference;
+    protected override Task OnErrorAsync(Exception exception) { reference = Log.Error("Unexpected app error", exception); return Task.CompletedTask; }
+    private void OpenDiagnostics() { Recover(); Navigation.NavigateTo("settings#diagnostics"); }
+}

@@ -1,0 +1,24 @@
+<!doctype html><meta charset="utf-8"><h1>Foreground processing checks</h1><pre id="result">Running…</pre>
+<script type="module">
+const result=document.querySelector('#result');
+try {
+    const {createSession}=await import('/_content/StickerApp.Shared/js/media/animation/gif-editor.js');
+    const {watchJobs,requireForeground}=await import('/_content/StickerApp.Shared/js/ui/foreground.js');
+    const assert=(value,message)=>{if(!value)throw new Error(message);};
+    let jobs=[];
+    const watch=watchJobs({invokeMethodAsync:async(method,value)=>{jobs=value;}});
+    const session=createSession();
+    const source='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAAKAAAALAAAAAABAAEAAAIBRAA7';
+    const request=session.inspect(source).then(()=>false,()=>true);
+    assert(jobs.length===1,'Active animation must appear in processing menu');
+    window.stickerSetForeground(false);
+    assert(await request,'Backgrounding must cancel the active worker');
+    assert(jobs.length===0,'Cancelled job must leave the processing menu');
+    let blocked=false;try{requireForeground();}catch{blocked=true;}
+    assert(blocked,'New work must be rejected while backgrounded');
+    window.stickerSetForeground(true);
+    const info=await session.inspect(source);assert(info.frameCount===1,'Session must be reusable after foregrounding');
+    session.release();watch.dispose();
+    result.textContent='PASS: processing menu tracks active jobs; backgrounding cancels animation workers; hidden work is blocked; foreground retry succeeds; subscriptions are released.';
+} catch(error) {window.stickerSetForeground?.(true);result.textContent='FAIL: '+error.stack;}
+</script>

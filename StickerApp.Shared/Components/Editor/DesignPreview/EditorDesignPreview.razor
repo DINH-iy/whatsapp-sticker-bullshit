@@ -49,7 +49,7 @@
                         <label class="demo-value-label">@ValueLabel<input type="number" aria-label="@L["Preview tool value"]" min="@Minimum" max="@Maximum" @bind="amount" @bind:event="oninput" @bind:after="Adjust" /></label>
                         <input type="range" aria-label="@L["Preview tool slider"]" min="@Minimum" max="@Maximum" @bind="amount" @bind:event="oninput" @bind:after="Adjust" />
                     }
-                    @if (activeTool is "Draw" or "Color" or "Border") { <input type="color" aria-label="@L["Preview tool color"]" @bind="brushColor" /> }
+                    @if (activeTool is "Draw" or "Color" or "Border") { <ColorPicker @bind-Value="brushColor" Label="Preview tool color" /> }
                 }
                 else { <p class="helper">@L.Format("{0} options appear only while this tool is selected.", L[activeTool])</p> }
                 <div class="demo-tool-actions"><button class="button" @onclick="CancelTool">@L["Cancel"]</button><button class="button primary" @onclick="Apply">@L["Apply"]</button></div>
