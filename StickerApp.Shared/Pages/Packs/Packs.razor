@@ -1,4 +1,5 @@
 @inject AppLog Log
+@inject IJSRuntime JS
 @page "/"
 @inject LibraryStore Store
 @inject NavigationManager Navigation
@@ -25,6 +26,7 @@
 {
     <NewPackDialog Pack="@editingPack" OnSaved="PackDetailsSaved" OnCancel="() => editingPack = null" />
 }
+@if(deletingPack is not null){<DeletePackDialog Pack="deletingPack" Busy="busy" Error="@error" OnCancel="() => deletingPack=null" OnConfirm="DeletePack" />}
 @{ var visiblePacks = VisiblePacks; }
 <div class="toolbar browse-toolbar">
     <label class="browse-search">@L["Search"]<input type="search" class="search" aria-label="@L["Search packs"]" placeholder="@L["Search packs or publishers"]" @bind="search" @bind:event="oninput" /></label>
@@ -69,7 +71,7 @@
     {
         <article class="image-card pack-card" @key="pack.Id">
             <SpoilerPreview IsSpoiler="@library.IsNsfw(pack)" Name="@pack.Name">
-            <a class="pack-card-link" href="@($"packs/{pack.Id}")" aria-label="@L[$"Open {pack.Name}"]">
+            <a class="pack-card-link" href="@($"packs/{pack.Id}")" aria-label="@L.Format("Open {0}", pack.Name)">
                 <div class="pack-cover">
                     @if (covers.TryGetValue(pack.Id, out var cover))
                     {
@@ -90,7 +92,8 @@
                 <small class="image-file-summary">@L.Format("{0} stored", PackSize(pack)) · @L[pack.Public ? "Public" : "Private"]</small>
             </a>
             <div class="pack-card-actions">
-                <button class="button icon-button" type="button" disabled="@busy" @onclick="() => editingPack = pack" title="@L["Edit pack details"]" aria-label="@L[$"Edit details for {pack.Name}"]"><Icon Name="edit" /><span>@L["Edit details"]</span></button>
+                <button class="button icon-button" type="button" disabled="@busy" @onclick="() => editingPack = pack" title="@L["Edit pack details"]" aria-label="@L.Format("Edit details for {0}", pack.Name)"><Icon Name="edit" /><span>@L["Edit details"]</span></button>
+                <button class="button icon-button danger" type="button" disabled="@busy" @onclick="() => {error=null;deletingPack=pack;}" title="@L["Delete pack"]" aria-label="@L.Format("Delete pack {0}", pack.Name)"><Icon Name="trash" /></button>
             </div>
         </article>
     }

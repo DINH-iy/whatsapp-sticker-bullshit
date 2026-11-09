@@ -4,10 +4,11 @@
 @inject AppLog Log
 @inject StickerApp.Shared.Services.IFormFactor FormFactor
 
-<dialog @ref="dialog" class="folder-dialog layer-editor-dialog live-layer-editor live-editor live-tools-@(layout.ToolsPosition) live-controls-@(layout.ControlsPosition) live-size-@(layout.ButtonSize) @(Selected?.Text is not null ? "text-layer-selected" : "")" aria-labelledby="layers-title" @onkeydown="HandleKey" aria-busy="@(working || layerEditSource is not null ? "true" : "false")">
+<dialog @ref="dialog" class="folder-dialog layer-editor-dialog live-layer-editor live-editor live-tools-@(layout.ToolsPosition) live-controls-@(layout.ControlsPosition) live-size-@(layout.ButtonSize) @(Selected?.Text is not null ? "text-layer-selected" : "")" data-editor-labels="@L.EditorLabels()" aria-labelledby="layers-title" @onkeydown="HandleKey" aria-busy="@(working || layerEditSource is not null ? "true" : "false")">
     <div class="folder-dialog-heading">
         <h2 id="layers-title">@L["Layer editor"]</h2>
-        <AppDisclosure Class="layer-add-menu" @bind-Open="showAddMenu" SummaryClass="button" Popup="true"><Header><Icon Name="plus" />@L["Add"]</Header><ChildContent>
+        <EditorHelp Animated="@(TimelineLayer is not null)" Layers="true" />
+        <AppDisclosure Class="layer-add-menu" @bind-Open="showAddMenu" SummaryClass="button" Label="@L["Add layer"]" Popup="true"><Header><Icon Name="plus" /></Header><ChildContent>
     <div class="layer-add-options">
         <button class="button" type="button" @onclick="AddText" disabled="@(working || state.Layers.Count >= 10)"><Icon Name="text" />@L["Add text"]</button>
         <button class="button" type="button" @onclick="OpenShapes" disabled="@(working || layerEditSource is not null || state.Layers.Count>=10)"><Icon Name="shapes" />@L["Add shape"]</button>
@@ -26,9 +27,15 @@
     @if(showShapes)
     {
         <section class="shape-picker" aria-label="@L["Choose a shape"]">
-            <div class="shape-picker-heading"><h3>@L["Add shape"]</h3><label>@L["Fill color"]<input type="color" aria-label="@L["Shape fill color"]" @bind="shapeColor" /></label><button class="button icon-button" type="button" @onclick="() => showShapes=false" aria-label="@L["Close shape picker"]"><Icon Name="close" /></button></div>
-            <div class="shape-picker-grid">@foreach(var shape in Shapes){<button class="button" type="button" @onclick="() => AddShape(shape.Kind,shape.Name)" disabled="@working"><span class="shape-sample" style="color:@shapeColor" aria-hidden="true">@shape.Glyph</span><span>@L[shape.Name]</span></button>}</div>
-            <p class="helper">@L["Each shape becomes a separate layer. Use the handles to move, resize or rotate it; select Crop to cut it down."]</p>
+            <div class="shape-picker-heading"><h3>@L["Add shape"]</h3><button class="button icon-button" type="button" @onclick="() => showShapes=false" aria-label="@L["Close shape picker"]"><Icon Name="close" /></button></div>
+            <div class="shape-style-controls">
+                <label class="toggle-row"><input type="checkbox" @bind="shapeFilled" @bind:after="EnsureShapeOutline" />@L["Filled shape"]</label>
+                @if(shapeFilled){<label>@L["Fill color"]<input type="color" aria-label="@L["Shape fill color"]" @bind="shapeColor" /></label>}
+                <label>@L["Outline thickness"]<input type="number" inputmode="decimal" min="0" max="64" step="0.5" @bind="shapeThickness" /></label>
+                <label>@L["Corner rounding"]<input type="number" inputmode="decimal" min="0" max="100" step="1" @bind="shapeRounding" /></label>
+                <label>@L["Outline color"]<input type="color" aria-label="@L["Shape outline color"]" @bind="shapeOutlineColor" /></label>
+            </div>
+            <div class="shape-picker-grid">@foreach(var shape in Shapes){<button class="button" type="button" @onclick="() => AddShape(shape.Kind,shape.Name)" disabled="@(working || !shapeFilled && shapeThickness<=0)" aria-label="@L[shape.Name]" title="@L[shape.Name]"><ShapePreview Kind="@shape.Kind" Fill="@(shapeFilled?shapeColor:"none")" Stroke="@shapeOutlineColor" Thickness="@shapeThickness" Rounding="@shapeRounding" /></button>}</div>
         </section>
     }
     @if (loading) { <p class="status-info" role="status"><span class="feedback-spinner" aria-hidden="true"></span> @L.Message(progress)</p> }
@@ -40,9 +47,9 @@
                     <div class="editor-viewport"><div class="layer-canvas-wrap"><canvas @ref="canvas" aria-label="@L["Layer canvas. Drag to move; resize and rotation handles surround the selected layer."]" /></div></div>
                     @if (quickPanel != "" && Selected is { } adjustment)
                     {
-                        <EditorToolDock Title="@PanelTitle" Disabled="@working" OnApply="ApplyQuickTool" OnCancel="() => confirmQuickToolCancel = true">
+                        <EditorToolDock Title="@PanelTitle" Disabled="@working" OnApply="ApplyQuickTool" OnCancel="RequestQuickToolCancel">
                             <fieldset disabled="@working" class="layer-adjustments">
-                                <EditorAdjustments Tool="@quickPanel" Value="@adjustment" Disabled="@working" @bind-KeepRatio="keepRatio"
+                                <EditorAdjustments Tool="@quickPanel" Value="@adjustment" LockRatio="@adjustment.IsGroup" Disabled="@working" @bind-KeepRatio="keepRatio"
                                                    OnRotateBy="RotateBy" OnRotation="SetRotation" OnOpacity="SetOpacity" OnTint="Tint" OnHue="SetHue" OnColorStrength="SetColorStrength" />
                             </fieldset>
                         </EditorToolDock>
@@ -52,7 +59,6 @@
                     <button class="button icon-button" type="button" @onclick='() => Action("undo")' disabled="@(working || quickPanel != "" || !state.CanUndo)" aria-label="@L["Undo"]" title="@L["Undo"]"><Icon Name="undo" /></button>
                     <button class="button icon-button" type="button" @onclick='() => Action("redo")' disabled="@(working || quickPanel != "" || !state.CanRedo)" aria-label="@L["Redo"]" title="@L["Redo"]"><Icon Name="redo" /></button>
                     <EditorViewControls />
-                    <EditorHelp Animated="@(TimelineLayer is not null)" Layers="true" />
                     <EditorPopup Disabled="@(working || quickPanel != "")">
         <label class="toggle-row editor-spoiler-toggle"><input type="checkbox" @bind="nsfw" disabled="@working" />@L["NSFW spoiler"]</label>
         <label for="composition-name">@L["Sticker name"]</label>
@@ -70,23 +76,25 @@
                     @switch (layerCategory)
                     {
                         case "cutout":
-                            <button class="button" type="button" data-layer-pixel-tool @onclick='() => EditLayerImage("crop")' disabled="@(working || layerEditSource is not null || Selected is null || Selected.Text is not null)"><Icon Name="crop" /><span>@L["Crop"]</span></button>
-                            <button class="button" type="button" data-layer-pixel-tool @onclick='() => EditLayerImage("lasso")' disabled="@(working || layerEditSource is not null || Selected is null || Selected.Text is not null)"><Icon Name="lasso" /><span>@L["Trace cutout"]</span></button>
-                            <button class="button" type="button" data-layer-pixel-tool @onclick='() => EditLayerImage("erase")' disabled="@(working || layerEditSource is not null || Selected is null || Selected.Text is not null)"><Icon Name="eraser" /><span>@L["Eraser"]</span></button>
-                            <button class="button" type="button" data-layer-pixel-tool @onclick='() => EditLayerImage("wand")' disabled="@(working || layerEditSource is not null || Selected is null || Selected.Text is not null)"><Icon Name="wand" /><span>@L["Magic wand"]</span></button>
+                            <button class="button" type="button" data-layer-pixel-tool @onclick='() => EditLayerImage("crop")' disabled="@(working || layerEditSource is not null || Selected is null || Selected.Text is not null || Selected.IsGroup)"><Icon Name="crop" /><span>@L["Crop"]</span></button>
+                            <button class="button" type="button" data-layer-pixel-tool @onclick='() => EditLayerImage("lasso")' disabled="@(working || layerEditSource is not null || Selected is null || Selected.Text is not null || Selected.IsGroup)"><Icon Name="lasso" /><span>@L["Trace cutout"]</span></button>
+                            <button class="button" type="button" data-layer-pixel-tool @onclick='() => EditLayerImage("erase")' disabled="@(working || layerEditSource is not null || Selected is null || Selected.Text is not null || Selected.IsGroup)"><Icon Name="eraser" /><span>@L["Eraser"]</span></button>
+                            <button class="button" type="button" data-layer-pixel-tool @onclick='() => EditLayerImage("wand")' disabled="@(working || layerEditSource is not null || Selected is null || Selected.Text is not null || Selected.IsGroup)"><Icon Name="wand" /><span>@L["Magic wand"]</span></button>
                             break;
                         case "draw":
-                            <button class="button" type="button" data-layer-pixel-tool @onclick='() => EditLayerImage("draw")' disabled="@(working || layerEditSource is not null || Selected is null || Selected.Text is not null)"><Icon Name="edit" /><span>@L["Draw"]</span></button>
-                            <button class="button" type="button" data-layer-tool="border" aria-expanded="@(quickPanel == "border" ? "true" : "false")" @onclick='() => ToggleTool("border")' disabled="@(working || layerEditSource is not null || Selected is null)"><Icon Name="image" /><span>@L["Object border"]</span></button>
+                            <button class="button" type="button" data-layer-pixel-tool @onclick='() => EditLayerImage("draw")' disabled="@(working || layerEditSource is not null || Selected is null || Selected.Text is not null || Selected.IsGroup)"><Icon Name="edit" /><span>@L["Draw"]</span></button>
+                            <button class="button" type="button" data-layer-tool="border" aria-expanded="@(quickPanel == "border" ? "true" : "false")" @onclick='() => ToggleTool("border")' disabled="@(working || layerEditSource is not null || Selected is null || Selected.IsGroup)"><Icon Name="image" /><span>@L["Object border"]</span></button>
                             break;
                         case "adjust":
                             <button class="button" type="button" data-layer-tool="transform" aria-expanded="@(quickPanel == "transform" ? "true" : "false")" @onclick='() => ToggleTool("transform")' disabled="@(working || layerEditSource is not null || Selected is null)"><Icon Name="crop" /><span>@L["Size / pos."]</span></button>
                             <button class="button" type="button" data-layer-tool="rotate" aria-expanded="@(quickPanel == "rotate" ? "true" : "false")" @onclick='() => ToggleTool("rotate")' disabled="@(working || layerEditSource is not null || Selected is null)"><Icon Name="rotate" /><span>@L["Rotate"]</span></button>
                             <button class="button" type="button" data-layer-tool="opacity" aria-expanded="@(quickPanel == "opacity" ? "true" : "false")" @onclick='() => ToggleTool("opacity")' disabled="@(working || layerEditSource is not null || Selected is null)"><Icon Name="opacity" /><span>@L["Opacity"]</span></button>
-                            <button class="button" type="button" data-layer-tool="tint" aria-expanded="@(quickPanel == "tint" ? "true" : "false")" @onclick='() => ToggleTool("tint")' disabled="@(working || layerEditSource is not null || Selected is null)"><Icon Name="palette" /><span>@L["Color"]</span></button>
+                            <button class="button" type="button" data-layer-tool="tint" aria-expanded="@(quickPanel == "tint" ? "true" : "false")" @onclick='() => ToggleTool("tint")' disabled="@(working || layerEditSource is not null || Selected is null || Selected.IsGroup)"><Icon Name="palette" /><span>@L["Color"]</span></button>
                             <button class="button" type="button" @onclick='() => Action("flip")' disabled="@(working || layerEditSource is not null || Selected is null)" title="@L["Flip selected layer"]"><Icon Name="flip" /><span>@L["Flip"]</span></button>
                             break;
                         case "layers":
+                            <button class="button" type="button" @onclick="GroupLayers" disabled="@(working || quickPanel != "" || state.MarkedCount < 2)"><Icon Name="layers" /><span>@L["Group selected"]</span></button>
+                            <button class="button" type="button" @onclick="UngroupLayers" disabled="@(working || quickPanel != "" || Selected?.IsGroup != true)"><Icon Name="layers" /><span>@L["Ungroup"]</span></button>
                             <button class="button" type="button" @onclick='() => Action("duplicate")' disabled="@(working || layerEditSource is not null || Selected is null || state.Layers.Count >= 10)" title="@L["Duplicate selected layer"]"><Icon Name="copy" /><span>@L["Duplicate"]</span></button>
                             <button class="button" type="button" @onclick='() => Action("front")' disabled="@(working || layerEditSource is not null || Selected is null || state.Selected == state.Layers.Count - 1)" title="@L["Bring selected layer forward"]"><Icon Name="up" /><span>@L["Forward"]</span></button>
                             <button class="button" type="button" @onclick='() => Action("back")' disabled="@(working || layerEditSource is not null || Selected is null || state.Selected == 0)" title="@L["Send selected layer backward"]"><Icon Name="down" /><span>@L["Backward"]</span></button>
@@ -132,6 +140,7 @@
             }
             <AppDisclosure Class="editor-details live-layer-stack" Open="@(layerCategory == "layers")"><Header>@L.Format("Layers ({0}) · top is front", state.Layers.Count)</Header><ChildContent>
             @if (state.Layers.Count == 0) { <p class="helper">@L["Add an image to start your sticker."]</p> }
+            <p class="helper layer-group-hint">@L["Select the checkboxes beside layers, then choose Group selected. Ungroup to edit individual contents."]</p>
             <div class="layer-stack" role="group" aria-label="@L["Layer stack"]">
                 @for (var index = state.Layers.Count - 1; index >= 0; index--)
                 {
@@ -139,11 +148,12 @@
                     var layer = state.Layers[index];
                     <div @key="layer.Id" class="layer-row" data-layer-row="@layer.Id">
                         <div class="layer-row-main">
+                            <input class="layer-group-checkbox" type="checkbox" checked="@layer.Marked" @onchange="() => MarkLayer(layerIndex)" disabled="@(working || quickPanel != "" || layerEditSource is not null)" aria-label="@L.Format("Select {0} for grouping", layer.Name)" />
                             <button class="layer-drag-handle" type="button" data-layer-grip aria-label="Reorder @layer.Name" title="@L["Drag to reorder; arrow keys also work"]" disabled="@(working || layerEditSource is not null)"><Icon Name="grip" /></button>
                             <button class="layer-stack-item @(state.Selected == index ? "selected-tool" : "")" type="button"
                                     aria-pressed="@(state.Selected == index ? "true" : "false")" @onclick="() => Select(layerIndex)" disabled="@(working || layerEditSource is not null)">
                                 <img class="layer-thumbnail" src="@layer.Thumbnail" alt="" />
-                                <span>@layer.Name</span><small>@L[layer.IsGif ? "Animated · " : ""]@Math.Round(layer.Opacity * 100)%</small>
+                                <span>@if(layer.IsGroup){<Icon Name="layers" />}@layer.Name</span><small>@if(layer.IsGroup){@L.Format("{0} members · ", layer.MemberCount)}@L[layer.IsGif ? "Animated · " : ""]@Math.Round(layer.Opacity * 100)%</small>
                             </button>
                         </div>
 
@@ -153,7 +163,7 @@
             @if (Selected is { } current)
             {
                 <div class="layer-selected-preview" aria-label="@L["Selected layer preview"]">
-                    <img src="@current.Thumbnail" alt="@L[$"Preview of {current.Name}"]" />
+                    <img src="@current.Thumbnail" alt="@L.Format("Preview of {0}", current.Name)" />
                     <div><small>@L["Selected layer"]</small><strong>@current.Name</strong><small>Layer @(state.Selected + 1) · @Math.Round(current.Opacity * 100)% opacity</small></div>
                 </div>
 

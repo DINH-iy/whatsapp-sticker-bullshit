@@ -1,0 +1,28 @@
+<svg class="shape-sample" viewBox="0 0 512 512" aria-hidden="true" stroke-linejoin="@(Rounding>0?"round":"miter")">
+    <g class="shape-preview-halo" fill="none" stroke="var(--text)" stroke-width="@(PreviewThickness+24)" opacity=".65">@Geometry</g>
+    <g fill="@Fill" stroke="@(Thickness>0 || Fill=="none" ? Stroke : "none")" stroke-width="@PreviewThickness">@Geometry</g>
+    @if(Kind=="cube" && Fill!="none"){<path d="M256 32 464 144 256 256 48 144Z" fill="white" fill-opacity=".22" stroke="none" /><path d="M256 256 464 144V368L256 480Z" fill="black" fill-opacity=".22" stroke="none" />}
+</svg>
+@code {
+    // Keep thin/dark strokes legible in the 42px picker without changing exported artwork.
+    private double PreviewThickness=>Math.Max(24,Thickness);
+    private RenderFragment Geometry=> @<g>
+    @switch(Kind)
+    {
+        case "circle": <circle cx="256" cy="256" r="224" /> break;
+        case "square": <rect x="32" y="32" width="448" height="448" rx="@Rounding" /> break;
+        case "triangle": <path d="M256 32 480 480H32Z" /> break;
+        case "star": <path d="M256 32 311 180 469 187 345 285 388 437 256 350 124 437 167 285 43 187 201 180Z" /> break;
+        case "heart": <path d="M256 468C218 430 24 294 32 168C40 36 190 12 256 128C322 12 472 36 480 168C488 294 294 430 256 468Z" /> break;
+        case "arrow": <path d="M32 176H288V48L480 256 288 464V336H32Z" /> break;
+        case "cube":
+            <path d="M256 32 464 144 256 256 48 144ZM48 144 256 256V480L48 368ZM256 256 464 144V368L256 480Z" />
+            break;
+    }
+    </g>;
+    [Parameter] public string Kind { get; set; }="circle";
+    [Parameter] public string Fill { get; set; }="#80d4b0";
+    [Parameter] public string Stroke { get; set; }="#1b1b1b";
+    [Parameter] public double Thickness { get; set; }
+    [Parameter] public double Rounding { get; set; }
+}

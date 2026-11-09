@@ -1,3 +1,5 @@
+import { cloneLayers, leafLayers, groupLayers, transformGroup } from './layer-groups.js';
+import { editorLabel } from '../shared/editor-language.js';
 import { drawLayerArtwork } from '../effects/object-outline.js';
 import { editorView } from '../shared/editor-view.js';
 import { renderText, defaultText, validateTextFont } from './text-layers.js';
@@ -40,7 +42,7 @@ export function create(canvas, reference) {
         const rotating = name === 'rotate';
         button.type = 'button';
         button.className = `layer-handle${rotating ? ' layer-rotate-handle' : ''}`;
-        button.setAttribute('aria-label', rotating ? 'Rotate selected layer' : `Resize layer ${name}`);
+        button.setAttribute('aria-label', rotating ? editorLabel(canvas,'Rotate selected layer') : editorLabel(canvas,'Resize layer {0}',editorLabel(canvas,name)));
         button.dataset.tapFeedback = 'off';
         const mark = rotating ? rotationGrip() : document.createElement('span');
         mark.setAttribute('aria-hidden', 'true');
@@ -53,18 +55,20 @@ export function create(canvas, reference) {
     });
     const root = canvas.closest('dialog');
     let editingControl = null, notifyTimer, dialDrag = null, keepProportions = true;
-    const proportions = () => root.querySelector('[data-adjustment-scope="layer"] [data-layer-ratio]')?.checked ?? keepProportions;
+    const proportions = () => active()?.children?.length ? true : root.querySelector('[data-adjustment-scope="layer"] [data-layer-ratio]')?.checked ?? keepProportions;
     const blockCancel = event => event.preventDefault();
     root.addEventListener('cancel', blockCancel);
     canvas.width = canvas.height = size;
     let layers = [], selected = -1, undo = [], redo = [], drag = null, disposed = false;
     let toolCheckpoint = null;
+    const groupSelection = new Set(), groupFrames = new Map();
+    const syncGroups = () => { for (const layer of layers.filter(item => item.children?.length)) { const before = groupFrames.get(layer.id); if (before) transformGroup(layer, before); groupFrames.set(layer.id, { ...layer }); } };
     const images = new Map(), tints = new Map(), thumbnails = new WeakMap(), gifs = new Map();
     let animationFrame, animationTime = 0, playbackOrigin = performance.now(), exporting = false, paused = false, pausedTime = 0, playbackOffset = 0, playbackRate = 1;
     const elapsed = () => paused ? pausedTime : playbackOffset + (performance.now() - playbackOrigin) * playbackRate;
     const controls = previewControls(root, {
         seek(seconds) {
-            const layer = active()?.gifSource ? active() : layers.find(layer => layer.gifSource); if (!layer) return;
+            const layer = active()?.gifSource ? active() : leafLayers(layers).find(layer => layer.gifSource); if (!layer) return;
             pausedTime = Math.max(0, (clamp(seconds, layer.trimStart, layer.trimEnd - 0.001) - layer.trimStart) * 1000);
             paused = true; cancelAnimationFrame(animationFrame); animationFrame = undefined;
             render(); reference.invokeMethodAsync('PreviewChanged', false).catch(() => {});
@@ -77,25 +81,30 @@ export function create(canvas, reference) {
     });
     function play(now) {
         animationFrame = undefined;
-        if (disposed || exporting || paused || !layers.some(layer => layer.gifSource)) return;
+        if (disposed || exporting || paused || !leafLayers(layers).some(layer => layer.gifSource)) return;
         if (now - animationTime >= 50) { animationTime = now; render(); }
         animationFrame = requestAnimationFrame(play);
     }
     function animate() { if (!animationFrame && !disposed && !exporting) animationFrame = requestAnimationFrame(play); }
     const fontRegistry = new Map();
-    const sourceSize = layer => layer.source.length + (layer.gifSource?.length ?? 0) + (layer.text?.fontData?.length ?? 0);
-    const snapshot = () => ({ layers: layers.map(layer => ({ ...layer })), selected });
+    const sourceSize = layer => layer.children?.length ? layer.children.reduce((sum, child) => sum + sourceSize(child), 0) : layer.source.length + (layer.gifSource?.length ?? 0) + (layer.text?.fontData?.length ?? 0);
+    const snapshot = () => ({ layers: cloneLayers(layers), selected });
     const remember = () => {
         undo.push(snapshot()); if (undo.length > 20) undo.shift(); redo = [];
-        const retained = new Set([...layers, ...undo.flatMap(item => item.layers)].map(layer => layer.source));
+        const retained = new Set(leafLayers([...layers, ...undo.flatMap(item => item.layers)]).map(layer => layer.source));
         for (const source of images.keys()) if (!retained.has(source)) images.delete(source);
-        const retainedIds = new Set([...layers, ...undo.flatMap(item => item.layers)].map(layer => layer.id));
+        const retainedIds = new Set(leafLayers([...layers, ...undo.flatMap(item => item.layers)]).map(layer => layer.id));
         for (const id of tints.keys()) if (!retainedIds.has(id)) tints.delete(id);
-        const retainedAnimations = new Set([...layers, ...undo.flatMap(item => item.layers)].map(layer => layer.gifSource));
+        const retainedAnimations = new Set(leafLayers([...layers, ...undo.flatMap(item => item.layers)]).map(layer => layer.gifSource));
         for (const source of gifs.keys()) if (!retainedAnimations.has(source)) { gifs.get(source).reader.dispose?.(); gifs.delete(source); }
     };
     const active = () => layers[selected];
     function thumbnail(layer) {
+        if (layer.children?.length) {
+            const preview = document.createElement('canvas'); preview.width = preview.height = 128;
+            const ctx = preview.getContext('2d'); ctx.scale(.25,.25);
+            drawLayers(ctx, leafLayers([layer])); return preview.toDataURL('image/png');
+        }
         const image = images.get(layer.source);
         if (!image) return '';
         if (!thumbnails.has(image)) {
@@ -108,8 +117,13 @@ export function create(canvas, reference) {
         }
         return thumbnails.get(image);
     }
-    const state = () => ({ layers: layers.map(({ source, gifSource, ...layer }) => ({ ...layer, text: layer.text ? {...layer.text,fontData:null} : null, isGif: !!gifSource, gifThumbnails: gifs.get(gifSource)?.thumbnails ?? [], thumbnail: thumbnail({ source }) })),
-        selected, canUndo: undo.length > 0, canRedo: redo.length > 0, previewPlaying: !paused });
+    const state = () => ({ layers: layers.map(layer => {
+        const {source,gifSource,children,...metadata}=layer;
+        return {...metadata, text:layer.text?{...layer.text,fontData:null}:null,
+            isGroup:!!children?.length, memberCount:children?.length??0, marked:groupSelection.has(layer.id),
+            isGif:!!gifSource, gifThumbnails:gifs.get(gifSource)?.thumbnails??[], thumbnail:thumbnail(layer)};
+    }), selected, canUndo:undo.length>0, canRedo:redo.length>0, previewPlaying:!paused,
+        markedCount:layers.filter(layer=>groupSelection.has(layer.id)).length });
     const notify = () => { if (!disposed) return reference.invokeMethodAsync('LayersChanged', state()); };
     const decode = async source => { const image = new Image(); image.src = source; await image.decode(); return image; };
     const point = event => {
@@ -135,8 +149,8 @@ export function create(canvas, reference) {
             handle.button.style.left = `${clamp(p.x, inset, size - inset) / size * 100}%`;
             handle.button.style.top = `${clamp(p.y, inset, size - inset) / size * 100}%`;
             handle.button.title = handle.rotating
-                ? `Rotate: ${Math.round(layer.rotation)}°. Drag or use arrow keys.`
-                : `Resize: ${Math.round(layer.width)} × ${Math.round(layer.height)}. Drag or use arrow keys.`;
+                ? editorLabel(canvas,'Rotate: {0}°. Drag or use arrow keys.',Math.round(layer.rotation))
+                : editorLabel(canvas,'Resize: {0} × {1}. Drag or use arrow keys.',Math.round(layer.width),Math.round(layer.height));
             if (!handle.rotating) {
                 const angle = Math.atan2(handle.y, handle.x) + layer.rotation * Math.PI / 180;
                 const direction = ((Math.round(angle / (Math.PI / 4)) % 4) + 4) % 4;
@@ -144,9 +158,8 @@ export function create(canvas, reference) {
             }
         }
     }
-    function render(selection = true) {
-        context.clearRect(0, 0, size, size);
-        for (const layer of layers) {
+    function drawLayers(target, artwork) {
+        for (const layer of artwork) {
             const image = images.get(layer.source);
             if (!image) continue;
             let source = image;
@@ -166,15 +179,20 @@ export function create(canvas, reference) {
                 }
                 source = cached.image;
             }
-            context.save();
-            context.globalAlpha = layer.opacity;
-            context.translate(layer.x, layer.y); context.rotate(layer.rotation * Math.PI / 180);
-            context.scale(layer.flipX ? -1 : 1, 1);
-            drawLayerArtwork(context,source,layer);
-            context.restore();
+            target.save();
+            target.globalAlpha = layer.opacity;
+            target.translate(layer.x, layer.y); target.rotate(layer.rotation * Math.PI / 180);
+            target.scale(layer.flipX ? -1 : 1, 1);
+            drawLayerArtwork(target,source,layer);
+            target.restore();
         }
+    }
+    function render(selection = true) {
+        syncGroups();
+        context.clearRect(0, 0, size, size);
+        drawLayers(context, leafLayers(layers));
         const layer = active();
-        const clip = layer?.gifSource ? layer : layers.find(item => item.gifSource);
+        const clip = layer?.gifSource ? layer : leafLayers(layers).find(item => item.gifSource);
         if (clip) controls.update(clip.trimStart + elapsed() % Math.max(20, (clip.trimEnd - clip.trimStart) * 1000) / 1000);
         placeHandles(layer, selection);
         if (layer) {
@@ -306,7 +324,7 @@ export function create(canvas, reference) {
         } else {
             if (!ranges[property] || !Number.isFinite(value)) throw new Error('Enter a valid layer adjustment.');
             if (record) remember(); value = clamp(value, ...ranges[property]);
-            if (keepRatio && (property === 'width' || property === 'height')) {
+            if ((keepRatio || layer.children?.length) && (property === 'width' || property === 'height')) {
                 const other = property === 'width' ? 'height' : 'width';
                 const ratio = layer[other] / layer[property];
                 value = Math.min(value, 2048 / ratio);
@@ -320,7 +338,7 @@ export function create(canvas, reference) {
         const control = event.target;
         if (!control.closest('[data-adjustment-scope="layer"]') && !control.dataset?.gifBound) return;
         const property = control.dataset?.layerProperty;
-        const clip = active()?.gifSource ? active() : layers.find(item => item.gifSource);
+        const clip = active()?.gifSource ? active() : leafLayers(layers).find(item => item.gifSource);
         if (control.dataset?.gifBound && clip) {
             let value = Number(control.value); if (!Number.isFinite(value)) return;
             if (editingControl !== control) { remember(); editingControl = control; }
@@ -471,10 +489,11 @@ export function create(canvas, reference) {
             else if (!playing && !paused) { pausedTime = elapsed(); paused = true; cancelAnimationFrame(animationFrame); animationFrame = undefined; render(false); }
         },
         beginTool() { toolCheckpoint = { document: snapshot(), undo: [...undo], redo: [...redo] }; },
+        hasToolChanges() { return !!toolCheckpoint && JSON.stringify(layers)!==JSON.stringify(toolCheckpoint.document.layers); },
         commitTool() { toolCheckpoint = null; return state(); },
         cancelTool() {
             if (toolCheckpoint) {
-                layers = toolCheckpoint.document.layers; selected = toolCheckpoint.document.selected;
+                layers = cloneLayers(toolCheckpoint.document.layers); groupFrames.clear(); selected = toolCheckpoint.document.selected;
                 undo = toolCheckpoint.undo; redo = toolCheckpoint.redo; toolCheckpoint = null;
                 render();
             }
@@ -483,14 +502,15 @@ export function create(canvas, reference) {
         focusPanel() { render(); const panel = root.querySelector('.layer-tool-panel'); panel?.focus({ preventScroll: true }); },
         rotateBy(degrees) { return active() ? update('rotation', wrapAngle(active().rotation + degrees), false) : state(); },
         async open(composition) {
-            layers = []; selected = -1; undo = []; redo = []; images.clear(); tints.clear(); for (const gif of gifs.values()) gif.reader.dispose?.(); gifs.clear();
+            layers = []; groupFrames.clear(); groupSelection.clear(); selected = -1; undo = []; redo = []; images.clear(); tints.clear(); for (const gif of gifs.values()) gif.reader.dispose?.(); gifs.clear();
             if (composition) {
-                for (const layer of composition.layers) {
+                for (const layer of leafLayers(composition.layers)) {
                     const image = await decode(layer.source);
                     if (disposed) return;
-                    layers.push({ hue: 0, colorStrength: 1, borderWidth:0,borderColor:'#ffffff', ...layer }); images.set(layer.source, image);
+                    images.set(layer.source, image);
                     if (layer.gifSource && !gifs.has(layer.gifSource)) gifs.set(layer.gifSource, await openGif(layer.gifSource));
                 }
+                layers = cloneLayers(composition.layers);
                 selected = layers.length - 1;
             }
             playbackOffset = pausedTime = 0; playbackOrigin = performance.now(); paused = false; render(); animate(); return state();
@@ -544,19 +564,36 @@ export function create(canvas, reference) {
             }
             render(); return state();
         },
+        mark(index) { if(layers[index]) { const id=layers[index].id; if(groupSelection.has(id))groupSelection.delete(id);else groupSelection.add(id); }return state(); },
+        group(name='Group') {
+            const items=layers.filter(layer=>groupSelection.has(layer.id)); if(items.length<2)return state();
+            const group=groupLayers(items,`group-${Date.now()}-${Math.random().toString(36).slice(2)}`,name);
+            remember(); const last=layers.lastIndexOf(items.at(-1));
+            layers=layers.flatMap((layer,index)=>index===last?[group]:groupSelection.has(layer.id)?[]:[layer]);
+            groupSelection.clear(); selected=layers.indexOf(group);render();return state();
+        },
+        ungroup() {
+            const group=active();if(!group?.children?.length)return state();
+            if(layers.length-1+group.children.length>maxLayers)throw new Error('Ungrouping would exceed 10 layers. Remove other layers or split the group first.');
+            remember(); layers.splice(selected,1,...leafLayers([group]));groupFrames.delete(group.id);groupSelection.clear();render();return state();
+        },
         select(index) { editingControl = null; if (layers[index]) selected = index; render(); return state(); },
         update,
         action(action) {
             editingControl = null;
-            if (action === 'undo' && undo.length) { redo.push(snapshot()); const saved = undo.pop(); layers = saved.layers; selected = saved.selected; }
-            else if (action === 'redo' && redo.length) { undo.push(snapshot()); const saved = redo.pop(); layers = saved.layers; selected = saved.selected; }
+            if (action === 'undo' && undo.length) { redo.push(snapshot()); const saved = undo.pop(); layers = cloneLayers(saved.layers); groupFrames.clear(); selected = saved.selected; }
+            else if (action === 'redo' && redo.length) { undo.push(snapshot()); const saved = redo.pop(); layers = cloneLayers(saved.layers); groupFrames.clear(); selected = saved.selected; }
             else if (active()) {
                 const layer = active();
                 if (action === 'duplicate') {
                     if (layers.length >= maxLayers || layers.reduce((sum, item) => sum + sourceSize(item), sourceSize(layer)) > maxSources)
                         throw new Error('This composition has reached its layer or image-size limit.');
                     remember(); const id = `layer-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-                    layers.splice(selected + 1, 0, { ...layer, id, x: clamp(layer.x + 12, -2048, 2560), y: clamp(layer.y + 12, -2048, 2560) });
+                    const copy = structuredClone(layer); copy.id=id;
+                    for(const child of copy.children??[])child.id=`${id}-${child.id}`.slice(0,64);
+                    if(copy.children?.length)groupFrames.set(id,{...copy});
+                    copy.x=clamp(copy.x+12,-2048,2560);copy.y=clamp(copy.y+12,-2048,2560);
+                    layers.splice(selected + 1, 0, copy);
                     selected++;
                 } else if (action === 'front' && selected < layers.length - 1) {
                     remember(); layers.splice(selected, 1); layers.splice(++selected, 0, layer);
@@ -574,10 +611,10 @@ export function create(canvas, reference) {
             exporting = true; cancelAnimationFrame(animationFrame); animationFrame = undefined;
             render(false);
             try {
-                if (!layers.some(layer => layer.gifSource) && !context.getImageData(0, 0, size, size).data.some((value, index) => index % 4 === 3 && value > 0))
+                if (!leafLayers(layers).some(layer => layer.gifSource) && !context.getImageData(0, 0, size, size).data.some((value, index) => index % 4 === 3 && value > 0))
                     throw new Error('The sticker is completely transparent. Move a visible layer onto the canvas.');
-                const document = { version: 1, layers: layers.map(layer => ({ ...layer })) };
-                const png = layers.some(layer => layer.gifSource)
+                const document = { version: layers.some(layer=>layer.children?.length)?2:1, layers: cloneLayers(layers) };
+                const png = leafLayers(layers).some(layer => layer.gifSource)
                     ? await (await import('../animation/gif-editor.js')).compose(document)
                     : canvas.toDataURL('image/png');
                 return { png, document };

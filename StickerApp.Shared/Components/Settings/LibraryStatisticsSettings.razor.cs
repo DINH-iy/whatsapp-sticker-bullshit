@@ -188,6 +188,8 @@ public partial class LibraryStatisticsSettings
 
     private static string Invariant(double number) => number.ToString("0.######", System.Globalization.CultureInfo.InvariantCulture);
 
+    private string SegmentLabel(LibraryStorageSegment segment)=>segment.ColorClass.StartsWith("pack-color-",StringComparison.Ordinal)?segment.Label:L[segment.Label];
+
     private IEnumerable<(LibraryStorageSegment Segment, string Dash, string Offset)> DonutSlices()
     {
         var offset = 0d;

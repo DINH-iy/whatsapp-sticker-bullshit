@@ -54,8 +54,10 @@ async function run(source) {
             assert.equal(recipe.edits.at(-1).colorStrength,0.55,'queued color strength must reach the animation recipe');
             await controller.undo(); await controller.undo(); hueGroup.remove();
             await controller.beginTool('resize'); controller.beginResize();
+            assert.equal(controller.hasToolChanges(),false,'opening resize without interaction is clean');
             root.querySelector('[aria-label="Resize image right"]').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', shiftKey: true, bubbles: true }));
             assert.equal(canvas.width, 26, 'resize handle must change image width');
+            assert.equal(controller.hasToolChanges(),true,'resizing requires a discard warning');
             assert.equal(canvas.height, 26, 'resize handle must keep proportions');
             await controller.applyTool(true);
             assert.equal(recipe.edits.at(-1).type, 'resize', 'Accept must record resize for every animation frame');
@@ -68,6 +70,7 @@ async function run(source) {
             await controller.cancelTool(); ratio.remove();
             assert.equal(canvas.width, 16, 'Cancel must restore the image before handle resizing');
             await controller.beginTool('resize'); controller.beginTransform();
+            assert.equal(controller.hasToolChanges(),false,'fixed workspace padding on tool entry is not an edit');
             const transformHandles = root.querySelector('.image-transform-handles');
             const transformKey = (label,key) => transformHandles.querySelector(`[aria-label="${label}"]`).dispatchEvent(new KeyboardEvent('keydown',{key,shiftKey:true,bubbles:true}));
             transformKey('Resize image right','ArrowRight');
@@ -106,7 +109,12 @@ async function run(source) {
             await controller.preview();
             speedControl.value = '1'; speedControl.dispatchEvent(new Event('input', { bubbles: true }));
             await controller.seek(0);
-            await controller.beginTool('adjust'); await controller.adjust('opacity', 0.2);
+            await controller.beginTool('adjust');
+            assert.equal(controller.hasToolChanges(),false,'opening an adjustment without changing it is clean');
+            await controller.seek(0.15);assert.equal(controller.hasToolChanges(),false,'seeking a GIF frame is not a tool edit');await controller.seek(0);
+            await controller.adjust('opacity',0.2);assert.equal(controller.hasToolChanges(),true,'changed opacity needs confirmation');
+            await controller.adjust('opacity',1);assert.equal(controller.hasToolChanges(),false,'restoring the original opacity is clean');
+            await controller.adjust('opacity',0.2);
             await controller.cancelTool();
             assert.equal(canvas.getContext('2d').getImageData(8,8,1,1).data[3], 255, 'Cancel tool must restore pixels before the adjustment');
             assert.equal(recipe.edits.length, 0, 'Cancel tool must restore the animation recipe');
@@ -134,6 +142,10 @@ async function run(source) {
             const pointer = (type, x, y) => canvas.dispatchEvent(new PointerEvent(type, { pointerId: 1, pointerType: 'mouse', bubbles: true, clientX: rect.left + x, clientY: rect.top + y }));
             // Synthetic pointer events have no native capture; only capture is stubbed.
             canvas.setPointerCapture = () => {}; canvas.hasPointerCapture = () => false;
+            await controller.beginTool('crop');assert.equal(controller.hasToolChanges(),false,'untouched crop is clean');
+            pointer('pointerdown',2,2);pointer('pointermove',12,12);pointer('pointerup',12,12);
+            assert.equal(controller.hasToolChanges(),true,'a pending crop selection needs a discard warning');
+            await controller.cancelTool();assert.equal(controller.hasToolChanges(),false,'cancel clears pending tool changes');
             const beforeBorder=canvas.toDataURL();
             await controller.beginTool('border');await controller.border(2,'#00ff00',4);
             const borderRecipe=recipe,borderRenderer=await createRasterRenderer(borderRecipe);
@@ -153,6 +165,7 @@ async function run(source) {
             const tipResults=new Set();
             for(const tip of ['pen','pencil','brush','marker']){
                 await controller.beginTool('draw');controller.settings(6.5,36,'#00ff00',tip);
+                assert.equal(controller.hasToolChanges(),false,'brush size, color and tip preferences alone are not artwork edits');
                 pointer('pointerdown',8,2);pointer('pointermove',8,14);pointer('pointerup',8,14);
                 await new Promise(resolve=>setTimeout(resolve,30));
                 tipResults.add(canvas.toDataURL());
@@ -292,7 +305,10 @@ async function run(source) {
             layerController.preview(true); await new Promise(resolve => setTimeout(resolve, 150));
             assert.ok(layerCanvas.getContext('2d').getImageData(256,256,1,1).data[0] > 200, 'composition must support slow playback');
             layerController.preview(false);
-            layerController.beginTool(); layerController.update('opacity', 0.2);
+            layerController.beginTool();assert.equal(layerController.hasToolChanges(),false,'opening an untouched layer tool is clean');
+            layerController.update('opacity',0.2);assert.equal(layerController.hasToolChanges(),true,'changed layer opacity needs confirmation');
+            layerController.update('opacity',1);assert.equal(layerController.hasToolChanges(),false,'reverting layer opacity is clean');
+            layerController.update('opacity',0.2);
             const cancelledLayerTool = layerController.cancelTool();
             assert.equal(cancelledLayerTool.layers[0].opacity, 1, 'Cancel layer tool must restore the prior opacity');
             layerController.beginTool(); layerController.update('rotation', 45);
@@ -326,6 +342,20 @@ async function run(source) {
                 assert.equal(ctx.getImageData(0,0,1,1).data[3],0,'shapes keep transparent padding for cutouts');
             }
             assert.equal(shapeSources.size,7,'shape presets have distinct artwork');
+            const hollowPixels=async options=>{const img=new Image();img.src=createShape('square','#ff0000',options);await img.decode();const c=document.createElement('canvas');c.width=c.height=512;const ctx=c.getContext('2d');ctx.drawImage(img,0,0);return ctx;};
+            const thinOutline=await hollowPixels({filled:false,thickness:6.5,outlineColor:'#00ff00'});
+            const thickOutline=await hollowPixels({filled:false,thickness:30,outlineColor:'#00ff00'});
+            assert.equal(thinOutline.getImageData(256,256,1,1).data[3],0,'hollow shapes keep their interior transparent');
+            assert.ok(thinOutline.getImageData(32,256,1,1).data[1]>200,'outline uses chosen color');
+            assert.equal(thinOutline.getImageData(42,256,1,1).data[3],0,'decimal thin outline excludes inner sample');
+            assert.ok(thickOutline.getImageData(42,256,1,1).data[3]>0,'typed thickness changes rendered outline');
+            const roundOutline=await hollowPixels({filled:false,thickness:6.5,outlineColor:'#00ff00',rounding:80});
+            assert.equal(roundOutline.getImageData(32,32,1,1).data[3],0,'corner rounding removes sharp square corners');
+            const loupeButton=document.createElement('button');loupeButton.dataset.viewLoupe='';root.append(loupeButton);
+            const previousLoupe=root.dataset.cutoutLoupe;loupeButton.click();
+            assert.ok(root.dataset.cutoutLoupe!==previousLoupe,'toolbar magnifier button toggles without opening zoom');
+            loupeButton.click();assert.equal(root.dataset.cutoutLoupe,previousLoupe,'toolbar magnifier toggle restores state');loupeButton.remove();
+
             await layerController.open(null);await layerController.add('Star',createShape('star','#00ff00'),300);
             layerController.update('width',180);layerController.update('height',150);layerController.update('rotation',35);
             const shapeBackup=await layerController.export();await layerController.open(shapeBackup.document);

@@ -41,8 +41,8 @@
                         <OnlineOnly>
                             @if (previews.Contains(item.Id))
                             {
-                                @if (item.Video) { <video src="@item.MediaUrl" controls playsinline muted loop preload="metadata" aria-label="@L[$"Preview {item.Name}"]"></video> }
-                                else { <img src="@item.MediaUrl" alt="@L[$"Preview of {item.Name}"]" loading="lazy" /> }
+                                @if (item.Video) { <video src="@item.MediaUrl" controls playsinline muted loop preload="metadata" aria-label="@L.Format("Preview {0}", item.Name)"></video> }
+                                else { <img src="@item.MediaUrl" alt="@L.Format("Preview of {0}", item.Name)" loading="lazy" /> }
                                 <button class="button" @onclick="() => previews.Remove(item.Id)">@L["Hide preview"]</button>
                             }
                             else { <button class="button" @onclick="() => previews.Add(item.Id)"><Icon Name="play" />@L["Preview"]</button> }

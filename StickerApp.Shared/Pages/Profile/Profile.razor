@@ -9,7 +9,7 @@
     <section class="settings-card profile-summary" aria-label="@L["Profile overview"]">
         <div class="profile-avatar">@if (current.Profile.Picture is { } picture) { <ProfilePicture Source="@picture" Alt="Your profile picture" /> } else { <Icon Name="user" /> }</div>
         <div class="profile-summary-text">
-            <h2>@L[string.IsNullOrWhiteSpace(current.Profile.Username) ? "Your local profile" : current.Profile.Username]</h2>
+            <h2>@(string.IsNullOrWhiteSpace(current.Profile.Username) ? L["Your local profile"] : current.Profile.Username)</h2>
             @if (!string.IsNullOrWhiteSpace(current.Profile.FirstName)) { <p>@current.Profile.FirstName</p> }
             <small class="helper">@L["Local profile · Sync not connected"]</small>
         </div>

@@ -4,14 +4,14 @@
     @if (Editing)
     {
         <div class="stat-edit-tools">
-            <button class="button icon-button stat-drag-handle" data-stat-grip type="button" disabled="@Disabled" aria-label="Drag @L[Stat.Label]" title="@L["Drag to choose or reorder this stat"]"><Icon Name="grip" /></button>
+            <button class="button icon-button stat-drag-handle" data-stat-grip type="button" disabled="@Disabled" aria-label="@L.Format("Drag {0}", L[Stat.Label])" title="@L["Drag to choose or reorder this stat"]"><Icon Name="grip" /></button>
             @if (Quick)
             {
-                <button class="button icon-button" type="button" disabled="@(Disabled || First)" @onclick="() => OnMove.InvokeAsync(-1)" aria-label="Move @L[Stat.Label] earlier" title="@L["Move earlier"]"><Icon Name="up" /></button>
-                <button class="button icon-button" type="button" disabled="@(Disabled || Last)" @onclick="() => OnMove.InvokeAsync(1)" aria-label="Move @L[Stat.Label] later" title="@L["Move later"]"><Icon Name="down" /></button>
+                <button class="button icon-button" type="button" disabled="@(Disabled || First)" @onclick="() => OnMove.InvokeAsync(-1)" aria-label="@L.Format("Move {0} earlier", L[Stat.Label])" title="@L["Move earlier"]"><Icon Name="up" /></button>
+                <button class="button icon-button" type="button" disabled="@(Disabled || Last)" @onclick="() => OnMove.InvokeAsync(1)" aria-label="@L.Format("Move {0} later", L[Stat.Label])" title="@L["Move later"]"><Icon Name="down" /></button>
             }
             <button class="button icon-button @(Pinned ? "stat-pin-active" : "")" type="button" disabled="@Disabled" aria-pressed="@(Pinned ? "true" : "false")"
-                    @onclick="() => OnToggle.InvokeAsync(Stat.Id)" aria-label="@L[Pinned ? $"Hide {Stat.Label} from quick stats" : $"Pin {Stat.Label} to quick stats"]" title="@L[Pinned ? "Hide from quick stats" : "Pin to quick stats"]"><Icon Name="@(Pinned ? "check" : "plus")" /></button>
+                    @onclick="() => OnToggle.InvokeAsync(Stat.Id)" aria-label="@L.Format(Pinned ? "Hide {0} from quick stats" : "Pin {0} to quick stats", L[Stat.Label])" title="@L[Pinned ? "Hide from quick stats" : "Pin to quick stats"]"><Icon Name="@(Pinned ? "check" : "plus")" /></button>
         </div>
     }
 </div>

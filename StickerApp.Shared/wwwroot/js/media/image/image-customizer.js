@@ -335,6 +335,14 @@ export function create(canvas, dotnet) {
             toolCheckpoint = { image: state(), undo: [...history], redo: [...redo] };
             tool = value;
         },
+        hasToolChanges() {
+            if (!toolCheckpoint) return false;
+            // A pending crop/trace is work too, but brush settings, frame seeking
+            // and entering the fixed transform workspace are preview-only.
+            const selection = points.length >= 3 && Math.max(...points.map(p=>p.x))-Math.min(...points.map(p=>p.x)) >= 2 && Math.max(...points.map(p=>p.y))-Math.min(...points.map(p=>p.y)) >= 2;
+            const edits = items => items.filter(edit=>!(edit.type==='border' && edit.thickness===0 && !edit.radius));
+            return selection || !!resizer.hasChanges || !!hasAdjustment() || JSON.stringify(edits(operations))!==JSON.stringify(edits(toolCheckpoint.image.operations));
+        },
         async applyTool(resize = false) {
             if (tool === 'crop' || tool === 'lasso') await controller.applySelection();
             else if (resize) await controller.resizeAdjustment();

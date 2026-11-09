@@ -5,6 +5,7 @@ namespace StickerApp.Shared.Components.Editor.Layers;
 public sealed class LayerEditorState
 {
     public List<LayerPreview> Layers { get; set; } = [];
+    public int MarkedCount { get; set; }
     public int Selected { get; set; } = -1;
     public bool CanUndo { get; set; }
     public bool CanRedo { get; set; }
@@ -17,6 +18,9 @@ public sealed class LayerPreview : EditorAdjustmentValues
     public string Name { get; set; } = "";
     public string Thumbnail { get; set; } = "";
     public StickerApp.Core.TextLayerOptions? Text { get; set; }
+    public bool IsGroup { get; set; }
+    public int MemberCount { get; set; }
+    public bool Marked { get; set; }
     public bool IsGif { get; set; }
     public double GifDuration { get; set; }
     public double TrimStart { get; set; }

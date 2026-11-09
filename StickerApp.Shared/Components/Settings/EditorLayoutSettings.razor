@@ -16,8 +16,8 @@
             {
                 var index = i; var id = preferences.Categories[i];
                 <li><span>@L[EditorDesignPreview.Label(id)]</span>
-                    <button class="button icon-button" aria-label="@L[$"Move {EditorDesignPreview.Label(id)} earlier"]" @onclick="() => Move(index,-1)" disabled="@(!ready || index == 0)"><Icon Name="up" /></button>
-                    <button class="button icon-button" aria-label="@L[$"Move {EditorDesignPreview.Label(id)} later"]" @onclick="() => Move(index,1)" disabled="@(!ready || index == preferences.Categories.Length-1)"><Icon Name="down" /></button>
+                    <button class="button icon-button" aria-label="@L.Format("Move {0} earlier", EditorDesignPreview.Label(id))" @onclick="() => Move(index,-1)" disabled="@(!ready || index == 0)"><Icon Name="up" /></button>
+                    <button class="button icon-button" aria-label="@L.Format("Move {0} later", EditorDesignPreview.Label(id))" @onclick="() => Move(index,1)" disabled="@(!ready || index == preferences.Categories.Length-1)"><Icon Name="down" /></button>
                 </li>
             }
         </ol>

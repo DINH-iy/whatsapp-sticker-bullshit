@@ -24,15 +24,15 @@ else
 {
     <article class="friends-pack-card" @key="sticker.Id">
         <div class="friends-pack-preview">
-            @if (previews.TryGetValue(sticker.Id,out var preview)) { <img src="@preview" alt="@L[$"{sticker.Name}"]" class="@(sticker.Nsfw && Store.BlurNsfwPreviews && !revealed.Contains(sticker.Id) ? "friends-preview-blurred" : "")" /> }
+            @if (previews.TryGetValue(sticker.Id,out var preview)) { <img src="@preview" alt="@sticker.Name" class="@(sticker.Nsfw && Store.BlurNsfwPreviews && !revealed.Contains(sticker.Id) ? "friends-preview-blurred" : "")" /> }
             @if (sticker.Nsfw && Store.BlurNsfwPreviews) { <button class="button icon-button" @onclick="() => Reveal(sticker.Id)" aria-label="@L[revealed.Contains(sticker.Id) ? "Hide NSFW preview" : "Reveal NSFW preview"]"><Icon Name="@(revealed.Contains(sticker.Id) ? "eye-off" : "eye")" /></button> }
         </div>
         <h2>@sticker.Name</h2><p class="helper">Added by @sticker.AddedBy<br />Last edited by @sticker.EditedBy</p>
         <div class="collection-reactions">
         @foreach (var reaction in sticker.Reactions) { <button class="button @(reaction.Mine ? "selected-tool" : "")" @onclick="() => React(sticker.Id,reaction.Emoji)" disabled="@busy" aria-label="@($"{reaction.Emoji} {reaction.Count} reactions on {sticker.Name}")">@reaction.Emoji @reaction.Count</button> }
-        <AppDisclosure Class="collection-reaction-menu" Popup="true" Open="@(reactionMenu == sticker.Id)" OpenChanged="value => reactionMenu = value ? sticker.Id : null" Label="@L[$"React to {sticker.Name}"]"><Header><Icon Name="smile" />@L["React"]</Header><ChildContent>
-            <div class="collection-reaction-options">@foreach (var emoji in emojiChoices) { <button class="button" @onclick="() => React(sticker.Id,emoji)" disabled="@busy" aria-label="@L[$"React {emoji} to {sticker.Name}"]">@emoji</button> }
-                <button class="button custom-reaction-toggle" @onclick="() => customFor = customFor == sticker.Id ? null : sticker.Id" disabled="@busy" aria-label="@L[$"Choose another emoji for {sticker.Name}"]"><Icon Name="plus" /></button>
+        <AppDisclosure Class="collection-reaction-menu" Popup="true" Open="@(reactionMenu == sticker.Id)" OpenChanged="value => reactionMenu = value ? sticker.Id : null" Label="@L.Format("React to {0}", sticker.Name)"><Header><Icon Name="smile" />@L["React"]</Header><ChildContent>
+            <div class="collection-reaction-options">@foreach (var emoji in emojiChoices) { <button class="button" @onclick="() => React(sticker.Id,emoji)" disabled="@busy" aria-label="@L.Format("React {0} to {1}", emoji, sticker.Name)">@emoji</button> }
+                <button class="button custom-reaction-toggle" @onclick="() => customFor = customFor == sticker.Id ? null : sticker.Id" disabled="@busy" aria-label="@L.Format("Choose another emoji for {0}", sticker.Name)"><Icon Name="plus" /></button>
                 @if(customFor==sticker.Id){<div class="custom-reaction-entry"><label>@L["Any emoji"]<input aria-label="@L["Custom emoji reaction"]" type="text" maxlength="64" placeholder="@L["Type or paste an emoji"]" autocomplete="off" spellcheck="false" @bind="customEmoji" @bind:event="oninput" /></label><button class="button primary" @onclick="() => React(sticker.Id,customEmoji)" disabled="@(busy || !StickerApp.Core.EmojiReaction.IsValid(customEmoji))">@L["React"]</button></div>}
             </div>
         </ChildContent></AppDisclosure>

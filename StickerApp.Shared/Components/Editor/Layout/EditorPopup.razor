@@ -1,16 +1,17 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
-<button class="button @(IconOnly ? "icon-button" : "") editor-popup-trigger" type="button" disabled="@Disabled" @onclick="Open" aria-haspopup="dialog" aria-label="@Title" title="@Title"><Icon Name="@IconName" />@if (!IconOnly) { <span>@L[Label]</span> }</button>
+<button class="button @(IconOnly ? "icon-button" : "") editor-popup-trigger" type="button" disabled="@Disabled" @onclick="Open" aria-haspopup="dialog" aria-label="@L[Title]" title="@L[Title]"><Icon Name="@IconName" />@if (!IconOnly) { <span>@L[Label]</span> }</button>
 @if (show)
 {
     <dialog @ref="dialog" class="folder-dialog editor-popup-dialog" aria-labelledby="@titleId" @oncancel="Close" @oncancel:preventDefault @onkeydown:stopPropagation>
-        <div class="folder-dialog-heading"><h2 id="@titleId">@L[Title]</h2><button class="button icon-button" type="button" @onclick="Close" aria-label="Close @Title"><Icon Name="close" /></button></div>
+        <div class="folder-dialog-heading"><h2 id="@titleId">@L[Title]</h2><button class="button icon-button" type="button" @onclick="Close" aria-label="@L.Format("Close {0}", L[Title])"><Icon Name="close" /></button></div>
         <div class="editor-popup-body">@ChildContent</div>
-        <div class="dialog-actions"><button class="button" type="button" @onclick="Close">@L["Back to editor"]</button></div>
+        <div class="dialog-actions"><button class="button" type="button" @onclick="Close">@L[CloseLabel]</button></div>
     </dialog>
 }
 @code {
     [Parameter] public string Title { get; set; } = "Sticker options";
+    [Parameter] public string CloseLabel { get; set; }="Back to editor";
     [Parameter] public string Label { get; set; } = "Options";
     [Parameter] public string IconName { get; set; } = "more";
     [Parameter] public bool IconOnly { get; set; }

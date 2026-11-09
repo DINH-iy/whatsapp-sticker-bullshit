@@ -11,7 +11,7 @@ public partial class Packs
     private bool busy;
     private bool showCreate;
     private string ownershipFilter="all";
-    private StickerPack? editingPack;
+    private StickerPack? editingPack, deletingPack;
     private LibraryBrowseSnapshot? browse;
     private string search = "";
     private string sort = "default";
@@ -34,6 +34,14 @@ public partial class Packs
         search = "";
         typeFilter = countFilter = storageFilter = ownershipFilter = "all";
     }
+
+    private Task DeletePack()=>Run(async()=>{
+        if(deletingPack is not { } pack)return;
+        await StickerApp.Shared.Services.FriendsPackService.UnpublishAsync(JS,pack.Id);
+        await Store.DeletePackAsync(pack.Id);
+        deletingPack=null;
+        await Reload();
+    });
 
     private Task PackDetailsSaved(Guid id) => Run(async () =>
     {

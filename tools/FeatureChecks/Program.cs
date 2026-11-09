@@ -74,7 +74,7 @@ Check(LibraryBrowsing.Packs(packSnapshot,new(Search:"solo",Ownership:"group"),fa
 var maintenance=await renderer.Dispatcher.InvokeAsync(async()=> (await renderer.RenderComponentAsync<FriendsMaintenance>()).ToHtmlString());
 Check(FriendsFeature.UnderMaintenance && maintenance.Contains("Under maintenance") && !maintenance.Contains("Create invite link"),"maintenance screen explains deferred collaboration without join controls");
 var languages=new AppLanguage();
-foreach(var (code,expected) in new[]{("nl","Instellingen"),("de","Einstellungen"),("ro","Setări")}){languages.Set(code);Check(languages["Settings"]==expected,"JSON language catalog loads "+code);}
+foreach(var (code,expected) in new[]{("nl","Instellingen"),("de","Einstellungen"),("ro","Setări"),("nb","Innstillinger")}){languages.Set(code);Check(languages["Settings"]==expected,"JSON language catalog loads "+code);}
 Check(languages["Untranslated example"]=="Untranslated example","missing translations fall back without losing text");
 languages.Set("unsupported");Check(languages.Code=="en" && languages["Settings"]=="Settings","unsupported language safely falls back to English");
 // UI translation is a presentation boundary; source diagnostics are never localized.
@@ -83,11 +83,12 @@ var catalogs=AppLanguage.Supported.ToDictionary(item=>item.Code,item=>{
     using var stream=resources.GetManifestResourceStream($"StickerApp.Shared.Localization.{item.Code}.json")!;
     return System.Text.Json.JsonSerializer.Deserialize<Dictionary<string,string>>(stream)!;
 });
-foreach(var code in new[]{"nl","de","ro"})
+foreach(var code in new[]{"nl","de","ro","nb"})
 {
     languages.Set(code);
     Check(catalogs[code].Keys.ToHashSet().SetEquals(catalogs["en"].Keys),"catalog key parity "+code);
     Check(catalogs[code].All(entry=>!string.IsNullOrWhiteSpace(entry.Value)),"no empty translations "+code);
+    Check(catalogs[code].All(entry=>System.Text.RegularExpressions.Regex.Matches(entry.Value,@"\{[^{}]+\}").Select(match=>match.Value).Order().SequenceEqual(System.Text.RegularExpressions.Regex.Matches(catalogs["en"][entry.Key],@"\{[^{}]+\}").Select(match=>match.Value).Order())),"translation placeholders retained "+code);
     Check(languages["The canvas is always 512 × 512 units. Small images keep their size; checkerboard areas are transparent."]!=catalogs["en"]["The canvas is always 512 × 512 units. Small images keep their size; checkerboard areas are transparent."],"editor help translated "+code);
     var raw="This pack has room for 7 more stickers. Select fewer images or choose My Library.";
     Check(languages.Error(raw)!=raw&&languages.Error(raw).Contains("7"),"dynamic capacity warning translated "+code);
@@ -104,7 +105,7 @@ var logRoot=Path.Combine(Path.GetTempPath(),"stik-language-log-"+Guid.NewGuid().
 try
 {
     var log=new AppLog(logRoot);
-    foreach(var code in new[]{"en","nl","de","ro"})
+    foreach(var code in new[]{"en","nl","de","ro","nb"})
     {
         languages.Set(code);
         var original=new InvalidDataException("This image no longer exists.");
@@ -115,6 +116,18 @@ try
     }
 }
 finally { if(Directory.Exists(logRoot))Directory.Delete(logRoot,true); }
+var deleteRoot=Path.Combine(Path.GetTempPath(),"stik-delete-pack-check-"+Guid.NewGuid().ToString("N"));
+try
+{
+    var store=new LibraryStore(deleteRoot);
+    var packId=await store.CreatePackAsync("Delete only this pack");
+    var imageId=await store.ImportAsync("Keep this sticker",Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLttAAAAABJRU5ErkJggg=="),packId);
+    var before=await store.ReadAsync();var file=before.Stickers.Single().FileName;
+    await store.DeletePackAsync(packId);
+    var after=await store.ReadAsync();
+    Check(after.Packs.Count==0&&after.Stickers.Single().Id==imageId&&after.Stickers.Single().FileName==file,"deleting a pack keeps its stickers in My Library");
+}
+finally {if(Directory.Exists(deleteRoot))Directory.Delete(deleteRoot,true);}
 Console.WriteLine($"{passed} feature checks passed.");
 sealed class NoJs:IJSRuntime{
     public ValueTask<T> InvokeAsync<T>(string identifier,object?[]? args)=>throw new NotSupportedException();

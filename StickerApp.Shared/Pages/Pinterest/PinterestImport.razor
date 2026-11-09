@@ -61,8 +61,8 @@
             {
                 <div class="pinterest-image-choice" @key="image.PinId">
                 <label class="pinterest-image">
-                    <img src="@image.ThumbnailUrl" alt="@L[string.IsNullOrWhiteSpace(image.Title) ? $"Pinterest item {selection.Images.IndexOf(image) + 1}" : image.Title]" loading="lazy" referrerpolicy="no-referrer" />
-                    <span><input type="checkbox" checked="@selected.Contains(image.PinId)" @onchange="() => Toggle(image.PinId)" disabled="@busy" /> @L[string.IsNullOrWhiteSpace(image.Title) ? $"{(image.IsVideo ? "Video" : "Image")} {selection.Images.IndexOf(image) + 1}" : image.Title]</span>
+                    <img src="@image.ThumbnailUrl" alt="@(string.IsNullOrWhiteSpace(image.Title) ? L.Format("Pinterest item {0}", selection.Images.IndexOf(image) + 1) : image.Title)" loading="lazy" referrerpolicy="no-referrer" />
+                    <span><input type="checkbox" checked="@selected.Contains(image.PinId)" @onchange="() => Toggle(image.PinId)" disabled="@busy" /> @(string.IsNullOrWhiteSpace(image.Title) ? $"{L[image.IsVideo ? "Video" : "Image"]} {selection.Images.IndexOf(image) + 1}" : image.Title)</span>
                     @if (image.IsVideo) { <small class="pinterest-media-type"><Icon Name="animation" />@L["Video"]@(image.DurationMs is > 0 ? $" · {image.DurationMs / 1000d:0.#} s" : "") · @L["Trim to GIF"]</small> }
                 </label>
                 @if (Store.AskForOriginalOnImport)

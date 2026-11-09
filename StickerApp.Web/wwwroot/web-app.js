@@ -12,6 +12,3 @@ if ('serviceWorker' in navigator && window.isSecureContext) {
             .catch(error => window.dispatchEvent(new ErrorEvent('error', { message: 'Home Screen support could not start: ' + error.message, error })));
     });
 }
-export function status() {
-    return { installed: matchMedia('(display-mode: standalone)').matches || navigator.standalone === true };
-}

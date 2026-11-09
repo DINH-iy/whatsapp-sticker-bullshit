@@ -10,20 +10,31 @@ public sealed class LayerComposition
 
     public void Validate()
     {
-        if (Version != 1 || Layers is null || Layers.Count is < 1 or > MaxLayers)
+        if (Version is not (1 or 2) || Layers is null || Layers.Count is < 1 or > MaxLayers)
             throw new InvalidDataException("A composition needs 1–10 layers.");
         long characters = 0;
         var ids = new HashSet<string>();
-        foreach (var layer in Layers)
+        var entries = Layers.SelectMany(layer => layer?.Children is { Count: > 0 } children ? children.Prepend(layer) : new[] { layer }).ToList();
+        if (entries.Count > 110) throw new InvalidDataException("A composition supports at most 100 grouped layers.");
+        var childIds = Layers.Where(layer => layer?.Children is { Count: > 0 }).SelectMany(layer => layer.Children!).Select(layer => layer?.Id).ToHashSet();
+        foreach (var layer in entries)
         {
             if (layer is null || string.IsNullOrEmpty(layer.Id) || layer.Id.Length > 64 || !ids.Add(layer.Id) ||
                 string.IsNullOrWhiteSpace(layer.Name) || layer.Name.Length > 128 ||
-                layer.Source is null || !layer.Source.StartsWith("data:image/png;base64,", StringComparison.Ordinal))
+                layer.Source is null || (layer.Children is not { Count: > 0 } && !layer.Source.StartsWith("data:image/png;base64,", StringComparison.Ordinal)))
                 throw new InvalidDataException("A layer has invalid image data or metadata.");
+            if (layer.Children is { Count: > 0 } members)
+            {
+                if (Version < 2 || childIds.Contains(layer.Id) || members.Count > 100 || members.Any(child => child is null || child.Children is { Count: > 0 }) ||
+                    layer.Text is not null || layer.GifSource is not null || layer.Source != "" || layer.Tint is not null || layer.Hue != 0 || layer.BorderWidth != 0)
+                    throw new InvalidDataException("A layer group has invalid members or effects.");
+            }
             layer.Text?.Validate();
             if (layer.Text is not null && layer.GifSource is not null) throw new InvalidDataException("A text layer cannot also be an animation source.");
             characters += layer.Source.Length + (layer.GifSource?.Length ?? 0) + (layer.Text?.FontData?.Length ?? 0);
             if (characters > MaxSourceCharacters) throw new InvalidDataException("Layer artwork and fonts exceed the 24 MB composition limit.");
+            if (layer.Children is not { Count: > 0 })
+            {
             byte[] bytes;
             try { bytes = Convert.FromBase64String(layer.Source[22..]); }
             catch (FormatException) { throw new InvalidDataException("A layer image is damaged."); }
@@ -42,8 +53,9 @@ public sealed class LayerComposition
                     !Within(layer.TrimEnd, layer.TrimStart + 0.02, layer.GifDuration + 0.001) || layer.TrimEnd - layer.TrimStart > 10.001)
                     throw new InvalidDataException("Choose a valid GIF selection of at most 10 seconds.");
             }
-            if (!Within(layer.X, -2048, 2560) || !Within(layer.Y, -2048, 2560) ||
-                !Within(layer.Width, 1, 2048) || !Within(layer.Height, 1, 2048) ||
+            }
+            if (!Within(layer.X, -16384, 16384) || !Within(layer.Y, -16384, 16384) ||
+                !Within(layer.Width, 0.01, 8192) || !Within(layer.Height, 0.01, 8192) ||
                 !Within(layer.Rotation, -180, 180) || !Within(layer.Opacity, 0, 1) || !Within(layer.Hue, -180, 180) || !Within(layer.ColorStrength, 0, 1) || !Within(layer.BorderWidth, 0, 80) ||
                 layer.BorderColor is null || layer.BorderColor.Length != 7 || layer.BorderColor[0] != '#' || !layer.BorderColor.AsSpan(1).ToString().All(Uri.IsHexDigit) ||
                 (layer.Tint is not null && (layer.Tint.Length != 7 || layer.Tint[0] != '#' || !layer.Tint.AsSpan(1).ToString().All(Uri.IsHexDigit))))
@@ -59,6 +71,8 @@ public sealed class CompositionLayer
     public string Id { get; set; } = "";
     public string Name { get; set; } = "";
     public string Source { get; set; } = "";
+    // Group members keep their canvas positions; group transforms are baked into members.
+    public List<CompositionLayer>? Children { get; set; }
     public TextLayerOptions? Text { get; set; }
     // Keep the serialized field name for existing projects; edited animations may be WebP.
     public string? GifSource { get; set; }

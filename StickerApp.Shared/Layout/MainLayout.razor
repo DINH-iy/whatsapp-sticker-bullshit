@@ -12,6 +12,7 @@
         <span>@L["Stik-er-in"]</span>
     </a>
     <div class="navigation-tools">
+    <button class="button icon-button navigation-help" type="button" @onclick="() => showGuide=true" aria-label="@L["How to use Stik-er-in"]" title="@L["How to use Stik-er-in"]"><Icon Name="help" /></button>
     <button class="button icon-button navigation-toggle" type="button" @onclick="ToggleMenu" @ref="menuToggle"
             aria-label="@L[menuOpen ? "Close navigation menu" : "Open navigation menu"]"
             aria-expanded="@(menuOpen ? "true" : "false")" aria-controls="main-navigation">
@@ -26,12 +27,11 @@
             }
         </svg>
     </button>
-    <button class="button icon-button navigation-help" type="button" @onclick="() => showGuide=true" aria-label="@L["How to use Stik-er-in"]" title="@L["How to use Stik-er-in"]"><Icon Name="help" /></button>
     <ProfileButton />
     </div>
     <nav id="main-navigation" class="app-nav @(menuOpen ? "navigation-open" : "")" aria-label="@L["Main navigation"]" @onclick="CloseMenu">
         <NavLink href="" Match="NavLinkMatch.All" class="@(Navigation.ToBaseRelativePath(Navigation.Uri).StartsWith("packs/") ? "active" : null)">@L["My Packs"]</NavLink>
-        @if(FriendsFeature.UnderMaintenance){<div class="navigation-maintenance"><span aria-disabled="true">@L["Friends’ packs"]<small>@L["Under maintenance"]</small></span><EditorPopup Title="@L["Friends’ packs · Under maintenance"]" IconName="info" IconOnly="true"><FriendsGuideContent /></EditorPopup></div>}
+        @if(FriendsFeature.UnderMaintenance){<div class="navigation-maintenance" @onclick:stopPropagation><span aria-disabled="true">@L["Friends’ packs"]<small>@L["Under maintenance"]</small></span><EditorPopup Title="@L["Friends’ packs · Under maintenance"]" IconName="info" IconOnly="true" CloseLabel="Close"><FriendsGuideContent /></EditorPopup></div>}
         else{<NavLink href="friends">@L["Friends’ packs"]</NavLink>}
         <NavLink href="library">@L["My Library"]</NavLink>
         <NavLink href="gifs">@L["GIF search"]</NavLink>

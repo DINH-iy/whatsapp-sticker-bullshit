@@ -14,7 +14,9 @@ public partial class LayerEditorDialog
     [Parameter] public bool StartWithText { get; set; }
     [Parameter] public bool StartWithShape { get; set; }
     private bool showShapes;
-    private string shapeColor="#80d4b0";
+    private string shapeColor="#80d4b0", shapeOutlineColor="#1b1b1b";
+    private double shapeThickness=0, shapeRounding=0;
+    private bool shapeFilled=true;
     private static readonly (string Kind,string Name,string Glyph)[] Shapes=[("star","Star","★"),("circle","Circle","●"),("square","Square","■"),("triangle","Triangle","▲"),("cube","Cube","⬡"),("heart","Heart","♥"),("arrow","Arrow","➜")];
     [Parameter] public bool ReturnToEditor { get; set; }
     [Parameter] public string? InitialSource { get; set; }
@@ -154,11 +156,12 @@ public partial class LayerEditorDialog
             state = await controller!.InvokeAsync<LayerEditorState>("updateText", next);
         }
     }
+    private void EnsureShapeOutline(){if(!shapeFilled && shapeThickness<=0)shapeThickness=12;}
     private void OpenShapes(){if(working || layerEditSource is not null || state.Layers.Count>=10)return;showAddMenu=false;showShapes=true;}
     private Task AddShape(string kind,string title)=>Run("Adding shape…",async()=>{
         await FlushText();
         await using var shapes=await JS.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/media/layers/shapes.js");
-        var source=await shapes.InvokeAsync<string>("createShape",kind,shapeColor);
+        var source=await shapes.InvokeAsync<string>("createShape",kind,shapeColor,new {thickness=shapeThickness,outlineColor=shapeOutlineColor,filled=shapeFilled,rounding=shapeRounding});
         state=await controller!.InvokeAsync<LayerEditorState>("add",title,source,300);
         showShapes=false;quickPanel="";layerCategory="adjust";
     });
@@ -198,14 +201,28 @@ public partial class LayerEditorDialog
         }
     });
 
+    private Task MarkLayer(int index) => Run("Selecting layers for grouping…", async () => { await FlushText(); state = await controller!.InvokeAsync<LayerEditorState>("mark", index); });
+    private Task GroupLayers() => Run("Grouping layers…", async () => { await FlushText(); state = await controller!.InvokeAsync<LayerEditorState>("group", L["Group"]); });
+    private Task UngroupLayers() => Run("Ungrouping layers…", async () => { state = await controller!.InvokeAsync<LayerEditorState>("ungroup"); });
     private Task Select(int index) => Run("Selecting layer…", async () => { await FlushText(); state = await controller!.InvokeAsync<LayerEditorState>("select", index); if (Selected?.Text is not null) layerCategory = "text"; });
     private Task Action(string action) => Run("Updating layers…", async () => { await FlushText(); state = await controller!.InvokeAsync<LayerEditorState>("action", action); });
     private Task ToggleTool(string tool) => Run("Opening layer tool…", async () =>
     {
-        if (quickPanel == tool) { confirmQuickToolCancel = true; return; }
+        if (quickPanel == tool) { await CheckQuickToolCancel(); return; }
         await controller!.InvokeVoidAsync("beginTool");
         quickPanel = tool;
     });
+    private Task RequestQuickToolCancel() => Run("Opening layer tool…", CheckQuickToolCancel);
+    private async Task CheckQuickToolCancel()
+    {
+        if (await controller!.InvokeAsync<bool>("hasToolChanges")) confirmQuickToolCancel = true;
+        else
+        {
+            confirmQuickToolCancel = false;
+            state = await controller!.InvokeAsync<LayerEditorState>("cancelTool");
+            quickPanel = "";
+        }
+    }
     private Task ApplyQuickTool() => Run("Applying layer changes…", async () =>
     {
         state = await controller!.InvokeAsync<LayerEditorState>("commitTool"); quickPanel = "";
@@ -274,7 +291,7 @@ public partial class LayerEditorDialog
     {
         if (args.Key != "Escape") return Task.CompletedTask;
         if (layerEditSource is not null) { if (!editingLayerBusy) CancelLayerImage(); return Task.CompletedTask; }
-        if (quickPanel != "") { quickPanel = ""; return Task.CompletedTask; }
+        if (quickPanel != "") return RequestQuickToolCancel();
         return Cancel();
     }
     public async ValueTask DisposeAsync()

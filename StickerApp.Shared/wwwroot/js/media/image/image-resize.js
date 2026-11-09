@@ -1,3 +1,4 @@
+import { editorLabel } from '../shared/editor-language.js';
 // Reuse the layer editor's touch targets for raster artwork. The original
 // pixels are retained during dragging so repeated moves never compound blur.
 export function createResizeHandles(canvas, root, changed, syncPreview = () => {}) {
@@ -33,7 +34,7 @@ export function createResizeHandles(canvas, root, changed, syncPreview = () => {
     const directions = [['top left', -1, -1], ['top', 0, -1], ['top right', 1, -1], ['left', -1, 0], ['right', 1, 0], ['bottom left', -1, 1], ['bottom', 0, 1], ['bottom right', 1, 1]];
     for (const [name, x, y] of directions) {
         const button = document.createElement('button'); button.type = 'button'; button.className = 'layer-handle image-resize-handle';
-        button.setAttribute('aria-label', `Resize image ${name}`); button.dataset.tapFeedback = 'off';
+        button.setAttribute('aria-label', editorLabel(canvas,'Resize image {0}',editorLabel(canvas,name))); button.dataset.tapFeedback = 'off';
         button.style.left = `${(x + 1) * 50}%`; button.style.top = `${(y + 1) * 50}%`;
         button.style.cursor = x && y ? x === y ? 'nwse-resize' : 'nesw-resize' : x ? 'ew-resize' : 'ns-resize';
         button.append(document.createElement('span')); overlay.append(button); handles.push(button);
@@ -77,6 +78,7 @@ export function createResizeHandles(canvas, root, changed, syncPreview = () => {
     }
     return {
         get active() { return !!base; },
+        get hasChanges() { return !!base && (width !== base.width || height !== base.height); },
         begin(maximum) {
             end(); maxSize = maximum; base = copy(); width = base.width; height = base.height;
             displayScale = canvas.getBoundingClientRect().width / width || 1;

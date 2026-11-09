@@ -121,9 +121,8 @@ Local drafts, editing and explicit text-file export are implemented in the app. 
 
 ## Translation follow-up
 
-English, Dutch, German and Romanian JSON catalogs, saved language selection, primary menus/settings/editor controls and the visual tutorial are implemented. Missing entries use English fallback; pack names, usernames and sticker content are not translated.
+English, Dutch, German, Romanian and Norwegian Bokmål JSON catalogs, saved language selection, menus, editor controls, help, warnings, dynamic status/error messages and accessibility labels are implemented. Diagnostic logs remain English; pack names, usernames and sticker content are not translated.
 
-- [ ] Translate the remaining advanced help paragraphs, dynamic status/error messages and accessibility labels into Dutch, German and Romanian.
 - [ ] Have native speakers review wording and test long labels on small phones.
 
 ## Pack sharing settings
@@ -136,3 +135,11 @@ English, Dutch, German and Romanian JSON catalogs, saved language selection, pri
 - [ ] Paste an Instagram link to import an image or video and create a sticker.
 - [ ] Investigate supported media access, login requirements, permissions, and applicable provider limits.
 - [ ] Connect supported Instagram video imports to the existing video-to-sticker workflow, if feasible.
+
+## Frame-by-frame GIF builder — explore later
+
+- [ ] Create an animation from scratch rather than importing an existing GIF or video.
+- [ ] Add, duplicate, reorder and remove frames; set individual frame durations and preview the loop.
+- [ ] Place image, text and shape objects in each frame and choose how they move, rotate or resize between frames.
+- [ ] Explore whether to start with manual frame-by-frame editing or offer keyframes with optional automatic movement between them. The interaction and scope are still undecided.
+- [ ] Keep the project editable and export through the existing animated-sticker preparation pipeline.

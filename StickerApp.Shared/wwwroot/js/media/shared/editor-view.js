@@ -9,20 +9,24 @@ export function editorView(canvas,root){
         for(const button of root.querySelectorAll('[data-view-pan]'))button.setAttribute('aria-pressed',String(pan));
         viewport.classList.toggle('pan-preview',pan);
     }
+    const owns=target=>!target.closest('[data-editor-labels]')||target.closest('[data-editor-labels]')===root;
     function click(event){
-        const target=event.target.closest('[data-view-zoom-in],[data-view-zoom-out],[data-view-reset],[data-view-pan]');
+        if(!owns(event.target))return;
+        const target=event.target.closest('[data-view-zoom-in],[data-view-zoom-out],[data-view-reset],[data-view-pan],button[data-view-loupe]');
         if(!target)return;
+        if(target.hasAttribute('data-view-loupe')){setLoupe(root.dataset.cutoutLoupe==='off');return;}
         if(target.hasAttribute('data-view-reset')){zoom=1;x=y=0;pan=false;}
         else if(target.hasAttribute('data-view-pan'))pan=!pan;
         else zoom=Math.max(.25,Math.min(4,zoom+(target.hasAttribute('data-view-zoom-in') ? .25 : -.25)));
         sync();
     }
-    function input(event){if(event.target.matches('[data-view-loupe]')){root.dataset.cutoutLoupe=event.target.checked?'on':'off';try{localStorage.setItem('stickers.cutout-loupe',root.dataset.cutoutLoupe);}catch{}return;}if(event.target.matches('[data-view-zoom]')){const value=Number(event.target.value);if(Number.isFinite(value)&&value>=25&&value<=400){zoom=value/100;sync();}}}
+    function setLoupe(enabled){root.dataset.cutoutLoupe=enabled?'on':'off';for(const toggle of root.querySelectorAll('[data-view-loupe]')){if(toggle.matches('button'))toggle.setAttribute('aria-pressed',String(enabled));else toggle.checked=enabled;}try{localStorage.setItem('stickers.cutout-loupe',root.dataset.cutoutLoupe);}catch{}}
+    function input(event){if(!owns(event.target))return;if(event.target.matches('input[data-view-loupe]')){setLoupe(event.target.checked);return;}if(event.target.matches('[data-view-zoom]')){const value=Number(event.target.value);if(Number.isFinite(value)&&value>=25&&value<=400){zoom=value/100;sync();}}}
     function down(event){if(!pan || event.button!==0)return;event.preventDefault();event.stopImmediatePropagation();drag={id:event.pointerId,x:event.clientX,y:event.clientY,ox:x,oy:y};viewport.setPointerCapture(event.pointerId);}
     function move(event){if(!drag)return;event.preventDefault();event.stopImmediatePropagation();const limit=viewport.clientWidth*zoom;x=Math.max(-limit,Math.min(limit,drag.ox+event.clientX-drag.x));y=Math.max(-limit,Math.min(limit,drag.oy+event.clientY-drag.y));sync();}
     function up(event){if(!drag)return;event.stopImmediatePropagation();if(viewport.hasPointerCapture(event.pointerId))viewport.releasePointerCapture(event.pointerId);drag=null;}
     try{root.dataset.cutoutLoupe=localStorage.getItem('stickers.cutout-loupe')==='off'?'off':'on';}catch{}
-    for(const toggle of root.querySelectorAll('[data-view-loupe]'))toggle.checked=root.dataset.cutoutLoupe!=='off';
+    setLoupe(root.dataset.cutoutLoupe!=='off');
     root.addEventListener('click',click);root.addEventListener('input',input);
     viewport.addEventListener('pointerdown',down,true);viewport.addEventListener('pointermove',move,true);viewport.addEventListener('pointerup',up,true);viewport.addEventListener('pointercancel',up,true);
     return {get zoom(){return zoom;},dispose(){wrap.style.transform='';root.removeEventListener('click',click);root.removeEventListener('input',input);viewport.removeEventListener('pointerdown',down,true);viewport.removeEventListener('pointermove',move,true);viewport.removeEventListener('pointerup',up,true);viewport.removeEventListener('pointercancel',up,true);}};

@@ -221,7 +221,7 @@ Settings has two visible tabs: General contains appearance and help, while Devel
 
 ### Home Screen browser app (local preparation)
 
-`StickerApp.Web` includes a standalone web-app manifest, iPhone touch icon, safe-area styling, theme-color updates, and a service worker with a static offline reconnect page. Open Settings → General → Home Screen app for installation instructions. On iPhone, open the app URL in Safari, choose Share → Add to Home Screen, enable Open as Web App if offered, and Add. No Apple Developer membership, App Store submission, or periodic re-signing is needed for the Home Screen web app.
+`StickerApp.Web` includes a standalone web-app manifest, iPhone touch icon, safe-area styling, theme-color updates, and a service worker with a static offline reconnect page. The in-app Home Screen installation section has been removed. On iPhone, open the app URL in Safari, choose Share → Add to Home Screen, enable Open as Web App if offered, and Add. No Apple Developer membership, App Store submission, or periodic re-signing is needed for the Home Screen web app.
 
 This is still an online Blazor Server app. The host computer must stay running and reachable. Its library and diagnostics live on the host, not in offline iPhone storage. The service worker never caches library pages, personal media, credentials, or logs. Service workers require HTTPS or localhost; plain HTTP LAN previews do not get the offline fallback. Direct Add to WhatsApp remains a native-app feature; the browser offers Export pack instead. The current browser host has one local library and is not ready for public multi-user deployment.
 
@@ -340,7 +340,7 @@ The local sharing service currently caps each socket peer at 120 requests/minute
 
 ### Getting started, local ideas and maintenance mode
 
-After first-launch profile setup, a five-slide visual walkthrough appears once per device/browser storage. Swipe between slides or use Back/Next and the progress dots. The question-mark card at the top of My Packs reopens it. Factory reset clears the dismissal preference.
+After first-launch profile setup, a five-slide visual walkthrough appears once per device/browser storage. Swipe between slides or use Back/Next and the progress dots. The ? button in the top navigation reopens it from any page; the final slide points to that button. Factory reset clears the dismissal preference.
 
 Feature requests (`/requests`) stores up to 50 local drafts, with editing, confirmed removal and explicit text-file export using the host's file-saving/sharing UI. No owner-submission or telemetry API is called. The browser development host still receives normal form state to render the form; draft persistence is browser-local. Factory reset clears drafts. The owner review application is deferred and separate.
 
@@ -352,6 +352,8 @@ NSFW pack labels and destructive controls use semantic red tokens, independent o
 
 In an image/GIF editor, open Layers → Add shape. The app explains conversion to editable layers, then offers Star, Circle, Square, Triangle, Cube, Heart and Arrow with a fill color. In an existing layer editor, choose Add → Add shape. Shapes are transparent PNG-backed image layers, so normal transforms, crop/cutout, opacity, undo and editable ZIP backups apply. They are not parametric vector objects; cropping/drawing edits their raster artwork.
 
-Settings → Language offers English, Nederlands, Deutsch and Română. Apply saves the device/browser preference and rebuilds the interface in that language. Translation resources are bundled JSON files under `StickerApp.Shared/Localization`, usable offline in installed apps. Navigation, primary settings/editor labels and the visual tutorial are translated; remaining advanced explanations and dynamic statuses currently use English fallback. User-created names/text are preserved; the Dutch Menno font-preview jokes intentionally stay Dutch.
+Settings → Language offers English, Nederlands, Deutsch, Română and Norsk bokmål. Apply saves the device/browser preference and rebuilds the interface in that language. Translation resources are bundled JSON files under `StickerApp.Shared/Localization`, usable offline in installed apps. Menus, editor controls, help, warnings, validation errors and dynamic status messages use the selected language. Diagnostic log entries, exception details and exported diagnostic reports stay in English. Unknown external errors show a translated explanation while their reference IDs remain unchanged. User-created names/text are preserved; the Dutch Menno font-preview jokes intentionally stay Dutch.
 
 See `StickerApp.Shared/Localization/README.md` for adding translations. Checks: `node tools/FeatureChecks/draft-checks.mjs`, the .NET FeatureChecks executable, and the browser EditorChecks fixture cover local draft persistence, catalog fallback, group filtering, shape transforms/backups and existing editor behaviour.
+
+Shapes: in an image/GIF editor choose **Layers → Add shape**, or **Add → Add shape** in the layer editor. The icon-only picker supports filled or hollow figures, outline color and decimal thickness, plus corner rounding. Added figures use the existing layer transform/crop and editable-backup pipeline. The magnifier toggle is beside zoom in the top editor toolbar. My Packs offers a confirmed Delete pack action beside Edit details; deleting a pack retains its library stickers.

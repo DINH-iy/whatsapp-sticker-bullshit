@@ -175,3 +175,32 @@
 .live-editor .editor-tool-dock .editor-adjustments:has([data-layer-property=opacity]) > label { grid-template-columns: max-content 70px minmax(70px,1fr); }
 .live-editor .editor-tool-dock .editor-adjustments:has([data-layer-property=opacity]) input[type=number] { width: 70px; }
 .live-editor .editor-tool-dock .editor-adjustments:has([data-layer-property=opacity]) input[type=range] { grid-column: auto; }
+/* A shared inset for every tool title, including actions-only Crop and Trace panels. */
+.live-editor :is(.customizer-preview-stage,.layer-preview-stage) > :is(.editor-tool-dock,.editor-tool-dock.actions-only) { box-sizing: border-box; padding: 16px; }
+.live-editor .editor-tool-title { margin: 0; padding: 0; text-align: start; }
+.live-editor .live-history-row { flex-wrap: wrap; row-gap: 8px; }
+.live-editor .editor-loupe-toggle { position: relative; margin: 0; }
+.editor-loupe-toggle .loupe-toggle-indicator { position: absolute; inset: auto 4px 4px auto; width: 7px; height: 7px; border-radius: 50%; background: var(--muted); border: 1px solid var(--surface); }
+.editor-loupe-toggle[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); background: var(--soft); }
+.editor-loupe-toggle[aria-pressed="true"] .loupe-toggle-indicator { background: var(--accent); }
+/* Keep utility controls together; collapse labels before sacrificing a row. */
+.live-editor .live-history-row { container: editor-history / inline-size; flex-wrap: nowrap; min-width: 0; }
+@container editor-history (max-width: 420px) {
+    .live-history-row > .editor-popup-trigger:not(.icon-button) { width: 34px; min-width: 34px; flex: 0 0 34px; padding: 6px; }
+    .live-history-row > .editor-popup-trigger > span { display: none; }
+}
+@container editor-history (max-width: 340px) {
+    .editor-zoom-menu > summary .app-disclosure-label > .app-icon { display: none; }
+    .editor-zoom-menu > summary { gap: 6px; padding-inline: 6px; }
+}
+@container editor-history (max-width: 270px) {
+    .editor-zoom-menu > summary > .app-icon { display: none; }
+    .editor-zoom-menu > summary { gap: 0; padding-inline: 4px; }
+}
+/* Header actions share one touch-target height, including the disclosure. */
+.layer-editor-dialog > .folder-dialog-heading > .button,
+.layer-editor-dialog > .folder-dialog-heading > .layer-add-menu > summary {
+    box-sizing: border-box; height: 44px; min-height: 44px; margin: 0; align-self: center;
+}
+.layer-editor-dialog > .folder-dialog-heading > .icon-button { width: 44px; min-width: 44px; padding: 8px; }
+.layer-editor-dialog > .folder-dialog-heading > .layer-add-menu > summary { padding: 8px 10px; }

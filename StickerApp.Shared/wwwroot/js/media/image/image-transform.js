@@ -1,3 +1,4 @@
+import { editorLabel } from '../shared/editor-language.js';
 import { rotationGrip } from '../shared/rotation-grip.js';
 // One retained source for moving, rotating and sizing: dragging never resamples
 // an already resampled preview. Coordinates are always in the 512px workspace.
@@ -88,10 +89,10 @@ export function createTransformHandles(canvas, root, changed, syncPreview) {
             draw();changed(Math.round(value.imageWidth),Math.round(value.imageHeight));
         });
     }
-    const outline=document.createElement('div');outline.className='image-transform-outline';outline.tabIndex=0;outline.setAttribute('role','button');outline.setAttribute('aria-label','Move image');overlay.append(outline);bind(outline,'move');
+    const outline=document.createElement('div');outline.className='image-transform-outline';outline.tabIndex=0;outline.setAttribute('role','button');outline.setAttribute('aria-label',editorLabel(canvas,'Move image'));overlay.append(outline);bind(outline,'move');
     for(const [name,x,y] of [['top left',-1,-1],['top',0,-1],['top right',1,-1],['left',-1,0],['right',1,0],['bottom left',-1,1],['bottom',0,1],['bottom right',1,1],['rotation',0,-1]]) {
         const mode=name==='rotation'?'rotate':'resize',button=document.createElement('button');button.type='button';button.className=`layer-handle image-transform-handle ${mode==='rotate'?'image-rotation-handle':''}`;
-        button.setAttribute('aria-label',mode==='rotate'?'Rotate image':`Resize image ${name}`);button.dataset.tapFeedback='off';
+        button.setAttribute('aria-label',mode==='rotate'?editorLabel(canvas,'Rotate image'):editorLabel(canvas,'Resize image {0}',editorLabel(canvas,name)));button.dataset.tapFeedback='off';
         const grip=mode==='rotate'?rotationGrip():document.createElement('span');button.append(grip);overlay.append(button);buttons.push({button,x,y,mode});bind(button,mode,x,y);
     }
     function input(event){
@@ -114,6 +115,7 @@ export function createTransformHandles(canvas, root, changed, syncPreview) {
     }
     return {
         get active(){return !!source;},
+        get hasChanges(){return !!source && (value.x!==256 || value.y!==256 || value.imageWidth!==source.width || value.imageHeight!==source.height || value.rotation%360!==0);},
         begin(){end();source=document.createElement('canvas');source.width=canvas.width;source.height=canvas.height;source.getContext('2d').drawImage(canvas,0,0);
             value={x:256,y:256,imageWidth:source.width,imageHeight:source.height,rotation:0};overlay.hidden=false;
             for(const field of root.querySelectorAll('[data-animation-seek]'))field.disabled=true;

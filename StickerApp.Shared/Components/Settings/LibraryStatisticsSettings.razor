@@ -4,13 +4,11 @@
 @implements IAsyncDisposable
 
 <section @ref="statisticsElement" class="settings-card library-statistics-card @(customizingStats ? "quick-stats-editing" : "")" aria-labelledby="library-statistics-title" aria-busy="@(busy || layoutSaving ? "true" : "false")">
-    <div class="storage-section-header">
-        <h2 id="library-statistics-title">@L["Library statistics & storage"]</h2>
+    <h2 id="library-statistics-title" class="visually-hidden">@L["Library statistics & storage"]</h2>
+    <div class="quick-stats-toolbar statistics-action-row">
         <button type="button" class="button icon-button" disabled="@busy" @onclick="Refresh" title="@L["Refresh statistics"]" aria-label="@L["Refresh statistics"]"><Icon Name="rotate" /></button>
-    </div>
-    <p class="helper">@L["Library space on this device or host computer."]</p>
-    <div class="quick-stats-toolbar">
         <button class="button" type="button" disabled="@(!layoutReady || busy || layoutSaving)" aria-pressed="@(customizingStats ? "true" : "false")" @onclick="() => customizingStats = !customizingStats">@L[customizingStats ? "Done customizing" : "Customize stats"]</button>
+        <EditorPopup Title="@L["Library statistics & storage"]" IconName="info" IconOnly="true" CloseLabel="Close"><p>@L["Library space on this device or host computer."]</p></EditorPopup>
         @if (customizingStats) { <button class="text-button" type="button" disabled="@(busy || layoutSaving)" @onclick="ResetQuickStats">@L["Reset defaults"]</button> }
     </div>
     @if (layoutNotice is not null) { <p class="helper quick-stats-notice" role="status">@L.Message(layoutNotice)</p> }
@@ -48,14 +46,14 @@
             <div class="storage-chart-layout @(donutChart ? "storage-chart-layout-donut" : "")">
                 @if (donutChart)
                 {
-                    <div class="storage-donut" role="img" aria-label="Total used: @Size(stats.MediaBytes + stats.IndexBytes). See storage breakdown below.">
+                    <div class="storage-donut" role="img" aria-label="@L.Format("Total used: {0}. See storage breakdown below.", Size(stats.MediaBytes + stats.IndexBytes))">
                         <svg viewBox="0 0 112 112" aria-hidden="true" focusable="false">
                             <circle class="storage-donut-track" cx="56" cy="56" r="44" />
                             @foreach (var slice in DonutSlices())
                             {
                                 <circle class="storage-donut-slice @slice.Segment.ColorClass" cx="56" cy="56" r="44" pathLength="100"
                                         stroke-dasharray="@slice.Dash" stroke-dashoffset="@slice.Offset" transform="rotate(-90 56 56)">
-                                    <title>@L[slice.Segment.Label]: @Size(slice.Segment.Bytes)</title>
+                                    <title>@SegmentLabel(slice.Segment): @Size(slice.Segment.Bytes)</title>
                                 </circle>
                             }
                         </svg>
@@ -64,10 +62,10 @@
                 }
                 else
                 {
-                    <div class="total-storage-track" role="img" aria-label="Total used: @Size(stats.MediaBytes + stats.IndexBytes). See storage breakdown below.">
+                    <div class="total-storage-track" role="img" aria-label="@L.Format("Total used: {0}. See storage breakdown below.", Size(stats.MediaBytes + stats.IndexBytes))">
                         @foreach (var segment in stats.StorageSegments)
                         {
-                            <span class="storage-slice @segment.ColorClass" style="width: @StorageWidth(segment.Bytes)" title="@L[segment.Label]: @Size(segment.Bytes)"></span>
+                            <span class="storage-slice @segment.ColorClass" style="width: @StorageWidth(segment.Bytes)" title="@SegmentLabel(segment): @Size(segment.Bytes)"></span>
                         }
                     </div>
                 }
@@ -75,7 +73,7 @@
             <ul class="storage-legend" aria-label="@L["Total storage breakdown"]">
                 @foreach (var segment in stats.StorageSegments)
                 {
-                    <li class="@segment.ColorClass"><span class="pack-storage-dot" aria-hidden="true"></span><span>@L[segment.Label]</span><strong>@Size(segment.Bytes)</strong></li>
+                    <li class="@segment.ColorClass"><span class="pack-storage-dot" aria-hidden="true"></span><span>@SegmentLabel(segment)</span><strong>@Size(segment.Bytes)</strong></li>
                 }
                 @if (Store.StorageLimitBytes is { } totalBudget && totalBudget > stats.MediaBytes + stats.IndexBytes)
                 {
@@ -98,7 +96,7 @@
         }
         else
         {
-            <AppDisclosure Class="pack-storage-details"><Header>@L["Pack details"] <span class="helper">(@stats.PackStorage.Count packs)</span></Header><ChildContent>
+            <AppDisclosure Class="pack-storage-details"><Header>@L["Pack details"] <small>@L.Format("({0} packs)", stats.PackStorage.Count)</small></Header><ChildContent>
                 <div class="pack-storage-list">
                     @for (var packIndex = 0; packIndex < stats.PackStorage.Count; packIndex++)
                     {

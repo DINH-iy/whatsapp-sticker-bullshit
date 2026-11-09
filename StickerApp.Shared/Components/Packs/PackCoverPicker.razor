@@ -7,7 +7,7 @@
         <Icon Name="image-plus" />
         <span>@L[MenuStyle ? Pack.CoverImage is null ? "Set cover" : "Change cover" : "Cover"]@if (MenuStyle) { <small>@L["Choose the picture shown on this pack."]</small> }</span>
         <input type="file" accept="image/*" @ref="input" @onchange="Upload"
-               disabled="@working" aria-label="@L[$"Choose cover for {Pack.Name}"]" />
+               disabled="@working" aria-label="@L.Format("Choose cover for {0}", Pack.Name)" />
     </label>
     @if (AllowRemove && Pack.CoverImage is not null)
     {

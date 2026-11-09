@@ -1,0 +1,20 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+<dialog @ref="dialog" class="folder-dialog" aria-labelledby="delete-pack-title" @oncancel="OnCancel" @oncancel:preventDefault>
+    <h2 id="delete-pack-title">@L["Delete pack?"]</h2>
+    <p><strong>@Pack.Name</strong></p>
+    <p>@L["Only this pack will be deleted. Its stickers will remain in My Library."]</p>
+    @if(Error is not null){<p class="error" role="alert">@L.Error(Error)</p>}
+    <div class="dialog-actions"><button class="button" type="button" @onclick="OnCancel" disabled="@Busy">@L["Cancel"]</button><button class="button danger" type="button" @onclick="OnConfirm" disabled="@Busy"><Icon Name="trash" />@L["Delete pack"]</button></div>
+</dialog>
+@code {
+    [Parameter,EditorRequired] public StickerPack Pack {get;set;}=default!;
+    [Parameter] public bool Busy {get;set;}
+    [Parameter] public string? Error {get;set;}
+    [Parameter] public EventCallback OnCancel {get;set;}
+    [Parameter] public EventCallback OnConfirm {get;set;}
+    private ElementReference dialog;
+    private IJSObjectReference? module;
+    protected override async Task OnAfterRenderAsync(bool firstRender){if(!firstRender)return;module=await JS.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/ui/dialog.js");await module.InvokeVoidAsync("open",dialog);}
+    public async ValueTask DisposeAsync(){if(module is not null)try{await module.DisposeAsync();}catch(JSDisconnectedException){}}
+}

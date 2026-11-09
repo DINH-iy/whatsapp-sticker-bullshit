@@ -2,7 +2,7 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 
-<div class="image-customizer live-editor live-tools-@(layout.ToolsPosition) live-controls-@(layout.ControlsPosition) live-size-@(layout.ButtonSize) @(Animated ? "animated-customizer" : "")" aria-busy="@working">
+<div class="image-customizer live-editor live-tools-@(layout.ToolsPosition) live-controls-@(layout.ControlsPosition) live-size-@(layout.ButtonSize) @(Animated ? "animated-customizer" : "")" data-editor-labels="@L.EditorLabels()" aria-busy="@working">
     <div class="live-history-row" role="group" aria-label="@L["Edit history"]">
         <button class="button icon-button" type="button" @onclick='() => Run("undo")' disabled="@(working || tool != "")" aria-label="@L["Undo"]" title="@L["Undo"]"><Icon Name="undo" /></button>
         <button class="button icon-button" type="button" @onclick='() => Run("redo")' disabled="@(working || tool != "")" aria-label="@L["Redo"]" title="@L["Redo"]"><Icon Name="redo" /></button>
@@ -213,7 +213,7 @@
     private async Task SelectAdjustment(string value)
     {
         if (working || controller is null) return;
-        if (tool == "adjust" && adjustmentTool == value) { RequestCancelTool(); return; }
+        if (tool == "adjust" && adjustmentTool == value) { await RequestCancelTool(); return; }
         await controller.InvokeVoidAsync("beginTool", value == "transform" ? "resize" : "adjust");
         await controller.InvokeVoidAsync(value == "transform" ? "beginTransform" : "beginAdjustments");
         adjustmentTool = value; tool = "adjust";
@@ -225,13 +225,22 @@
     private Task SetHue(double hue) => Run("adjust", "hue", hue);
     private Task SetColorStrength(int strength) => Run("adjust", "colorStrength", strength / 100d);
     private Task SetTint(string? color) => Run("adjust", "tint", color);
-    private async Task SelectTool(string value) { if (controller is null || working) return; if (tool == value) { RequestCancelTool(); return; } adjustmentTool = ""; tool = value; error = null; await controller.InvokeVoidAsync("beginTool", tool); await UpdateSettings(); if(tool == "border") await UpdateBorder(); await OnToolActiveChanged.InvokeAsync(true); }
+    private async Task SelectTool(string value) { if (controller is null || working) return; if (tool == value) { await RequestCancelTool(); return; } adjustmentTool = ""; tool = value; error = null; await controller.InvokeVoidAsync("beginTool", tool); await UpdateSettings(); if(tool == "border") await UpdateBorder(); await OnToolActiveChanged.InvokeAsync(true); }
     private async Task ApplyTool()
     {
         await Run("applyTool", adjustmentTool == "transform");
         if (error is null) { tool = ""; adjustmentTool = ""; await OnToolActiveChanged.InvokeAsync(false); }
     }
-    private void RequestCancelTool() => confirmToolCancel = true;
+    private async Task RequestCancelTool()
+    {
+        if (controller is null || working || isDisposed) return;
+        try
+        {
+            if (await controller.InvokeAsync<bool>("hasToolChanges")) confirmToolCancel = true;
+            else await CancelTool();
+        }
+        catch (JSException exception) { Log.Error("Check active tool changes", exception); error = exception.Message.Split('\n')[0]; }
+    }
     private async Task CancelTool()
     {
         confirmToolCancel = false;

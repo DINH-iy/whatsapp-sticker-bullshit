@@ -3,7 +3,7 @@
 <dialog @ref="dialog" class="folder-dialog app-guide-dialog" aria-labelledby="app-guide-title" @oncancel="OnClose" @oncancel:preventDefault @onkeydown="Key">
     <div class="folder-dialog-heading"><h2 id="app-guide-title">@L["How to use Stik-er-in"]</h2><button class="button icon-button" type="button" @onclick="OnClose" aria-label="@L["Close app guide"]"><Icon Name="close" /></button></div>
     <AppGuideContent />
-    <div class="guide-progress" role="group" aria-label="@L["Tutorial progress"]">@for(var i=0;i<5;i++){var target=i;<button type="button" class="guide-dot" aria-label="Go to step @(i+1)" aria-current="@(step==i?"step":null)" @onclick="() => Go(target)"></button>}</div>
+    <div class="guide-progress" role="group" aria-label="@L["Tutorial progress"]">@for(var i=0;i<5;i++){var target=i;<button type="button" class="guide-dot" aria-label="@L.Format("Go to step {0}", i+1)" aria-current="@(step==i?"step":null)" @onclick="() => Go(target)"></button>}</div>
     <div class="dialog-actions guide-navigation"><button class="button" type="button" @onclick="() => Go(step-1)" disabled="@(step==0)">@L["Back"]</button><span aria-live="polite">@(step+1) / 5</span>@if(step<4){<button class="button primary" type="button" @onclick="() => Go(step+1)">@L["Next"]<Icon Name="right" /></button>}else{<button type="button" class="button primary" @onclick="OnClose">@L["Got it"]<Icon Name="check" /></button>}</div>
 </dialog>
 @code {

@@ -2438,3 +2438,18 @@ button:not(.navigation-dismiss):not(.layer-handle):not(.layer-rotation-handle):n
 /* Destructive intent wins over tool/category/selection backgrounds in every theme. */
 button.danger, a.danger, .button.danger { color: var(--error-text) !important; background-color: var(--error-background) !important; border-color: var(--error-border) !important; }
 .nsfw-name-tag { color: var(--error-text) !important; }
+/* Shape options share a compact row; presets keep equal touch targets without captions. */
+.shape-picker-heading { margin-bottom: 12px; }
+.shape-style-controls { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 10px 14px; }
+.shape-style-controls label { display: flex; flex-direction: column; gap: 6px; margin: 0; font-size: 12px; }
+.shape-style-controls .toggle-row { flex-direction: row; align-items: center; align-self: center; }
+.shape-style-controls input[type="number"] { width: 88px; min-height: 44px; }
+.shape-style-controls input[type="color"] { width: 44px; height: 44px; min-height: 44px; padding: 3px; }
+.shape-picker-grid { grid-template-columns: repeat(auto-fit,minmax(52px,1fr)); gap: 8px; }
+.shape-picker-grid .button { align-items: center; justify-content: center; height: 60px; min-height: 60px; padding: 8px; }
+.shape-picker-grid .shape-sample { display: block; width: 42px; height: 42px; flex: 0 0 42px; }
+.statistics-action-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+.statistics-action-row > .button { margin: 0; min-height: 44px; }
+.statistics-action-row > .icon-button { width: 44px; height: 44px; flex: 0 0 44px; }
+/* The temporary shape chooser floats over the workspace instead of squeezing it. */
+.layer-editor-dialog > .shape-picker { position: absolute; z-index: 40; inset: 76px 16px auto; flex: none; max-height: calc(100% - 92px); padding: 16px; overflow-y: auto; background: var(--surface); box-shadow: 0 12px 32px #0005; }

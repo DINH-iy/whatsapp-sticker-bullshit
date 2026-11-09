@@ -9,7 +9,7 @@
 @inject NavigationManager Navigation
 @inject StickerApp.Shared.Services.StickerPreparationService Preparation
 
-<PageTitle>@L[CurrentPack?.Name ?? "My Library"] · Stik-er-in</PageTitle>
+<PageTitle>@(CurrentPack?.Name ?? L["My Library"]) · Stik-er-in</PageTitle>
 
 @if (CurrentPack?.Collection is { } collectionLink)
 {
@@ -28,7 +28,7 @@
         }
         <div class="pack-heading-text">
             <div class="pack-heading-name">
-                <h1>@L[CurrentPack?.Name ?? "My Library"] @if(CurrentPack?.Nsfw is true){<span class="nsfw-name-tag">@L["[NSFW]"]</span>}</h1>
+                <h1>@(CurrentPack?.Name ?? L["My Library"]) @if(CurrentPack?.Nsfw is true){<span class="nsfw-name-tag">@L["[NSFW]"]</span>}</h1>
                 @if (CurrentPack is { } visibilityPack)
                 {
                     <span class="pack-visibility-indicator" role="img" aria-label="@L[visibilityPack.Public ? "Public pack" : "Private pack"]" title="@L[visibilityPack.Public ? "Public pack" : "Private pack"]">
@@ -123,7 +123,7 @@
     }
 </BrowseOptionsPopup>
 }
-<p class="helper browse-result" role="status">Showing @visibleImages.Count of @(CurrentPack is null ? library.Stickers.Count : PackImages.Count) images.@if (CurrentPack is not null) { <span> @L["Sorting changes this view only; saved sticker order stays the same."]</span> }</p>
+<p class="helper browse-result" role="status">@L.Format("Showing {0} of {1} images.", visibleImages.Count, CurrentPack is null ? library.Stickers.Count : PackImages.Count)@if (CurrentPack is not null) { <span> @L["Sorting changes this view only; saved sticker order stays the same."]</span> }</p>
 @if (PendingPreparationCount > 0)
 {
     <p class="helper" role="status">@L.Format("Preparing {0} stickers automatically… You can keep using the app.", PendingPreparationCount)</p>
@@ -206,11 +206,11 @@ else
         @foreach (var image in visibleImages)
         {
             <article class="image-card" @key="image.Id" @onclick="() => Edit(image)">
-                <input type="checkbox" class="image-select" @onclick:stopPropagation aria-label="@L[$"Select {image.Name}"]"
+                <input type="checkbox" class="image-select" @onclick:stopPropagation aria-label="@L.Format("Select {0}", image.Name)"
                        checked="@selected.Contains(image.Id)" @onchange="() => Toggle(image.Id)" />
                 <SpoilerPreview IsSpoiler="@library.IsNsfw(image)" Name="@image.Name">
-                <button class="image-preview" @onclick:stopPropagation aria-label="@L[$"Edit {image.Name}"]" @onclick="() => Edit(image)">
-                    <img class="spoiler-artwork" src="@previews[image.Id]" alt="@L[$"{image.Name}"]" loading="lazy" />
+                <button class="image-preview" @onclick:stopPropagation aria-label="@L.Format("Edit {0}", image.Name)" @onclick="() => Edit(image)">
+                    <img class="spoiler-artwork" src="@previews[image.Id]" alt="@image.Name" loading="lazy" />
                 </button>
                 </SpoilerPreview>
                 <strong>@image.Name</strong>
@@ -222,15 +222,15 @@ else
                 }
                 <div class="card-actions" @onclick:stopPropagation>
                     <div class="sticker-actions">
-                        <button class="button icon-button" type="button" @onclick="() => infoImageId = image.Id" title="@L["Sticker details"]" aria-label="@L[$"Details for {image.Name}"]"><Icon Name="info" /></button>
+                        <button class="button icon-button" type="button" @onclick="() => infoImageId = image.Id" title="@L["Sticker details"]" aria-label="@L.Format("Details for {0}", image.Name)"><Icon Name="info" /></button>
                         <button class="button icon-button" type="button" @onclick="() => imageToAdd = image"
-                                disabled="@busy" title="@L["Add to pack"]" aria-label="@L[$"Add {image.Name} to pack"]">
+                                disabled="@busy" title="@L["Add to pack"]" aria-label="@L.Format("Add {0} to pack", image.Name)">
                             <Icon Name="folder-plus" />
                         </button>
-                        <button class="button icon-button" @onclick="() => Edit(image)" title="@L["Edit image"]" aria-label="@L[$"Edit {image.Name}"]">
+                        <button class="button icon-button" @onclick="() => Edit(image)" title="@L["Edit image"]" aria-label="@L.Format("Edit {0}", image.Name)">
                             <Icon Name="edit" />
                         </button>
-                        <button class="button icon-button danger" @onclick="() => pendingRemoval = image" title="@L["Remove sticker"]" aria-label="@L[$"Remove {image.Name}"]">
+                        <button class="button icon-button danger" @onclick="() => pendingRemoval = image" title="@L["Remove sticker"]" aria-label="@L.Format("Remove {0}", image.Name)">
                             <Icon Name="trash" />
                         </button>
                     </div>

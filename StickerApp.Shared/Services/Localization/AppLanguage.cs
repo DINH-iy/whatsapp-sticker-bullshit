@@ -5,7 +5,7 @@ namespace StickerApp.Shared.Services;
 
 public sealed partial class AppLanguage
 {
-    public static readonly IReadOnlyList<(string Code,string Name)> Supported=[("en","English"),("nl","Nederlands"),("de","Deutsch"),("ro","Română")];
+    public static readonly IReadOnlyList<(string Code,string Name)> Supported=[("en","English"),("nl","Nederlands"),("de","Deutsch"),("ro","Română"),("nb","Norsk bokmål")];
     private static readonly Dictionary<string,Dictionary<string,string>> Resources=Load();
     public string Code { get; private set; }="en";
     public event Action? Changed;

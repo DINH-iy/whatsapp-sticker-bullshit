@@ -44,6 +44,7 @@ public sealed partial class AppLanguage
         }
         return null;
     }
+    public string EditorLabels()=>System.Text.Json.JsonSerializer.Serialize(new[]{"Move image","Rotate image","Rotate selected layer","Resize image {0}","Resize layer {0}","Rotate: {0}\u00b0. Drag or use arrow keys.","Resize: {0} \u00d7 {1}. Drag or use arrow keys.","top left","top","top right","left","right","bottom left","bottom","bottom right"}.ToDictionary(key=>key,key=>this[key]));
     public string Format(string template, params object?[] values)
     {
         var translated=this[template];

@@ -1,3 +1,4 @@
+import { leafLayers } from '../layers/layer-groups.js';
 // Each visible editor owns a session, so cancelling it cannot stop preparation
 // or another editor. The module-level session serves background conversion.
 export function createSession() {
@@ -39,7 +40,7 @@ export function createSession() {
         inspect(source) { return request('inspect', source); },
         trim(source, start, end) { return request('trim', source, start, end); },
         prepare(source) { return request('prepare', source); },
-        compose(composition) { return request('compose', null, null, null, composition); },
+        compose(composition) { return request('compose', null, null, null, {...composition,layers:leafLayers(composition.layers)}); },
         dispose() { reset('Animation editor closed.'); }
     };
 }
