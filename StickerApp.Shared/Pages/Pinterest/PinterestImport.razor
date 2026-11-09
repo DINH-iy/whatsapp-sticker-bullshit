@@ -13,7 +13,7 @@
     <h2 id="pinterest-link-title">@L["Share a board or selection"]</h2>
     <HelpDisclosure Summary="@L["How to share a Pinterest selection"]">
     <p>@L["Share a public Pinterest board or select several pins and share the selection. Paste the link or shared text below. Boards and selections are limited to 100 pins. Oversized boards are rejected before collecting their media."]</p>
-    <p class="helper">@L["Images: up to 10 MB each. Videos: up to 100 MB each, converted to GIF clips of at most 10 seconds. A whole batch can download at most 250 MB. You review each video clip before the batch is saved."]</p>
+    <p class="helper">@L["Images: up to 10 MB each. Videos: up to 20 MB each, trimmed to at most 5 seconds and 100 frames. A batch can download up to 250 MB. Review all video clips first, then convert the videos and GIFs together into WebP stickers."]</p>
     <p class="helper">@L["On iPhone, choose Stickers in the share sheet, save the link, then open Stickers to preview it here."]</p>
     </HelpDisclosure>
     <OnlineOnly><form @onsubmit="Load" @onsubmit:preventDefault>
@@ -40,7 +40,7 @@
 {
     <p class="notice notice-success" role="status">@success <a href="@destinationLink">@L["Open destination"]</a></p>
 }
-@if (busy)
+@if (busy && animationBatch is null)
 {
     <OperationProgressDialog Title="@status" Detail="@ProgressDetail" Progress="@ProgressPercent" ProgressLabel="@L["Pinterest media import progress"]" Estimate="@TimeEstimate" CanCancel="@(operation?.IsCancellationRequested == false)" OnCancel="Cancel" />
 }
@@ -64,11 +64,11 @@
                 <label class="pinterest-image">
                     <img src="@image.ThumbnailUrl" alt="@(string.IsNullOrWhiteSpace(image.Title) ? L.Format("Pinterest item {0}", selection.Images.IndexOf(image) + 1) : image.Title)" loading="lazy" referrerpolicy="no-referrer" />
                     <span><input type="checkbox" checked="@selected.Contains(image.PinId)" @onchange="() => Toggle(image.PinId)" disabled="@busy" /> @(string.IsNullOrWhiteSpace(image.Title) ? $"{L[image.IsVideo ? "Video" : "Image"]} {selection.Images.IndexOf(image) + 1}" : image.Title)</span>
-                    @if (image.IsVideo) { <small class="pinterest-media-type"><Icon Name="animation" />@L["Video"]@(image.DurationMs is > 0 ? $" · {image.DurationMs / 1000d:0.#} s" : "") · @L["Trim to GIF"]</small> }
+                    @if (image.IsVideo) { <small class="pinterest-media-type"><Icon Name="animation" />@L["Video"]@(image.DurationMs is > 0 ? $" · {image.DurationMs / 1000d:0.#} s" : "") · @L["Review clip"]</small> }
                 </label>
                 @if (Store.AskForOriginalOnImport)
                 {
-                    <label class="toggle-row pinterest-original-choice"><input type="checkbox" @bind="keepOriginals[image.PinId]" disabled="@(busy || !selected.Contains(image.PinId))" /> @L[image.IsVideo ? "Keep GIF clip" : "Keep original"]</label>
+                    <label class="toggle-row pinterest-original-choice"><input type="checkbox" @bind="keepOriginals[image.PinId]" disabled="@(busy || !selected.Contains(image.PinId))" /> @L[image.IsVideo ? "Keep animation" : "Keep original"]</label>
                 }
                 </div>
             }
@@ -101,10 +101,10 @@
             <p class="error" role="alert">@L.Error(CapacityError)</p>
         }
         <p class="helper">@L["Choose Keep original for each selected image, or use your saved Settings defaults when per-file choices are disabled. Discarding originals saves space after preparation succeeds; previous full-size images cannot be recovered without your own copy. GIF and animated WebP stickers can both be trimmed and edited. Editable layer sources are separate."]</p>
-        @if (selection.Images.Any(image => image.IsVideo)) { <p class="helper">@L["Keep GIF clip retains the converted animation; downloaded MP4 files are temporary."]</p> }
+@if (selection.Images.Any(image => image.IsVideo)) { <p class="helper">@L["Video clips become WebP stickers. Downloaded MP4 files are temporary and are removed after importing or cancelling."]</p> }
     </section>
 }
-@if (videoInput is not null && videoMedia is not null)
+@if (animationBatch is not null)
 {
-    <VideoImportDialog @key="videoMedia.PinId" InitialVideo="videoInput" InitialName="@(string.IsNullOrWhiteSpace(videoMedia.Title) ? "Pinterest video" : videoMedia.Title)" OnConverted="VideoClipReady" OnClose="CancelVideoClip" />
+    <StickerApp.Shared.Components.Pinterest.PinterestAnimationBatchDialog Items="animationBatch" CancellationToken="@(operation?.Token ?? default)" OnConverted="BatchReady" OnFailed="BatchFailed" OnCancel="CancelBatch" />
 }

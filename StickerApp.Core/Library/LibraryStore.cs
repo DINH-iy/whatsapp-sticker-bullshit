@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace StickerApp.Core;
 
-public sealed record BatchImportFile(string Name, string Path, bool? KeepOriginal = null);
+public sealed record BatchImportFile(string Name, string Path, bool? KeepOriginal = null, string? OriginalPath = null);
 
 /// <summary>Single-process, atomic file persistence for the first build. Replace behind this service with SQLite later.</summary>
 public sealed partial class LibraryStore
@@ -355,6 +355,23 @@ public sealed partial class LibraryStore
                     created.Add(path);
                     await output.WriteAsync(bytes, cancellationToken);
                 }
+                if (file.OriginalPath is not null)
+                {
+                    if (sticker.KeepOriginalOverride == true)
+                    {
+                        await using var original = File.OpenRead(file.OriginalPath);
+                        if (original.Length is <= 0 or > MaxGifImportBytes) throw new InvalidDataException(GifSizeError);
+                        var source = new byte[(int)original.Length];
+                        await original.ReadExactlyAsync(source, cancellationToken);
+                        if (InspectImport(source).MimeType != "image/gif" || !info.Animated)
+                            throw new InvalidDataException("The animation backup must be the original GIF.");
+                        sticker.OriginalFileName = $"{sticker.Id:N}-original.gif";
+                        var originalPath = MediaPath(sticker.OriginalFileName);
+                        created.Add(originalPath);
+                        await File.WriteAllBytesAsync(originalPath, source, cancellationToken);
+                    }
+                    else sticker.OriginalDiscarded = true;
+                }
                 stickers.Add(sticker);
             }
             cancellationToken.ThrowIfCancellationRequested();
@@ -448,7 +465,23 @@ public sealed partial class LibraryStore
             Touch(pack);
         });
     }
-    public Task DeletePackAsync(Guid id) => MutateAsync(l => l.Packs.RemoveAll(p => p.Id == id));
+    public async Task DeletePackAsync(Guid id, bool deleteStickers = false)
+    {
+        await gate.WaitAsync();
+        try
+        {
+            List<string> files = [];
+            await MutateInternalAsync(library =>
+            {
+                var pack = library.Packs.FirstOrDefault(pack => pack.Id == id);
+                if (pack is null) return;
+                if (deleteStickers) files = RemoveStickers(library, pack.StickerIds.ToHashSet());
+                library.Packs.Remove(pack);
+            });
+            foreach (var file in files) File.Delete(MediaPath(file));
+        }
+        finally { gate.Release(); }
+    }
     public Task FavoriteAsync(Guid id) => MutateAsync(l => { var s = l.Stickers.Single(s => s.Id == id); s.Favorite = !s.Favorite; });
     public Task EditStickerAsync(Guid id, string name, string tags, bool? nsfw = null) => MutateAsync(l =>
     {
@@ -563,13 +596,7 @@ public sealed partial class LibraryStore
             List<string> files = [];
             await MutateInternalAsync(l =>
             {
-                files = l.Stickers.Where(s => remove.Contains(s.Id)).SelectMany(s => new[] { s.FileName, s.OriginalFileName, s.CompositionFileName }).OfType<string>().Distinct().ToList();
-                l.Stickers.RemoveAll(s => remove.Contains(s.Id));
-                foreach (var p in l.Packs.Where(p => p.StickerIds.Any(remove.Contains)))
-                {
-                    p.StickerIds.RemoveAll(remove.Contains);
-                    Touch(p);
-                }
+                files = RemoveStickers(l, remove);
             });
             foreach (var file in files)
                 File.Delete(MediaPath(file));
@@ -578,6 +605,20 @@ public sealed partial class LibraryStore
         {
             gate.Release();
         }
+    }
+
+    private static List<string> RemoveStickers(StickerLibrary library, HashSet<Guid> remove)
+    {
+        var files = library.Stickers.Where(sticker => remove.Contains(sticker.Id))
+            .SelectMany(sticker => new[] { sticker.FileName, sticker.OriginalFileName, sticker.CompositionFileName })
+            .OfType<string>().Distinct().ToList();
+        library.Stickers.RemoveAll(sticker => remove.Contains(sticker.Id));
+        foreach (var pack in library.Packs.Where(pack => pack.StickerIds.Any(remove.Contains)))
+        {
+            pack.StickerIds.RemoveAll(remove.Contains);
+            Touch(pack);
+        }
+        return files;
     }
 
     public async Task<PackArchive.ExportInfo> ExportPackAsync(Guid packId, Stream destination, byte[]? whatsAppCover = null)

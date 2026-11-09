@@ -20,7 +20,7 @@
     <div class="page-title">
         @if (PackHeaderCover is { } cover)
         {
-            <SpoilerPreview EyeBeside="true" IsSpoiler="@(CurrentPack is { } coverPack && library.IsNsfw(coverPack))" Name="@(CurrentPack?.Name ?? "Pack cover")"><img class="pack-title-cover spoiler-artwork" src="@cover" alt="@L["Pack cover"]" /></SpoilerPreview>
+            <SpoilerPreview EyeBeside="true" IsSpoiler="@(CurrentPack is { } coverPack && library.IsNsfw(coverPack))" Name="@(CurrentPack?.Name ?? "Pack cover")"><StillPackCover Class="pack-title-cover spoiler-artwork" Source="@cover" Alt="@L["Pack cover"]" /></SpoilerPreview>
         }
         else if (CurrentPack is not null)
         {
@@ -381,12 +381,17 @@ else
 }
 
 
-@if (pendingRemoval is not null || deletePack)
+@if (deletePack && CurrentPack is { } deletingPack)
+{
+    <DeletePackDialog Pack="deletingPack" Busy="busy" OnCancel="CancelRemoval" OnConfirm="ConfirmPackRemoval" />
+}
+
+@if (pendingRemoval is not null)
 {
     <div class="modal-backdrop">
         <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="remove-title">
-            <h2 id="remove-title">@L[deletePack ? "Delete pack?" : "Remove sticker?"]</h2>
-            <p>@L[deletePack ? "Stickers remain in the library." : pendingRemoval!.Name]</p>
+            <h2 id="remove-title">@L["Remove sticker?"]</h2>
+            <p>@pendingRemoval.Name</p>
             <div class="dialog-actions">
                 <button class="button" @onclick="CancelRemoval">@L["Cancel"]</button>
                 <button class="button danger" @onclick="ConfirmRemoval" disabled="@busy"><Icon Name="trash" /> @L["Remove"]</button>

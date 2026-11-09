@@ -19,7 +19,7 @@ export async function prepare(source, animated) {
             return await engine.process({ action: 'prepare', source, signal: job.controller.signal });
         }
         if (!animated && (typeof OffscreenCanvas === 'undefined' || typeof createImageBitmap === 'undefined')) {
-            const result = await prepareOnMain(source, false);
+            const result = await prepareOnMain(source, false, job.controller.signal);
             job.controller.signal.throwIfAborted(); return result;
         }
         return await new Promise((resolve, reject) => {

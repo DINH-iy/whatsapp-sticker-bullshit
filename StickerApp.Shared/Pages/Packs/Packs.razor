@@ -2,6 +2,7 @@
 @inject IJSRuntime JS
 @page "/"
 @inject LibraryStore Store
+@inject StickerApp.Shared.Services.StickerPreparationService Preparation
 @inject NavigationManager Navigation
 
 <PageTitle>@L["My Packs · Stik-er-in"]</PageTitle>
@@ -79,7 +80,7 @@
                 <div class="pack-cover">
                     @if (covers.TryGetValue(pack.Id, out var cover))
                     {
-                        <img class="spoiler-artwork" src="@cover" alt="" loading="lazy" />
+                        <StillPackCover Class="spoiler-artwork" Source="@cover" />
                     }
                     else
                     {

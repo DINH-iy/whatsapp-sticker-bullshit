@@ -20,6 +20,7 @@ public sealed record PinterestSelection(string SourceUrl, int ExpectedCount, int
     public bool CollectionComplete { get; init; }
 }
 public sealed record PinterestImportProgress(int Completed, int Total, TimeSpan? EstimatedRemaining = null, bool IsSaving = false, bool IsConvertingVideo = false);
+public sealed record PinterestAnimationInput(PinterestImage Media, string Path);
 
 public sealed class PinterestImportClient : IDisposable
 {
@@ -100,12 +101,13 @@ public sealed class PinterestImportClient : IDisposable
     public async Task<Guid?> ImportAsync(LibraryStore store, IReadOnlyList<PinterestImage> images, Guid? packId = null,
         IProgress<PinterestImportProgress>? progress = null, CancellationToken cancellationToken = default, string? newPackName = null,
         IReadOnlyDictionary<string, bool>? keepOriginals = null, string? newPackPublisher = null,
-        Func<PinterestImage, string, CancellationToken, Task<byte[]>>? convertVideo = null)
+        Func<PinterestImage, string, CancellationToken, Task<byte[]>>? convertVideo = null,
+        Func<IReadOnlyList<PinterestAnimationInput>, CancellationToken, Task<IReadOnlyDictionary<string, byte[]>>>? convertBatch = null)
     {
         if (images.Count is < 1 or > MaxImages || images.Any(image => !IsValidImage(image)) ||
             images.Select(image => image.PinId).Distinct(StringComparer.Ordinal).Count() != images.Count)
             throw new InvalidDataException("Choose between 1 and 100 different images from the preview.");
-        if (images.Any(image => image.IsVideo) && convertVideo is null)
+        if (images.Any(image => image.IsVideo) && convertVideo is null && convertBatch is null)
             throw new InvalidOperationException("Video clip review is required before importing this selection.");
         var directory = Path.Combine(Path.GetTempPath(), "sticker-pinterest-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
@@ -114,6 +116,7 @@ public sealed class PinterestImportClient : IDisposable
         try
         {
             List<BatchImportFile> files = [];
+            List<PinterestAnimationInput> animations = [];
             TimeSpan downloadTime = TimeSpan.Zero;
             long downloadedBytes = 0;
             long preparedBytes = 0;
@@ -135,16 +138,24 @@ public sealed class PinterestImportClient : IDisposable
                         await input.ReadExactlyAsync(header, timeout.Token);
                         if (!header.AsSpan(4, 4).SequenceEqual("ftyp"u8)) throw new InvalidDataException("Pinterest returned an invalid MP4 video.");
                     }
-                    progress?.Report(new(files.Count, images.Count, IsConvertingVideo: true));
-                    var converted = await convertVideo!(image, path, timeout.Token);
-                    timeout.Token.ThrowIfCancellationRequested();
-                    if (converted.Length > LibraryStore.MaxGifImportBytes) throw new InvalidDataException("The converted GIF exceeds 20 MiB. Choose a shorter clip.");
-                    var info = MediaInspector.Inspect(converted);
-                    if (!info.Animated || info.MimeType is not ("image/gif" or "image/webp") || info.DurationMs > 10_100)
-                        throw new InvalidDataException("Choose an animated clip of at most 10 seconds.");
-                    await File.WriteAllBytesAsync(path, converted, timeout.Token);
+                    if (convertBatch is not null) animations.Add(new(image, path));
+                    else
+                    {
+                        progress?.Report(new(files.Count, images.Count, IsConvertingVideo: true));
+                        var converted = await convertVideo!(image, path, timeout.Token);
+                        timeout.Token.ThrowIfCancellationRequested();
+                        if (converted.Length > LibraryStore.MaxGifImportBytes) throw new InvalidDataException("The converted GIF exceeds 20 MiB. Choose a shorter clip.");
+                        var info = MediaInspector.Inspect(converted);
+                        if (!info.Animated || info.MimeType is not ("image/gif" or "image/webp") || info.DurationMs > 10_100)
+                            throw new InvalidDataException("Choose an animated clip of at most 10 seconds.");
+                        await File.WriteAllBytesAsync(path, converted, timeout.Token);
+                    }
                 }
-                else MediaInspector.Inspect(await File.ReadAllBytesAsync(path, timeout.Token));
+                else
+                {
+                    var info = MediaInspector.Inspect(await File.ReadAllBytesAsync(path, timeout.Token));
+                    if (convertBatch is not null && info.Animated && info.MimeType == "image/gif") animations.Add(new(image, path));
+                }
                 preparedBytes += new FileInfo(path).Length;
                 if (preparedBytes > MaxBatchBytes) throw new InvalidDataException("The prepared batch exceeds 250 MB. Select fewer items or shorter video clips.");
                 var title = string.IsNullOrWhiteSpace(image.Title) ? $"Pinterest {(image.IsVideo ? "video" : "image")} {files.Count + 1}" : image.Title.Trim();
@@ -155,8 +166,31 @@ public sealed class PinterestImportClient : IDisposable
                 var remaining = images.Count - files.Count;
                 TimeSpan? estimate = files.Count >= 2 && remaining > 0
                     ? downloadTime / files.Count * remaining : null;
-                progress?.Report(new(files.Count, images.Count, estimate, remaining == 0));
+                progress?.Report(new(files.Count, images.Count, estimate, remaining == 0 && animations.Count == 0));
             }
+            if (animations.Count > 0)
+            {
+                progress?.Report(new(images.Count, images.Count, IsConvertingVideo: true));
+                var converted = await convertBatch!(animations, timeout.Token);
+                foreach (var input in animations)
+                {
+                    timeout.Token.ThrowIfCancellationRequested();
+                    if (!converted.TryGetValue(input.Media.PinId, out var bytes)) throw new InvalidDataException("An animation was not converted. No items were imported.");
+                    var info = MediaInspector.Inspect(bytes);
+                    if (info.MimeType != "image/webp" || !info.Animated || info.Width != 512 || info.Height != 512 || bytes.Length > 500 * 1024 ||
+                        info.DurationMs is <= 0 || info.DurationMs > (input.Media.IsVideo ? 5000 : 10000) || info.MinimumFrameMs < 8)
+                        throw new InvalidDataException("An animation could not fit the sticker limits. No items were imported. Shorten the clip and try again.");
+                    if (!input.Media.IsVideo)
+                    {
+                        var original = input.Path + ".gif";
+                        File.Copy(input.Path, original);
+                        var index = files.FindIndex(file => file.Path == input.Path);
+                        files[index] = files[index] with { OriginalPath = original };
+                    }
+                    await File.WriteAllBytesAsync(input.Path, bytes, timeout.Token);
+                }
+            }
+            if (animations.Count > 0) progress?.Report(new(images.Count, images.Count, IsSaving: true));
             return await store.ImportBatchAsync(files, packId, timeout.Token, newPackName, newPackPublisher);
         }
         finally

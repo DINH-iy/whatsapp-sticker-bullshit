@@ -1,0 +1,70 @@
+<!doctype html><meta charset="utf-8"><h1>Batch import checks</h1><pre id="result">Running…</pre><video muted playsinline></video><input type="file"><div id="root"></div>
+<script type="module">
+const result=document.querySelector('#result'),assert=(ok,message)=>{if(!ok)throw new Error(message);};
+try {
+    const base='/_content/StickerApp.Shared/js/media/';
+    const {create}=await import(base+'video/video-import.js'),{create:createBatch}=await import(base+'video/video-batch.js');
+    const {createEncoder}=await import(base+'codecs/video-gif-encoder.js');
+    const {openAnimation}=await import(base+'animation/animation-reader.js');
+    const {firstFrame}=await import('/_content/StickerApp.Shared/js/ui/pack-cover-still.js');
+    const settings=await import(base+'video/video-worker-settings.js'),previous=settings.readWorkers();
+    const canvas=document.createElement('canvas');canvas.width=64;canvas.height=48;const ctx=canvas.getContext('2d');
+    const gif=createEncoder(64,48);
+    ctx.fillStyle='red';ctx.fillRect(0,0,64,48);gif.add(ctx.getImageData(0,0,64,48).data,500);
+    ctx.fillStyle='blue';ctx.fillRect(0,0,64,48);gif.add(ctx.getImageData(0,0,64,48).data,500);
+    const gifFile=new File([gif.finish()],'two-colors.gif',{type:'image/gif'});
+    const stream=canvas.captureStream(20),mime=['video/mp4;codecs=avc1.42E01E','video/mp4','video/webm;codecs=vp8'].find(value=>MediaRecorder.isTypeSupported(value));
+    const recorder=new MediaRecorder(stream,{mimeType:mime}),chunks=[];recorder.ondataavailable=event=>chunks.push(event.data);
+    const stopped=new Promise(resolve=>recorder.onstop=resolve);let tick=0;
+    const paint=()=>{ctx.fillStyle=tick++<12?'red':'blue';ctx.fillRect(0,0,64,48);};paint();recorder.start();
+    const timer=setInterval(paint,50);await new Promise(resolve=>setTimeout(resolve,1400));recorder.stop();await stopped;clearInterval(timer);stream.getTracks().forEach(track=>track.stop());
+    const file=new File(chunks,'test-video.'+(mime.includes('mp4')?'mp4':'webm'),{type:mime.split(';')[0]});
+    let info,loadError;
+    const controller=create(document.querySelector('video'),document.querySelector('input'),document.querySelector('#root'),{invokeMethodAsync:async(method,value)=>{if(method==='VideoReady')info=value;if(method==='VideoFailed')loadError=value;}});
+    await controller.loadFile(file);assert(info&&!loadError,'Source video must load: '+loadError);
+    const progress=[];const batch=createBatch({invokeMethodAsync:async(_,done,total)=>progress.push([done,total])});
+    await controller.estimate(0,1.1,12);controller.queueReview(batch,'first',0,1.1,12);
+    await controller.estimate(.1,1.1,8);controller.queueReview(batch,'second',.1,1.1,8);
+    await batch.addGif('gif',{arrayBuffer:()=>gifFile.arrayBuffer()},gifFile.name);
+    controller.dispose();
+
+    const NativeWorker=window.Worker,live=new Set();let peak=0,onWorker;
+    window.Worker=class extends NativeWorker {
+        constructor(...args){super(...args);live.add(this);peak=Math.max(peak,live.size);onWorker?.();}
+        terminate(){live.delete(this);super.terminate();}
+    };
+    const dataUrl=blob=>new Promise(resolve=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.readAsDataURL(blob);});
+    try {
+        for(const count of [1,2,4]) {
+            settings.setWorkers(count);peak=0;progress.length=0;
+            const ids=await batch.convert();assert(ids.length===3,'Every video and GIF must convert');
+            assert(peak<=settings.effectiveWorkers(),'Batch must share the total worker setting, not multiply it by video count');
+            assert(live.size===0,'Successful batch must terminate every worker');
+            for(const id of ids){
+                const blob=batch.result(id);assert(blob.size<=500*1024&&blob.type==='image/webp','Output must be a prepared WebP sticker');
+                const source=await dataUrl(blob),reader=await openAnimation(source);
+                assert(reader.width===512&&reader.height===512&&reader.frameCount>=2,'Output must remain animated at 512×512');reader.dispose?.();
+                const poster=await firstFrame(source);assert(poster.startsWith('data:image/png;'),'Pack cover must be a still PNG');
+            }
+            assert(progress.at(-1)?.[0]===3,'Batch must report completed items');
+        }
+        const gifSource=await dataUrl(gifFile),poster=await firstFrame(gifSource);
+        assert(await firstFrame(gifSource)===poster,'Pack posters must reuse the bounded cache');
+        const bitmap=await createImageBitmap(await(await fetch(poster)).blob()),check=document.createElement('canvas');check.width=bitmap.width;check.height=bitmap.height;
+        check.getContext('2d').drawImage(bitmap,0,0);bitmap.close();
+        const pixel=check.getContext('2d').getImageData(20,20,1,1).data;assert(pixel[0]>200&&pixel[2]<40,'GIF cover must show its first red frame');
+        for(const background of [false,true]){
+            settings.setWorkers(2);let fired=false;
+            onWorker=()=>{if(fired)return;fired=true;background?window.stickerSetForeground(false):batch.cancel();};
+            let cancelled=false;try{await batch.convert();}catch{cancelled=true;}finally{onWorker=null;window.stickerSetForeground(true);}
+            assert(cancelled&&fired&&live.size===0,'Cancel/background must kill every active batch worker');
+        }
+        const bad=createBatch({invokeMethodAsync:async()=>{}});
+        await bad.addGif('broken',{arrayBuffer:async()=>new Uint8Array([1,2,3]).buffer},'broken.gif');
+        let failed=false;try{await bad.convert();}catch{failed=true;}
+        assert(failed&&live.size===0,'A failed animation must release all batch workers');bad.dispose();
+        batch.dispose();assert(live.size===0,'Disposing the batch must leave no workers');
+    } finally {window.Worker=NativeWorker;settings.setWorkers(previous);batch.dispose();}
+    result.textContent='PASS: review-first mixed video/GIF batch; 1/2/4-worker total caps; valid WebP; cancel/background/failure release every worker; GIF/WebP pack covers stay on their first frame.';
+} catch(error){window.stickerSetForeground?.(true);result.textContent='FAIL: '+error.stack;}
+</script>

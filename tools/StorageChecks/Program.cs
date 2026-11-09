@@ -466,6 +466,51 @@ try
         Require(updates.Any(p => p.IsConvertingVideo && p.Completed == 1) && updates[^1].IsSaving, "Video-review and save stages must be reported separately");
     });
 
+    await Check("Pinterest batch downloads every source before review and saves only after all animations convert", async store =>
+    {
+        var mp4 = new byte[24]; "ftyp"u8.CopyTo(mp4.AsSpan(4));
+        var animatedGif = gif[..^1].Concat(gif[19..]).ToArray();
+        var downloads = 0;
+        using var http = new HttpClient(new FixtureHttpHandler((request, token) =>
+        {
+            downloads++;
+            return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new ByteArrayContent(
+                request.RequestUri!.Host == "v1.pinimg.com" ? mp4 : request.RequestUri.AbsolutePath.EndsWith(".gif") ? animatedGif : png) });
+        }));
+        using var importer = new PinterestImportClient(http);
+        var photo = new PinterestImage("1", "", "Photo", "https://i.pinimg.com/a.png", "https://i.pinimg.com/a.png");
+        var first = new PinterestImage("2", "", "First", "https://i.pinimg.com/b.jpg", "https://i.pinimg.com/b.jpg") { MediaType = "video", VideoUrl = "https://v1.pinimg.com/a.mp4" };
+        var second = first with { PinId = "3", VideoUrl = "https://v1.pinimg.com/b.mp4" };
+        var animation = photo with { PinId = "4", ImageUrl = "https://i.pinimg.com/a.gif" };
+        foreach (var mode in new[] { "cancel", "incomplete", "success" })
+        {
+            downloads = 0; List<string> staged = [];
+            try
+            {
+                await importer.ImportAsync(store, [photo, first, second, animation], convertBatch: async (inputs, token) =>
+                {
+                    staged = inputs.Select(input => input.Path).ToList();
+                    Require(downloads == 4 && inputs.Count == 3 && staged.All(File.Exists), "Review began before all video/GIF sources were staged");
+                    Require((await store.ReadAsync()).Stickers.Count == 0, "Partial batch was saved before conversion");
+                    if (mode == "cancel") throw new OperationCanceledException();
+                    return inputs.Take(mode == "incomplete" ? 1 : inputs.Count).ToDictionary(input => input.Media.PinId, _ => animated);
+                });
+                Require(mode == "success", "An incomplete batch was committed");
+            }
+            catch (OperationCanceledException) when (mode == "cancel") { }
+            catch (InvalidDataException) when (mode == "incomplete") { }
+            Require(staged.All(path => !File.Exists(path)), "Temporary animation sources were not cleaned up");
+            var library = await store.ReadAsync();
+            Require(mode == "success" ? library.Stickers.Count == 4 && library.Stickers.Count(image => image.Animated && image.MimeType == "image/webp") == 3 : library.Stickers.Count == 0,
+                "The batch did not commit atomically");
+            if (mode == "success")
+            {
+                var original = library.Stickers.Single(image => image.Name == "Photo" && image.Animated).OriginalFileName;
+                Require(original is not null && (await File.ReadAllBytesAsync(store.MediaPath(original))).SequenceEqual(animatedGif), "Batch conversion discarded the retained original GIF");
+            }
+        }
+    });
+
     await Check("Pinterest video size limits and cancelled review leave no partial imports", async store =>
     {
         var mp4 = new byte[24]; "ftyp"u8.CopyTo(mp4.AsSpan(4));

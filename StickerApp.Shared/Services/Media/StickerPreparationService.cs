@@ -96,6 +96,22 @@ public sealed class StickerPreparationService(LibraryStore store, IJSRuntime js,
         finally { --editorLeases; Queue(); }
     }
 
+    public async Task DeletePackAsync(Guid id, bool deleteStickers)
+    {
+        ++editorLeases;
+        try
+        {
+            if (deleteStickers)
+            {
+                var pack = (await store.ReadAsync()).Packs.FirstOrDefault(pack => pack.Id == id);
+                if (pack is not null)
+                    foreach (var stickerId in pack.StickerIds) await CancelAsync(stickerId);
+            }
+            await store.DeletePackAsync(id, deleteStickers);
+        }
+        finally { --editorLeases; Queue(); }
+    }
+
     private async Task ProcessAsync()
     {
         var token = lifetime.Token;

@@ -9,11 +9,7 @@
         <h2 id="video-import-title">@L[ClipReview ? $"Trim {ImportSource} video" : "Video to sticker"]</h2>
         <button class="button icon-button" type="button" aria-label="@L["Close video import"]" @onclick="Close" disabled="@saving"><Icon Name="close" /></button>
     </div>
-    <div hidden="@(InitialVideo is not null)">
-    <label class="button file-button"><Icon Name="animation" />@L["Choose video"]
-        <input @ref="fileInput" type="file" accept="video/*,.mp4,.mov,.webm,.m4v" aria-label="@L["Choose video file"]" disabled="@converting" />
-    </label>
-    </div>
+    @ReviewNavigation
     <div @ref="editorRoot" class="video-import-editor" aria-busy="@(converting || loading || estimating ? "true" : "false")">
         @if (error is not null) { <div class="video-problem-panel" role="alert"><div class="problem-heading"><span class="problem-mark" aria-hidden="true">!</span><strong>@L["Video could not be processed"]</strong></div><p>@L[error]</p></div> }
         @if (loading) {
@@ -64,11 +60,14 @@
         }
     </div>
     <div class="dialog-actions">
+        <label class="button icon-button file-button" hidden="@(InitialVideo is not null)" title="@L["Switch video"]" aria-label="@L["Switch video"]"><Icon Name="switch" />
+            <input @ref="fileInput" type="file" accept="video/*,.mp4,.mov,.webm,.m4v" aria-label="@L["Switch video"]" disabled="@converting" />
+        </label>
         <button class="button" type="button" @onclick="Close" disabled="@saving">@L["Cancel"]</button>
         <button class="button primary" type="button" @onclick="Convert" disabled="@(!ready || !validClip || estimating || sizeEstimate is null || sizeEstimate.TooLarge || converting || string.IsNullOrWhiteSpace(name))"><Icon Name="check" />@L[ClipReview ? "Use clip" : "Create sticker"]</button>
     </div>
 </dialog>
-@if (converting)
+@if (converting && !OnReviewed.HasDelegate)
 {
     <OperationProgressDialog Title="@L[saving && !ClipReview ? "Adding sticker…" : "Creating sticker…"]" Progress="@progress" ProgressLabel="@L["Sticker conversion progress"]" CanCancel="@(!saving)" OnCancel="Close" />
 }
@@ -82,7 +81,13 @@
     [Parameter] public Stream? InitialVideo { get; set; }
     [Parameter] public string? InitialName { get; set; }
     [Parameter] public EventCallback<byte[]> OnConverted { get; set; }
-    private bool ClipReview => OnConverted.HasDelegate;
+    [Parameter] public EventCallback<ClipSelection> OnReviewed { get; set; }
+    [Parameter] public IJSObjectReference? ReviewSession { get; set; }
+    [Parameter] public string ReviewId { get; set; } = "";
+    [Parameter] public RenderFragment? ReviewNavigation { get; set; }
+    [Parameter] public ClipSelection? InitialSelection { get; set; }
+    public sealed class ClipSelection { public string Id { get; set; } = ""; public double Start { get; set; } public double End { get; set; } public int Fps { get; set; } }
+    private bool ClipReview => OnConverted.HasDelegate || OnReviewed.HasDelegate;
     private ElementReference dialog, video, fileInput, editorRoot;
     private IJSObjectReference? helper, module, controller;
     private DotNetObjectReference<VideoImportDialog>? reference;
@@ -168,7 +173,7 @@
     public sealed class VideoInfo { public string Name { get; set; } = "Video clip"; public double Duration { get; set; } public double NativeFps { get; set; } public int Width { get; set; } public int Height { get; set; } public string[] Thumbnails { get; set; } = []; }
     [JSInvokable] public void VideoLoading() { if (IsDisposed) return; ++validationVersion; estimateDelay?.Cancel(); sizeEstimate = null; estimating = false; ready = false; loading = true; error = null; StateHasChanged(); }
     [JSInvokable] public Task VideoReady(VideoInfo info) => RunInteropAsync(async () =>
-    { if (IsDisposed) return; name = info.Name.Length > 128 ? info.Name[..128] : info.Name; duration = info.Duration; start = 0; end = Math.Min(5, duration); thumbnails = info.Thumbnails; nativeFps = info.NativeFps; fps = nativeFps > 0 && nativeFps <= 125 ? 0 : 12; end = Math.Min(end, Math.Floor(100 / (fps == 0 ? nativeFps : fps) * 10) / 10); ready = true; loading = false; StateHasChanged(); await Validate(); if (!IsDisposed) StateHasChanged(); });
+    { if (IsDisposed) return; name = info.Name.Length > 128 ? info.Name[..128] : info.Name; duration = info.Duration; start = 0; end = Math.Min(5, duration); thumbnails = info.Thumbnails; nativeFps = info.NativeFps; fps = nativeFps > 0 && nativeFps <= 125 ? 0 : 12; end = Math.Min(end, Math.Floor(100 / (fps == 0 ? nativeFps : fps) * 10) / 10); if (InitialSelection is { } selection) { start = selection.Start; end = selection.End; fps = selection.Fps; await controller!.InvokeVoidAsync("setRange", start, end); } ready = true; loading = false; StateHasChanged(); await Validate(); if (!IsDisposed) StateHasChanged(); });
     [JSInvokable] public void VideoFailed(string message) { if (IsDisposed) return; error = message; loading = false; StateHasChanged(); }
     [JSInvokable] public void VideoPlayback(bool value) { if (IsDisposed) return; playing = value; StateHasChanged(); }
     [JSInvokable] public void VideoProgress(int value) { if (IsDisposed) return; progress = value; StateHasChanged(); }
@@ -186,6 +191,12 @@
         var token = operation.Token;
         try
         {
+            if (OnReviewed.HasDelegate)
+            {
+                var selection = await controller.InvokeAsync<ClipSelection>("queueReview", ReviewSession, ReviewId, start, end, fps);
+                if (!IsDisposed) await OnReviewed.InvokeAsync(selection);
+                return;
+            }
             await using var result = await controller.InvokeAsync<IJSStreamReference>("convert", token, start, end, fps);
             if (disposed) return;
             await using var stream = await result.OpenReadStreamAsync(500 * 1024, token);

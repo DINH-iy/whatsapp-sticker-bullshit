@@ -1,0 +1,31 @@
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
+@inject IJSRuntime JS
+@if (poster is not null)
+{
+    <img class="@Class" src="@poster" alt="@Alt" loading="lazy" />
+}
+else
+{
+    <span class="@Class" aria-label="@Alt"><Icon Name="image" /></span>
+}
+@code {
+    [Parameter, EditorRequired] public string Source { get; set; } = "";
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string Alt { get; set; } = "";
+    private string? loadedSource, poster;
+    private IJSObjectReference? module;
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
+    {
+        if (loadedSource == Source) return;
+        var source = loadedSource = Source;
+        try
+        {
+            module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/pack-cover-still.js");
+            if (IsDisposed) return;
+            var result = await module.InvokeAsync<string>("firstFrame", source);
+            if (!IsDisposed && source == Source) { poster = result; StateHasChanged(); }
+        }
+        catch (JSException) { /* Keep a static placeholder if this image cannot be decoded. */ }
+    }
+    protected override async ValueTask DisposeInteropAsync() { if (module is not null) await module.DisposeAsync(); }
+}

@@ -45,6 +45,7 @@ public partial class Home
     private int PendingPreparationCount => PreparationImages.Count(IsPreparing);
     private int AttentionCount => PreparationImages.Count(image => Preparation.GetStatus(image)?.Error is not null);
     private bool deletePack;
+    private bool deletePackStickers;
     private ElementReference editDialog;
     private IJSObjectReference? editDialogHelper;
     private bool customizing;
@@ -235,6 +236,13 @@ public partial class Home
     {
         pendingRemoval = null;
         deletePack = false;
+        deletePackStickers = false;
+    }
+
+    private Task ConfirmPackRemoval(bool deleteStickers)
+    {
+        deletePackStickers = deleteStickers;
+        return ConfirmRemoval();
     }
 
     private Task ConfirmRemoval() => Run(async () =>
@@ -242,7 +250,7 @@ public partial class Home
         if (deletePack)
         {
             await StickerApp.Shared.Services.FriendsPackService.UnpublishAsync(JS, activePack!.Value);
-            await Store.DeletePackAsync(activePack!.Value);
+            await Preparation.DeletePackAsync(activePack!.Value, deletePackStickers);
             activePack = null;
             Navigation.NavigateTo("/");
         }

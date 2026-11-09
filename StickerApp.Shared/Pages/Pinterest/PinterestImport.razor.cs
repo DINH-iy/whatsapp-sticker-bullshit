@@ -24,9 +24,8 @@ public partial class PinterestImport
     private bool disposed;
     private CancellationTokenSource? operation;
     private PinterestImportProgress? importProgress;
-    private Stream? videoInput;
-    private PinterestImage? videoMedia;
-    private TaskCompletionSource<byte[]>? videoResult;
+    private IReadOnlyList<PinterestAnimationInput>? animationBatch;
+    private TaskCompletionSource<IReadOnlyDictionary<string, byte[]>>? batchResult;
     private int? ProgressPercent => importProgress is { IsSaving: false, Total: > 0 } progress
         ? progress.Completed * 100 / progress.Total : null;
     private string? ProgressDetail => importProgress is { } progress
@@ -137,7 +136,7 @@ public partial class PinterestImport
                 StateHasChanged();
             }));
             var importedPack = await Importer.ImportAsync(Store, images, pack, progress, token, name,
-                Store.AskForOriginalOnImport ? keepOriginals : null, publisher, ReviewVideo);
+                Store.AskForOriginalOnImport ? keepOriginals : null, publisher, convertBatch: ReviewBatch);
             success = name is null ? $"Imported {images.Count} items." : $"Created “{name}” with {images.Count} items.";
             destinationLink = importedPack is { } id ? $"packs/{id}" : "library";
             destination = importedPack?.ToString() ?? "";
@@ -155,13 +154,12 @@ public partial class PinterestImport
         });
     }
 
-    private async Task<byte[]> ReviewVideo(PinterestImage media, string path, CancellationToken token)
+    private async Task<IReadOnlyDictionary<string, byte[]>> ReviewBatch(IReadOnlyList<PinterestAnimationInput> items, CancellationToken token)
     {
-        await using var input = File.OpenRead(path);
-        var completion = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var completion = new TaskCompletionSource<IReadOnlyDictionary<string, byte[]>>(TaskCreationOptions.RunContinuationsAsynchronously);
         await InvokeAsync(() =>
         {
-            videoInput = input; videoMedia = media; videoResult = completion;
+            animationBatch = items; batchResult = completion;
             if (!disposed) StateHasChanged();
         });
         try { return await completion.Task.WaitAsync(token); }
@@ -169,13 +167,14 @@ public partial class PinterestImport
         {
             await InvokeAsync(() =>
             {
-                if (videoResult == completion) { videoInput = null; videoMedia = null; videoResult = null; }
+                if (batchResult == completion) { animationBatch = null; batchResult = null; }
                 if (!disposed) StateHasChanged();
             });
         }
     }
-    private void VideoClipReady(byte[] bytes) => videoResult?.TrySetResult(bytes);
-    private void CancelVideoClip() { Cancel(); videoResult?.TrySetCanceled(); }
+    private void BatchReady(IReadOnlyDictionary<string, byte[]> results) => batchResult?.TrySetResult(results);
+    private void BatchFailed(string message) => batchResult?.TrySetException(new InvalidDataException(message));
+    private void CancelBatch() { Cancel(); batchResult?.TrySetCanceled(); }
 
     private async Task Run(Func<CancellationToken, Task> action)
     {

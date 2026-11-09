@@ -166,6 +166,7 @@ passed+=await PopupLifecycleChecks.RunAsync();
 passed+=await GifSizeChecks.RunAsync();
 passed+=await ResetRestartChecks.RunAsync();
 passed+=await PreparationLifecycleChecks.RunAsync();
+passed+=await PackDeletionChecks.RunAsync();
 passed+=await DiagnosticsPerformanceChecks.RunAsync();
 passed+=await DirectVideoImportChecks.RunAsync();
 Console.WriteLine($"{passed} feature checks passed.");

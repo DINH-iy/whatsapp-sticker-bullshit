@@ -30,7 +30,8 @@ async function seekFrame(video,time,signal) {
     const ready=waitFor(video,'seeked',signal); video.currentTime=time; await ready;
     if(video.readyState<2)await waitFor(video,'loadeddata',signal);
 }
-export function create(video,input,root,dotnet) {
+export function create(video,input,root,dotnet,options={}) {
+    let fileSource;
     let timing, outputWidth=0, outputHeight=0, estimateAbort, estimateWork=Promise.resolve(), cachedEstimate;
     let url,disposed=false,fileAbort,conversionAbort,converting=false,version=0,rangeEnd=0,nextSeek=null,seekWork=Promise.resolve();
     const unwatchForeground=onForegroundChanged(active=>{if(!active){video.pause();fileAbort?.abort();conversionAbort?.abort();estimateAbort?.abort();}else if(url&&fileAbort?.signal.aborted){fileAbort=new AbortController();}});
@@ -104,13 +105,14 @@ export function create(video,input,root,dotnet) {
             url=URL.createObjectURL(file);video.src=url;video.load();await ready;
             if(!Number.isFinite(video.duration)||video.duration<0.1||!video.videoWidth||!video.videoHeight)throw new Error('Choose a video with a readable duration of at least 0.1 seconds.');
             if(current!==version||disposed)return;
-            timing=await readVideoTiming(file).catch(()=>null);
+            fileSource=file;
+            timing=options.timing??await readVideoTiming(file).catch(()=>null);
             const outputScale=Math.min(1,512/Math.max(video.videoWidth,video.videoHeight));
             outputWidth=Math.max(1,Math.round(video.videoWidth*outputScale)); outputHeight=Math.max(1,Math.round(video.videoHeight*outputScale));
             rangeEnd=Math.min(MAX_CLIP_SECONDS,video.duration);
             const thumbs=[],canvas=document.createElement('canvas'),scale=Math.min(1,96/Math.max(video.videoWidth,video.videoHeight));
             canvas.width=Math.max(1,Math.round(video.videoWidth*scale));canvas.height=Math.max(1,Math.round(video.videoHeight*scale));
-            for(let i=0;i<6;i++){await seekFrame(video,video.duration*i/6,fileAbort.signal);canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);thumbs.push(canvas.toDataURL('image/jpeg',0.65));}
+            if(!options.skipThumbnails)for(let i=0;i<6;i++){await seekFrame(video,video.duration*i/6,fileAbort.signal);canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);thumbs.push(canvas.toDataURL('image/jpeg',0.65));}
             await seekFrame(video,0,fileAbort.signal);
             if(current===version&&!disposed)await notify('VideoReady',{name:file.name.replace(/\.[^.]+$/,'')||'Video clip',duration:video.duration,thumbnails:thumbs,nativeFps:timing?.fps??0,width:outputWidth,height:outputHeight});
         }catch(error){if(current===version&&!disposed){if(error.name==='AbortError')await notify('VideoFailed','Video loading stopped. Choose the video again when you return to the app.');else await fail(error);}}
@@ -120,6 +122,14 @@ export function create(video,input,root,dotnet) {
         // Also used by the browser regression fixture with a synthetic local video.
         loadFile,
         estimate,
+        queueReview(session,id,start,end,fps){
+            requireForeground();
+            const estimate=cachedEstimate?.key===estimateKey(start,end,fps)?cachedEstimate.value:null;
+            if(disposed||!fileSource||!estimate||estimate.tooLarge)throw new Error('Check this clip before adding it to the batch.');
+            planFrames(start,end,fps,timing,outputWidth,outputHeight);
+            session.addVideo(id,fileSource,{start,end,fps,estimate,timing});
+            return {id,start,end,fps};
+        },
         cancelEstimate(){estimateAbort?.abort();},
         async loadPicked(){const file=pickedVideo;pickedVideo=null;if(file)await loadFile(file);},
         validate(start,end,fps){try{const frames=planFrames(start,end,fps,timing,outputWidth,outputHeight);return {valid:true,frames:frames.length,message:'Clip is within the duration and frame limits.'};}catch(error){return {valid:false,frames:0,message:error.message};}},
@@ -136,7 +146,7 @@ export function create(video,input,root,dotnet) {
             if(converting||!url)throw new Error('Choose a video first.');
             if(!Number.isFinite(start)||!Number.isFinite(end)||start<0||end>video.duration+.001)throw new Error('Choose a clip within the video.');
             const frames=planFrames(start,end,fps,timing,outputWidth,outputHeight);
-            const estimated=cachedEstimate?.key===estimateKey(start,end,fps)?cachedEstimate.value:null;
+            const estimated=cachedEstimate?.key===estimateKey(start,end,fps)?cachedEstimate.value:options.estimate;
             if(estimated?.tooLarge)throw new Error('This selection is estimated to exceed 500 KB. Shorten it or choose fewer frames per second.');
             estimateAbort?.abort();await estimateWork.catch(()=>{});requireForeground();
             converting=true;conversionAbort=new AbortController();video.pause();nextSeek=null;
@@ -157,7 +167,7 @@ export function create(video,input,root,dotnet) {
                     signal.throwIfAborted();requireForeground();
                     const quality=qualities[attempt],output=[],pending=[];
                     let total=64,lastPixels,lastFrame;
-                    pool=createFramePool(Math.min(effectiveWorkers(),frames.length),signal);
+                    pool=createFramePool(Math.min(options.workers??effectiveWorkers(),frames.length),signal);
                     const finishWorkers=beginTiming('Video: parallel WebP frames', `workers=${pool?.count??0}; quality=${quality}; attempt=${attempt+1}`);
                     try {
                         const write=async item=>{

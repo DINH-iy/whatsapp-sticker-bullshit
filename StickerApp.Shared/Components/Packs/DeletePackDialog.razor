@@ -3,16 +3,22 @@
 <dialog @ref="dialog" class="folder-dialog" aria-labelledby="delete-pack-title" @oncancel="OnCancel" @oncancel:preventDefault>
     <h2 id="delete-pack-title">@L["Delete pack?"]</h2>
     <p><strong>@Pack.Name</strong></p>
-    <p>@L["Only this pack will be deleted. Its stickers will remain in My Library."]</p>
+    <p>@L[deleteStickers ? "The pack and its stickers will be deleted from this app." : "Only this pack will be deleted. Its stickers will remain in My Library."]</p>
+    <label class="toggle-row"><input type="checkbox" @bind="deleteStickers" disabled="@Busy" />@L["Also delete these stickers from My Library"]</label>
+    @if (deleteStickers)
+    {
+        <p class="error" role="note">@L["These stickers will also be removed from any other packs that use them. This cannot be undone."]</p>
+    }
     @if(Error is not null){<p class="error" role="alert">@L.Error(Error)</p>}
-    <div class="dialog-actions"><button class="button" type="button" @onclick="OnCancel" disabled="@Busy">@L["Cancel"]</button><button class="button danger" type="button" @onclick="OnConfirm" disabled="@Busy"><Icon Name="trash" />@L["Delete pack"]</button></div>
+    <div class="dialog-actions"><button class="button" type="button" @onclick="OnCancel" disabled="@Busy">@L["Cancel"]</button><button class="button danger" type="button" @onclick="() => OnConfirm.InvokeAsync(deleteStickers)" disabled="@Busy"><Icon Name="trash" />@L[deleteStickers ? "Delete pack and stickers" : "Delete pack"]</button></div>
 </dialog>
 @code {
     [Parameter,EditorRequired] public StickerPack Pack {get;set;}=default!;
     [Parameter] public bool Busy {get;set;}
     [Parameter] public string? Error {get;set;}
     [Parameter] public EventCallback OnCancel {get;set;}
-    [Parameter] public EventCallback OnConfirm {get;set;}
+    [Parameter] public EventCallback<bool> OnConfirm {get;set;}
+    private bool deleteStickers;
     private ElementReference dialog;
     private IJSObjectReference? module;
     protected override async Task OnAfterRenderInteropAsync(bool firstRender)

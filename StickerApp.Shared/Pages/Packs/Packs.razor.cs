@@ -36,10 +36,10 @@ public partial class Packs
         typeFilter = countFilter = storageFilter = ownershipFilter = visibilityFilter = spoilerFilter = contentFilter = "all";
     }
 
-    private Task DeletePack()=>Run(async()=>{
+    private Task DeletePack(bool deleteStickers)=>Run(async()=>{
         if(deletingPack is not { } pack)return;
         await StickerApp.Shared.Services.FriendsPackService.UnpublishAsync(JS,pack.Id);
-        await Store.DeletePackAsync(pack.Id);
+        await Preparation.DeletePackAsync(pack.Id, deleteStickers);
         deletingPack=null;
         await Reload();
     });

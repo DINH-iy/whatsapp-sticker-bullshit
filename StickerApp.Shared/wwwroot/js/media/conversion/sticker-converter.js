@@ -7,8 +7,10 @@ export function fit(context, image, width, height) {
 }
 
 // One bundled encoder on every platform, including Safari's iPhone WebView.
-export async function encode(canvas, quality) {
+export async function encode(canvas, quality, signal) {
+    signal?.throwIfAborted();
     const software = await import('../codecs/webp-encoder.js');
+    signal?.throwIfAborted();
     const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
     return software.encode(pixels, quality);
 }
@@ -72,23 +74,36 @@ export function animation(frames, width = 512, height = 512) {
     return chunk('RIFF', join([new TextEncoder().encode('WEBP'), ...parts]));
 }
 
-export async function prepare(source, animated) {
+export async function prepare(source, animated, signal) {
+    signal?.throwIfAborted();
     if (animated) {
         const editor = await import('../animation/gif-editor.js');
         try { return await editor.prepare(source); }
         finally { editor.dispose(); }
     }
     const image = new Image();
-    image.src = source;
-    await image.decode();
-    if (image.naturalWidth * image.naturalHeight > 32_000_000)
-        throw new Error('This image is too large to prepare. Replace it with a smaller original.');
-    const canvas = document.createElement('canvas');
-    canvas.width = canvas.height = 512;
-    fit(canvas.getContext('2d'), image, image.naturalWidth, image.naturalHeight);
-    for (const quality of [0.9, 0.75, 0.55, 0.35, 0.15]) {
-        const bytes = await encode(canvas, quality);
-        if (bytes.length <= 100 * 1024) return dataUrl(bytes);
+    const abort = () => { image.src = ''; };
+    signal?.addEventListener('abort', abort, { once: true });
+    let canvas;
+    try {
+        image.src = source;
+        await image.decode();
+        signal?.throwIfAborted();
+        if (image.naturalWidth * image.naturalHeight > 32_000_000)
+            throw new Error('This image is too large to prepare. Replace it with a smaller original.');
+        canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 512;
+        fit(canvas.getContext('2d'), image, image.naturalWidth, image.naturalHeight);
+        for (const quality of [0.9, 0.75, 0.55, 0.35, 0.15]) {
+            signal?.throwIfAborted();
+            const bytes = await encode(canvas, quality, signal);
+            signal?.throwIfAborted();
+            if (bytes.length <= 100 * 1024) return dataUrl(bytes);
+        }
+        throw new Error('This image still exceeds 100 KB. Crop unnecessary detail in Edit, then save it for automatic preparation. Your image is unchanged.');
+    } finally {
+        signal?.removeEventListener('abort', abort);
+        image.src = '';
+        if (canvas) canvas.width = canvas.height = 0;
     }
-    throw new Error('This image still exceeds 100 KB. Crop unnecessary detail in Edit, then save it for automatic preparation. Your image is unchanged.');
 }

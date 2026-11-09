@@ -1,0 +1,158 @@
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
+@inject IJSRuntime JS
+@inject AppLog Log
+@inject StickerApp.Shared.Services.ForegroundActivity Activity
+
+@if (!ready)
+{
+    <OperationProgressDialog Title="Preparing import batch…" Detail="Downloading is complete. Preparing the animation review." OnCancel="Cancel" />
+}
+else if (Current is { } current)
+{
+    <VideoImportDialog @key="current.Media.PinId" InitialVideo="input" InitialName="@Title(current)" ReviewSession="session" ReviewId="@current.Media.PinId"
+                       InitialSelection="@reviews.GetValueOrDefault(current.Media.PinId)" OnReviewed="Reviewed" OnClose="Cancel">
+        <ReviewNavigation><p class="status-info">@L.Format("Review video {0} of {1}", activeIndex + 1, videos.Count) · @L["Clips are converted together after review."]</p></ReviewNavigation>
+    </VideoImportDialog>
+}
+else
+{
+    <dialog @ref="dialog" class="folder-dialog animation-batch-dialog" aria-labelledby="batch-title" @oncancel="Cancel" @oncancel:preventDefault>
+        <div class="folder-dialog-heading"><h2 id="batch-title">@L["Review import batch"]</h2><button class="button icon-button" type="button" @onclick="Cancel" aria-label="@L["Cancel import"]"><Icon Name="close" /></button></div>
+        <p>@L.Format("{0} animations ready to convert", Items.Count)</p>
+        <p class="helper">@L["Conversion shares your worker setting across the batch. Nothing is saved until every animation succeeds. Processing stops when you leave the app."]</p>
+        @if (error is not null) { <div class="video-problem-panel" role="alert"><strong>@L["Batch could not be completed"]</strong><p>@error</p><p>@L["No items were imported. Adjust a clip below or cancel and select fewer items."]</p></div> }
+        <ul class="animation-batch-list">
+            @foreach (var item in Items)
+            {
+                <li @key="item.Media.PinId"><div><strong>@Title(item)</strong>
+                    @if (reviews.TryGetValue(item.Media.PinId, out var review)) { <small>@review.Start.ToString("0.##")–@review.End.ToString("0.##") s · @(review.Fps == 0 ? L["Follow source"] : $"{review.Fps} fps")</small> }
+                    else { <small>@L["GIF · checked during conversion"]</small> }
+                </div>
+                @if (item.Media.IsVideo) { <button class="button icon-button" type="button" @onclick="() => EditReview(item.Media.PinId)" disabled="@working" aria-label="@L.Format("Edit {0}", Title(item))"><Icon Name="edit" /></button> }
+                </li>
+            }
+        </ul>
+        <div class="dialog-actions"><button class="button" type="button" @onclick="Cancel">@L["Cancel"]</button><button class="button primary" type="button" @onclick="Convert" disabled="@working"><Icon Name="check" />@L["Convert batch"]</button></div>
+    </dialog>
+}
+@if (working)
+{
+    <OperationProgressDialog Title="Converting import batch…" Detail="@L.Format("{0} of {1} animations completed", completed, Items.Count)" Progress="@(Items.Count > 0 ? completed * 100 / Items.Count : 0)" OnCancel="Cancel" />
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<PinterestAnimationInput> Items { get; set; } = [];
+    [Parameter] public CancellationToken CancellationToken { get; set; }
+    [Parameter] public EventCallback<IReadOnlyDictionary<string, byte[]>> OnConverted { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback<string> OnFailed { get; set; }
+    private List<PinterestAnimationInput> videos = [];
+    private readonly Dictionary<string, VideoImportDialog.ClipSelection> reviews = [];
+    private IJSObjectReference? module, session, dialogs;
+    private DotNetObjectReference<PinterestAnimationBatchDialog>? reference;
+    private Stream? input;
+    private ElementReference dialog;
+    private bool ready, working, summaryOpen;
+    private int activeIndex = -1, completed;
+    private string? error;
+    private PinterestAnimationInput? Current => activeIndex >= 0 && activeIndex < videos.Count ? videos[activeIndex] : null;
+    private static string Title(PinterestAnimationInput item) => string.IsNullOrWhiteSpace(item.Media.Title) ? item.Media.IsVideo ? "Pinterest video" : "Pinterest GIF" : item.Media.Title;
+
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                videos = Items.Where(item => item.Media.IsVideo).ToList();
+                dialogs = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/dialog.js");
+                if (IsDisposed) return;
+                module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/media/video/video-batch.js");
+                if (IsDisposed) return;
+                reference = DotNetObjectReference.Create(this);
+                session = await module.InvokeAsync<IJSObjectReference>("create", reference);
+                if (IsDisposed) return;
+                foreach (var item in Items.Where(item => !item.Media.IsVideo))
+                {
+                    await using var file = File.OpenRead(item.Path);
+                    using var stream = new DotNetStreamReference(file);
+                    await session.InvokeVoidAsync("addGif", CancellationToken, item.Media.PinId, stream, Title(item));
+                    if (IsDisposed) return;
+                }
+                await OpenReview(videos.Count > 0 ? 0 : -1);
+                ready = true;
+                if (!IsDisposed) StateHasChanged();
+            }
+            catch (Exception exception) when (exception is JSException or IOException or OperationCanceledException)
+            {
+                Log.Error("Prepare Pinterest animation batch", exception);
+                if (!IsDisposed) await OnFailed.InvokeAsync(exception.Message.Split('\n')[0]);
+            }
+            return;
+        }
+        if (ready && Current is null && !summaryOpen)
+        {
+            summaryOpen = true;
+            await dialogs!.InvokeVoidAsync("open", dialog);
+        }
+    }
+    private async Task OpenReview(int index)
+    {
+        input?.Dispose(); input = null;
+        activeIndex = index; summaryOpen = false;
+        if (Current is { } current) input = File.OpenRead(current.Path);
+        await Task.CompletedTask;
+    }
+    private async Task Reviewed(VideoImportDialog.ClipSelection selection)
+    {
+        reviews[selection.Id] = selection;
+        await OpenReview(videos.FindIndex(item => !reviews.ContainsKey(item.Media.PinId)));
+    }
+    private Task EditReview(string id) => OpenReview(videos.FindIndex(item => item.Media.PinId == id));
+    [JSInvokable] public Task BatchProgress(int value, int total) => InvokeAsync(() => { if (IsDisposed) return; completed = value; StateHasChanged(); });
+    private Task Convert() => RunInteropAsync(async () =>
+    {
+        if (working || session is null || reviews.Count != videos.Count) return;
+        working = true; error = null; completed = 0;
+        using var foreground = Activity.BeginOperation(TimeSpan.FromMinutes(10));
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(foreground.Token, CancellationToken);
+        try
+        {
+            var ids = await session.InvokeAsync<string[]>("convert", linked.Token);
+            Dictionary<string, byte[]> results = [];
+            foreach (var id in ids)
+            {
+                await using var result = await session.InvokeAsync<IJSStreamReference>("result", linked.Token, id);
+                await using var source = await result.OpenReadStreamAsync(500 * 1024, linked.Token);
+                using var bytes = new MemoryStream(); await source.CopyToAsync(bytes, linked.Token);
+                results[id] = bytes.ToArray();
+            }
+            linked.Token.ThrowIfCancellationRequested();
+            if (!IsDisposed) await OnConverted.InvokeAsync(results);
+        }
+        catch (OperationCanceledException) { await Cancel(); }
+        catch (Exception exception) when (exception is JSException or IOException or InvalidOperationException)
+        {
+            Log.Error("Convert Pinterest animation batch", exception);
+            if (!IsDisposed) error = exception.Message.Split('\n')[0];
+        }
+        finally { working = false; }
+    });
+    private Task Cancel() => RunInteropAsync(async () =>
+    {
+        if (session is not null) await session.InvokeVoidAsync("cancel");
+        await OnCancel.InvokeAsync();
+    });
+    protected override async ValueTask StopInteropAsync() { if (session is not null) await session.InvokeVoidAsync("cancel"); }
+    protected override async ValueTask DisposeInteropAsync()
+    {
+        input?.Dispose();
+        try
+        {
+            if (session is not null) { await session.InvokeVoidAsync("dispose"); await session.DisposeAsync(); }
+            if (module is not null) await module.DisposeAsync();
+            if (dialogs is not null) await dialogs.DisposeAsync();
+        }
+        finally { reference?.Dispose(); }
+    }
+}
