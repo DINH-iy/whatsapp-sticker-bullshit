@@ -1,3 +1,5 @@
+import { estimateSizes } from './video-size-estimate.js';
+import { beginTiming } from '../../ui/performance.js';
 import { readVideoTiming, planFrames } from './video-timing.js';
 import { onForegroundChanged, requireForeground, startJob } from '../../ui/foreground.js';
 let pickedVideo;
@@ -25,9 +27,51 @@ async function seekFrame(video,time,signal) {
     if(video.readyState<2)await waitFor(video,'loadeddata',signal);
 }
 export function create(video,input,root,dotnet) {
-    let timing, outputWidth=0, outputHeight=0;
+    let timing, outputWidth=0, outputHeight=0, estimateAbort, estimateWork=Promise.resolve(), cachedEstimate;
     let url,disposed=false,fileAbort,conversionAbort,converting=false,version=0,rangeEnd=0,nextSeek=null,seekWork=Promise.resolve();
-    const unwatchForeground=onForegroundChanged(active=>{if(!active){video.pause();fileAbort?.abort();conversionAbort?.abort();}});
+    const unwatchForeground=onForegroundChanged(active=>{if(!active){video.pause();fileAbort?.abort();conversionAbort?.abort();estimateAbort?.abort();}else if(url&&fileAbort?.signal.aborted){fileAbort=new AbortController();}});
+    const estimateKey=(start,end,fps)=>`${version}:${start}:${end}:${fps}`;
+    async function estimate(start,end,fps) {
+        requireForeground();
+        if(converting||!url||!outputWidth)throw new Error('Wait for the video to finish loading before estimating.');
+        const key=estimateKey(start,end,fps);
+        if(cachedEstimate?.key===key)return cachedEstimate.value;
+        estimateAbort?.abort();
+        const abort=estimateAbort=new AbortController(), signal=abort.signal;
+        const previous=estimateWork;
+        const work=(async()=>{
+            await previous.catch(()=>{}); signal.throwIfAborted();
+            const frames=planFrames(start,end,fps,timing,outputWidth,outputHeight);
+            const finishJob=startJob('Estimating GIF and sticker size…');
+            const finishTiming=beginTiming('Video: estimate compressed size', `frames=${frames.length}; pixels=${outputWidth}x${outputHeight}`);
+            try {
+                video.pause();nextSeek=null;await seekWork;signal.throwIfAborted();
+                const [{createEncoder},{fit,encode}]=await Promise.all([import('../codecs/video-gif-encoder.js'),import('../conversion/sticker-converter.js')]);
+                signal.throwIfAborted();
+                const canvas=document.createElement('canvas'),sticker=document.createElement('canvas');
+                canvas.width=outputWidth;canvas.height=outputHeight;sticker.width=sticker.height=512;
+                const context=canvas.getContext('2d',{willReadFrequently:true}),stickerContext=sticker.getContext('2d',{willReadFrequently:true});
+                const encoder=createEncoder(outputWidth,outputHeight),samples=[];
+                const count=Math.min(6,frames.length);
+                for(let i=0;i<count;i++) {
+                    signal.throwIfAborted();
+                    const frame=frames[Math.round(i*(frames.length-1)/Math.max(1,count-1))];
+                    await seekFrame(video,frame.time,signal);
+                    context.drawImage(video,0,0,outputWidth,outputHeight);
+                    encoder.add(context.getImageData(0,0,outputWidth,outputHeight).data,100);
+                    fit(stickerContext,canvas,outputWidth,outputHeight);
+                    const low=await encode(sticker,.1); signal.throwIfAborted();
+                    const high=await encode(sticker,.8); signal.throwIfAborted();
+                    samples.push({low:low.length,high:high.length});
+                    await new Promise(resolve=>setTimeout(resolve,0));
+                }
+                const value=estimateSizes(samples,frames.length,encoder.finish().length,end-start);
+                cachedEstimate={key,value};return value;
+            } finally { finishTiming();finishJob(); }
+        })();
+        estimateWork=work;
+        return work;
+    }
     const notify=(method,...args)=>disposed?Promise.resolve():dotnet.invokeMethodAsync(method,...args);
     const fail=error=>{if(error.name!=='AbortError')return notify('VideoFailed',error.message);};
     function queueSeek(time){
@@ -41,7 +85,7 @@ export function create(video,input,root,dotnet) {
     const playback=()=>notify('VideoPlayback',!video.paused).catch(()=>{});
     video.addEventListener('timeupdate',update);video.addEventListener('play',playback);video.addEventListener('pause',playback);
     async function loadFile(file){
-        const current=++version;fileAbort?.abort();conversionAbort?.abort();fileAbort=new AbortController();
+        const current=++version;estimateAbort?.abort();cachedEstimate=null;fileAbort?.abort();conversionAbort?.abort();fileAbort=new AbortController();
         video.pause();if(url)URL.revokeObjectURL(url);url=null;
         await notify('VideoLoading');
         try{
@@ -65,6 +109,8 @@ export function create(video,input,root,dotnet) {
     return {
         // Also used by the browser regression fixture with a synthetic local video.
         loadFile,
+        estimate,
+        cancelEstimate(){estimateAbort?.abort();},
         async loadPicked(){const file=pickedVideo;pickedVideo=null;if(file)await loadFile(file);},
         validate(start,end,fps){try{const frames=planFrames(start,end,fps,timing,outputWidth,outputHeight);return {valid:true,frames:frames.length,message:'Ready to create. Final compressed file size is checked during conversion and sticker preparation.'};}catch(error){return {valid:false,frames:0,message:error.message};}},
         async loadStream(stream,name='Pinterest video.mp4') {
@@ -73,14 +119,17 @@ export function create(video,input,root,dotnet) {
             if(bytes.byteLength>MAX_VIDEO_BYTES)throw new Error('Choose a video smaller than 100 MB.');
             await loadFile(new File([bytes],name,{type:'video/mp4'}));
         },
-        setRange(start,end){rangeEnd=end;if(!converting&&(video.currentTime<start||video.currentTime>end))queueSeek(start).catch(fail);},
-        async preview(start,end){rangeEnd=end;if(!video.paused){video.pause();return;}await seekWork;if(video.currentTime<start||video.currentTime>=end)await seekFrame(video,start,fileAbort?.signal);await video.play();},
+        setRange(start,end){estimateAbort?.abort();rangeEnd=end;if(!converting&&(video.currentTime<start||video.currentTime>end))queueSeek(start).catch(fail);},
+        async preview(start,end){estimateAbort?.abort();await estimateWork.catch(()=>{});rangeEnd=end;if(!video.paused){video.pause();return;}await seekWork;if(video.currentTime<start||video.currentTime>=end)await seekFrame(video,start,fileAbort?.signal);await video.play();},
         async convert(start,end,fps=30){
             requireForeground();
             if(converting||!url)throw new Error('Choose a video first.');
             if(!Number.isFinite(start)||!Number.isFinite(end)||start<0||end>video.duration+0.001||end-start<0.1||end-start>10.001)throw new Error('Choose a clip between 0.1 and 10 seconds, within the video.');
             const frames=planFrames(start,end,fps,timing,outputWidth,outputHeight);
+            if(cachedEstimate?.key===estimateKey(start,end,fps)&&cachedEstimate.value.tooLarge)throw new Error('This selection is estimated to exceed the sticker size limit. Shorten the clip or choose fewer frames per second first.');
+            estimateAbort?.abort();await estimateWork.catch(()=>{});
             const finishJob=startJob('Creating GIF…');
+            const finishTiming=beginTiming('Video: full GIF encoding', `frames=${frames.length}; pixels=${outputWidth}x${outputHeight}`);
             converting=true;conversionAbort=new AbortController();video.pause();nextSeek=null;
             const signal=conversionAbort.signal;
             try{
@@ -98,9 +147,9 @@ export function create(video,input,root,dotnet) {
                     await new Promise(resolve=>setTimeout(resolve,0));
                 }
                 signal.throwIfAborted();return new Blob([encoder.finish()],{type:'image/gif'});
-            }finally{finishJob();converting=false;conversionAbort=null;}
+            }finally{finishTiming();finishJob();converting=false;conversionAbort=null;}
         },
-        cancel(){conversionAbort?.abort();},
-        dispose(){unwatchForeground();disposed=true;++version;fileAbort?.abort();conversionAbort?.abort();controls.dispose();input.removeEventListener('change',choose);video.pause();video.removeEventListener('timeupdate',update);video.removeEventListener('play',playback);video.removeEventListener('pause',playback);video.removeAttribute('src');video.load();if(url)URL.revokeObjectURL(url);}
+        cancel(){estimateAbort?.abort();conversionAbort?.abort();},
+        dispose(){estimateAbort?.abort();unwatchForeground();disposed=true;++version;fileAbort?.abort();conversionAbort?.abort();controls.dispose();input.removeEventListener('change',choose);video.pause();video.removeEventListener('timeupdate',update);video.removeEventListener('play',playback);video.removeEventListener('pause',playback);video.removeAttribute('src');video.load();if(url)URL.revokeObjectURL(url);}
     };
 }

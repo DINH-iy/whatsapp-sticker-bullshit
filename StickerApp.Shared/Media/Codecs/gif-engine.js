@@ -125,6 +125,7 @@ async function prepare(source, signal) {
         throw new Error('This GIF is longer than 10 seconds. Open Edit GIF, choose a section of at most 10 seconds, save, then prepare again.');
     const sourceCanvas = makeCanvas(1, 1);
     const canvas = makeCanvas(512, 512);
+    let lastAttemptBytes = 0;
     for (const quality of [0.8, 0.55, 0.3, 0.1]) {
         const frames = [];
         let total = 0;
@@ -141,6 +142,7 @@ async function prepare(source, signal) {
                 const bytes = await encode(canvas, quality);
                 signal?.throwIfAborted();
                 total += bytes.length + 24;
+                lastAttemptBytes = total;
                 if (total > 500 * 1024) throw new Error('size');
                 frames.push({ bytes, duration: delay });
             }, signal);
@@ -148,7 +150,7 @@ async function prepare(source, signal) {
             if (bytes.length <= 500 * 1024) return dataUrl(bytes);
         } catch (error) { if (error.message !== 'size') throw error; }
     }
-    throw new Error('This animation still exceeds 500 KB. Open Edit GIF and trim a shorter section, then prepare again. Your GIF is unchanged.');
+    throw new Error(`This animation exceeds 500 KB: even at the lowest quality, encoded frames already require at least ${Math.ceil(lastAttemptBytes / 1024)} KB. Open Edit and shorten the animation, then save. Your source GIF is kept.`);
 }
 
 // Build all six timeline previews while compositing the animation once. Calling

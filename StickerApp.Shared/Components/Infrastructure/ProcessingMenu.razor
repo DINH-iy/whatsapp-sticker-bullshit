@@ -1,14 +1,16 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
+@if (jobs.Length > 0)
+{
 <details class="processing-menu">
-    <summary class="button" aria-label="@L["App processing"]"><Icon Name="animation" /><span>@L["Processing"] (@jobs.Length)</span></summary>
+    <summary class="button icon-button" aria-label="@L.Format("App processing · {0} active", jobs.Length)" title="@L["App processing"]"><Icon Name="processing" /></summary>
     <div class="processing-menu-content" role="status">
         <strong>@L["App processing"]</strong>
-        @if (jobs.Length == 0) { <p>@L["No active jobs."]</p> }
         @foreach (var job in jobs) { <p @key="job.Id"><span class="feedback-spinner" aria-hidden="true"></span> @L[job.Name]</p> }
         <p class="helper">@L["Processing stops when you leave the app. Interrupted edits can be retried when you return."]</p>
     </div>
 </details>
+}
 @code {
     public sealed class Job { public int Id { get; set; } public string Name { get; set; } = ""; }
     private Job[] jobs = [];

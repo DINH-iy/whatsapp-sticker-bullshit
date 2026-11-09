@@ -11,7 +11,7 @@
 }
 @code {
     private string? errorReference;
-    private IJSObjectReference? module, subscription;
+    private IJSObjectReference? module, subscription, performanceModule, performanceSubscription;
     private DotNetObjectReference<DiagnosticsHost>? reference;
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -20,16 +20,21 @@
         try {
             module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/diagnostics.js");
             subscription = await module.InvokeAsync<IJSObjectReference>("watch", reference);
+            performanceModule = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/performance.js");
+            performanceSubscription = await performanceModule.InvokeAsync<IJSObjectReference>("watch", reference, Log.PerformanceEnabled);
         } catch (JSException exception) { Log.Error("Start JavaScript diagnostics", exception); }
     }
     [JSInvokable] public Task ReportError(string message, string? stack) => InvokeAsync(() => {
         errorReference = Log.Write("Error", "WebView JavaScript", message + "\n" + stack);
         StateHasChanged();
     });
+    [JSInvokable] public void ReportTiming(string operation, double milliseconds, string details) => Log.RecordPerformance(operation, milliseconds, details);
     public async ValueTask DisposeAsync()
     {
         try {
             if (subscription is not null) { await subscription.InvokeVoidAsync("dispose"); await subscription.DisposeAsync(); }
+            if (performanceSubscription is not null) { await performanceSubscription.InvokeVoidAsync("dispose"); await performanceSubscription.DisposeAsync(); }
+            if (performanceModule is not null) await performanceModule.DisposeAsync();
             if (module is not null) await module.DisposeAsync();
         } catch (JSDisconnectedException) { }
         reference?.Dispose();

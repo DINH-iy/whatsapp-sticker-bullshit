@@ -161,6 +161,7 @@ passed+=await GifImportRecoveryChecks.RunAsync();
 passed+=await GifSizeChecks.RunAsync();
 passed+=await ResetRestartChecks.RunAsync();
 passed+=await PreparationLifecycleChecks.RunAsync();
+passed+=await DiagnosticsPerformanceChecks.RunAsync();
 Console.WriteLine($"{passed} feature checks passed.");
 sealed class NoJs:IJSRuntime{
     public ValueTask<T> InvokeAsync<T>(string identifier,object?[]? args)=>throw new NotSupportedException();

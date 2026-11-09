@@ -1,3 +1,4 @@
+import { timed } from '../../ui/performance.js';
 import { onForegroundChanged, isForeground } from '../../ui/foreground.js';
 import { snapRotation, rotationStep } from '../shared/rotation-snap.js';
 import { cloneLayers, leafLayers, groupLayers, transformGroup } from './layer-groups.js';
@@ -512,7 +513,7 @@ export function create(canvas, reference) {
             layers = []; groupFrames.clear(); groupSelection.clear(); selected = -1; undo = []; redo = []; images.clear(); tints.clear(); for (const gif of gifs.values()) gif.reader.dispose?.(); gifs.clear();
             if (composition) {
                 for (const layer of leafLayers(composition.layers)) {
-                    const image = await decode(layer.source);
+                    const image = await timed('Layer: decode still image', () => decode(layer.source));
                     if (disposed) return;
                     images.set(layer.source, image);
                     if (layer.gifSource && !gifs.has(layer.gifSource)) gifs.set(layer.gifSource, await openGif(layer.gifSource));

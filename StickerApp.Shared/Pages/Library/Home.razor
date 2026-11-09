@@ -227,7 +227,16 @@ else
                 <small class="image-file-summary">@L.Format("File {0} · Stored {1}", Size(ImageSize(image).FileBytes), Size(ImageSize(image).TotalBytes))</small>
                 @if (StickerApp.Shared.Services.StickerPreparationService.NeedsPreparation(image))
                 {
-                    <small class="sticker-preparation-status">@L[Preparation.GetStatus(image)?.Error is not null ? "Needs attention · see ⓘ" : "Preparing…"]</small>
+                    @if (Preparation.GetStatus(image)?.Error is { } preparationError)
+                    {
+                        var problem = StickerApp.Shared.Services.PreparationProblem.Describe(image, preparationError);
+                        <div class="sticker-preparation-problem" @onclick:stopPropagation>
+                            <strong>@L[problem.Summary]</strong>
+                            <small>@L[problem.Recovery]</small>
+                            <button class="button" type="button" @onclick="() => infoImageId = image.Id">@L["View problem and fixes"]</button>
+                        </div>
+                    }
+                    else { <small class="sticker-preparation-status">@L["Preparing…"]</small> }
                 }
                 <div class="card-actions" @onclick:stopPropagation>
                     <div class="sticker-actions">

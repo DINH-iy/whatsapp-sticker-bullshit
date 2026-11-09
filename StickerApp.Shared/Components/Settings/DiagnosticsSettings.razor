@@ -1,10 +1,23 @@
 @inject AppLog Log
+@inject IJSRuntime JS
 @inject StickerApp.Shared.Services.IPackFileSaver FileSaver
 
 <section class="settings-card" id="diagnostics" aria-labelledby="diagnostics-title">
     <h2 id="diagnostics-title">@L["Diagnostics & error logs"]</h2>
     <p class="helper">@L["Errors are saved locally with timestamps, reference IDs, and technical details. Recent logs are kept across restarts, up to about 1 MB. Nothing is uploaded automatically."]</p>
     <p class="helper">@L["Log entries and technical diagnostics always remain in English."]</p>
+    <label class="toggle-row"><input type="checkbox" checked="@Log.PerformanceEnabled" @onchange="TogglePerformance" />@L["Record performance timings"]</label>
+    <p class="helper">@L["Turn this on, open the slow editor or GIF, then return here and refresh. Measures elapsed time for loading and conversion steps; it does not measure battery consumption or continuously monitor the phone. Timings stay on this device and are included in exported logs."]</p>
+    <div class="settings-actions">
+        <button class="button" type="button" @onclick="RefreshPerformance">@L["Refresh timings"]</button>
+        <button class="button" type="button" @onclick="ClearPerformance">@L["Clear timings"]</button>
+    </div>
+    @if (timings.Count > 0) {
+        <div class="performance-timings"><table><thead><tr><th>@L["Step"]</th><th>@L["Time"]</th><th>@L["Details"]</th></tr></thead><tbody>
+            @foreach (var entry in timings) { <tr><td>@entry.Operation</td><td>@entry.Milliseconds.ToString("N0") ms</td><td>@entry.Details</td></tr> }
+        </tbody></table></div>
+        <p class="helper">@L["Times can overlap: a total includes its smaller steps. A failed or cancelled step also records elapsed time."]</p>
+    }
     <div class="settings-actions">
         <button class="button" @onclick="Show" disabled="@working" aria-expanded="@(expanded ? "true" : "false")" aria-controls="diagnostic-log-preview">@L[expanded ? "Refresh log" : "View log"]</button>
         @if (expanded)
@@ -24,6 +37,16 @@
 </section>
 
 @code {
+    private IReadOnlyList<AppLog.PerformanceEntry> timings = [];
+    protected override void OnInitialized() => RefreshPerformance();
+    private void RefreshPerformance() => timings = Log.PerformanceEntries;
+    private void ClearPerformance() { Log.ClearPerformance(); RefreshPerformance(); }
+    private async Task TogglePerformance(ChangeEventArgs args) {
+        Log.PerformanceEnabled = args.Value is true;
+        await using var module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/performance.js");
+        await module.InvokeVoidAsync("setEnabled", Log.PerformanceEnabled);
+        RefreshPerformance();
+    }
     private bool expanded, working;
     private string preview = "";
     private string? error, notice;

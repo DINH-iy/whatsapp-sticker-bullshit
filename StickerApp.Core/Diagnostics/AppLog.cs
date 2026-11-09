@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 namespace StickerApp.Core;
 
 /// <summary>Bounded, local-only diagnostics. A logging failure must never break an app action.</summary>
-public sealed class AppLog(string directory)
+public sealed partial class AppLog(string directory)
 {
     private readonly object gate = new();
     private const int MaxFileBytes = 256 * 1024;

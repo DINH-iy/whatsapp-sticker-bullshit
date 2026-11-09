@@ -11,7 +11,15 @@
     <p class="@(State?.Error is not null ? "error" : "helper")" role="status">@L.Message(StatusText)</p>
     @if (State?.Error is { } error)
     {
-        <p class="helper">@L.Error(error)</p>
+        var problem = StickerApp.Shared.Services.PreparationProblem.Describe(Image, error);
+        <section class="notice notice-error" aria-label="@L["Problem and fixes"]">
+            <strong>@L[problem.Summary]</strong>
+            <p>@L[problem.Recovery]</p>
+            @if (error.Contains("encoded frames already require")) { <p>@error.Split(" Reference:")[0]</p> }
+            <p>@L["Your source file is kept. The size limit applies to the final prepared WebP sticker, not the source GIF."]</p>
+            <p>@L["Maximum sticker size:"] @(Image.Animated ? 500 : 100) KB · @L["Current source:"] @Math.Ceiling(Image.Bytes / 1024d) KB (@Image.MimeType.Replace("image/", ""))</p>
+            <HelpDisclosure Summary="@L["Technical details and reference"]"><p lang="en">@error</p></HelpDisclosure>
+        </section>
     }
     <dl class="sticker-detail-list">
         <dt>@L["Dimensions"]</dt><dd>@Image.Width × @Image.Height @L["pixels"]</dd>
@@ -34,7 +42,7 @@
         {
             <button class="button" type="button" @onclick="() => Preparation.Retry(Image.Id)">@L["Try again"]</button>
         }
-        <button class="button" type="button" @onclick="() => OnEdit.InvokeAsync()">@L["Edit image"]</button>
+        <button class="button" type="button" @onclick="() => OnEdit.InvokeAsync()" disabled="@(State?.Working == true || State?.Error is null && StickerApp.Shared.Services.StickerPreparationService.NeedsPreparation(Image))">@L[State?.Error is { } failure ? StickerApp.Shared.Services.PreparationProblem.Describe(Image, failure).EditLabel : "Edit image"]</button>
         <button class="button primary" type="button" @onclick="Close">@L["Done"]</button>
     </div>
 </dialog>
@@ -43,6 +51,8 @@
     [Parameter, EditorRequired] public Sticker Image { get; set; } = default!;
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public EventCallback OnEdit { get; set; }
+    protected override void OnInitialized() => Preparation.Changed += PreparationChanged;
+    private void PreparationChanged(bool mediaChanged) => _ = InvokeAsync(StateHasChanged);
     private ElementReference dialog;
     private IJSObjectReference? helper;
     private StickerApp.Shared.Services.StickerPreparationService.Status? State => Preparation.GetStatus(Image);
@@ -59,6 +69,7 @@
     private Task HandleKey(KeyboardEventArgs args) => args.Key == "Escape" ? Close() : Task.CompletedTask;
     public async ValueTask DisposeAsync()
     {
+        Preparation.Changed -= PreparationChanged;
         if (helper is null) return;
         try { await helper.DisposeAsync(); }
         catch (JSDisconnectedException) { }

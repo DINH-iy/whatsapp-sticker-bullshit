@@ -68,6 +68,7 @@ public partial class LayerEditorDialog
             if (focusQuickPanel && controller is not null) { focusQuickPanel = false; await controller.InvokeVoidAsync("focusPanel"); }
             return;
         }
+        using var performance = Log.Measure("Layer editor: total opening");
         try
         {
             preparationLease = await Preparation.SuspendForEditingAsync();
@@ -86,9 +87,11 @@ public partial class LayerEditorDialog
             if (StickerId is { } id)
             {
                 name = Images.FirstOrDefault(image => image.Id == id)?.Name ?? name;
+                using var readTiming = Log.Measure("Layer editor: read composition");
                 composition = await Store.ReadCompositionAsync(id);
             }
-            state = await controller.InvokeAsync<LayerEditorState>("open", composition);
+            using (Log.Measure("Layer editor: transfer and open composition"))
+                state = await controller.InvokeAsync<LayerEditorState>("open", composition);
             fonts = (await Store.ReadAsync()).Fonts;
             if (composition is null && (InitialSource is not null || StickerId is not null))
             {
@@ -97,6 +100,7 @@ public partial class LayerEditorDialog
                 if (source is not null)
                 {
                     name = InitialName ?? image?.Name ?? name;
+                    using var addTiming = Log.Measure("Layer editor: transfer and add image");
                     state = await controller.InvokeAsync<LayerEditorState>("add", name, source, 512);
                 }
             }

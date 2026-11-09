@@ -1,3 +1,4 @@
+import { timed } from '../../ui/performance.js';
 // Animated WebP is a RIFF container of independently decodable WebP frame chunks.
 // Reading those chunks also works on WebViews without WebCodecs ImageDecoder.
 const canvasOf = (width, height) => {
@@ -8,7 +9,8 @@ function checkForeground() {
     if (typeof document !== 'undefined' && (document.hidden || window.stickerForeground === false))
         throw new Error('Animation loading stopped because the app is in the background. Try again when you return.');
 }
-export async function openAnimation(source) {
+export function openAnimation(source) { return timed('Animation: decode source', () => openAnimationCore(source)); }
+async function openAnimationCore(source) {
     checkForeground();
     if (source.startsWith('data:image/gif;base64,')) {
         const engine = await import('../codecs/gif-engine.js');

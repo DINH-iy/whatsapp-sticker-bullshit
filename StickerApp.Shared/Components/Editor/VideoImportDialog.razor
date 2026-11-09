@@ -15,26 +15,41 @@
     </div>
     @if (ClipReview) { <p class="helper">@L.Format("Choose up to 10 seconds for this video. Cancel stops the whole {0} import; nothing has been saved yet.", ImportSource)</p> }
     <div @ref="editorRoot" class="video-import-editor" aria-busy="@(converting ? "true" : "false")">
-        <video @ref="video" class="video-import-preview" controls="@(!converting)" playsinline muted preload="auto" aria-label="@L["Video clip preview"]" hidden="@(!ready)" />
+        <video @ref="video" class="video-import-preview" controls="@(!converting && !estimating)" playsinline muted preload="auto" aria-label="@L["Video clip preview"]" hidden="@(!ready)" />
         @if (loading) { <p role="status">@L["Loading video…"]</p> }
         @if (ready)
         {
             <AnimationTimeline Duration="@duration" Start="@start" End="@end" Thumbnails="@thumbnails" StartChanged="ChangeStart" EndChanged="ChangeEnd" Disabled="@converting">
-                <PlaybackControl><button class="button animation-preview-button" type="button" @onclick="Preview" disabled="@converting" aria-label="@L[playing ? "Pause clip" : "Preview clip"]"><Icon Name="@(playing ? "pause" : "play")" />@L[playing ? "Pause" : "Preview"]</button></PlaybackControl>
+                <PlaybackControl><button class="button animation-preview-button" type="button" @onclick="Preview" disabled="@(converting || estimating)" aria-label="@L[playing ? "Pause clip" : "Preview clip"]"><Icon Name="@(playing ? "pause" : "play")" />@L[playing ? "Pause" : "Preview"]</button></PlaybackControl>
             </AnimationTimeline>
             <div class="video-import-options">
                 @if (!ClipReview) { <label>@L["GIF name"]<input @bind="name" maxlength="128" disabled="@converting" /></label> }
                 <label>@L["Frames per second"]<select @bind="fps" @bind:after="Validate" disabled="@converting"><option value="0" disabled="@(nativeFps <= 0)">@L["Follow source · native timing"] @(nativeFps > 0 ? $"({nativeFps:0.##} fps)" : L["· unavailable"])</option><option value="30">@L["30 · smoother"]</option><option value="8">@L["8 · smaller file"]</option><option value="12">12</option><option value="20">@L["20 · smoother"]</option></select></label>
             </div>
             <p class="@(validClip ? "helper" : "notice notice-error")" role="status">@L[validationMessage] @if(validClip){<span> @frameCount @L["frames"]</span>}</p>
-            <p class="helper">@L["GIF timing is rounded to 10 milliseconds. Native timing is available for supported MP4/MOV files up to 50 fps. Final file size depends on the video content; it cannot be guaranteed before encoding."]</p>
+            <p class="helper">@L["GIF timing is rounded to 10 milliseconds. Native timing is available for supported MP4/MOV files up to 50 fps. Sampled size estimates can differ from the finished file; the exact sticker limit is checked during preparation."]</p>
+            <section class="video-size-estimate" aria-live="polite" aria-busy="@estimating">
+                @if (estimating) { <p><span class="feedback-spinner" aria-hidden="true"></span> @L["Estimating size from a few frames…"]</p> }
+                else if (sizeEstimate is { } estimate) {
+                    <p><strong>@L["Estimated GIF:"]</strong> @EstimateSize(estimate.GifLow)–@EstimateSize(estimate.GifHigh) · @L["import maximum"] 20 MB</p>
+                    <p><strong>@L["Estimated WhatsApp sticker:"]</strong> @EstimateSize(estimate.StickerLow)–@EstimateSize(estimate.StickerHigh) · @L["maximum"] 500 KB</p>
+                    <p class="helper">@L["The GIF is an intermediate file. The 500 KB limit applies to the prepared WebP sticker. This is a sample-based estimate, not an exact size."]</p>
+                    @if (estimate.TooLarge) {
+                        <p class="notice notice-error">@L["This selection is likely too large even at low quality. Shorten the clip or choose fewer frames per second before creating it."]</p>
+                        <button class="button" type="button" @onclick="ShortenToEstimate">@L["Shorten clip to about"] @estimate.SuggestedSeconds.ToString("0.0") @L["seconds"]</button>
+                        @if (fps != 8) { <button class="button" type="button" @onclick="UseSmallerFrameRate">@L["Use 8 fps for a smaller sticker"]</button> }
+                    }
+                    else if (estimate.NearLimit) { <p class="helper">@L["This may exceed the limit at higher quality. Shorter clips and fewer frames improve the chance of fitting."]</p> }
+                }
+                else if (validClip) { <button class="button" type="button" @onclick="Validate">@L["Estimate size again"]</button> }
+            </section>
             <HelpDisclosure Summary="@L["Video import help"]"><p class="helper">@L["Choose all or part of the video, up to 10 seconds. Conversion happens on your device, without sound. Videos up to 100 MB are supported when your device can play their format. The GIF fits within 512 × 512 without enlargement."]</p></HelpDisclosure>
         }
         @if (error is not null) { <p class="notice notice-error" role="alert">@L.Error(error)</p> }
     </div>
     <div class="dialog-actions">
         <button class="button" type="button" @onclick="Close" disabled="@saving">@L["Cancel"]</button>
-        <button class="button primary" type="button" @onclick="Convert" disabled="@(!ready || !validClip || converting || string.IsNullOrWhiteSpace(name))"><Icon Name="check" />@L[ClipReview ? "Use clip" : "Create GIF"]</button>
+        <button class="button primary" type="button" @onclick="Convert" disabled="@(!ready || !validClip || estimating || sizeEstimate is null || sizeEstimate.TooLarge || converting || string.IsNullOrWhiteSpace(name))"><Icon Name="check" />@L[ClipReview ? "Use clip" : "Create GIF"]</button>
     </div>
 </dialog>
 @if (converting)
@@ -61,13 +76,49 @@
     private string? error;
     private int fps = 30, progress, frameCount;
     private double nativeFps;
-    private bool validClip;
+    private bool validClip, estimating;
+    private int validationVersion;
+    private CancellationTokenSource? estimateDelay;
+    private VideoSizeEstimate? sizeEstimate;
+    public sealed class VideoSizeEstimate {
+        public long GifLow { get; set; } public long GifHigh { get; set; }
+        public long StickerLow { get; set; } public long StickerHigh { get; set; }
+        public bool TooLarge { get; set; } public bool NearLimit { get; set; }
+        public double SuggestedSeconds { get; set; }
+    }
+    private static string EstimateSize(long bytes) => bytes >= 1024 * 1024 ? $"{bytes / (1024d * 1024):0.0} MB" : $"{Math.Ceiling(bytes / 1024d)} KB";
+    private async Task ShortenToEstimate() { if (sizeEstimate is { } estimate) await ChangeEnd(Math.Min(end, start + estimate.SuggestedSeconds)); }
+    private async Task UseSmallerFrameRate() { fps = 8; await Validate(); }
     private string validationMessage = "Checking clip…";
     public sealed class ClipValidation { public bool Valid { get; set; } public int Frames { get; set; } public string Message { get; set; } = ""; }
     private async Task Validate() {
-        if (controller is null || !ready) return;
-        var result = await controller.InvokeAsync<ClipValidation>("validate", start, end, fps);
-        validClip = result.Valid; frameCount = result.Frames; validationMessage = result.Message;
+        if (controller is null || !ready || disposed) return;
+        var version = ++validationVersion;
+        estimateDelay?.Cancel();
+        using var delay = new CancellationTokenSource(); estimateDelay = delay;
+        sizeEstimate = null; error = null; estimating = false;
+        try {
+            await controller.InvokeVoidAsync("cancelEstimate");
+            var result = await controller.InvokeAsync<ClipValidation>("validate", start, end, fps);
+            if (version != validationVersion || disposed) return;
+            validClip = result.Valid; frameCount = result.Frames; validationMessage = result.Message;
+            if (!validClip) return;
+            estimating = true; StateHasChanged();
+            await Task.Delay(450, delay.Token);
+            var estimate = await controller.InvokeAsync<VideoSizeEstimate>("estimate", TimeSpan.FromMinutes(2), start, end, fps);
+            if (version == validationVersion && !disposed) sizeEstimate = estimate;
+        }
+        catch (OperationCanceledException) { }
+        catch (JSException exception) {
+            if (version == validationVersion && !disposed) {
+                Log.Error("Video size estimate", exception);
+                error = "Size estimation stopped or failed. Keep the app open and try estimating again, or choose a shorter clip.";
+            }
+        }
+        finally {
+            if (ReferenceEquals(estimateDelay, delay)) estimateDelay = null;
+            if (version == validationVersion && !disposed) { estimating = false; StateHasChanged(); }
+        }
     }
     private string[] thumbnails = [];
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -90,8 +141,8 @@
         }
     }
     public sealed class VideoInfo { public string Name { get; set; } = "Video clip"; public double Duration { get; set; } public double NativeFps { get; set; } public int Width { get; set; } public int Height { get; set; } public string[] Thumbnails { get; set; } = []; }
-    [JSInvokable] public void VideoLoading() { ready = false; loading = true; error = null; StateHasChanged(); }
-    [JSInvokable] public async Task VideoReady(VideoInfo info) { name = info.Name.Length > 128 ? info.Name[..128] : info.Name; duration = info.Duration; start = 0; end = Math.Min(10, duration); thumbnails = info.Thumbnails; nativeFps = info.NativeFps; fps = nativeFps > 0 && nativeFps <= 50 ? 0 : 30; ready = true; loading = false; await Validate(); StateHasChanged(); }
+    [JSInvokable] public void VideoLoading() { ++validationVersion; estimateDelay?.Cancel(); sizeEstimate = null; estimating = false; ready = false; loading = true; error = null; StateHasChanged(); }
+    [JSInvokable] public async Task VideoReady(VideoInfo info) { name = info.Name.Length > 128 ? info.Name[..128] : info.Name; duration = info.Duration; start = 0; end = Math.Min(10, duration); thumbnails = info.Thumbnails; nativeFps = info.NativeFps; fps = nativeFps > 0 && nativeFps <= 50 ? 0 : 30; ready = true; loading = false; StateHasChanged(); await Validate(); StateHasChanged(); }
     [JSInvokable] public void VideoFailed(string message) { error = message; loading = false; StateHasChanged(); }
     [JSInvokable] public void VideoPlayback(bool value) { playing = value; StateHasChanged(); }
     [JSInvokable] public void VideoProgress(int value) { progress = value; StateHasChanged(); }
@@ -100,7 +151,7 @@
     private async Task Preview() { try { await controller!.InvokeVoidAsync("preview", start, end); } catch (JSException) { error = "Could not play this video on this device."; } }
     private async Task Convert()
     {
-        if (controller is null || converting || !ready || !validClip) return;
+        if (controller is null || converting || !ready || !validClip || estimating || sizeEstimate is null || sizeEstimate.TooLarge) return;
         converting = true; error = null; progress = 0;
         try
         {
@@ -123,11 +174,11 @@
         }
         finally { converting = saving = false; }
     }
-    private async Task Close() { if (saving) return; if (controller is not null) await controller.InvokeVoidAsync("cancel"); await OnClose.InvokeAsync(); }
+    private async Task Close() { if (saving) return; ++validationVersion; estimateDelay?.Cancel(); if (controller is not null) await controller.InvokeVoidAsync("cancel"); await OnClose.InvokeAsync(); }
     private Task HandleKey(KeyboardEventArgs args) => args.Key == "Escape" ? Close() : Task.CompletedTask;
     public async ValueTask DisposeAsync()
     {
-        disposed = true;
+        disposed = true; ++validationVersion; estimateDelay?.Cancel();
         try { if (controller is not null) { await controller.InvokeVoidAsync("dispose"); await controller.DisposeAsync(); } if (module is not null) await module.DisposeAsync(); if (helper is not null) await helper.DisposeAsync(); }
         catch (JSDisconnectedException) { }
         reference?.Dispose();

@@ -1,3 +1,4 @@
+import { timed } from '../../ui/performance.js';
 import { onForegroundChanged } from '../../ui/foreground.js';
 import { snapRotation } from '../shared/rotation-snap.js';
 import { editorView, cutoutLoupe } from '../shared/editor-view.js';
@@ -274,7 +275,7 @@ export function create(canvas, dotnet) {
             resizer.end(); stopPreview(); ++seekVersion; previewTime = 0; animationReader?.dispose?.(); animationReader = null;
             if (animated) animationReader = await openAnimation(source);
             if (disposed) { animationReader?.dispose?.(); animationReader = null; return { width: 0, height: 0, recipe: {} }; }
-            maxSize = maximumSize; await load(animationReader ? animationReader.at(0) : source, Math.min(512, initialLimit)); history = []; redo = [];
+            maxSize = maximumSize; await timed('Image editor: first frame and canvas', () => load(animationReader ? animationReader.at(0) : source, Math.min(512, initialLimit))); history = []; redo = [];
             adjustmentBase = null; operations = []; toolCheckpoint = null; initialWidth = canvas.width; initialHeight = canvas.height;
             original = canvas.toDataURL('image/png'); await commitAdjustments();
             return { width: canvas.width, height: canvas.height, recipe: recipe() };

@@ -22,6 +22,22 @@ try {
     }});
     await controller.loadFile(file);assert(info&&!error,'video metadata must load: '+error);
     const sourceDuration=info.duration;
+    const {setEnabled,watch}=await import('/_content/StickerApp.Shared/js/ui/performance.js');
+    const timings=[];const performanceWatch=watch({invokeMethodAsync:async(method,...args)=>timings.push(args)},true);
+    const estimate=await controller.estimate(0,Math.min(sourceDuration,1.2),12);
+    assert(estimate.gifLow>0&&estimate.stickerLow>0&&estimate.gifHigh>=estimate.gifLow&&estimate.stickerHigh>=estimate.stickerLow,'estimates must include distinct GIF and final sticker ranges');
+    assert(!estimate.tooLarge,'simple video should fit the sticker budget');
+    const cached=await controller.estimate(0,Math.min(sourceDuration,1.2),12);
+    assert(cached===estimate,'unchanged settings must reuse the estimate rather than re-encode samples');
+    assert(timings.some(t=>t[0]==='Video: estimate compressed size'),'opt-in performance recorder must capture size sampling');
+    const {watchJobs}=await import('/_content/StickerApp.Shared/js/ui/foreground.js');
+    let interruptEstimate=true;
+    const jobWatch=watchJobs({invokeMethodAsync:async(method,jobs)=>{if(interruptEstimate&&jobs.some(job=>job.name==='Estimating GIF and sticker size…')){interruptEstimate=false;window.stickerSetForeground(false);}}});
+    let estimateCancelled=false;try{await controller.estimate(.1,.8,8);}catch(error){estimateCancelled=error.name==='AbortError';}
+    assert(estimateCancelled,'sampling must stop when backgrounded');window.stickerSetForeground(true);jobWatch.dispose();
+    await controller.estimate(.1,.8,8);
+    performanceWatch.dispose();setEnabled(false);
+
     const bytes=await controller.convert(0,Math.min(sourceDuration,1.2),12);
     const data=await new Promise(resolve=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.readAsDataURL(new Blob([bytes],{type:'image/gif'}));});
     const animation=await openAnimation(data);
@@ -37,6 +53,6 @@ try {
     cancelOnProgress=false;await controller.convert(0,0.2,8);
     await controller.loadFile(new File(['bad'],'bad.mp4',{type:'video/mp4'}));assert(error,'undecodable video must show an error');
     controller.dispose();animation.dispose?.();clipped.dispose?.();
-    result.textContent='PASS: local video decoding, GIF encoding, aspect ratio/no enlargement, both video frames, selected clip start/duration, range validation, progress, cancellation/retry, invalid video handling and disposal.\nSource: '+mime+' · '+sourceDuration.toFixed(2)+' s · GIF '+bytes.size+' bytes';
+    result.textContent='PASS: sampled GIF/sticker estimates, estimate caching, optional performance events, background cancellation/retry, local video decoding, GIF encoding, aspect ratio/no enlargement, both video frames, selected clip start/duration, range validation, progress, cancellation/retry, invalid video handling and disposal.\nSource: '+mime+' · '+sourceDuration.toFixed(2)+' s · GIF '+bytes.size+' bytes';
 }catch(error){result.textContent='FAIL: '+error.stack;}
 </script>

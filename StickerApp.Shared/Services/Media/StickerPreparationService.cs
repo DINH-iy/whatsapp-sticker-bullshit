@@ -92,6 +92,7 @@ public sealed class StickerPreparationService(LibraryStore store, IJSRuntime js,
                     jobCancellation = job;
                     jobFinished = new(TaskCreationOptions.RunContinuationsAsynchronously);
                     var jobToken = job.Token;
+                    using var performance = log.Measure("Sticker preparation: total", $"animated={image.Animated}; bytes={image.Bytes}; pixels={image.Width}x{image.Height}");
                     try
                     {
                         var source = await store.PreviewAsync(image);

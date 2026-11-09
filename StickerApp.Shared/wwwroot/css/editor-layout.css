@@ -252,7 +252,7 @@
 .processing-menu > summary { list-style: none; cursor: pointer; }
 .processing-menu > summary::-webkit-details-marker { display: none; }
 .processing-menu-content { position: absolute; z-index: 30; right: 0; top: calc(100% + 8px); width: min(300px,80vw); padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: 0 8px 32px #0003; }
-@media(max-width:600px) { .processing-menu > summary > span { font-size: 11px; } .processing-menu > summary { padding: 6px; gap: 4px; } }
+.processing-menu > summary.icon-button { width: 44px; height: 44px; padding: 10px; }
 
 .image-card-content { display: contents; }
 .image-card-processing { position: relative; cursor: wait; }
@@ -260,3 +260,14 @@
 .sticker-processing-overlay { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 12px; border-radius: inherit; text-align: center; background: color-mix(in srgb,var(--surface) 88%,transparent); cursor: wait; }
 .sticker-processing-overlay .feedback-spinner { width: 28px; height: 28px; }
 .sticker-processing-overlay strong, .sticker-processing-overlay small { white-space: normal; }
+
+.sticker-preparation-problem { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); }
+.image-card .sticker-preparation-problem :is(strong,small) { white-space: normal; overflow: visible; text-overflow: clip; }
+.sticker-preparation-problem strong { font-size: 12px; }
+.sticker-preparation-problem .button { min-height: 36px; padding: 6px; font-size: 12px; }
+.video-size-estimate { padding: 12px; border: 1px solid var(--line); border-radius: 10px; margin-block: 10px; }
+.video-size-estimate p { margin-block: 6px; }
+.performance-timings { max-height: 360px; overflow: auto; margin-block: 12px; }
+.performance-timings table { width: 100%; border-collapse: collapse; text-align: start; font-size: 12px; }
+.performance-timings :is(th,td) { border-bottom: 1px solid var(--line); padding: 8px; vertical-align: top; }
+.performance-timings td:nth-child(2) { white-space: nowrap; }

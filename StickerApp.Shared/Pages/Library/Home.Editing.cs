@@ -42,6 +42,7 @@ public partial class Home
     private async Task Edit(Sticker image)
     {
         if (busy || IsPreparing(image)) return;
+        using var performance = Log.Measure("Editor: open image", $"animated={image.Animated}; bytes={image.Bytes}; pixels={image.Width}x{image.Height}");
         if (image.CompositionFileName is not null)
         {
             compositionFromEditor = false;
@@ -71,13 +72,15 @@ public partial class Home
         await Task.Yield();
         try
         {
-            var lease = await Preparation.SuspendForEditingAsync();
+            IDisposable lease;
+            using (Log.Measure("Editor: wait for preparation to stop")) lease = await Preparation.SuspendForEditingAsync();
             if (session != editorSession || disposed) { lease.Dispose(); return; }
             preparationLease?.Dispose(); preparationLease = lease;
             // Preparation may have completed just before the lease was acquired.
             var current = (await Store.ReadAsync()).Stickers.FirstOrDefault(item => item.Id == image.Id)
                 ?? throw new InvalidOperationException("This image is no longer available.");
-            var source = await Store.PreviewAsync(current);
+            string source;
+            using (Log.Measure("Editor: read image source")) source = await Store.PreviewAsync(current);
             if (session != editorSession || disposed) return;
             editing = current;
             editSource = editPreview = source;
@@ -154,6 +157,7 @@ public partial class Home
 
     private async Task InspectGif(int session)
     {
+        using var performance = Log.Measure("Editor: inspect animation and timeline");
         gifEditor ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/media/animation/gif-editor.js");
         if (session != editorSession || disposed) return;
         gifSession ??= await gifEditor.InvokeAsync<IJSObjectReference>("createSession");
