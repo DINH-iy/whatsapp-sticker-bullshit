@@ -23,7 +23,7 @@ internal static class DiagnosticsPerformanceChecks
             log.PerformanceEnabled = false; Require(!new AppLog(root).PerformanceEnabled, "Disabling did not persist");
             var animation = new Sticker { Animated = true, Bytes = 11620 * 1024L, MimeType = "image/gif" };
             var size = PreparationProblem.Describe(animation, "This animation exceeds 500 KB: at least 540 KB.");
-            Require(size.Summary.Contains("500 KB") && size.Recovery.Contains("shorten") && size.EditLabel.Contains("shorten"), "Size failure must offer an actual recovery action");
+            Require(size.Summary.Contains("500 KB") && size.Recovery.Contains("shorten", StringComparison.OrdinalIgnoreCase) && size.EditLabel.Contains("Shorten"), "Size failure must offer an actual recovery action");
             var duration = PreparationProblem.Describe(animation, "This GIF is longer than 10 seconds.");
             Require(duration.Recovery.Contains("start and end handles"), "Duration failure must explain the trim controls");
             var timeout = PreparationProblem.Describe(animation, "Preparation took too long.");

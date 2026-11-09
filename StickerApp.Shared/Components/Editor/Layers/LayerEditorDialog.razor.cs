@@ -257,8 +257,9 @@ public partial class LayerEditorDialog
     private Task AddLibraryImage() => Run("Adding layer…", async () =>
     {
         showAddMenu = false;
-        if (!Guid.TryParse(libraryImageId, out var id) || !Previews.TryGetValue(id, out var source)) return;
+        if (!Guid.TryParse(libraryImageId, out var id)) return;
         var image = Images.First(image => image.Id == id);
+        var source = Previews.TryGetValue(id, out var preview) ? preview : await Store.PreviewAsync(image);
         if (IsPreparing(image)) throw new InvalidOperationException("Wait for sticker preparation to finish before adding this image.");
         if (image.Animated)
             source = await Store.ReadLayerAnimationAsync(id) ?? throw new InvalidOperationException("This animation source is unavailable. Import its GIF or animated WebP file again.");

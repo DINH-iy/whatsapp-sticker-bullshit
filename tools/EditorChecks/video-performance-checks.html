@@ -1,0 +1,48 @@
+<!doctype html><meta charset="utf-8"><title>Video pipeline comparison</title><h1>Video pipeline comparison</h1><pre id="result">Running…</pre><video muted playsinline></video><input type="file"><div id="root"></div>
+<script type="module">
+const result=document.querySelector('#result');
+try {
+    const base='/_content/StickerApp.Shared/js/media/';
+    const {create}=await import(base+'video/video-import.js');
+    const {fit,encode,animation}=await import(base+'conversion/sticker-converter.js');
+    const {prepare}=await import(base+'conversion/sticker-preparation.js');
+    const {openAnimation}=await import(base+'animation/animation-reader.js');
+    const settings=await import(base+'video/video-worker-settings.js');
+    const source=document.createElement('canvas');source.width=232;source.height=512;const ctx=source.getContext('2d');
+    const stream=source.captureStream(24),mime=['video/mp4;codecs=avc1.42E01E','video/mp4','video/webm;codecs=vp8'].find(m=>MediaRecorder.isTypeSupported(m));
+    const recorder=new MediaRecorder(stream,{mimeType:mime}),chunks=[];recorder.ondataavailable=e=>chunks.push(e.data);
+    const stopped=new Promise(r=>recorder.onstop=r);let tick=0;
+    function paint(){tick++;const gradient=ctx.createLinearGradient(0,0,232,512);gradient.addColorStop(0,`hsl(${tick*5%360} 75% 45%)`);gradient.addColorStop(1,'#17445e');ctx.fillStyle=gradient;ctx.fillRect(0,0,232,512);for(let i=0;i<12;i++){ctx.fillStyle=`hsl(${(i*27+tick*3)%360} 65% 60%)`;ctx.fillRect((i*21+tick*7)%232,(i*39+tick*5)%512,55,38);}ctx.font='bold 22px sans-serif';ctx.fillStyle='white';ctx.fillText('LOCAL TEST',30,260);}
+    paint();recorder.start();const interval=setInterval(paint,1000/24);await new Promise(r=>setTimeout(r,2300));recorder.stop();await stopped;clearInterval(interval);stream.getTracks().forEach(t=>t.stop());
+    const file=new File(chunks,'benchmark.'+(mime.includes('mp4')?'mp4':'webm'),{type:mime.split(';')[0]});
+    const video=document.querySelector('video');let info;
+    const controller=create(video,document.querySelector('input'),document.querySelector('#root'),{invokeMethodAsync:async(method,value)=>{if(method==='VideoReady')info=value;if(method==='VideoFailed')throw new Error(value);}});
+    await controller.loadFile(file);if(!info)throw new Error('Missing video metadata');
+    const start=0,end=2,fps=12,count=24,canvas=document.createElement('canvas');canvas.width=canvas.height=512;
+    await encode(canvas,.8); // Warm the shared WebP codec before comparing.
+    async function seek(time){if(Math.abs(video.currentTime-time)<.0001&&video.readyState>=2)return;const done=new Promise((resolve,reject)=>{video.addEventListener('seeked',resolve,{once:true});video.addEventListener('error',reject,{once:true});});video.currentTime=time;await done;}
+    async function direct(){const output=[];for(let i=0;i<count;i++){await seek(start+i/fps);fit(canvas.getContext('2d'),video,video.videoWidth,video.videoHeight);output.push({bytes:await encode(canvas,.8),duration:Math.round((i+1)*1000/fps)-Math.round(i*1000/fps)});await new Promise(r=>setTimeout(r,0));}return animation(output);}
+    async function gifRoute(){
+        const {createEncoder}=await import(base+'codecs/video-gif-encoder.js');
+        const frame=document.createElement('canvas');frame.width=232;frame.height=512;const context=frame.getContext('2d'),encoder=createEncoder(232,512);
+        for(let i=0;i<count;i++){await seek(start+i/fps);context.drawImage(video,0,0,232,512);encoder.add(context.getImageData(0,0,232,512).data,(Math.round((i+1)*100/fps)-Math.round(i*100/fps))*10);await new Promise(r=>setTimeout(r,0));}
+        const gif=new Blob([encoder.finish()],{type:'image/gif'});const url=await new Promise(r=>{const reader=new FileReader();reader.onload=()=>r(reader.result);reader.readAsDataURL(gif);});
+        const output=await prepare(url,true);return Uint8Array.from(atob(output.split(',')[1]),c=>c.charCodeAt(0));
+    }
+    async function production(workers){settings.setWorkers(workers);const output=await controller.convert(start,end,fps);return new Uint8Array(await output.arrayBuffer());}
+    const saved=settings.readWorkers(),runs=[];
+    try{
+        for(let round=0;round<3;round++){
+            for(const [name,work] of [['Legacy GIF + WebP (test only)',gifRoute],['Direct WebP (1 worker)',()=>production(1)],['Direct WebP (2 workers)',()=>production(2)],['Direct WebP (4 workers)',()=>production(4)]]){
+                const at=performance.now();const bytes=await work();const ms=performance.now()-at;
+                if(bytes.length>500*1024)throw new Error(name+' exceeded sticker budget');
+                const blob=new Blob([bytes],{type:'image/webp'});const data=await new Promise(r=>{const reader=new FileReader();reader.onload=()=>r(reader.result);reader.readAsDataURL(blob);});
+                const decoded=await openAnimation(data);if(Math.abs(decoded.duration-2000)>20||decoded.width!==512||decoded.height!==512)throw new Error(name+': output timing/dimensions differ: '+decoded.duration+' ms, '+decoded.width+'×'+decoded.height);decoded.dispose?.();
+                runs.push({name,round,ms:Math.round(ms),bytes:bytes.length});result.textContent=JSON.stringify(runs,null,2);
+            }
+        }
+    }finally{settings.setWorkers(saved);controller.dispose();}
+    const medians=[...new Set(runs.map(r=>r.name))].map(name=>{const selected=runs.filter(r=>r.name===name);return {name,medianMs:selected.map(r=>r.ms).sort((a,b)=>a-b)[1],bytes:selected[0].bytes};});
+    result.textContent='PASS: same generated 232×512 video, 2 seconds at 12 fps, 512×512 output, all under 500 KB. Desktop browser only; not a phone benchmark.\n'+JSON.stringify({medians,runs},null,2);
+}catch(error){result.textContent='FAIL: '+error.stack;}
+</script>

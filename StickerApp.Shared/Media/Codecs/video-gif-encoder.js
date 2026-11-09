@@ -1,12 +1,15 @@
 import { GIFEncoder, quantize, applyPalette } from 'gifenc';
-export function createEncoder(width, height) {
+export function quantizeFrame(pixels) {
+    const palette = quantize(pixels, 256, {format:'rgb565'});
+    return { indexed: applyPalette(pixels,palette,'rgb565'), palette };
+}
+export function createEncoder(width, height, maxBytes = 20 * 1024 * 1024) {
     const encoder = GIFEncoder();
+    function checkSize() { if(encoder.bytesView().length>maxBytes) throw new Error(`This clip exceeds the ${Math.round(maxBytes / 1024 / 1024)} MB video-GIF limit. Shorten it or choose fewer frames per second.`); }
+    function addFrame(frame, delay) { encoder.writeFrame(frame.indexed,width,height,{palette:frame.palette,delay,repeat:0,dispose:1}); checkSize(); }
     return {
-        add(pixels, delay) {
-            const palette = quantize(pixels, 256, {format:'rgb565'});
-            encoder.writeFrame(applyPalette(pixels,palette,'rgb565'),width,height,{palette,delay,repeat:0,dispose:1});
-            if(encoder.bytesView().length>20*1024*1024) throw new Error('This GIF exceeds 20 MiB. Choose a shorter clip or fewer frames per second.');
-        },
-        finish(){encoder.finish();return encoder.bytes();}
+        add(pixels, delay) { addFrame(quantizeFrame(pixels), delay); },
+        addFrame,
+        finish(){encoder.finish();checkSize();return encoder.bytes();}
     };
 }

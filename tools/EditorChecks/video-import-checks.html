@@ -16,43 +16,77 @@ try {
     const sampleData=await new Promise(resolve=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.readAsDataURL(file);});sample.dataset.fixture=sampleData;
     const {create}=await import('/_content/StickerApp.Shared/js/media/video/video-import.js');
     const {openAnimation}=await import('/_content/StickerApp.Shared/js/media/animation/animation-reader.js');
-    let info,error,progress=0,cancelOnProgress=false;
+    let info,error,progress=0,cancelOnProgress=false,backgroundOnProgress=false;
     const controller=create(document.querySelector('video'),document.querySelector('input'),document.querySelector('#root'),{invokeMethodAsync:async(method,...args)=>{
-        if(method==='VideoReady')info=args[0];if(method==='VideoFailed')error=args[0];if(method==='VideoProgress'){progress=args[0];if(cancelOnProgress)controller.cancel();}
+        if(method==='VideoReady')info=args[0];if(method==='VideoFailed')error=args[0];if(method==='VideoProgress'){progress=args[0];if(cancelOnProgress)controller.cancel();if(backgroundOnProgress){backgroundOnProgress=false;window.stickerSetForeground(false);}}
     }});
     await controller.loadFile(file);assert(info&&!error,'video metadata must load: '+error);
     const sourceDuration=info.duration;
     const {setEnabled,watch}=await import('/_content/StickerApp.Shared/js/ui/performance.js');
     const timings=[];const performanceWatch=watch({invokeMethodAsync:async(method,...args)=>timings.push(args)},true);
     const estimate=await controller.estimate(0,Math.min(sourceDuration,1.2),12);
-    assert(estimate.gifLow>0&&estimate.stickerLow>0&&estimate.gifHigh>=estimate.gifLow&&estimate.stickerHigh>=estimate.stickerLow,'estimates must include distinct GIF and final sticker ranges');
+    assert(estimate.stickerLow>0&&estimate.stickerHigh>=estimate.stickerLow&&!('gifLow' in estimate),'estimates must describe direct WebP rather than an intermediate GIF');
     assert(!estimate.tooLarge,'simple video should fit the sticker budget');
     const cached=await controller.estimate(0,Math.min(sourceDuration,1.2),12);
     assert(cached===estimate,'unchanged settings must reuse the estimate rather than re-encode samples');
     assert(timings.some(t=>t[0]==='Video: estimate compressed size'),'opt-in performance recorder must capture size sampling');
     const {watchJobs}=await import('/_content/StickerApp.Shared/js/ui/foreground.js');
     let interruptEstimate=true;
-    const jobWatch=watchJobs({invokeMethodAsync:async(method,jobs)=>{if(interruptEstimate&&jobs.some(job=>job.name==='Estimating GIF and sticker size…')){interruptEstimate=false;window.stickerSetForeground(false);}}});
+    const jobWatch=watchJobs({invokeMethodAsync:async(method,jobs)=>{if(interruptEstimate&&jobs.some(job=>job.name==='Estimating sticker size…')){interruptEstimate=false;window.stickerSetForeground(false);}}});
     let estimateCancelled=false;try{await controller.estimate(.1,.8,8);}catch(error){estimateCancelled=error.name==='AbortError';}
     assert(estimateCancelled,'sampling must stop when backgrounded');window.stickerSetForeground(true);jobWatch.dispose();
     await controller.estimate(.1,.8,8);
     performanceWatch.dispose();setEnabled(false);
 
     const bytes=await controller.convert(0,Math.min(sourceDuration,1.2),12);
-    const data=await new Promise(resolve=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.readAsDataURL(new Blob([bytes],{type:'image/gif'}));});
+    const data=await new Promise(resolve=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.readAsDataURL(new Blob([bytes],{type:'image/webp'}));});
     const animation=await openAnimation(data);
-    assert(animation.width===64&&animation.height===48,'video conversion must preserve aspect ratio without enlarging');
-    assert(animation.at(0).getContext('2d').getImageData(32,24,1,1).data[0]>200,'first GIF frame must come from the beginning of the video');
-    assert(animation.at(1000).getContext('2d').getImageData(32,24,1,1).data[2]>200,'last GIF frame must come from the later video');
+    assert(bytes.type==='image/webp'&&bytes.size<=500*1024&&animation.width===512&&animation.height===512,'conversion must return an already prepared 512×512 WebP sticker within 500 KB');
+    assert(animation.at(0).getContext('2d').getImageData(223,256,1,1).data[3]===0,'small source must be centered without enlargement');
+    assert(animation.at(0).getContext('2d').getImageData(256,256,1,1).data[0]>200,'first WebP frame must come from the beginning of the video');
+    assert(animation.at(1000).getContext('2d').getImageData(256,256,1,1).data[2]>200,'last WebP frame must come from the later video');
     assert(progress===100,'conversion must report completion');
+    const workerSettings=await import('/_content/StickerApp.Shared/js/media/video/video-worker-settings.js');
+    const previousWorkers=workerSettings.readWorkers();
+    for(const workers of [1,2,4]){
+        workerSettings.setWorkers(workers);
+        const output=await controller.convert(0,.4,12);
+        const url=await new Promise(resolve=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.readAsDataURL(output);});
+        const read=await openAnimation(url);assert(Math.abs(read.duration-400)<=20,'worker count must preserve frame timing: '+workers);read.dispose?.();
+    }
+    workerSettings.setWorkers(previousWorkers);
+    const originalWorker=window.Worker;try{window.Worker=undefined;await controller.convert(0,.2,8);}finally{window.Worker=originalWorker;}
     const clip=await controller.convert(0.8,1.2,8);
-    const clipData=await new Promise(resolve=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.readAsDataURL(new Blob([clip],{type:'image/gif'}));});
-    const clipped=await openAnimation(clipData);assert(Math.abs(clipped.duration-400)<=20,'selected clip must retain its duration');assert(clipped.at(0).getContext('2d').getImageData(32,24,1,1).data[2]>200,'clip must start at the selected video position');
+    const clipData=await new Promise(resolve=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.readAsDataURL(new Blob([clip],{type:'image/webp'}));});
+    const clipped=await openAnimation(clipData);assert(Math.abs(clipped.duration-400)<=20,'selected clip must retain its duration');assert(clipped.at(0).getContext('2d').getImageData(256,256,1,1).data[2]>200,'clip must start at the selected video position');
     let rejected=false;try{await controller.convert(0,20,12);}catch{rejected=true;}assert(rejected,'invalid range must be rejected');
     cancelOnProgress=true;let cancelled=false;try{await controller.convert(0,1.2,12);}catch(e){cancelled=e.name==='AbortError';}assert(cancelled,'conversion must be cancellable');
     cancelOnProgress=false;await controller.convert(0,0.2,8);
+    const WorkerBase=window.Worker,liveWorkers=new Set();
+    let interruptActiveEstimate=false,interruptedEstimateWorker=false;
+    window.Worker=class extends WorkerBase { constructor(...args){super(...args);liveWorkers.add(this);} terminate(){liveWorkers.delete(this);return super.terminate();} postMessage(...args){super.postMessage(...args);if(interruptActiveEstimate){interruptActiveEstimate=false;interruptedEstimateWorker=true;queueMicrotask(()=>window.stickerSetForeground(false));}} };
+    try {
+        workerSettings.setWorkers(4);backgroundOnProgress=true;
+        let backgroundCancelled=false;try{await controller.convert(0,1.2,12);}catch(error){backgroundCancelled=error.name==='AbortError';}
+        assert(backgroundCancelled&&liveWorkers.size===0,'backgrounding during compression must reject and terminate every worker');
+        window.stickerSetForeground(true);await controller.convert(0,.4,12);
+        assert(liveWorkers.size===0,'successful conversion must also terminate its worker pool');
+        interruptActiveEstimate=true;
+        let samplingCancelled=false;try{await controller.estimate(.25,.75,12);}catch(error){samplingCancelled=error.name==='AbortError';}
+        assert(samplingCancelled&&interruptedEstimateWorker&&liveWorkers.size===0,'backgrounding during size sampling must terminate every estimate worker');
+        window.stickerSetForeground(true);await controller.estimate(.25,.75,12);assert(liveWorkers.size===0,'successful estimation must release all workers');
+    } finally {window.Worker=WorkerBase;window.stickerSetForeground(true);workerSettings.setWorkers(previousWorkers);}
+    // Imported GIFs retain support, and identical frames avoid repeat WebP encoding.
+    const {createEncoder}=await import('/_content/StickerApp.Shared/js/media/codecs/video-gif-encoder.js');
+    const {prepare}=await import('/_content/StickerApp.Shared/js/media/conversion/sticker-preparation.js');
+    const gifCanvas=document.createElement('canvas');gifCanvas.width=gifCanvas.height=16;const gifContext=gifCanvas.getContext('2d');gifContext.fillStyle='red';gifContext.fillRect(0,0,16,16);
+    const gifEncoder=createEncoder(16,16);for(let i=0;i<10;i++)gifEncoder.add(gifContext.getImageData(0,0,16,16).data,100);
+    const gifData=await new Promise(resolve=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.readAsDataURL(new Blob([gifEncoder.finish()],{type:'image/gif'}));});
+    const preparedGif=await openAnimation(await prepare(gifData,true));
+    assert(preparedGif.duration===1000&&preparedGif.frameCount===2,'GIF duplicate-frame merging must preserve duration and valid animation');
+    assert(preparedGif.at(500).getContext('2d').getImageData(256,256,1,1).data[0]>180,'GIF optimization must preserve image pixels');preparedGif.dispose?.();
     await controller.loadFile(new File(['bad'],'bad.mp4',{type:'video/mp4'}));assert(error,'undecodable video must show an error');
     controller.dispose();animation.dispose?.();clipped.dispose?.();
-    result.textContent='PASS: sampled GIF/sticker estimates, estimate caching, optional performance events, background cancellation/retry, local video decoding, GIF encoding, aspect ratio/no enlargement, both video frames, selected clip start/duration, range validation, progress, cancellation/retry, invalid video handling and disposal.\nSource: '+mime+' · '+sourceDuration.toFixed(2)+' s · GIF '+bytes.size+' bytes';
+    result.textContent='PASS: direct WebP estimates, estimate caching, optional performance events, background cancellation/retry, local video decoding, WebP encoding, final size limit, 1/2/4 workers and fallback, worker termination on backgrounding, GIF import and duplicate-frame merging, aspect ratio/no enlargement, both video frames, selected clip start/duration, range validation, progress, cancellation/retry, invalid video handling and disposal.\nSource: '+mime+' · '+sourceDuration.toFixed(2)+' s · WebP '+bytes.size+' bytes';
 }catch(error){result.textContent='FAIL: '+error.stack;}
 </script>

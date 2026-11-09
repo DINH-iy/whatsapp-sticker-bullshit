@@ -18,7 +18,7 @@ public partial class Home
     {
         showVideoImport = false;
         await Reload();
-        notice = "GIF added. It will be ready to edit when sticker preparation finishes.";
+        notice = "Animated sticker added. It is ready to edit and use.";
         noticeIsError = false;
     }
 

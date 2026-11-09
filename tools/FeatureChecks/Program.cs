@@ -39,6 +39,9 @@ Check(offlineNav.Contains("aria-disabled=\"true\"")&&offlineNav.Contains("<svg")
 connection.Update(true);
 var online=await renderer.Dispatcher.InvokeAsync(async()=> (await renderer.RenderComponentAsync<OnlineOnly>()).ToHtmlString());
 Check(!online.Contains("disabled")&&!online.Contains("No internet connection"),"connection restoration enables online controls");
+services.GetRequiredService<AppLanguage>().Set("en");
+var timingBars=await renderer.Dispatcher.InvokeAsync(async()=> (await renderer.RenderComponentAsync<StickerApp.Shared.Components.Settings.PerformanceChart>(ParameterView.FromDictionary(new Dictionary<string,object?>{{"Entries",new AppLog.PerformanceEntry[]{new(DateTimeOffset.UtcNow,"Opening",250,""),new(DateTimeOffset.UtcNow,"Decoding",1500,""),new(DateTimeOffset.UtcNow,"Video: full GIF encoding",17300,"")}}}))).ToHtmlString());
+Check(timingBars.Contains("timing-fast")&&timingBars.Contains("timing-medium")&&timingBars.Contains("timing-slow")&&timingBars.Contains(17.3.ToString("0.00"))&&timingBars.Contains("Creating GIF"),"performance chart labels slow operations and distinguishes fast/noticeable/slow without color alone");
 using var discord = new DiscordImportClient(new HttpClient(new DiscordHandler()));
 foreach (var url in new[] { "https://127.0.0.1/a.gif", "http://media.tenor.com/a.gif", "https://media.tenor.com.evil.test/a.gif", "https://user@media.tenor.com/a.gif" })
     await Reject(() => discord.DownloadAsync(new() { MediaUrl = url }, 100000, default), "Discord rejects unsafe URL " + url);
@@ -162,6 +165,7 @@ passed+=await GifSizeChecks.RunAsync();
 passed+=await ResetRestartChecks.RunAsync();
 passed+=await PreparationLifecycleChecks.RunAsync();
 passed+=await DiagnosticsPerformanceChecks.RunAsync();
+passed+=await DirectVideoImportChecks.RunAsync();
 Console.WriteLine($"{passed} feature checks passed.");
 sealed class NoJs:IJSRuntime{
     public ValueTask<T> InvokeAsync<T>(string identifier,object?[]? args)=>throw new NotSupportedException();

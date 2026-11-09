@@ -64,7 +64,7 @@
             <label>@L["Publisher"]<input @bind="publisher" maxlength="128" disabled="@busy" /></label>
         }
         @if (Store.AskForOriginalOnImport) { <label class="toggle-row"><input type="checkbox" @bind="keepOriginals" disabled="@busy" />@L["Keep original animation files for editing"]</label> }
-        <p class="helper">@L["10 MB per image, 100 MB per video, 250 MB per batch. Videos open the existing video-to-GIF editor before saving. Nothing is saved until the whole batch is ready."]</p>
+        <p class="helper">@L["10 MB per image, 20 MB per video, 250 MB per batch. Videos open the existing video-to-sticker editor before saving. Nothing is saved until the whole batch is ready."]</p>
         <OnlineOnly><button class="button primary" @onclick="Import" disabled="@(busy || selected.Count == 0 || destination == "new" && (string.IsNullOrWhiteSpace(newPackName) || string.IsNullOrWhiteSpace(publisher)))"><Icon Name="plus" />@L["Import selected"]</button></OnlineOnly>
     </section>
 }

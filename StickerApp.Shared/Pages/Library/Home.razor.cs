@@ -31,6 +31,7 @@ public partial class Home
     private string editPreview = "";
     private string editSource = "";
     private bool busy;
+    private bool loadingLibrary;
     private bool editorLoading, editorToolsLoading;
     private bool EditorOpening => editorLoading || editorToolsLoading;
     private bool renamingPack;
@@ -118,23 +119,36 @@ public partial class Home
         if (image is not null) await Edit(image);
     }
 
-    protected override Task OnParametersSetAsync() => Run(() =>
+    protected override Task OnParametersSetAsync() => LoadLibrary();
+
+    private async Task LoadLibrary()
     {
-        activePack = PackId;
-        browsePanel = null;
-        selected.Clear();
-        renamingPack = false;
-        showGifSearch = false;
-        infoImageId = null;
-        return Task.CompletedTask;
-    });
+        loadingLibrary = true;
+        try
+        {
+            await Run(() =>
+            {
+                activePack = PackId;
+                browsePanel = null;
+                selected.Clear();
+                renamingPack = false;
+                showGifSearch = false;
+                infoImageId = null;
+                return Task.CompletedTask;
+            });
+        }
+        finally { loadingLibrary = false; }
+    }
 
     private async Task Reload()
     {
+        using var performance = Log.Measure("Library: read and load previews");
         var snapshot = await Store.ReadBrowseSnapshotAsync();
         var updatedLibrary = snapshot.Library;
         var updatedPreviews = new Dictionary<Guid, string>();
-        foreach (var image in updatedLibrary.Stickers)
+        var packIds = activePack is { } packId ? updatedLibrary.Packs.FirstOrDefault(pack => pack.Id == packId)?.StickerIds.ToHashSet() : null;
+        var previewImages = packIds is not null ? updatedLibrary.Stickers.Where(image => packIds.Contains(image.Id)) : updatedLibrary.Stickers;
+        foreach (var image in previewImages)
             updatedPreviews[image.Id] = await Store.PreviewAsync(image);
 
         // Publish a complete snapshot so navigation cannot render images without previews.

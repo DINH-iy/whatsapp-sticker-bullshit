@@ -22,7 +22,7 @@
 @if(items.Count>0){
 <section class="settings-card">
     <h2>@L["Choose media"]</h2>
-    <p class="helper">@L["Images up to 10 MB; videos up to 100 MB. Review video clips before saving. The batch is limited to 250 MB and 30 selected items."]</p>
+    <p class="helper">@L["Images up to 10 MB; videos up to 20 MB. Review video clips before saving. The batch is limited to 250 MB and 30 selected items."]</p>
     @foreach(var item in items){<label class="toggle-row"><input type="checkbox" checked="@selected.Contains(item)" @onchange="()=>Toggle(item)" disabled="@busy" />@item.Name · @L[item.Video?"Video":"Image / GIF"] <a href="@item.Url" target="_blank" rel="noopener noreferrer">@L["Open"]</a></label>}
     <label>@L["Destination"]<select @bind="destination" disabled="@busy"><option value="">@L["My Library"]</option>@foreach(var pack in packs){<option value="@pack.Id">@pack.Name (@pack.StickerIds.Count/30)</option>}</select></label>
     <OnlineOnly><button class="button primary" @onclick="Import" disabled="@(busy||selected.Count==0||selected.Count>30)">@L.Format("Import {0} items", selected.Count)</button></OnlineOnly>

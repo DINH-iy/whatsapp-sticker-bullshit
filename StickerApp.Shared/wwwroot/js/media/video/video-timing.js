@@ -1,3 +1,4 @@
+import { MAX_CLIP_SECONDS, MAX_VIDEO_FRAMES, MIN_FRAME_MS } from './video-limits.js';
 // Read MP4/MOV sample timing without decoding the clip or loading its media payload.
 export async function readVideoTiming(file) {
     const u32 = (v, p) => v.getUint32(p);
@@ -48,7 +49,7 @@ export async function readVideoTiming(file) {
     return null;
 }
 export function planFrames(start, end, fps, timing, width, height) {
-    if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end - start < .1 || end - start > 10.001) throw new Error('Choose a clip between 0.1 and 10 seconds.');
+    if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end - start < .1 || end - start > MAX_CLIP_SECONDS + .001) throw new Error('Choose a clip between 0.1 and 5 seconds.');
     const frames = [];
     if (fps === 0) {
         if (!timing) throw new Error('Native frame rate is unavailable for this video. Choose a frame rate.');
@@ -59,7 +60,7 @@ export function planFrames(start, end, fps, timing, width, height) {
             for (let i = first; i < run.frames && time + i * run.seconds < end; i++) {
                 const at = time + i * run.seconds, until = Math.min(end, at + run.seconds);
                 if (until <= start) continue;
-                if (run.seconds < .0199) throw new Error('This source exceeds 50 fps. GIF playback cannot retain that rate here. Choose 30 fps.');
+                if (run.seconds * 1000 < MIN_FRAME_MS - .001) throw new Error('This source exceeds 125 fps. Choose 30 fps to keep sticker frames at least 8 milliseconds long.');
                 frames.push({ time: Math.max(start, at), end: until });
                 if (frames.length > 1000) throw new Error('Too many frames. Choose a shorter clip or fewer frames per second.');
             }
@@ -70,14 +71,15 @@ export function planFrames(start, end, fps, timing, width, height) {
         const count = Math.max(2, Math.ceil((end - start) * fps));
         for (let i = 0; i < count; i++) frames.push({ time: start + (end - start) * i / count, end: start + (end - start) * (i + 1) / count });
     }
-    // Partial edge frames must not round to 0/10 ms and become slow GIF frames.
+    // Merge edge fragments that would be shorter than the sticker minimum frame duration.
     for (let i = 0; i < frames.length && frames.length > 1;) {
-        if (frames[i].end - frames[i].time >= .0199) { ++i; continue; }
+        if (frames[i].end - frames[i].time >= MIN_FRAME_MS / 1000 - .000001) { ++i; continue; }
         const short = frames.splice(i, 1)[0];
         if (i > 0) frames[i - 1].end = short.end;
         else frames[0].time = short.time;
     }
     if (frames.length < 2) throw new Error('Choose a clip with at least two frames.');
+    if (frames.length > MAX_VIDEO_FRAMES) throw new Error('Video clips are limited to 100 frames. Shorten the selection or choose fewer frames per second.');
     if (width * height * frames.length > 80_000_000) throw new Error('This clip has too many pixels to edit safely. Choose a shorter clip or fewer frames per second.');
     return frames;
 }

@@ -29,8 +29,8 @@ public sealed class DiscordImportClient : IDisposable
         var mime = response.Content.Headers.ContentType?.MediaType?.ToLowerInvariant() ?? "";
         if (mime.StartsWith("text/") || mime.Contains("json")) throw new InvalidDataException("A favourite returned a web page instead of media. Open the original link in Discord and export again.");
         var video = mime is "video/mp4" or "video/webm" || favorite.Video && !mime.StartsWith("image/");
-        var limit = Math.Min(remainingBytes, video ? 100L * 1024 * 1024 : LibraryStore.MaxImportBytes);
-        if (limit <= 0 || response.Content.Headers.ContentLength > limit) throw new InvalidDataException("This media exceeds the 10 MB image, 100 MB video or 250 MB batch limit.");
+        var limit = Math.Min(remainingBytes, video ? LibraryStore.MaxVideoImportBytes : LibraryStore.MaxImportBytes);
+        if (limit <= 0 || response.Content.Headers.ContentLength > limit) throw new InvalidDataException("This media exceeds the 10 MB image, 20 MB video or 250 MB batch limit.");
         await using var input = await response.Content.ReadAsStreamAsync(timeout.Token);
         using var memory = new MemoryStream(); var buffer = new byte[65536]; int count;
         while ((count = await input.ReadAsync(buffer, timeout.Token)) != 0)

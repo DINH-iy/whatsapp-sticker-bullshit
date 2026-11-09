@@ -26,7 +26,7 @@ public sealed class PinterestImportClient : IDisposable
     public const string Endpoint = "https://stickers.dinnyvanhuizen.com/api/pinterest/import";
     public const int MaxImages = 100;
     public const int MaxMetadataBytes = 512 * 1024;
-    public const int MaxVideoBytes = 100 * 1024 * 1024;
+    public const int MaxVideoBytes = LibraryStore.MaxVideoImportBytes;
     public const int MaxBatchBytes = 250 * 1024 * 1024;
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private readonly HttpClient http;
@@ -202,14 +202,14 @@ public sealed class PinterestImportClient : IDisposable
     private static async Task<long> DownloadToFileAsync(HttpContent content, string path, int limit, CancellationToken token)
     {
         if (limit <= 0 || content.Headers.ContentLength > limit)
-            throw new InvalidDataException("Pinterest import limit reached: 10 MB per image, 100 MB per video and 250 MB per batch.");
+            throw new InvalidDataException("Pinterest import limit reached: 10 MB per image, 20 MB per video and 250 MB per batch.");
         await using var input = await content.ReadAsStreamAsync(token);
         await using var output = new FileStream(path, FileMode.CreateNew, FileAccess.Write);
         var buffer = new byte[64 * 1024];
         int read;
         while ((read = await input.ReadAsync(buffer, token)) != 0)
         {
-            if (output.Length + read > limit) throw new InvalidDataException("Pinterest import limit reached: 10 MB per image, 100 MB per video and 250 MB per batch.");
+            if (output.Length + read > limit) throw new InvalidDataException("Pinterest import limit reached: 10 MB per image, 20 MB per video and 250 MB per batch.");
             await output.WriteAsync(buffer.AsMemory(0, read), token);
         }
         return output.Length;

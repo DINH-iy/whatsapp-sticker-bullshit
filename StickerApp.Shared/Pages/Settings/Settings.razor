@@ -29,7 +29,7 @@
 <section class="settings-card faq" id="faq" aria-labelledby="faq-title">
         <h2 id="faq-title">@L["Help & FAQ"]</h2>
         <AppDisclosure><Header>@L["How do I import Discord favourite GIFs on my phone?"]</Header><ChildContent>
-            <p>@L["In Discord, open You → settings cogwheel → Data & Privacy → Request all of my data. Confirm and wait for the email (up to 30 days). Download its ZIP to Files or Downloads, then choose Add stickers → Discord favourites in Stik-er-in. Choose the ZIP, select GIFs and import them. Videos open the video-to-GIF editor first."]</p>
+            <p>@L["In Discord, open You → settings cogwheel → Data & Privacy → Request all of my data. Confirm and wait for the email (up to 30 days). Download its ZIP to Files or Downloads, then choose Add stickers → Discord favourites in Stik-er-in. Choose the ZIP, select GIFs and import them. Videos open the video-to-sticker editor first."]</p>
             <p>@L["The ZIP is read locally. Only the favourites list is passed to the app; your messages and account details are not uploaded. A browser development host downloads selected media and saves stickers on the host computer. No Discord password or account token is needed."]</p>
             <a href="discord">@L["Open Discord import and instructions"]</a>
         </ChildContent></AppDisclosure>
@@ -116,7 +116,7 @@
 </SettingsSection>
     <SettingsSection Title="@L["Your profile"]"><ProfileEditor /></SettingsSection>
     <SettingsSection Title="@L["NSFW spoilers"]"><SpoilerSettings /></SettingsSection>
-    <SettingsSection Title="@L["Editing"]"><LayerWarningSettings /></SettingsSection>
+    <SettingsSection Title="@L["Editing"]"><LayerWarningSettings /><VideoPerformanceSettings /></SettingsSection>
     <SettingsSection Title="@L["Editor layout"]" Anchor="editor-layout"><EditorLayoutSettings /></SettingsSection>
     <SettingsSection Title="@L["App font"]"><InterfaceFontSettings OnFontsChanged="RefreshFontStats" /></SettingsSection>
     <SettingsSection Title="@L["Touch feedback"]" Anchor="touch-feedback"><TapFeedbackSettings /></SettingsSection>

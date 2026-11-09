@@ -86,7 +86,9 @@
 }
 @if (busy)
 {
-    <p class="status-info" role="status">@L.Message(busyText)</p>
+    @if (!EditorOpening && !openingLayers && !savingEditor) {
+        <OperationProgressDialog Title="@(loadingLibrary ? "Loading stickers…" : busyText)" Detail="@(loadingLibrary ? "Getting your pack and previews ready." : null)" CanCancel="false" />
+    }
 }
 
 @{ var visibleImages = Visible; }
@@ -213,8 +215,10 @@ else
         @foreach (var image in visibleImages)
         {
             var processing = IsPreparing(image);
-            <article class="image-card @(processing ? "image-card-processing" : "")" @key="image.Id" @onclick="() => Edit(image)" aria-busy="@(processing ? "true" : "false")" aria-disabled="@(processing ? "true" : "false")">
+            var failure = Preparation.GetStatus(image)?.Error;
+            <article class="image-card @(processing ? "image-card-processing" : "") @(failure is not null ? "image-card-failed" : "")" @key="image.Id" @onclick="() => Edit(image)" aria-busy="@(processing ? "true" : "false")" aria-disabled="@(processing ? "true" : "false")">
                 <div class="image-card-content" inert="@processing">
+                @if (failure is not null) { <button type="button" class="sticker-failure-badge" @onclick:stopPropagation @onclick="() => infoImageId = image.Id" aria-label="@L["Sticker needs attention. View problem and fixes."]">!</button> }
                 <input type="checkbox" class="image-select" @onclick:stopPropagation aria-label="@L.Format("Select {0}", image.Name)"
                        checked="@selected.Contains(image.Id)" @onchange="() => Toggle(image.Id)" />
                 <SpoilerPreview IsSpoiler="@library.IsNsfw(image)" Name="@image.Name">
@@ -223,21 +227,17 @@ else
                 </button>
                 </SpoilerPreview>
                 <strong>@image.Name</strong>
+                @if (failure is not null) {
+                    var problem = StickerApp.Shared.Services.PreparationProblem.Describe(image, failure);
+                    <div class="sticker-problem-summary" @onclick:stopPropagation>
+                        <span>@L[problem.Summary]</span>
+                        <button class="button" type="button" @onclick="() => infoImageId = image.Id">@L["Fix sticker"]</button>
+                    </div>
+                }
+
                 <small class="image-file-summary">@image.Width × @image.Height · @L[image.Animated ? "Animated" : "Still"]</small>
                 <small class="image-file-summary">@L.Format("File {0} · Stored {1}", Size(ImageSize(image).FileBytes), Size(ImageSize(image).TotalBytes))</small>
-                @if (StickerApp.Shared.Services.StickerPreparationService.NeedsPreparation(image))
-                {
-                    @if (Preparation.GetStatus(image)?.Error is { } preparationError)
-                    {
-                        var problem = StickerApp.Shared.Services.PreparationProblem.Describe(image, preparationError);
-                        <div class="sticker-preparation-problem" @onclick:stopPropagation>
-                            <strong>@L[problem.Summary]</strong>
-                            <small>@L[problem.Recovery]</small>
-                            <button class="button" type="button" @onclick="() => infoImageId = image.Id">@L["View problem and fixes"]</button>
-                        </div>
-                    }
-                    else { <small class="sticker-preparation-status">@L["Preparing…"]</small> }
-                }
+                @if (failure is null && StickerApp.Shared.Services.StickerPreparationService.NeedsPreparation(image)) { <small class="sticker-preparation-status">@L["Preparing…"]</small> }
                 <div class="card-actions" @onclick:stopPropagation>
                     <div class="sticker-actions">
                         <button class="button icon-button" type="button" @onclick="() => infoImageId = image.Id" title="@L["Sticker details"]" aria-label="@L.Format("Details for {0}", image.Name)"><Icon Name="info" /></button>

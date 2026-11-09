@@ -10,6 +10,7 @@ window.visualViewport?.addEventListener('scroll', updateViewport);
 window.addEventListener('resize', updateViewport);
 
 export function open(dialog) {
+    if (!dialog?.isConnected) return;
     if (dialog.open) return;
     updateViewport();
     if (typeof dialog.showModal === 'function') { dialog.showModal(); return; }
@@ -60,6 +61,7 @@ syncScrollLock();
 
 // Keep elapsed feedback ticking independently of rendering and stop on removal.
 export function watchElapsed(element, label) {
+    if (!element?.isConnected) return;
     const output = element.querySelector('[data-operation-elapsed]');
     if (!output) return;
     const started = performance.now();

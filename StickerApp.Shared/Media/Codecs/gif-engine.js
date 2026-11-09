@@ -1,3 +1,4 @@
+import { samePixels, ensureAnimationFrames } from '../../wwwroot/js/media/shared/frame-dedup.js';
 import { drawLayerArtwork } from '../../wwwroot/js/media/effects/object-outline.js';
 import { applyColorEffect } from '../../wwwroot/js/media/effects/color-effect.js';
 import { fit, encode, encodeWorkingFrame, animation, dataUrl } from '../../wwwroot/js/media/conversion/sticker-converter.js';
@@ -128,9 +129,12 @@ async function prepare(source, signal) {
     let lastAttemptBytes = 0;
     for (const quality of [0.8, 0.55, 0.3, 0.1]) {
         const frames = [];
-        let total = 0;
+        let total = 0, previousPixels;
         try {
             await trim(source, 0, duration / 1000, false, async (pixels, width, height, delay) => {
+                signal?.throwIfAborted();
+                if (samePixels(previousPixels, pixels)) { frames[frames.length - 1].duration += delay; return; }
+                previousPixels = pixels.slice();
                 if (sourceCanvas.width !== width || sourceCanvas.height !== height) {
                     sourceCanvas.width = width; sourceCanvas.height = height;
                 }
@@ -146,7 +150,7 @@ async function prepare(source, signal) {
                 if (total > 500 * 1024) throw new Error('size');
                 frames.push({ bytes, duration: delay });
             }, signal);
-            const bytes = animation(frames);
+            const bytes = animation(ensureAnimationFrames(frames));
             if (bytes.length <= 500 * 1024) return dataUrl(bytes);
         } catch (error) { if (error.message !== 'size') throw error; }
     }

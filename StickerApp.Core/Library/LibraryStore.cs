@@ -8,6 +8,7 @@ public sealed record BatchImportFile(string Name, string Path, bool? KeepOrigina
 public sealed partial class LibraryStore
 {
     public const int MaxImportBytes = 10 * 1024 * 1024;
+    public const int MaxVideoImportBytes = 20 * 1024 * 1024;
     public const int MaxGifImportBytes = 20 * 1024 * 1024;
     public const string GifSizeError = "This GIF exceeds the 20 MiB import limit. Choose a smaller GIF.";
 
@@ -247,9 +248,9 @@ public sealed partial class LibraryStore
         await SaveLibrarySnapshotAsync(state);
     }
 
-    public async Task<Guid> ImportAsync(string name, byte[] bytes, Guid? packId = null, bool? keepOriginal = null)
+    public async Task<Guid> ImportAsync(string name, byte[] bytes, Guid? packId = null, bool? keepOriginal = null, CancellationToken cancellationToken = default)
     {
-        await gate.WaitAsync();
+        await gate.WaitAsync(cancellationToken);
         try
         {
             var info = InspectImport(bytes);
@@ -267,13 +268,15 @@ public sealed partial class LibraryStore
             };
             s.FileName = s.Id.ToString("N") + info.Extension;
             var path = MediaPath(s.FileName);
-            await File.WriteAllBytesAsync(path, bytes);
             try
             {
+                await File.WriteAllBytesAsync(path, bytes, cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
                 // Add the image and its pack membership in the same index write.
                 // Rejected images are removed from disk by the catch below.
                 await MutateInternalAsync(l =>
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     if (packId is { } destinationId)
                     {
                         var pack = l.Packs.FirstOrDefault(p => p.Id == destinationId)

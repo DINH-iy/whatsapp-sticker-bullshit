@@ -1,0 +1,23 @@
+@inject IJSRuntime JS
+<section class="settings-card">
+    <h2>@L["Video conversion performance"]</h2>
+    <label>@L["Conversion workers"]<select value="@workers" @onchange="Change" disabled="@(!ready)"><option value="1">@L["1 · lower concurrency"]</option><option value="2">@L["2 · balanced"]</option><option value="4">@L["4 · higher concurrency"]</option></select></label>
+    <p class="helper">@L["Workers encode different video frames directly into WebP in parallel. More workers may shorten the wait but increase CPU and memory use and heat. Fewer workers limit peak consumption. Speed gains depend on your phone; using more workers does not guarantee lower total battery use."]</p>
+    <p class="helper">@L["Default: 2 workers. The app uses fewer on devices with fewer CPU threads. All conversion workers stop when you leave the app."]</p>
+    @if (error is not null) { <p class="error" role="alert">@L[error]</p> }
+</section>
+@code {
+    private int workers = 2;
+    private bool ready;
+    private string? error;
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!firstRender) return;
+        try { await using var module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/media/video/video-worker-settings.js"); workers = await module.InvokeAsync<int>("readWorkers"); ready = true; StateHasChanged(); }
+        catch (JSException) { error = "Could not read the worker setting. Conversion will use the default."; StateHasChanged(); }
+    }
+    private async Task Change(ChangeEventArgs args) {
+        if (!int.TryParse(args.Value?.ToString(), out var value)) return;
+        try { await using var module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/media/video/video-worker-settings.js"); workers = await module.InvokeAsync<int>("setWorkers", value); error = null; }
+        catch (JSException) { error = "Could not save the worker setting. Please try again."; }
+    }
+}

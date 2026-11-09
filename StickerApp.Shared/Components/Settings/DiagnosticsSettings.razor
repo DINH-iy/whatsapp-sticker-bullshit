@@ -12,11 +12,13 @@
         <button class="button" type="button" @onclick="RefreshPerformance">@L["Refresh timings"]</button>
         <button class="button" type="button" @onclick="ClearPerformance">@L["Clear timings"]</button>
     </div>
+    <PerformanceChart Entries="@timings" />
     @if (timings.Count > 0) {
-        <div class="performance-timings"><table><thead><tr><th>@L["Step"]</th><th>@L["Time"]</th><th>@L["Details"]</th></tr></thead><tbody>
-            @foreach (var entry in timings) { <tr><td>@entry.Operation</td><td>@entry.Milliseconds.ToString("N0") ms</td><td>@entry.Details</td></tr> }
-        </tbody></table></div>
-        <p class="helper">@L["Times can overlap: a total includes its smaller steps. A failed or cancelled step also records elapsed time."]</p>
+        <HelpDisclosure Summary="@L["Detailed timings"]">
+            <div class="performance-timings"><table><thead><tr><th>@L["Step"]</th><th>@L["Time"]</th><th>@L["Details"]</th></tr></thead><tbody>
+                @foreach (var entry in timings) { <tr><td>@entry.Operation</td><td>@entry.Milliseconds.ToString("N0") ms</td><td>@entry.Details</td></tr> }
+            </tbody></table></div>
+        </HelpDisclosure>
     }
     <div class="settings-actions">
         <button class="button" @onclick="Show" disabled="@working" aria-expanded="@(expanded ? "true" : "false")" aria-controls="diagnostic-log-preview">@L[expanded ? "Refresh log" : "View log"]</button>

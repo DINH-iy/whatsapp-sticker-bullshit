@@ -58,7 +58,7 @@ public sealed class ImgurImportClient : IDisposable
         if (ValidateLink(media.Url).Host != "i.imgur.com") throw new InvalidDataException("Unsupported Imgur media host.");
         using var response = await http.GetAsync(media.Url, HttpCompletionOption.ResponseHeadersRead, token);
         if (!response.IsSuccessStatusCode) throw new InvalidDataException("Imgur could not deliver this file. It may have been removed.");
-        var max = media.Video ? 100 * 1024 * 1024 : LibraryStore.MaxImportBytes;
+        var max = media.Video ? LibraryStore.MaxVideoImportBytes : LibraryStore.MaxImportBytes;
         if (response.Content.Headers.ContentLength > max) throw new InvalidDataException("This file exceeds the import size limit.");
         await using var stream = await response.Content.ReadAsStreamAsync(token);
         var bytes = await ReadLimited(stream, max, token);

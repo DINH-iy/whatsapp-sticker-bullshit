@@ -9,8 +9,8 @@ public sealed record PreparationProblem(string Summary, string Recovery, string 
         var text = error.ToLowerInvariant();
         if (text.Contains("500 kb") || text.Contains("100 kb") || text.Contains("size limit"))
             return new(image.Animated ? "Animation could not fit within the 500 KB sticker limit." : "Image could not fit within the 100 KB sticker limit.",
-                image.Animated ? "Open Edit and shorten the animation, then save. For a video, you can also import it again with fewer frames per second. Retrying unchanged repeats the same work."
-                    : "Open Edit and crop or simplify the artwork, then save. If it still fails, replace it with a smaller image.", image.Animated ? "Edit and shorten animation" : "Edit image");
+                image.Animated ? "Shorten the animation in Edit, then save. For video imports, you can also use fewer frames per second."
+                    : "Open Edit and crop or simplify the artwork, then save. If it still fails, replace it with a smaller image.", image.Animated ? "Shorten animation" : "Edit image");
         if (text.Contains("10 seconds") || text.Contains("longer than"))
             return new("Animation is longer than the 10-second sticker limit.", "Open Edit, move the start and end handles to select at most 10 seconds, then save.", "Edit and trim animation");
         if (text.Contains("too large to edit") || text.Contains("too many") || text.Contains("20 mib") || text.Contains("maximum file"))

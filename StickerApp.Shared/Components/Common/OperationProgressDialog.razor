@@ -39,16 +39,19 @@ else
     [Parameter] public EventCallback OnCancel { get; set; }
     private ElementReference dialog;
     private IJSObjectReference? helper;
+    private bool disposed;
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender) return;
+        if (!firstRender || disposed) return;
         helper = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/dialog.js");
+        if (disposed) { await helper.DisposeAsync(); helper = null; return; }
         if (Blocking) await helper.InvokeVoidAsync("open", dialog);
         await helper.InvokeVoidAsync("watchElapsed", dialog, L["Elapsed: {0} s"]);
     }
     private Task Cancel() => CanCancel ? OnCancel.InvokeAsync() : Task.CompletedTask;
     public async ValueTask DisposeAsync()
     {
+        disposed = true;
         if (helper is null) return;
         try { await helper.DisposeAsync(); } catch (JSDisconnectedException) { }
     }
