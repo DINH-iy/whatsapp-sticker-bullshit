@@ -122,9 +122,9 @@ public partial class Home
         try
         {
             await using var input = args.File.OpenReadStream(PackArchive.MaxArchiveBytes);
-            activePack = await Store.ImportPackAsync(input);
+            var importedPack = await Store.ImportPackAsync(input);
             selected.Clear();
-            Navigation.NavigateTo($"packs/{activePack}");
+            Navigation.NavigateTo($"packs/{importedPack}");
         }
         finally
         {

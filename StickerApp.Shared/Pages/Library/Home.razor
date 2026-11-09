@@ -249,6 +249,8 @@ else
                     </div>
                 }
                 else if (failure is null && StickerApp.Shared.Services.StickerPreparationService.NeedsPreparation(image)) { <small class="sticker-preparation-status">@L["Preparing…"]</small> }
+                @if (!selectionMode)
+                {
                 <div class="card-actions" @onclick:stopPropagation>
                     <div class="sticker-actions">
                         <button class="button icon-button" type="button" @onclick="() => infoImageId = image.Id" title="@L["Sticker details"]" aria-label="@L.Format("Details for {0}", image.Name)"><Icon Name="info" /></button>
@@ -264,6 +266,7 @@ else
                         </button>
                     </div>
                 </div>
+                }
                 </div>
                 @if (processing && !selectionMode)
                 {

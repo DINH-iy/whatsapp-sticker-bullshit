@@ -38,6 +38,8 @@ public partial class Home
     private bool showGifSearch;
     private bool disposed;
     private bool preparationRefreshPending;
+    private bool libraryNavigationPending;
+    private int previewLoadVersion;
     private Guid? infoImageId;
     private Sticker? InfoImage => library.Stickers.FirstOrDefault(image => image.Id == infoImageId);
     private IEnumerable<Sticker> PreparationImages => CurrentPack is null ? library.Stickers : PackImages;
@@ -124,12 +126,15 @@ public partial class Home
 
     private async Task LoadLibrary()
     {
+        if (busy) { libraryNavigationPending = true; return; }
+        var requestedPack = PackId;
+        libraryNavigationPending = false;
+        preparationRefreshPending = false;
         loadingLibrary = true;
         try
         {
-            await Run(() =>
+            await Run(async () =>
             {
-                activePack = PackId;
                 browsePanel = null;
                 selected.Clear();
                 selectionMode = false;
@@ -137,24 +142,30 @@ public partial class Home
                 renamingPack = false;
                 showGifSearch = false;
                 infoImageId = null;
-                return Task.CompletedTask;
-            });
+                await Reload(requestedPack);
+            }, reload: false);
         }
         finally { loadingLibrary = false; }
     }
 
-    private async Task Reload()
+    private Task Reload() => Reload(PackId);
+
+    private async Task Reload(Guid? requestedPack)
     {
+        var version = ++previewLoadVersion;
         using var performance = Log.Measure("Library: read and load previews");
         var snapshot = await Store.ReadBrowseSnapshotAsync();
         var updatedLibrary = snapshot.Library;
         var updatedPreviews = new Dictionary<Guid, string>();
-        var packIds = activePack is { } packId ? updatedLibrary.Packs.FirstOrDefault(pack => pack.Id == packId)?.StickerIds.ToHashSet() : null;
+        var packIds = requestedPack is { } packId ? updatedLibrary.Packs.FirstOrDefault(pack => pack.Id == packId)?.StickerIds.ToHashSet() : null;
         var previewImages = packIds is not null ? updatedLibrary.Stickers.Where(image => packIds.Contains(image.Id)) : updatedLibrary.Stickers;
         foreach (var image in previewImages)
             updatedPreviews[image.Id] = await Store.PreviewAsync(image);
 
-        // Publish a complete snapshot so navigation cannot render images without previews.
+        if (disposed || version != previewLoadVersion) return;
+        // Route scope, visible IDs and previews must change in the same render.
+        // Otherwise pack -> library navigation exposes uncached outside images.
+        activePack = requestedPack;
         library = updatedLibrary;
         browse = snapshot;
         previews = updatedPreviews;
@@ -175,7 +186,7 @@ public partial class Home
         await Store.SetPackPublicAsync(pack.Id, !pack.Public);
     });
 
-    private async Task Run(Func<Task> action, [System.Runtime.CompilerServices.CallerMemberName] string operation = "Sticker action")
+    private async Task Run(Func<Task> action, [System.Runtime.CompilerServices.CallerMemberName] string operation = "Sticker action", bool reload = true)
     {
         if (busy)
             return;
@@ -186,7 +197,7 @@ public partial class Home
         try
         {
             await action();
-            await Reload();
+            if (reload) await Reload();
             Log.Info(operation, "Completed.");
         }
         catch (Exception e) when (e is IOException or InvalidDataException or InvalidOperationException or NotSupportedException or JSException or UnauthorizedAccessException or System.Text.Json.JsonException)
@@ -198,7 +209,9 @@ public partial class Home
         finally
         {
             busy = false;
-            if (preparationRefreshPending && !disposed)
+            if (libraryNavigationPending && !disposed)
+                await LoadLibrary();
+            else if (preparationRefreshPending && !disposed)
             {
                 preparationRefreshPending = false;
                 await Reload();
@@ -254,7 +267,6 @@ public partial class Home
         {
             await StickerApp.Shared.Services.FriendsPackService.UnpublishAsync(JS, activePack!.Value);
             await Preparation.DeletePackAsync(activePack!.Value, deletePackStickers);
-            activePack = null;
             Navigation.NavigateTo("/");
         }
         else if (pendingBulkRemoval is { Count: > 0 } images)

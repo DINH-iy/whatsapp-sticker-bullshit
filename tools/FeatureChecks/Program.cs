@@ -168,6 +168,7 @@ passed+=await ResetRestartChecks.RunAsync();
 passed+=await PreparationLifecycleChecks.RunAsync();
 passed+=await PackDeletionChecks.RunAsync();
 passed+=await HomeSelectionChecks.RunAsync();
+passed+=await LibraryNavigationChecks.RunAsync();
 passed+=await DiagnosticsPerformanceChecks.RunAsync();
 passed+=await DirectVideoImportChecks.RunAsync();
 Console.WriteLine($"{passed} feature checks passed.");
