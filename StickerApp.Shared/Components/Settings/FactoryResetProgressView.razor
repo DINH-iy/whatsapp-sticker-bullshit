@@ -1,0 +1,37 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<div @ref="root" class="factory-reset-progress" role="status" aria-live="polite" aria-busy="true" data-reset-update="@(Progress.Stage + ":" + Progress.CompletedFiles + ":" + Step)">
+    <span class="feedback-spinner" aria-hidden="true"></span>
+    <h3>@L[Progress.Stage]</h3>
+    <p class="helper">@L.Format("Step {0} of {1}", Step, 3)</p>
+    @if(Progress.TotalFiles > 0)
+    {
+        <progress max="@Progress.TotalFiles" value="@Progress.CompletedFiles" aria-label="@L["App files deleted"]"></progress>
+        <p>@L.Format("{0} of {1} files deleted", Progress.CompletedFiles, Progress.TotalFiles)</p>
+    }
+    <p class="helper" data-reset-elapsed>@L.Format("Elapsed: {0} s", 0)</p>
+    <p class="status-warning" data-reset-stalled hidden></p>
+    <p class="helper">@L["Keep the app open until the reset finishes. It will restart automatically."]</p>
+</div>
+
+@code {
+    [Parameter] public FactoryResetProgress Progress {get;set;}=new("Checking app files…");
+    [Parameter] public int Step {get;set;}=1;
+    private ElementReference root;
+    private IJSObjectReference? module, watcher;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if(!firstRender)return;
+        module=await JS.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/ui/factory-reset.js");
+        watcher=await module.InvokeAsync<IJSObjectReference>("watchProgress",root,new {
+            elapsed=L["Elapsed: {0} s"],
+            stalled=L["No progress update for {0} seconds. This may be taking longer than usual. If it stays stuck, reopen the app. Some data may already have been erased."]
+        });
+    }
+    public async ValueTask DisposeAsync()
+    {
+        try {if(watcher is not null){await watcher.InvokeVoidAsync("dispose");await watcher.DisposeAsync();}if(module is not null)await module.DisposeAsync();}
+        catch(JSDisconnectedException) { }
+    }
+}

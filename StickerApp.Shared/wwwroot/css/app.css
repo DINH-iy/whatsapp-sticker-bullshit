@@ -2453,3 +2453,12 @@ button.danger, a.danger, .button.danger { color: var(--error-text) !important; b
 .statistics-action-row > .icon-button { width: 44px; height: 44px; flex: 0 0 44px; }
 /* The temporary shape chooser floats over the workspace instead of squeezing it. */
 .layer-editor-dialog > .shape-picker { position: absolute; z-index: 40; inset: 76px 16px auto; flex: none; max-height: calc(100% - 92px); padding: 16px; overflow-y: auto; background: var(--surface); box-shadow: 0 12px 32px #0005; }
+
+.factory-reset-progress { display: grid; gap: 12px; padding-block: 12px; min-width: 0; font-variant-numeric: tabular-nums; }
+.factory-reset-progress :is(h3,p) { margin: 0; overflow-wrap: anywhere; }
+.factory-reset-progress .feedback-spinner { width: 36px; height: 36px; }
+.factory-reset-progress progress { appearance: none; -webkit-appearance: none; width: 100%; height: 8px; border: 0; border-radius: var(--control-radius, 8px); overflow: hidden; background: var(--line); accent-color: var(--accent); }
+.factory-reset-progress progress::-webkit-progress-bar { background: var(--line); }
+.factory-reset-progress progress::-webkit-progress-value { background: var(--accent); transition: width .15s ease; }
+.factory-reset-progress progress::-moz-progress-bar { background: var(--accent); }
+@media (prefers-reduced-motion: reduce) { .factory-reset-progress progress::-webkit-progress-value { transition: none; } }

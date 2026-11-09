@@ -669,7 +669,12 @@ try
         await store.ChangeFolderAsync(originalRoot + "-reset-moved");
         var movedRoot = store.Root;
         var generatedFiles = Directory.EnumerateFiles(Path.Combine(movedRoot, "media")).Where(path => Path.GetFileName(path) != "personal-note.txt").ToArray();
-        await store.FactoryResetAsync();
+        var updates=new List<FactoryResetProgress>();
+        await store.FactoryResetAsync(new FixtureProgress<FactoryResetProgress>(updates.Add));
+        var deletion=updates.Where(update=>update.Stage=="Deleting app files…").ToList();
+        Require(updates.First().Stage=="Waiting for library operations…" && updates.Last().Stage=="Restoring app defaults…", "Reset omitted waiting/completion stages");
+        Require(deletion.Count>=2 && deletion[0].CompletedFiles==0 && deletion[^1].CompletedFiles==deletion[^1].TotalFiles && deletion[^1].TotalFiles>0, "Reset file progress did not reach its real total");
+        Require(deletion.All(update=>update.TotalFiles==deletion[0].TotalFiles) && deletion.Select(update=>update.CompletedFiles).SequenceEqual(deletion.Select(update=>update.CompletedFiles).Order()), "Reset progress totals changed or counts went backwards");
         var fresh = new LibraryStore(originalRoot);
         var library = await fresh.ReadAsync();
         Require(library.Stickers.Count == 0 && library.Packs.Count == 0 && library.Fonts.Count == 0, "Reset left library content");
@@ -681,6 +686,18 @@ try
         var logFolder = Path.Combine(originalRoot, "test-logs"); var log = new AppLog(logFolder);
         log.Info("fixture", "test only"); log.Clear();
         Require(!Directory.EnumerateFiles(logFolder).Any(), "Reset log cleanup left diagnostic files");
+    });
+    await Check("factory reset validates both indexes before deleting and never reports false completion", async store =>
+    {
+        await store.ImportAsync("Untouched.png",png);
+        var original=store.Root;
+        var originalFiles=Directory.GetFiles(Path.Combine(original,"media"));
+        await store.ChangeFolderAsync(original+"-invalid-reset");
+        await File.WriteAllTextAsync(Path.Combine(store.Root,"library.json"),JsonSerializer.Serialize(new StickerLibrary {Stickers=[new(){FileName="../unsafe.png"}]}));
+        var updates=new List<FactoryResetProgress>();
+        var rejected=false;try{await store.FactoryResetAsync(new FixtureProgress<FactoryResetProgress>(updates.Add));}catch(InvalidDataException){rejected=true;}
+        Require(rejected && originalFiles.All(File.Exists),"Invalid reset erased files before preflight completed");
+        Require(updates.All(update=>update.Stage!="Deleting app files…" && update.Stage!="Restoring app defaults…"),"Failed reset reported deletion or completion");
     });
     checks += await EditableBackupChecks.RunAsync(root, png, webp, animated);
     Console.WriteLine($"Passed {checks} storage checks.");

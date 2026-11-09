@@ -128,6 +128,22 @@ try
     Check(after.Packs.Count==0&&after.Stickers.Single().Id==imageId&&after.Stickers.Single().FileName==file,"deleting a pack keeps its stickers in My Library");
 }
 finally {if(Directory.Exists(deleteRoot))Directory.Delete(deleteRoot,true);}
+var resetPreview=await renderer.Dispatcher.InvokeAsync(async()=>
+    (await renderer.RenderComponentAsync<StickerApp.Shared.Components.Settings.FactoryResetProgressView>(ParameterView.FromDictionary(new Dictionary<string,object?> {
+        ["Progress"]=new FactoryResetProgress("Deleting app files…",37,100),["Step"]=1
+    }))).ToHtmlString());
+Check(resetPreview.Contains("value=\"37\"")&&resetPreview.Contains("max=\"100\"")&&resetPreview.Contains("37 of 100 files deleted"),"reset progress renders real deletion counts and a determinate progress bar");
+Check(resetPreview.Contains("data-reset-stalled")&&resetPreview.Contains("data-reset-elapsed")&&resetPreview.Contains("aria-busy=\"true\""),"reset progress exposes independent elapsed/stall status and accessible busy state");
+var preferencesPreview=await renderer.Dispatcher.InvokeAsync(async()=>
+    (await renderer.RenderComponentAsync<StickerApp.Shared.Components.Settings.FactoryResetProgressView>(ParameterView.FromDictionary(new Dictionary<string,object?> {
+        ["Progress"]=new FactoryResetProgress("Clearing saved preferences…"),["Step"]=2
+    }))).ToHtmlString());
+Check(preferencesPreview.Contains("Step 2 of 3")&&!preferencesPreview.Contains("<progress"),"preference cleanup has its own named step without a fake file percentage");
+if(Environment.GetEnvironmentVariable("STIK_RESET_PREVIEW_PATH") is {} previewPath)
+{
+    var labels=System.Text.Json.JsonSerializer.Serialize(new {elapsed="Elapsed: {0} s",stalled="No progress update for {0} seconds. This may be taking longer than usual. If it stays stuck, reopen the app. Some data may already have been erased."});
+    await File.WriteAllTextAsync(previewPath,"<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>Reset progress preview</title><link rel=stylesheet href='/_content/StickerApp.Shared/css/app.css'><style>body{min-height:100vh;display:grid;place-items:center;padding:20px;box-sizing:border-box}.factory-reset-dialog{position:relative;margin:0;box-sizing:border-box}.qa-note{margin:0 0 24px;font-size:13px;color:var(--muted)}</style><dialog open class='folder-dialog factory-reset-dialog'><p class=qa-note>Preview only · no data is deleted</p><h2>Resetting the app…</h2>"+resetPreview+"</dialog><script type=module>import {watchProgress} from '/_content/StickerApp.Shared/js/ui/factory-reset.js';watchProgress(document.querySelector('.factory-reset-progress'),"+labels+");</script>");
+}
 Console.WriteLine($"{passed} feature checks passed.");
 sealed class NoJs:IJSRuntime{
     public ValueTask<T> InvokeAsync<T>(string identifier,object?[]? args)=>throw new NotSupportedException();

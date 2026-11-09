@@ -14,8 +14,12 @@
 @if (stage > 0)
 {
     <dialog @ref="dialog" class="folder-dialog factory-reset-dialog" aria-labelledby="reset-confirm-title" @oncancel="Cancel" @oncancel:preventDefault>
-        <h2 id="reset-confirm-title">@L[stage == 1 ? "Erase all app data?" : "Final confirmation"]</h2>
-        @if (stage == 1)
+        <h2 id="reset-confirm-title">@L[working ? "Resetting the app…" : stage == 1 ? "Erase all app data?" : "Final confirmation"]</h2>
+        @if(working)
+        {
+            <FactoryResetProgressView Progress="@resetProgress" Step="@resetStep" />
+        }
+        else if (stage == 1)
         {
             <p>@L["This permanently deletes your profile, packs, stickers, originals, layers, fonts and settings."]</p>
             <p class="error"><strong>@L["This cannot be undone."]</strong> @L["Export any packs you want to keep before continuing."]</p>
@@ -25,7 +29,7 @@
         {
             <p>@L["Everything listed will be erased."] <strong>@L["There is no undo or recovery inside the app."]</strong></p>
             <label for="factory-reset-confirm">@L["Type RESET to confirm"]</label><input id="factory-reset-confirm" autocomplete="off" spellcheck="false" @bind="confirmation" @bind:event="oninput" disabled="@working" />
-            @if (error is not null) { <p class="error" role="alert">@L.Error(error)</p> }
+            @if (error is not null) { <p class="error" role="alert">@L.Error(error)</p><p class="helper">@L.Format("Reset stopped during: {0}", L[resetProgress.Stage])</p><p class="helper">@L.Error(errorDetail)</p> }
             <div class="dialog-actions"><button class="button" @onclick="Cancel" disabled="@working">@L["Cancel"]</button><button class="button danger" @onclick="Reset" disabled="@(working || confirmation != "RESET")"><Icon Name="trash" />@L[working ? "Erasing…" : "Erase everything permanently"]</button></div>
         }
     </dialog>
@@ -33,11 +37,13 @@
 @code {
     private int stage;
     private string confirmation = "";
-    private string? error;
-    private bool working, openDialog;
+    private string? error, errorDetail;
+    private bool working, openDialog, disposed;
+    private FactoryResetProgress resetProgress=new("Waiting for library operations…");
+    private int resetStep=1;
     private ElementReference dialog;
     private IJSObjectReference? dialogHelper;
-    private void Begin() { stage = 1; confirmation = ""; error = null; openDialog = true; }
+    private void Begin() { stage = 1; confirmation = ""; error = errorDetail = null; openDialog = true; }
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!openDialog) return;
@@ -49,22 +55,30 @@
     private async Task Reset()
     {
         if(working || stage != 2 || confirmation != "RESET") return;
-        working = true; error = null;
+        working = true; error = errorDetail = null;resetStep=1;resetProgress=new("Waiting for library operations…");
+        await InvokeAsync(StateHasChanged);
         var erased = false;
         try
         {
             await using var module = await JS.InvokeAsync<IJSObjectReference>("import","./_content/StickerApp.Shared/js/ui/factory-reset.js");
-            await Store.FactoryResetAsync(); erased = true;
+            var progress=new Progress<FactoryResetProgress>(value => {
+                if(!disposed && working && resetStep==1){resetProgress=value;StateHasChanged();}
+            });
+            await Store.FactoryResetAsync(progress); erased = true;
+            resetStep=2;resetProgress=new("Clearing saved preferences…");await InvokeAsync(StateHasChanged);
             await module.InvokeVoidAsync("clearPreferences");
             (Services.GetService(typeof(StickerApp.Shared.Services.ITapFeedback)) as StickerApp.Shared.Services.ITapFeedback)?.Configure(true,25);
             Log.Clear();
+            resetStep=3;resetProgress=new("Restarting the app…");await InvokeAsync(StateHasChanged);
             await module.InvokeVoidAsync("restart");
         }
         catch(Exception ex) when(ex is IOException or UnauthorizedAccessException or InvalidOperationException or JSException or System.Text.Json.JsonException)
         {
-            error = erased ? "Library data was erased, but resetting preferences did not finish. Close other app tabs, then try again. " + ex.Message : "Reset did not finish. Some files may already have been erased. " + ex.Message;
+            Log.Error("Factory reset failed",ex);
+            errorDetail=ex.Message;
+            error = erased ? "Library data was erased, but resetting preferences did not finish. Close other app tabs, then try again. " : "Reset did not finish. Some files may already have been erased. ";
             working = false;
         }
     }
-    public async ValueTask DisposeAsync() { if(dialogHelper is not null) { try { await dialogHelper.DisposeAsync(); } catch(JSDisconnectedException) { } } }
+    public async ValueTask DisposeAsync() { disposed=true; if(dialogHelper is not null) { try { await dialogHelper.DisposeAsync(); } catch(JSDisconnectedException) { } } }
 }
