@@ -107,6 +107,9 @@
         @if (CurrentPack is null) { <option value="oldest">@L["Oldest added"]</option> }
         <option value="name-asc">@L["Name: A–Z"]</option><option value="name-desc">@L["Name: Z–A"]</option>
         <option value="type">@L["Type"]</option>
+        <option value="favorites-first">@L["Favorites first"]</option>
+        <option value="layers-desc">@L["Most editable layers"]</option><option value="groups-desc">@L["Most layer groups"]</option>
+        <option value="duration-desc">@L["Animation duration: longest first"]</option><option value="duration-asc">@L["Animation duration: shortest first"]</option>
         <option value="file-desc">@L["File size: largest first"]</option><option value="file-asc">@L["File size: smallest first"]</option>
         <option value="storage-desc">@L["Stored size: largest first"]</option><option value="storage-asc">@L["Stored size: smallest first"]</option>
     </select></label>
@@ -114,7 +117,11 @@
     else
     {
     <div class="browse-filter-fields">
-        <label>@L["Type"]<select aria-label="@L["Filter image type"]" @bind="typeFilter"><option value="all">@L["All types"]</option><option value="still">@L["Still images"]</option><option value="animated">@L["GIFs / animations"]</option><option value="layered">@L["Editable layers"]</option></select></label>
+        <label>@L["Editable content"]<select @bind="editingFilter"><option value="all">@L["All"]</option><option value="flat">@L["Flattened stickers"]</option><option value="layered">@L["Editable layers"]</option><option value="grouped">@L["With layer groups"]</option><option value="text">@L["With editable text"]</option></select></label>
+        <label>@L["NSFW spoiler"]<select @bind="spoilerFilter"><option value="all">@L["All"]</option><option value="nsfw">@L["NSFW only"]</option><option value="safe">@L["Without NSFW spoiler"]</option></select></label>
+        <label>@L["Favorites"]<select @bind="favoritesFilter"><option value="all">@L["All"]</option><option value="yes">@L["Favorites only"]</option><option value="no">@L["Not favorited"]</option></select></label>
+        <label>@L["Pack membership"]<select @bind="membershipFilter"><option value="all">@L["All"]</option><option value="packed">@L["In a pack"]</option><option value="unpacked">@L["Not in a pack"]</option></select></label>
+        <label>@L["Type"]<select aria-label="@L["Filter image type"]" @bind="typeFilter"><option value="all">@L["All types"]</option><option value="still">@L["Still images"]</option><option value="animated">@L["GIFs / animations"]</option></select></label>
         <label>@L["Saved format"]<select aria-label="@L["Filter image format"]" @bind="formatFilter"><option value="all">@L["All formats"]</option><option value="webp">@L["WebP"]</option><option value="png">@L["PNG"]</option><option value="jpeg">@L["JPEG"]</option><option value="gif">@L["GIF"]</option></select></label>
         <label>@L["Total stored size"]<select aria-label="@L["Filter image storage"]" @bind="storageFilter"><option value="all">@L["Any size"]</option><option value="small">Under 100 @SmallSizeUnit</option><option value="medium">100–500 @SmallSizeUnit</option><option value="large">500 @SmallSizeUnit or more</option></select></label>
     </div>

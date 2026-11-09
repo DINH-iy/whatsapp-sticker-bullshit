@@ -89,7 +89,22 @@ internal static class EditableBackupChecks
         var flat=await PackArchive.ReadAsync(whatsapp);
         Require(flat.IsWhatsAppFormat && flat.Images.Count==2 && flat.Images.All(i=>i.CompositionBytes is null),"WhatsApp export must retain its rendered sticker format");
         Console.WriteLine("PASS maximum layered pack, legacy version 1 compatibility and flattened WhatsApp export");
-        return 3;
+        var groupDocument = new LayerComposition { Version=2, Layers=[new() { Id="group",Name="Group",Source="",Width=512,Height=512,
+            Children=JsonSerializer.Deserialize<LayerComposition>(JsonSerializer.Serialize(composition))!.Layers }] };
+        var groupPack=await source.CreatePackAsync("Group backup","Checks");
+        await source.SaveCompositionAsync(null,"Grouped caption and animation",animation,groupDocument,groupPack);
+        using var groupedBackup=new MemoryStream();await source.ExportPackAsync(groupPack,groupedBackup);groupedBackup.Position=0;
+        var groupedTarget=new LibraryStore(Path.Combine(root,"group-backup-target"));await groupedTarget.ImportPackAsync(groupedBackup);
+        var groupedSticker=(await groupedTarget.ReadAsync()).Stickers.Single();
+        var groupedReopened=await groupedTarget.ReadCompositionAsync(groupedSticker.Id);
+        Require(JsonSerializer.Serialize(groupedReopened)==JsonSerializer.Serialize(groupDocument),"Group members, text/font and GIF sources were lost in backup transfer");
+        var browseSnapshot=await groupedTarget.ReadBrowseSnapshotAsync();
+        Require(browseSnapshot.LayerDetails![groupedSticker.Id] is {LayerCount:1,GroupCount:1,HasText:true},"Browse metadata must count the group as one layer and detect editable text");
+        groupDocument.Layers[0].Children![0].Children=[new(){Id="nested",Name="Invalid",Source=""}];
+        var rejectedGroup=false;try{groupDocument.Validate();}catch(InvalidDataException){rejectedGroup=true;}
+        Require(rejectedGroup,"Nested or invalid group members must be rejected");
+        Console.WriteLine("PASS grouped layers preserve editable image/text/font/GIF members through pack backup transfer and reject invalid nesting");
+        return 4;
     }
 
     private static async Task<MemoryStream> Corrupt(byte[] bytes,string fault)

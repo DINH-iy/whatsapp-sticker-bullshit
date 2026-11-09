@@ -19,10 +19,11 @@ public partial class Home
     private string typeFilter = "all";
     private string formatFilter = "all";
     private string storageFilter = "all";
+    private string editingFilter="all", spoilerFilter="all", favoritesFilter="all", membershipFilter="all";
     private string sort = "default";
     private string? browsePanel;
     private string SmallSizeUnit => Store.DecimalStorageUnits ? "KB" : "KiB";
-    private int FilterCount => new[] { typeFilter, formatFilter, storageFilter }.Count(value => value != "all");
+    private int FilterCount => new[] { typeFilter, formatFilter, storageFilter, editingFilter,spoilerFilter,favoritesFilter,membershipFilter }.Count(value => value != "all");
 
     // The editor keeps the source separate from its preview so Reset can restore it.
     private string editName = "";
@@ -86,14 +87,14 @@ public partial class Home
     private IReadOnlyList<PackRules.Issue> Issues => CurrentPack is { } p ? PackRules.Inspect(p, PackImages) : [];
     private IReadOnlyList<string> Validation => CurrentPack is { } p ? PackRules.Validate(p, PackImages) : [];
     private IReadOnlyList<Sticker> Visible => browse is null ? [] : LibraryBrowsing.Images(browse,
-        new(search, typeFilter, formatFilter, "all", storageFilter, sort), Store.DecimalStorageUnits, activePack);
+        new(search, typeFilter, formatFilter, "all", storageFilter, sort,editingFilter,spoilerFilter,favoritesFilter,membershipFilter), Store.DecimalStorageUnits, activePack);
     private ImageStorageSize ImageSize(Sticker image) => browse?.ImageSizes.GetValueOrDefault(image.Id) ?? new(0, 0);
     private string Size(long bytes) => StorageDisplay.Format(bytes, Store.DecimalStorageUnits);
 
     private void ResetFilters()
     {
         search = "";
-        typeFilter = formatFilter = storageFilter = "all";
+        typeFilter = formatFilter = storageFilter = editingFilter = spoilerFilter = favoritesFilter = membershipFilter = "all";
     }
 
     protected override void OnInitialized() => Preparation.Changed += OnPreparationChanged;

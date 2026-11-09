@@ -120,7 +120,7 @@ export function create(canvas, reference) {
     const state = () => ({ layers: layers.map(layer => {
         const {source,gifSource,children,...metadata}=layer;
         return {...metadata, text:layer.text?{...layer.text,fontData:null}:null,
-            isGroup:!!children?.length, memberCount:children?.length??0, marked:groupSelection.has(layer.id),
+            isGroup:!!children?.length, groupAnimated:!!children?.some(child=>child.gifSource), memberCount:children?.length??0, marked:groupSelection.has(layer.id),
             isGif:!!gifSource, gifThumbnails:gifs.get(gifSource)?.thumbnails??[], thumbnail:thumbnail(layer)};
     }), selected, canUndo:undo.length>0, canRedo:redo.length>0, previewPlaying:!paused,
         markedCount:layers.filter(layer=>groupSelection.has(layer.id)).length });
@@ -318,6 +318,7 @@ export function create(canvas, reference) {
     function update(property, value, keepRatio = true, record = true) {
         const layer = active(); if (!layer) return state();
         const ranges = { x: [-2048, 2560], y: [-2048, 2560], width: [1, 2048], height: [1, 2048], rotation: [-180, 180], opacity: [0, 1], hue: [-180, 180], colorStrength: [0, 1], borderWidth: [0, 80] };
+        if(layer.children?.length && ['tint','borderColor','borderWidth','hue','colorStrength'].includes(property))throw new Error('Ungroup to edit individual contents.');
         if (property === 'tint' || property === 'borderColor') {
             if ((property === 'borderColor' && value === null) || (value !== null && !/^#[0-9a-f]{6}$/i.test(value))) throw new Error('Choose a valid tint color.');
             if (record) remember(); layer[property] = value;
@@ -468,6 +469,7 @@ export function create(canvas, reference) {
         setFonts(fonts) { for(const font of fonts)fontRegistry.set(font.id,font); },
         validateFont(id,data) { return validateTextFont(data); },
         async addText(placement='random') {
+            if(leafLayers(layers).length>=100)throw new Error('A composition supports at most 100 grouped layers.');
             if(layers.length>=maxLayers)throw new Error('A composition supports up to 10 layers.');
             if(placement==='random')placement=Math.random()<0.5?'top':'bottom';
             const content=placement==='top'?'TOP TEXT':placement==='bottom'?'BOTTOM TEXT':'YOUR TEXT';
@@ -516,6 +518,7 @@ export function create(canvas, reference) {
             playbackOffset = pausedTime = 0; playbackOrigin = performance.now(); paused = false; render(); animate(); return state();
         },
         async add(name, source, fitLimit=400) {
+            if (leafLayers(layers).length>=100) throw new Error('A composition supports at most 100 grouped layers.');
             if (layers.length >= maxLayers) throw new Error('A composition supports up to 10 layers.');
             const gif = isAnimatedSource(source) ? await openGif(source) : null;
             const image = gif ? gif.reader.at(0) : await decode(source);
@@ -544,6 +547,7 @@ export function create(canvas, reference) {
         poster() { return active()?.source ?? null; },
         async replaceSource(id, source, animationSource = null) {
             const layer = active();
+            if (layer?.children?.length) throw new Error('Ungroup to edit individual contents.');
             if (!layer || layer.id !== id) throw new Error('Select a layer to edit.');
             const image = await decode(source);
             if (image.width > 1024 || image.height > 1024) throw new Error('Layer artwork must fit 1024 pixels per side.');
@@ -574,7 +578,7 @@ export function create(canvas, reference) {
         },
         ungroup() {
             const group=active();if(!group?.children?.length)return state();
-            if(layers.length-1+group.children.length>maxLayers)throw new Error('Ungrouping would exceed 10 layers. Remove other layers or split the group first.');
+            if(layers.length-1+group.children.length>maxLayers)throw new Error('Ungrouping would exceed 10 layers. Remove other layers first.');
             remember(); layers.splice(selected,1,...leafLayers([group]));groupFrames.delete(group.id);groupSelection.clear();render();return state();
         },
         select(index) { editingControl = null; if (layers[index]) selected = index; render(); return state(); },
@@ -586,11 +590,11 @@ export function create(canvas, reference) {
             else if (active()) {
                 const layer = active();
                 if (action === 'duplicate') {
-                    if (layers.length >= maxLayers || layers.reduce((sum, item) => sum + sourceSize(item), sourceSize(layer)) > maxSources)
+                    if (layers.length >= maxLayers || leafLayers(layers).length + leafLayers([layer]).length > 100 || layers.reduce((sum, item) => sum + sourceSize(item), sourceSize(layer)) > maxSources)
                         throw new Error('This composition has reached its layer or image-size limit.');
                     remember(); const id = `layer-${Date.now()}-${Math.random().toString(36).slice(2)}`;
                     const copy = structuredClone(layer); copy.id=id;
-                    for(const child of copy.children??[])child.id=`${id}-${child.id}`.slice(0,64);
+                    for(const child of copy.children??[])child.id=crypto.randomUUID();
                     if(copy.children?.length)groupFrames.set(id,{...copy});
                     copy.x=clamp(copy.x+12,-2048,2560);copy.y=clamp(copy.y+12,-2048,2560);
                     layers.splice(selected + 1, 0, copy);

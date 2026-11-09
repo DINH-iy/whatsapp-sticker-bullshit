@@ -362,6 +362,45 @@ async function run(source) {
             const reopenedShape=(await layerController.export()).document.layers[0];
             assert.equal(reopenedShape.rotation,35,'shape transforms survive editable backup');
             assert.equal(reopenedShape.source,shapeBackup.document.layers[0].source,'shape artwork survives editable backup');
+            await layerController.open(null);
+            await layerController.add('Animation',source);await layerController.addText('top');
+            layerController.preview(false);
+            const separate=(await layerController.export()).document;
+            layerController.mark(0);layerController.mark(1);
+            const grouped=layerController.group('Test group');
+            assert.equal(grouped.layers.length,1,'group counts as one layer');
+            assert.equal(grouped.layers[0].memberCount,2,'group preserves both members');
+            assert.ok(grouped.layers[0].thumbnail.startsWith('data:image/png;'),'group has a working thumbnail');
+            const groupBackup=await layerController.export();
+            assert.equal(groupBackup.document.version,2,'grouped documents declare their new schema');
+            assert.equal(groupBackup.document.layers[0].children[0].gifSource,source,'group retains original animation');
+            assert.equal(groupBackup.document.layers[0].children[1].text.content,separate.layers[1].text.content,'group retains editable caption');
+            const groupedAnimation=await openAnimation(groupBackup.png);
+            assert.equal(groupedAnimation.frameCount,2,'grouped GIF export stays animated');groupedAnimation.dispose?.();
+            await layerController.open(groupBackup.document);layerController.preview(false);
+            layerController.beginTool();assert.equal(layerController.hasToolChanges(),false,'untouched group tool is clean');
+            layerController.update('rotation',45);assert.equal(layerController.hasToolChanges(),true,'group transform is dirty');
+            layerController.cancelTool();assert.equal((await layerController.export()).document.layers[0].rotation,0,'cancel restores group and children');
+            const startGroup=groupBackup.document.layers[0];
+            layerController.update('x',startGroup.x+20);layerController.update('y',startGroup.y+10);
+            layerController.update('width',startGroup.width*1.2,false);layerController.update('rotation',30);layerController.update('opacity',.5);
+            const moved=(await layerController.export()).document.layers[0];
+            assert.ok(Math.abs(moved.height/startGroup.height-1.2)<.0001,'groups always preserve proportions');
+            const originalChild=startGroup.children[0],r=Math.PI/6;
+            const expectedX=startGroup.x+20+((originalChild.x-startGroup.x)*Math.cos(r)-(originalChild.y-startGroup.y)*Math.sin(r))*1.2;
+            assert.ok(Math.abs(moved.children[0].x-expectedX)<.0001,'group rotates and scales child positions around group center');
+            const ungrouped=layerController.ungroup();assert.equal(ungrouped.layers.length,2,'ungroup restores separate entries');
+            const restored=(await layerController.export()).document.layers;
+            assert.equal(restored[0].gifSource,source,'ungroup retains GIF source');
+            assert.equal(restored[1].text.content,separate.layers[1].text.content,'ungroup retains editable text');
+            assert.equal(restored[0].opacity,moved.children[0].opacity*.5,'ungroup retains group opacity');
+            assert.equal(restored[0].x,moved.children[0].x,'ungroup keeps transformed positions');
+            assert.equal(layerController.action('undo').layers.length,1,'undo restores the group');
+            assert.equal(layerController.action('redo').layers.length,2,'redo restores ungrouping');
+            layerController.action('undo');const duplicated=layerController.action('duplicate');
+            const copied=(await layerController.export()).document.layers;
+            assert.equal(duplicated.layers.length,2,'duplicate copies a group as one entry');
+            assert.equal(new Set(copied.flatMap(item=>[item.id,...item.children.map(child=>child.id)])).size,6,'duplicated groups have unique member identities');
             layerController.dispose(); layerRoot.remove();
             // Cancelling one editor session must not reject unrelated preparation.
             const other = createSession();
@@ -403,6 +442,6 @@ const result = await run(source);
         assert.equal(result.layerRedo, true, 'layer redo must restore the edited animated source');
         assert.equal(result.layerReopen, true, 'edited animations must survive composition export/reopen');
 
-document.getElementById('result').textContent = 'PASS: seven shape presets and editable shape transform/backups, distinct decimal-size drawing tips, magnifier toggle, per-object outlines, transparent holes, text/image/GIF borders, border undo/cancel/save/reopen and animated export, still WebP layers and text, border replay and rounded corners, preview zoom, drawing on every GIF frame, brush undo/redo/cancel, combined move/resize/rotate handles, animated transform export, hue/strength and all-frame color export, no enlargement, resize handles and aspect lock, tool Apply/Cancel rollback, GIF/WebP/layer frame seeking and slow playback, image adjustments, all-frame cutouts, undo/redo, GIF and WebP export, transparency, isolated cancellation, animated layer apply/undo/redo/export/reopen.\n\n' + JSON.stringify(result, null, 2);
+document.getElementById('result').textContent = 'PASS: editable layer groups, collective transforms, grouped GIF export, ungroup/undo/redo/duplicate/reopen, seven shape presets and editable shape transform/backups, distinct decimal-size drawing tips, magnifier toggle, per-object outlines, transparent holes, text/image/GIF borders, border undo/cancel/save/reopen and animated export, still WebP layers and text, border replay and rounded corners, preview zoom, drawing on every GIF frame, brush undo/redo/cancel, combined move/resize/rotate handles, animated transform export, hue/strength and all-frame color export, no enlargement, resize handles and aspect lock, tool Apply/Cancel rollback, GIF/WebP/layer frame seeking and slow playback, image adjustments, all-frame cutouts, undo/redo, GIF and WebP export, transparency, isolated cancellation, animated layer apply/undo/redo/export/reopen.\n\n' + JSON.stringify(result, null, 2);
 } catch (error) { document.getElementById('result').textContent = 'FAIL: ' + error.stack; }
 </script>

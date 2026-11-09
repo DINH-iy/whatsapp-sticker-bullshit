@@ -43,6 +43,7 @@
     <label>@L["Sort by"]<select aria-label="@L["Sort packs"]" @bind="sort">
         <option value="default">@L["Oldest added"]</option><option value="newest">@L["Recently added"]</option>
         <option value="name-asc">@L["Name: A–Z"]</option><option value="name-desc">@L["Name: Z–A"]</option><option value="publisher">@L["Publisher: A–Z"]</option>
+        <option value="updated-desc">@L["Recently updated"]</option><option value="updates-desc">@L["Most updates"]</option><option value="public-first">@L["Public packs first"]</option>
         <option value="group-first">@L["Group packs first"]</option><option value="solo-first">@L["Solo packs first"]</option>
         <option value="count-desc">@L["Most stickers"]</option><option value="count-asc">@L["Fewest stickers"]</option>
         <option value="file-desc">@L["Image files: largest first"]</option><option value="file-asc">@L["Image files: smallest first"]</option>
@@ -52,6 +53,9 @@
     else
     {
     <div class="browse-filter-fields">
+        <label>@L["Visibility"]<select @bind="visibilityFilter"><option value="all">@L["All packs"]</option><option value="public">@L["Public"]</option><option value="private">@L["Private"]</option></select></label>
+        <label>@L["NSFW spoiler"]<select @bind="spoilerFilter"><option value="all">@L["All packs"]</option><option value="nsfw">@L["NSFW only"]</option><option value="safe">@L["Without NSFW spoiler"]</option></select></label>
+        <label>@L["Contains"]<select @bind="contentFilter"><option value="all">@L["All types"]</option><option value="layered">@L["Editable layers"]</option><option value="grouped">@L["With layer groups"]</option><option value="text">@L["With editable text"]</option></select></label>
         <label>@L["Ownership"]<select aria-label="@L["Filter group or solo packs"]" @bind="ownershipFilter"><option value="all">@L["All packs"]</option><option value="group">@L["Group packs"]</option><option value="solo">@L["Solo packs"]</option></select></label>
         <label>@L["Type"]<select aria-label="@L["Filter pack type"]" @bind="typeFilter"><option value="all">@L["All types"]</option><option value="still">@L["Still images only"]</option><option value="animated">@L["GIFs / animations only"]</option><option value="mixed">@L["Mixed still & animated"]</option><option value="empty">@L["Empty packs"]</option></select></label>
         <label>@L["Sticker count"]<select aria-label="@L["Filter pack count"]" @bind="countFilter"><option value="all">@L["Any count"]</option><option value="empty">@L["Empty"]</option><option value="few">@L["1–2 stickers"]</option><option value="ready">@L["3–30 stickers"]</option><option value="full">@L["Full (30 stickers)"]</option></select></label>

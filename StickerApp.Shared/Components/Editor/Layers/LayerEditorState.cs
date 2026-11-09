@@ -18,6 +18,7 @@ public sealed class LayerPreview : EditorAdjustmentValues
     public string Name { get; set; } = "";
     public string Thumbnail { get; set; } = "";
     public StickerApp.Core.TextLayerOptions? Text { get; set; }
+    public bool GroupAnimated { get; set; }
     public bool IsGroup { get; set; }
     public int MemberCount { get; set; }
     public bool Marked { get; set; }

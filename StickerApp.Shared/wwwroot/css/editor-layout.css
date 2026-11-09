@@ -59,8 +59,8 @@
 .live-editor.live-size-compact .live-tool-choices > .button, .live-editor.live-size-compact .live-category-tabs .button { min-height: 40px; gap: 3px; padding-block: 4px; font-size: calc(10px * var(--app-font-scale,1)); }
 .live-editor .live-history-row { order: 0; display: flex; align-items: center; gap: 6px; min-height: 34px; }
 .live-editor .live-history-row > .button { height: 34px; min-height: 34px; padding: 6px; flex-shrink: 0; }
-.live-editor .live-history-row > .button.icon-button { width: 34px; min-width: 34px; }
-.live-editor .live-history-row > .editor-popup-trigger:not(.icon-button) { width: auto; min-width: max-content; padding-inline: 10px; }
+.live-editor .live-history-row > .button.icon-button { width: 34px; min-width: 34px; flex: 0 0 34px; box-sizing: border-box; }
+.live-editor .live-editor .live-history-row > .editor-popup-trigger:not(.icon-button) { width: auto; min-width: max-content; padding-inline: 10px; }
 .editor-zoom-menu { position: relative; margin-left: auto; }
 .editor-zoom-menu > summary { list-style: none; min-height: 32px; height: 32px; padding: 5px 8px; font-size: 11px; }
 .editor-zoom-menu > summary::-webkit-details-marker { display: none; }
@@ -186,16 +186,16 @@
 /* Keep utility controls together; collapse labels before sacrificing a row. */
 .live-editor .live-history-row { container: editor-history / inline-size; flex-wrap: nowrap; min-width: 0; }
 @container editor-history (max-width: 420px) {
-    .live-history-row > .editor-popup-trigger:not(.icon-button) { width: 34px; min-width: 34px; flex: 0 0 34px; padding: 6px; }
+    .live-editor .live-history-row > .editor-popup-trigger:not(.icon-button) { width: 34px; min-width: 34px; flex: 0 0 34px; padding: 6px; }
     .live-history-row > .editor-popup-trigger > span { display: none; }
 }
 @container editor-history (max-width: 340px) {
     .editor-zoom-menu > summary .app-disclosure-label > .app-icon { display: none; }
-    .editor-zoom-menu > summary { gap: 6px; padding-inline: 6px; }
+    .live-editor .app-disclosure.editor-zoom-menu > summary { gap: 6px; padding-inline: 6px; }
 }
 @container editor-history (max-width: 270px) {
     .editor-zoom-menu > summary > .app-icon { display: none; }
-    .editor-zoom-menu > summary { gap: 0; padding-inline: 4px; }
+    .live-editor .app-disclosure.editor-zoom-menu > summary { gap: 0; padding-inline: 4px; }
 }
 /* Header actions share one touch-target height, including the disclosure. */
 .layer-editor-dialog > .folder-dialog-heading > .button,
@@ -204,3 +204,6 @@
 }
 .layer-editor-dialog > .folder-dialog-heading > .icon-button { width: 44px; min-width: 44px; padding: 8px; }
 .layer-editor-dialog > .folder-dialog-heading > .layer-add-menu > summary { padding: 8px 10px; }
+
+.layer-group-checkbox { flex: 0 0 22px; width: 22px; height: 22px; margin: 0 6px 0 0; align-self: center; }
+.layer-stack-item > span > .app-icon { width: 18px; height: 18px; margin-inline-end: 6px; vertical-align: middle; }

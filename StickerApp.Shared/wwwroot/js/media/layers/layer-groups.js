@@ -5,6 +5,7 @@ export const leafLayers = layers => layers.flatMap(layer => layer.children?.leng
     ? layer.children.map(child => ({ ...child, opacity: child.opacity * layer.opacity })) : [layer]);
 export function groupLayers(items, id, name) {
     const children = cloneLayers(leafLayers(items));
+    if(children.length>10)throw new Error('A group supports up to 10 layers.');
     const corners = children.flatMap(layer => {
         const angle = layer.rotation * Math.PI / 180, c = Math.cos(angle), s = Math.sin(angle);
         return [-1, 1].flatMap(x => [-1, 1].map(y => ({
@@ -20,6 +21,7 @@ export function groupLayers(items, id, name) {
         opacity: 1, flipX: false, tint: null, hue: 0, colorStrength: 1, borderWidth: 0, borderColor: '#ffffff' };
 }
 export function transformGroup(group, before) {
+    if (['x','y','width','height','rotation','flipX'].every(key => group[key] === before[key])) return;
     const scale = group.width / before.width;
     const angle = (group.rotation - before.rotation) * Math.PI / 180;
     const c = Math.cos(angle), s = Math.sin(angle), flipped = group.flipX !== before.flipX;

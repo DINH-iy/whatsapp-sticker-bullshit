@@ -14,8 +14,8 @@ public sealed class LayerComposition
             throw new InvalidDataException("A composition needs 1–10 layers.");
         long characters = 0;
         var ids = new HashSet<string>();
-        var entries = Layers.SelectMany(layer => layer?.Children is { Count: > 0 } children ? children.Prepend(layer) : new[] { layer }).ToList();
-        if (entries.Count > 110) throw new InvalidDataException("A composition supports at most 100 grouped layers.");
+        var entries = Layers.SelectMany(layer => layer?.Children is { Count: > 0 } children ? children.Cast<CompositionLayer?>().Prepend(layer) : new[] { layer }).ToList();
+        if (entries.Count - Layers.Count(layer => layer?.Children is { Count: > 0 }) > 100) throw new InvalidDataException("A composition supports at most 100 grouped layers.");
         var childIds = Layers.Where(layer => layer?.Children is { Count: > 0 }).SelectMany(layer => layer.Children!).Select(layer => layer?.Id).ToHashSet();
         foreach (var layer in entries)
         {
@@ -25,7 +25,7 @@ public sealed class LayerComposition
                 throw new InvalidDataException("A layer has invalid image data or metadata.");
             if (layer.Children is { Count: > 0 } members)
             {
-                if (Version < 2 || childIds.Contains(layer.Id) || members.Count > 100 || members.Any(child => child is null || child.Children is { Count: > 0 }) ||
+                if (Version < 2 || childIds.Contains(layer.Id) || members.Count > 10 || members.Any(child => child is null || child.Children is { Count: > 0 }) ||
                     layer.Text is not null || layer.GifSource is not null || layer.Source != "" || layer.Tint is not null || layer.Hue != 0 || layer.BorderWidth != 0)
                     throw new InvalidDataException("A layer group has invalid members or effects.");
             }
@@ -35,24 +35,24 @@ public sealed class LayerComposition
             if (characters > MaxSourceCharacters) throw new InvalidDataException("Layer artwork and fonts exceed the 24 MB composition limit.");
             if (layer.Children is not { Count: > 0 })
             {
-            byte[] bytes;
-            try { bytes = Convert.FromBase64String(layer.Source[22..]); }
-            catch (FormatException) { throw new InvalidDataException("A layer image is damaged."); }
-            var image = MediaInspector.Inspect(bytes);
-            if (image.MimeType != "image/png" || image.Animated || image.Width > 1024 || image.Height > 1024)
-                throw new InvalidDataException("Layer images must be still PNGs up to 1024 pixels per side.");
-            if (layer.GifSource is not null)
-            {
-                if (!layer.GifSource.StartsWith("data:image/gif;base64,", StringComparison.Ordinal) && !layer.GifSource.StartsWith("data:image/webp;base64,", StringComparison.Ordinal)) throw new InvalidDataException("Invalid GIF layer source.");
-                byte[] gif;
-                try { gif = Convert.FromBase64String(layer.GifSource[(layer.GifSource.IndexOf(',') + 1)..]); }
-                catch (FormatException) { throw new InvalidDataException("A GIF layer is damaged."); }
-                var animation = MediaInspector.Inspect(gif);
-                if (gif.Length > LibraryStore.MaxImportBytes || animation.MimeType is not ("image/gif" or "image/webp") || !animation.Animated ||
-                    !Within(layer.GifDuration, 0.02, 600) || !Within(layer.TrimStart, 0, layer.GifDuration) ||
-                    !Within(layer.TrimEnd, layer.TrimStart + 0.02, layer.GifDuration + 0.001) || layer.TrimEnd - layer.TrimStart > 10.001)
-                    throw new InvalidDataException("Choose a valid GIF selection of at most 10 seconds.");
-            }
+                byte[] bytes;
+                try { bytes = Convert.FromBase64String(layer.Source[22..]); }
+                catch (FormatException) { throw new InvalidDataException("A layer image is damaged."); }
+                var image = MediaInspector.Inspect(bytes);
+                if (image.MimeType != "image/png" || image.Animated || image.Width > 1024 || image.Height > 1024)
+                    throw new InvalidDataException("Layer images must be still PNGs up to 1024 pixels per side.");
+                if (layer.GifSource is not null)
+                {
+                    if (!layer.GifSource.StartsWith("data:image/gif;base64,", StringComparison.Ordinal) && !layer.GifSource.StartsWith("data:image/webp;base64,", StringComparison.Ordinal)) throw new InvalidDataException("Invalid GIF layer source.");
+                    byte[] gif;
+                    try { gif = Convert.FromBase64String(layer.GifSource[(layer.GifSource.IndexOf(',') + 1)..]); }
+                    catch (FormatException) { throw new InvalidDataException("A GIF layer is damaged."); }
+                    var animation = MediaInspector.Inspect(gif);
+                    if (gif.Length > LibraryStore.MaxImportBytes || animation.MimeType is not ("image/gif" or "image/webp") || !animation.Animated ||
+                        !Within(layer.GifDuration, 0.02, 600) || !Within(layer.TrimStart, 0, layer.GifDuration) ||
+                        !Within(layer.TrimEnd, layer.TrimStart + 0.02, layer.GifDuration + 0.001) || layer.TrimEnd - layer.TrimStart > 10.001)
+                        throw new InvalidDataException("Choose a valid GIF selection of at most 10 seconds.");
+                }
             }
             if (!Within(layer.X, -16384, 16384) || !Within(layer.Y, -16384, 16384) ||
                 !Within(layer.Width, 0.01, 8192) || !Within(layer.Height, 0.01, 8192) ||

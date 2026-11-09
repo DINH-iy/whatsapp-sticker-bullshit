@@ -66,6 +66,10 @@
 
                     </EditorPopup>
                 </div>
+                @if(TimelineLayer is null && state.Layers.Any(layer=>layer.GroupAnimated))
+                {
+                    <button class="button animation-preview-button" type="button" @onclick="TogglePreview" disabled="@working"><Icon Name="@(state.PreviewPlaying ? "pause" : "play")" />@L[state.PreviewPlaying ? "Pause" : "Play"]</button>
+                }
                 @if (TimelineLayer is { } clip)
                 {
                     <AnimationTimeline Thumbnails="@clip.GifThumbnails" Duration="@clip.GifDuration" Start="@clip.TrimStart" End="@clip.TrimEnd" LayerControls="true" Disabled="@(working || layerEditSource is not null)">
@@ -140,7 +144,6 @@
             }
             <AppDisclosure Class="editor-details live-layer-stack" Open="@(layerCategory == "layers")"><Header>@L.Format("Layers ({0}) · top is front", state.Layers.Count)</Header><ChildContent>
             @if (state.Layers.Count == 0) { <p class="helper">@L["Add an image to start your sticker."]</p> }
-            <p class="helper layer-group-hint">@L["Select the checkboxes beside layers, then choose Group selected. Ungroup to edit individual contents."]</p>
             <div class="layer-stack" role="group" aria-label="@L["Layer stack"]">
                 @for (var index = state.Layers.Count - 1; index >= 0; index--)
                 {

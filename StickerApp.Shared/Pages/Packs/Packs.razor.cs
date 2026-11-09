@@ -14,15 +14,16 @@ public partial class Packs
     private StickerPack? editingPack, deletingPack;
     private LibraryBrowseSnapshot? browse;
     private string search = "";
+    private string visibilityFilter="all",spoilerFilter="all",contentFilter="all";
     private string sort = "default";
     private string? browsePanel;
     private string typeFilter = "all";
     private string countFilter = "all";
     private string storageFilter = "all";
     private string SizeUnit => Store.DecimalStorageUnits ? "MB" : "MiB";
-    private int FilterCount => new[] { typeFilter, countFilter, storageFilter, ownershipFilter }.Count(value => value != "all");
+    private int FilterCount => new[] { typeFilter, countFilter, storageFilter, ownershipFilter,visibilityFilter,spoilerFilter,contentFilter }.Count(value => value != "all");
     private IReadOnlyList<StickerPack> VisiblePacks => browse is null ? [] : LibraryBrowsing.Packs(browse,
-        new(search, typeFilter, countFilter, storageFilter, sort, ownershipFilter), Store.DecimalStorageUnits);
+        new(search, typeFilter, countFilter, storageFilter, sort, ownershipFilter,visibilityFilter,spoilerFilter,contentFilter), Store.DecimalStorageUnits);
     private string PackSize(StickerPack pack) => StorageDisplay.Format(
         browse?.PackSizes.TryGetValue(pack.Id, out var size) == true ? size.StickerBytes + size.SourceBytes : 0,
         Store.DecimalStorageUnits);
@@ -32,7 +33,7 @@ public partial class Packs
     private void ResetFilters()
     {
         search = "";
-        typeFilter = countFilter = storageFilter = ownershipFilter = "all";
+        typeFilter = countFilter = storageFilter = ownershipFilter = visibilityFilter = spoilerFilter = contentFilter = "all";
     }
 
     private Task DeletePack()=>Run(async()=>{

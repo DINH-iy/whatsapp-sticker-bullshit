@@ -225,6 +225,18 @@ try
         Require(LibraryBrowsing.Packs(snapshot,new(Search:"alice",Type:"mixed",Storage:"medium"),true).Single().Id==mixed.Id,"Combined pack filters failed");
         Require(LibraryBrowsing.Packs(snapshot,new(Count:"empty"),true).Single().Id==empty.Id,"Empty-pack filter failed");
         Require(LibraryBrowsing.Packs(snapshot,new(Sort:"storage-desc"),true)[0].Id==mixed.Id,"Pack storage sort failed");
+        animation.Favorite=true;animation.DurationMs=1200;portrait.Nsfw=true;onlyStill.Public=true;onlyStill.UpdateCount=7;onlyStill.LastUpdatedUtc=DateTimeOffset.UtcNow;
+        snapshot=snapshot with { LayerDetails=new Dictionary<Guid,LayerBrowseInfo>{[portrait.Id]=new(3,1,true)} };
+        Require(LibraryBrowsing.Images(snapshot,new(Editing:"grouped",Spoiler:"nsfw",Membership:"packed"),true).Single().Id==portrait.Id,"Combined grouped/spoiler/membership filters failed");
+        Require(LibraryBrowsing.Images(snapshot,new(Editing:"text"),true).Single().Id==portrait.Id,"Editable text filter failed");
+        Require(LibraryBrowsing.Images(snapshot,new(Editing:"flat",Favorites:"yes"),true).Single().Id==animation.Id,"Flat/favorite filter failed");
+        Require(LibraryBrowsing.Images(snapshot,new(Sort:"duration-desc"),true)[0].Id==animation.Id,"Duration sort failed");
+        Require(LibraryBrowsing.Images(snapshot,new(Sort:"groups-desc"),true)[0].Id==portrait.Id,"Layer-group sort failed");
+        Require(LibraryBrowsing.Images(snapshot,new(Sort:"layers-desc"),true)[0].Id==portrait.Id,"Editable layer-count sort failed");
+        Require(LibraryBrowsing.Packs(snapshot,new(Visibility:"public",Content:"text",Spoiler:"nsfw"),true).Single().Id==onlyStill.Id,"Combined public/content/spoiler pack filters failed");
+        Require(LibraryBrowsing.Packs(snapshot,new(Sort:"updated-desc"),true)[0].Id==onlyStill.Id,"Pack last-updated sort failed");
+        Require(LibraryBrowsing.Packs(snapshot,new(Sort:"updates-desc"),true)[0].Id==onlyStill.Id,"Pack update-count sort failed");
+        mixed.Nsfw=true;Require(LibraryBrowsing.Images(snapshot,new(Spoiler:"safe"),true).Count==0,"Sticker spoiler filtering must include inherited pack spoilers");
         LibraryBrowsing.Images(snapshot,new(Sort:"name-asc"),true,mixed.Id);
         Require(mixed.StickerIds.SequenceEqual([still.Id,animation.Id]),"Viewing a sort changed saved pack order");
         Require(LibraryBrowsing.Images(snapshot,new(),true,mixed.Id).Select(image=>image.Id).SequenceEqual(mixed.StickerIds),"Default pack order was not restored");
