@@ -288,7 +288,7 @@
 .problem-actions .button, .estimate-actions .button { flex: 1 1 150px; min-height: 44px; white-space: normal; line-height: 1.35; padding: 10px 14px; }
 .sticker-info-dialog .technical-error { overflow-wrap: anywhere; white-space: pre-wrap; max-width: 100%; }
 .image-card.image-card-failed { position: relative; border: 2px solid #e67982 !important; box-shadow: 0 0 0 1px #e6798230; }
-.sticker-failure-badge { position: absolute; right: 12px; top: 12px; z-index: 4; display: grid; place-items: center; width: 36px; height: 36px; border: 2px solid var(--surface); border-radius: 50%; background: #b82d40 !important; color: #fff !important; font-size: 22px; font-weight: 800; cursor: pointer; }
+.sticker-failure-badge { position: absolute; right: 12px; top: 12px; z-index: 4; display: grid; place-items: center; width: 36px; height: 36px; border: 2px solid transparent; border-radius: 50%; background: rgb(184 45 64 / 82%) !important; box-shadow: none; color: #fff !important; font-size: 22px; font-weight: 800; cursor: pointer; }
 .sticker-problem-summary { display: flex; flex-direction: column; gap: 10px; margin-block: 4px 10px; color: #e67982; font-size: 12px; line-height: 1.45; text-align: start; }
 .sticker-problem-summary .button { width: 100%; min-height: 42px; border-color: #e67982; color: var(--text); }
 .video-import-dialog .video-size-estimate { padding: 16px; margin: 0 0 16px; border-radius: 14px; background: var(--soft); }

@@ -22,10 +22,10 @@ try {
     assert(requests === 1, 'Unsafe URLs must not reach the network');
     window.fetch = async () => new Response('not a GIF');
     await rejects(() => session.download(url), /invalid GIF/);
-    window.fetch = async () => new Response(bytes, { headers: { 'content-length': '10485761' } });
-    await rejects(() => session.download(url), /10 MB/);
+    window.fetch = async () => new Response(bytes, { headers: { 'content-length': '20971521' } });
+    await rejects(() => session.download(url), /20 MiB/);
     window.fetch = async () => new Response(new ReadableStream({ start(controller) { controller.enqueue(new Uint8Array(100)); controller.enqueue(new Uint8Array(100)); controller.close(); } }));
-    await rejects(() => session.download(url, 150), /10 MB/);
+    await rejects(() => session.download(url, 150), /20 MiB/);
     window.fetch = async () => new Response('', { status: 503 });
     await rejects(() => session.download(url), /could not deliver/);
     window.fetch = async () => { throw new TypeError('secret URL must not leak'); };

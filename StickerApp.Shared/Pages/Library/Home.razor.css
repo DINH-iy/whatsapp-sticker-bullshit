@@ -1,0 +1,18 @@
+.image-card-selecting { position: relative; }
+.image-card-selected { outline: 3px solid var(--accent); outline-offset: 3px; }
+.sticker-selection-target { position: absolute; inset: 0; z-index: 6; border-radius: inherit; cursor: pointer; margin: 0; }
+.sticker-selection-target:focus-within { outline: 3px solid var(--accent); outline-offset: 3px; }
+.sticker-selection-target .image-select { width: 26px; height: 26px; }
+.selection-bar { position: sticky; top: 12px; z-index: 10; gap: 6px; padding: 8px; flex-wrap: nowrap; }
+.selection-bar > strong { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.selection-bar > .button, .selection-bar ::deep .toolbar-menu > .button { flex: 0 0 44px; width: 44px; min-width: 44px; height: 44px; padding: 8px; }
+.selection-bar ::deep .toolbar-menu { flex: 0 0 auto; }
+.selection-pack-fields { padding: 12px; }
+.selection-pack-fields label { display: flex; flex-direction: column; gap: 8px; margin: 0; }
+.selection-pack-fields select { width: 100%; min-width: 0; max-width: 100%; }
+.sticker-toolbar { flex-wrap: nowrap; }
+.browse-actions { align-items: center; }
+.selection-mode-toggle { margin-inline-start: auto; flex: 0 0 44px; }
+@media (max-width: 650px) {
+    .browse-actions { flex-basis: 100%; }
+}

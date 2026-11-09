@@ -1,0 +1,30 @@
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
+@inject IJSRuntime JS
+<dialog @ref="dialog" class="folder-dialog" aria-labelledby="delete-stickers-title" @oncancel="OnCancel" @oncancel:preventDefault>
+    <h2 id="delete-stickers-title">@L[Images.Count == 1 ? "Delete sticker?" : "Delete selected stickers?"]</h2>
+    <p>@(Images.Count == 1 ? L["This sticker will be deleted from My Library and every pack that uses it."] : L.Format("{0} stickers will be deleted from My Library and every pack that uses them.", Images.Count))</p>
+    <p class="helper">@L["Their processing will stop. Saved originals and editable layers will also be deleted. This cannot be undone."]</p>
+    <ul class="delete-stickers-list">
+        @foreach (var image in Images.Take(6)) { <li>@image.Name</li> }
+        @if (Images.Count > 6) { <li>@L.Format("And {0} more…", Images.Count - 6)</li> }
+    </ul>
+    <div class="dialog-actions">
+        <button class="button" type="button" @onclick="OnCancel" disabled="@Busy">@L["Cancel"]</button>
+        <button class="button danger" type="button" @onclick="OnConfirm" disabled="@(Busy || Images.Count == 0)"><Icon Name="trash" />@(Images.Count == 1 ? L["Delete sticker"] : L.Format("Delete {0} stickers", Images.Count))</button>
+    </div>
+</dialog>
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<Sticker> Images { get; set; } = [];
+    [Parameter] public bool Busy { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback OnConfirm { get; set; }
+    private ElementReference dialog;
+    private IJSObjectReference? module;
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/dialog.js");
+        if (!IsDisposed) await module.InvokeVoidAsync("open", dialog);
+    }
+    protected override async ValueTask DisposeInteropAsync() { if (module is not null) await module.DisposeAsync(); }
+}

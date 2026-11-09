@@ -27,6 +27,8 @@ Core files are grouped under `Library`, `Media`, `Packs`, `Pinterest`, `WhatsApp
 - `Infrastructure`: app-level hosts for navigation, appearance, diagnostics, preparation and incoming Pinterest shares.
 - `Surprises`: optional visual effects.
 
+The library screen keeps selection state and activation rules in `Home.Selection.cs`. Select mode overlays a full-card checkbox label and makes editor contents inert, including unfinished stickers. Bulk deletion captures a fixed confirmation list, pauses preparation selection, cancels the selected active/queued jobs and removes their library/pack references together.
+
 Razor namespaces match their folders. Shared `_Imports.razor` makes the component groups available to screens and layouts. `Routes.razor` and `Layout` remain the common routing/shell entry points.
 
 `Services` is grouped into `Abstractions`, `Diagnostics`, `Infrastructure`, `Localization`, `Media`, `Packs`, and `Pinterest`. These keep the `StickerApp.Shared.Services` namespace; each host supplies its platform-specific implementations through dependency injection.

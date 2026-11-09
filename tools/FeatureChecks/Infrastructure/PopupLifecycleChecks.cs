@@ -33,7 +33,8 @@ internal static class PopupLifecycleChecks
                 ("Infrastructure.DiagnosticsHost", 4, null), ("Infrastructure.NavigationHost", 1, null),
                 ("Settings.LayerWarningSettings", 2, null), ("Settings.EditorLayoutSettings", 2, null),
                 ("Settings.GifSearchSettings", 2, null), ("Settings.PackSharingSettings", 2, null),
-                ("Pinterest.PinterestAnimationBatchDialog", 3, null), ("Packs.StillPackCover", 2, null)
+                ("Pinterest.PinterestAnimationBatchDialog", 3, null), ("Packs.StillPackCover", 2, null),
+                ("Library.DeleteStickersDialog", 2, null)
             };
             var passed = 0;
             foreach (var (name, stages, flag) in cases)

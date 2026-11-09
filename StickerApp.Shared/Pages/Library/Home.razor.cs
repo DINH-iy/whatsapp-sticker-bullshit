@@ -132,6 +132,8 @@ public partial class Home
                 activePack = PackId;
                 browsePanel = null;
                 selected.Clear();
+                selectionMode = false;
+                pendingBulkRemoval = null;
                 renamingPack = false;
                 showGifSearch = false;
                 infoImageId = null;
@@ -235,6 +237,7 @@ public partial class Home
     private void CancelRemoval()
     {
         pendingRemoval = null;
+        pendingBulkRemoval = null;
         deletePack = false;
         deletePackStickers = false;
     }
@@ -254,11 +257,13 @@ public partial class Home
             activePack = null;
             Navigation.NavigateTo("/");
         }
-        else if (pendingRemoval is not null)
+        else if (pendingBulkRemoval is { Count: > 0 } images)
         {
-            await Preparation.CancelAsync(pendingRemoval.Id);
-            await Store.DeleteStickersAsync([pendingRemoval.Id]);
+            await Preparation.DeleteStickersAsync(images.Select(image => image.Id));
+            selected.ExceptWith(images.Select(image => image.Id));
         }
+        else if (pendingRemoval is not null)
+            await Preparation.DeleteStickersAsync([pendingRemoval.Id]);
         CancelRemoval();
     });
 

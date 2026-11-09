@@ -40,12 +40,12 @@
         </div>
     </div>
     <div class="header-actions sticker-toolbar">
-        <ActionMenu Label="@L["Add stickers"]" IconName="plus" Primary="true" Disabled="@busy">
+        <ActionMenu Label="@L["Add stickers"]" IconName="plus" Primary="true" Disabled="@(busy || selectionMode)">
             @StickerImportChoices
         </ActionMenu>
         @if (CurrentPack is not null)
         {
-            <ActionMenu Label="@L["Pack options"]" Disabled="@busy">
+            <ActionMenu Label="@L["Pack options"]" IconOnly="true" Disabled="@(busy || selectionMode)">
                 <button class="toolbar-menu-option" type="button" @onclick="BeginRenamePack" disabled="@busy">
                     <Icon Name="edit" /><span>@L["Edit pack details"]<small>@L["Change the name, publisher, and cover."]</small></span>
                 </button>
@@ -96,7 +96,8 @@
     <label class="browse-search">@L["Search"]<input type="search" class="search" aria-label="@L["Search images"]" placeholder="@L["Search images or tags"]" @bind="search" @bind:event="oninput" /></label>
     <div class="browse-actions">
         <button class="button @(sort != "default" ? "browse-action-active" : "")" type="button" aria-label="@L["Sort images"]" aria-haspopup="dialog" @onclick='() => browsePanel = "sort"'>@L["Sort"]</button>
-        <button class="button @(FilterCount > 0 ? "browse-action-active" : "")" type="button" aria-label="@L["Filter images"]" aria-haspopup="dialog" @onclick='() => browsePanel = "filters"'>Filters @if (FilterCount > 0) { <small class="filter-count">@FilterCount</small> }</button>
+        <button class="button @(FilterCount > 0 ? "browse-action-active" : "")" type="button" aria-label="@L["Filter images"]" aria-haspopup="dialog" @onclick='() => browsePanel = "filters"'>@L["Filters"] @if (FilterCount > 0) { <small class="filter-count">@FilterCount</small> }</button>
+        <button class="button icon-button selection-mode-toggle @(selectionMode ? "primary" : "")" type="button" @onclick="ToggleSelectionMode" aria-pressed="@selectionMode" disabled="@busy" title="@L[selectionMode ? "Done selecting" : "Select images"]" aria-label="@L[selectionMode ? "Done selecting" : "Select images"]"><Icon Name="@(selectionMode ? "close" : "select-all")" /></button>
     </div>
 </div>
 @if (browsePanel is not null)
@@ -172,30 +173,28 @@
     }
 }
 
-@if (selected.Count > 0)
+@if (selectionMode)
 {
     <div class="selection-bar">
-        <strong>@L.Format("{0} selected", selected.Count)</strong>
-        <select aria-label="@L["Destination pack"]" @bind="destination">
-            <option value="">@L["Choose pack"]</option>
-            @foreach (var pack in library.Packs)
+        <strong title="@L.Format("{0} selected", selected.Count)" role="status">@L.Format("{0} selected", selected.Count)</strong>
+        <button class="button icon-button" type="button" @onclick="SelectAllVisible" disabled="@(busy || visibleImages.Count == 0)" title="@L[FilterCount > 0 || !string.IsNullOrWhiteSpace(search) ? "Select all shown" : "Select all"]" aria-label="@L[FilterCount > 0 || !string.IsNullOrWhiteSpace(search) ? "Select all shown" : "Select all"]"><Icon Name="select-all" /></button>
+        <button class="button icon-button" type="button" @onclick="() => selected.Clear()" disabled="@(busy || selected.Count == 0)" title="@L["Clear selection"]" aria-label="@L["Clear selection"]"><Icon Name="close" /></button>
+        <button class="button icon-button danger" type="button" @onclick="RequestBulkRemoval" disabled="@(busy || selected.Count == 0)" title="@L["Delete selected"]" aria-label="@L["Delete selected"]"><Icon Name="trash" /></button>
+        <ActionMenu Label="@L["More selection actions"]" IconName="more" IconOnly="true" Disabled="@(busy || selected.Count == 0)">
+            <div class="selection-pack-fields" @onclick:stopPropagation>
+                <label>@L["Copy to pack"]<select aria-label="@L["Destination pack"]" @bind="destination">
+                    <option value="">@L["Choose pack"]</option>
+                    @foreach (var pack in library.Packs) { <option value="@pack.Id">@pack.Name</option> }
+                </select></label>
+            </div>
+            <button class="toolbar-menu-option" type="button" @onclick="CopySelection" disabled="@(destination == "")"><Icon Name="copy" />@L["Copy to pack"]</button>
+            @if (CurrentPack is not null)
             {
-                <option value="@pack.Id">@pack.Name</option>
+                <button class="toolbar-menu-option" type="button" @onclick="RemoveSelection"><Icon Name="remove" />@L["Remove from pack"]</button>
             }
-        </select>
-        <button class="button icon-button" @onclick="CopySelection" disabled="@(busy || destination == "")" title="@L["Copy to pack"]" aria-label="@L["Copy to pack"]">
-            <Icon Name="copy" />
-        </button>
-        @if (CurrentPack is not null)
-        {
-            <button class="button icon-button" @onclick="RemoveSelection" disabled="@busy" title="@L["Remove from pack"]" aria-label="@L["Remove from pack"]">
-                <Icon Name="remove" />
-            </button>
-        }
-        <button class="button icon-button" title="@L["Clear selection"]" aria-label="@L["Clear selection"]" @onclick="() => selected.Clear()">
-            <Icon Name="close" />
-        </button>
+        </ActionMenu>
     </div>
+    @if (FilterCount > 0 || !string.IsNullOrWhiteSpace(search)) { <p class="helper">@L["Select all applies to the current search and filters."]</p> }
 }
 
 @if (visibleImages.Count == 0 && CurrentPack is null)
@@ -205,7 +204,7 @@
 else
 {
     <div class="image-grid @(CurrentPack is not null ? "pack-stickers" : "")">
-        @if (CurrentPack is { } currentPack)
+        @if (!selectionMode && CurrentPack is { } currentPack)
         {
             <ActionMenu Label="@L["Add sticker"]" TileStyle="true" Disabled="@busy">
                 <TriggerContent><AddTileLabel Title="@L["Add sticker"]" Hint="@L[currentPack.StickerIds.Count >= 30 ? "Pack full · 30/30 stickers" : "Image, GIF, or layered image"]" /></TriggerContent>
@@ -216,13 +215,18 @@ else
         {
             var processing = IsPreparing(image);
             var failure = Preparation.GetStatus(image)?.Error;
-            <article class="image-card @(processing ? "image-card-processing" : "") @(failure is not null ? "image-card-failed" : "")" @key="image.Id" @onclick="() => Edit(image)" aria-busy="@(processing ? "true" : "false")">
-                <div class="image-card-content" inert="@processing">
+            <article class="image-card @(processing ? "image-card-processing" : "") @(failure is not null ? "image-card-failed" : "") @(selectionMode ? "image-card-selecting" : "") @(selected.Contains(image.Id) ? "image-card-selected" : "")" @key="image.Id" @onclick="() => ActivateImage(image)" aria-busy="@(processing && !selectionMode ? "true" : "false")">
+                @if (selectionMode)
+                {
+                    <label class="sticker-selection-target" @onclick:stopPropagation>
+                        <input type="checkbox" class="image-select" aria-label="@L.Format("Select {0}", image.Name)" checked="@selected.Contains(image.Id)" @onchange="() => Toggle(image.Id)" disabled="@busy" />
+                        <span class="visually-hidden">@L.Format("Select {0}", image.Name)</span>
+                    </label>
+                }
+                <div class="image-card-content" inert="@(processing || selectionMode)">
                 @if (failure is not null) { <button type="button" class="sticker-failure-badge" @onclick:stopPropagation @onclick="() => infoImageId = image.Id" aria-label="@L["Sticker needs attention. View problem and fixes."]">!</button> }
-                <input type="checkbox" class="image-select" @onclick:stopPropagation aria-label="@L.Format("Select {0}", image.Name)"
-                       checked="@selected.Contains(image.Id)" @onchange="() => Toggle(image.Id)" />
                 <SpoilerPreview IsSpoiler="@library.IsNsfw(image)" Name="@image.Name">
-                <button class="image-preview" @onclick:stopPropagation aria-label="@L.Format("Edit {0}", image.Name)" @onclick="() => Edit(image)">
+                <button class="image-preview" @onclick:stopPropagation aria-label="@L.Format("Edit {0}", image.Name)" @onclick="() => ActivateImage(image)">
                     <img class="spoiler-artwork" src="@previews[image.Id]" alt="@image.Name" loading="lazy" />
                 </button>
                 </SpoilerPreview>
@@ -261,7 +265,7 @@ else
                     </div>
                 </div>
                 </div>
-                @if (processing)
+                @if (processing && !selectionMode)
                 {
                     <div class="sticker-processing-overlay" role="status" @onclick:stopPropagation>
                         <span class="feedback-spinner" aria-hidden="true"></span>
@@ -386,18 +390,9 @@ else
     <DeletePackDialog Pack="deletingPack" Busy="busy" OnCancel="CancelRemoval" OnConfirm="ConfirmPackRemoval" />
 }
 
-@if (pendingRemoval is not null)
+@if (pendingBulkRemoval is not null || pendingRemoval is not null)
 {
-    <div class="modal-backdrop">
-        <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="remove-title">
-            <h2 id="remove-title">@L["Remove sticker?"]</h2>
-            <p>@pendingRemoval.Name</p>
-            <div class="dialog-actions">
-                <button class="button" @onclick="CancelRemoval">@L["Cancel"]</button>
-                <button class="button danger" @onclick="ConfirmRemoval" disabled="@busy"><Icon Name="trash" /> @L["Remove"]</button>
-            </div>
-        </section>
-    </div>
+    <DeleteStickersDialog Images="@(pendingBulkRemoval ?? [pendingRemoval!])" Busy="busy" OnCancel="CancelRemoval" OnConfirm="ConfirmRemoval" />
 }
 
 @if (imageToAdd is not null)

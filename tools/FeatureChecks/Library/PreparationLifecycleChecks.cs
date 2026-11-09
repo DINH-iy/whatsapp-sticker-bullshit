@@ -41,7 +41,7 @@ internal static class PreparationLifecycleChecks
             activity.SetActive(true); using var resumed = activity.BeginOperation(); Require(!resumed.IsCancellationRequested, "Foreground work could not resume");
             Console.WriteLine("PASS preparation foreground-only operation, editor lease cancellation, no source replacement, retry/resume and native download cancellation");
             await CheckManualCancellationAsync(Path.Combine(root, "manual"));
-            return 11;
+            return 12;
         }
         finally { Directory.Delete(root, true); }
     }
@@ -82,6 +82,19 @@ internal static class PreparationLifecycleChecks
         await js.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
         await service.CancelAsync(resumable);
         Console.WriteLine("PASS stopped preparation remains paused across foreground changes and resumes only on request");
+        using (await service.SuspendForEditingAsync())
+        {
+            await store.ImportAsync("queued-for-bulk-delete.png", bytes);
+            js.Started = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            service.Retry(resumable);
+        }
+        await js.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var beforeDelete = js.Calls;
+        await service.DeleteStickersAsync((await store.ReadAsync()).Stickers.Select(image => image.Id));
+        for (var i = 0; i < 100 && service.ActiveName is not null; i++) await Task.Delay(10);
+        Require((await store.ReadAsync()).Stickers.Count == 0 && service.ActiveName is null && js.Calls == beforeDelete,
+            "Bulk deletion left a worker active or started a queued selected sticker");
+        Console.WriteLine("PASS bulk deletion stops active preparation and removes queued stickers without starting them");
     }
     private sealed class BlockingJs : IJSRuntime, IJSObjectReference
     {

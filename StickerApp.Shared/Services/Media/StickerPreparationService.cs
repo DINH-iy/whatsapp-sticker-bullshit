@@ -69,29 +69,46 @@ public sealed class StickerPreparationService(LibraryStore store, IJSRuntime js,
         Changed?.Invoke(false);
     }
 
-    public async Task CancelAsync(Guid id)
+    public Task CancelAsync(Guid id) => CancelManyAsync([id]);
+
+    private async Task CancelManyAsync(IEnumerable<Guid> ids)
     {
         // Pause selection while the worker is being stopped, so cancellation
         // cannot accidentally target the next sticker in the queue.
         ++editorLeases;
         try
         {
-            var image = (await store.ReadAsync()).Stickers.FirstOrDefault(image => image.Id == id);
-            if (image is null || !NeedsPreparation(image)) return;
-            statuses[id] = new(image.FileName, false, Cancelled: true);
-            if (activeId == id)
+            var selected = ids.ToHashSet();
+            var images = (await store.ReadAsync()).Stickers.Where(image => selected.Contains(image.Id) && NeedsPreparation(image));
+            foreach (var image in images)
             {
-                jobCancellation?.Cancel();
-                if (worker is not null)
+                statuses[image.Id] = new(image.FileName, false, Cancelled: true);
+                if (activeId == image.Id)
                 {
-                    using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-                    try { await worker.InvokeVoidAsync("cancel", timeout.Token); }
-                    catch (OperationCanceledException) when (timeout.IsCancellationRequested) { }
-                    catch (JSDisconnectedException) { }
-                    catch (JSException exception) { log.Error("Stop sticker preparation", exception); }
+                    jobCancellation?.Cancel();
+                    if (worker is not null)
+                    {
+                        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+                        try { await worker.InvokeVoidAsync("cancel", timeout.Token); }
+                        catch (OperationCanceledException) when (timeout.IsCancellationRequested) { }
+                        catch (JSDisconnectedException) { }
+                        catch (JSException exception) { log.Error("Stop sticker preparation", exception); }
+                    }
                 }
             }
             Changed?.Invoke(false);
+        }
+        finally { --editorLeases; Queue(); }
+    }
+
+    public async Task DeleteStickersAsync(IEnumerable<Guid> ids)
+    {
+        var remove = ids.Distinct().ToArray();
+        ++editorLeases;
+        try
+        {
+            await CancelManyAsync(remove);
+            await store.DeleteStickersAsync(remove);
         }
         finally { --editorLeases; Queue(); }
     }
@@ -105,7 +122,7 @@ public sealed class StickerPreparationService(LibraryStore store, IJSRuntime js,
             {
                 var pack = (await store.ReadAsync()).Packs.FirstOrDefault(pack => pack.Id == id);
                 if (pack is not null)
-                    foreach (var stickerId in pack.StickerIds) await CancelAsync(stickerId);
+                    await CancelManyAsync(pack.StickerIds);
             }
             await store.DeletePackAsync(id, deleteStickers);
         }
