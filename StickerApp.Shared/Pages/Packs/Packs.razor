@@ -1,3 +1,4 @@
+@inject StickerApp.Shared.Services.IFormFactor FormFactor
 @inject AppLog Log
 @inject IJSRuntime JS
 @page "/"
@@ -9,9 +10,9 @@
 <header class="page-header">
     <h1>@L["My Packs"]</h1>
     <div class="header-actions">
-        <label class="button file-button" title="@L["Open a .wastickers pack or an editable ZIP backup"]">
+        <label class="button file-button" title="@L["Open a .wastickers pack file"]">
             <Icon Name="folder-import" /> @L["Import pack"]
-            <InputFile OnChange="ImportPack" accept="*/*" disabled="@busy" aria-label="@L["Import pack file"]" />
+            <InputFile OnChange="ImportPack" accept="@StickerApp.Shared.Services.PackImportMedia.PickerAccept(FormFactor)" disabled="@busy" aria-label="@L["Import pack file"]" />
         </label>
     </div>
 </header>
@@ -32,9 +33,9 @@
 <div class="toolbar browse-toolbar">
     <label class="browse-search">@L["Search"]<input type="search" class="search" aria-label="@L["Search packs"]" placeholder="@L["Search packs or publishers"]" @bind="search" @bind:event="oninput" /></label>
     <div class="browse-actions">
-        <LibraryViewToggle PreferenceKey="packs" OnChanged="value => listView = value" />
         <button class="button @(sort != "default" ? "browse-action-active" : "")" type="button" aria-label="@L["Sort packs"]" aria-haspopup="dialog" @onclick='() => browsePanel = "sort"'>@L["Sort"]</button>
         <button class="button @(FilterCount > 0 ? "browse-action-active" : "")" type="button" aria-label="@L["Filter packs"]" aria-haspopup="dialog" @onclick='() => browsePanel = "filters"'>Filters @if (FilterCount > 0) { <small class="filter-count">@FilterCount</small> }</button>
+        <LibraryViewToggle PreferenceKey="packs" OnChanged="value => listView = value" />
     </div>
 </div>
 @if (browsePanel is not null)

@@ -34,7 +34,7 @@ test('large libraries virtualize cards and cache static thumbnails without loadi
     // virtualization, filtering and full-resolution editing work together.
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
     await expect(page.locator('.image-card').filter({ hasText: 'Sticker 000' })).toBeVisible();
-    await page.getByRole('button', { name: 'List view', exact: true }).click();
+    await page.getByRole('switch', { name: 'List view', exact: true }).click();
     await page.evaluate(() => window.scrollTo(0, 0));
     await expect(page.locator('.image-card').first()).toBeVisible();
     expect(await page.locator('.image-card').count()).toBeLessThan(40);
@@ -73,8 +73,8 @@ test('animation previews redraw at frame changes, pause cleanly, and preserve la
     const stopped = await page.evaluate(() => window.e2eDraws.image);
     await page.waitForTimeout(600); expect(await page.evaluate(() => window.e2eDraws.image)).toBe(stopped);
     await editor.getByRole('button', { name: 'Layers', exact: true }).click();
-    await editor.getByRole('combobox', { name: 'Meme text position', exact: true }).selectOption('both');
-    await editor.getByRole('button', { name: 'Add white meme template', exact: true }).click();
+    await editor.getByRole('button', { name: 'Meme text position', exact: true }).click();
+        await editor.getByRole('button', { name: 'Above and below', exact: true }).click();
     const layers = page.getByRole('dialog', { name: 'Layer editor', exact: true });
     await expect(layers.getByText('Layers (5) · top is front', { exact: true })).toBeVisible();
     const initial = await page.evaluate(() => window.e2eDraws.layer);

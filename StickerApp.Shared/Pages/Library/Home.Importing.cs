@@ -78,6 +78,7 @@ public partial class Home
 
     private async Task ImportImages(IReadOnlyList<PendingImageImport> files, Guid? packId, bool useDefaults, string? note)
     {
+        using var preparationPause = await Preparation.SuspendForEditingAsync();
         var imported = 0;
         List<string> errors = [];
         foreach (var file in files)
@@ -121,8 +122,10 @@ public partial class Home
         busyText = "Importing pack…";
         try
         {
+            if (!new[] { ".wastickers", ".wasstickers" }.Contains(Path.GetExtension(args.File.Name), StringComparer.OrdinalIgnoreCase))
+                throw new InvalidDataException("Choose a .wastickers pack file.");
             await using var input = args.File.OpenReadStream(PackArchive.MaxArchiveBytes);
-            var importedPack = await Store.ImportPackAsync(input);
+            var importedPack = await Store.ImportPackAsync(input, normalizeMedia: bytes => StickerApp.Shared.Services.PackImportMedia.NormalizeAsync(JS, bytes));
             selected.Clear();
             Navigation.NavigateTo($"packs/{importedPack}");
         }

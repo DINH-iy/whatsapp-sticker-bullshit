@@ -24,7 +24,55 @@
 </div>
 <section role="tabpanel" id="general-settings-panel" aria-labelledby="general-settings-tab" hidden="@(selectedTab != "general")" tabindex="0">
 <div class="settings-stack">
+    <h2 class="settings-group-title">@L["Personalization"]</h2>
     <SettingsSection Title="@L["Language"]"><LanguageSettings /></SettingsSection>
+    <SettingsSection Title="@L["Appearance"]">
+<section class="settings-card" aria-labelledby="appearance-title">
+        <h2 id="appearance-title">@L["Appearance"]</h2>
+        <label for="theme">@L["Theme"]</label>
+        <select id="theme" value="@theme" @onchange="ChangeTheme" disabled="@(!ready)">
+            <option value="system">@L["Use system setting"]</option>
+            <option value="light">@L["Light"]</option>
+            <option value="dark">@L["Dark"]</option>
+        </select>
+        <p class="helper">@L["Choose a theme, or follow your device. Your choice is saved on this device."]</p>
+        <h3 class="settings-subheading">@L["Color theme"]</h3>
+        <div class="color-options" role="group" aria-label="@L["Color theme"]">
+            @foreach (var option in ColorOptions)
+            {
+                <button class="color-option" type="button" aria-pressed="@(color == option.Id ? "true" : "false")"
+                        disabled="@(!ready)" @onclick="() => ChangeColor(option.Id)">
+                    <span class="color-swatch" style="--swatch: @(option.Id == "custom" ? customColor : option.Swatch)" aria-hidden="true"></span>
+                    @option.Label
+                </button>
+            }
+        </div>
+        <p class="helper">@L["Your color theme is remembered when you close and reopen the app."]</p>
+        @if (color == "custom") { <ThemeColorPicker Value="@customColor" ValueChanged="ChangeCustomColor" /> }
+        @if (color == "rainbow")
+        {
+            <label class="toggle-row"><input type="checkbox" checked="@rainbowMotion" @onchange="ChangeRainbowMotion" disabled="@(!ready)" />@L["Colors follow scrolling"]</label>
+            <p class="helper">@L["Off: each element gets a fixed color from its position on the page, red at the top through violet at the bottom. On: colors change as controls move through the screen."]</p>
+        }
+        @if (themeError is not null)
+        {
+            <p class="error" role="alert">@L.Error(themeError)</p>
+        }
+    </section>
+</SettingsSection>
+    <SettingsSection Title="@L["App font"]"><InterfaceFontSettings OnFontsChanged="RefreshFontStats" /></SettingsSection>
+    <SettingsSection Title="@L["Touch feedback"]" Anchor="touch-feedback"><TapFeedbackSettings /></SettingsSection>
+    <SettingsSection Title="@L["Your profile"]"><ProfileEditor /></SettingsSection>
+    <h2 class="settings-group-title">@L["Editing & content"]</h2>
+    <SettingsSection Title="@L["NSFW spoilers"]"><SpoilerSettings /></SettingsSection>
+    <SettingsSection Title="@L["Editing"]"><LayerWarningSettings /><VideoPerformanceSettings /></SettingsSection>
+    <SettingsSection Title="@L["Editor layout"]" Anchor="editor-layout"><EditorLayoutSettings /></SettingsSection>
+    <h2 class="settings-group-title">@L["Library & sharing"]</h2>
+    <SettingsSection Title="@L["Library statistics & storage"]"><LibraryStatisticsSettings @ref="fontStatistics" /></SettingsSection>
+
+    <SettingsSection Title="@L["GIF search"]" Anchor="gif-search"><GifSearchSettings /></SettingsSection>
+    <SettingsSection Title="@L["Pack sharing"]" Anchor="pack-sharing"><PackSharingSettings /></SettingsSection>
+    <h2 class="settings-group-title">@L["Help"]</h2>
     <SettingsSection Title="@L["Help & FAQ"]" Anchor="faq">
 <section class="settings-card faq" id="faq" aria-labelledby="faq-title">
         <h2 id="faq-title">@L["Help & FAQ"]</h2>
@@ -67,7 +115,7 @@
             <p>@L["Open Settings → Developer → Diagnostics & error logs. View log shows recent entries, Close log hides them, and Export log (.txt) downloads a report or opens the phone’s share sheet. Logs are saved locally; nothing is uploaded automatically. Review a report before sharing it."]</p>
         </ChildContent></AppDisclosure>
         <AppDisclosure><Header>@L["How do I import, export, or share a pack?"]</Header><ChildContent>
-            <p>@L["Import pack opens .wastickers files or editable ZIP backups and creates a new pack. Use Pack options → Share or export to export .wastickers for other sticker makers, or an editable ZIP to preserve original GIFs and metadata. Both formats support sharing links after configuring your server. On phones, exporting opens the system share sheet."]</p>
+            <p>@L["Import pack opens .wastickers files and creates a new pack. Use Pack options → Share or export to export .wastickers for other sticker makers, or an editable ZIP to preserve original GIFs and metadata. Both formats support sharing links after configuring your server. On phones, exporting opens the system share sheet."]</p>
             <p>@L["A pack ZIP includes its images. A fingerprint identifies the file; it does not store or encrypt it. Anyone with a sharing link can download that pack."]</p>
         </ChildContent></AppDisclosure>
         <AppDisclosure><Header>@L["What works without internet?"]</Header><ChildContent>
@@ -80,55 +128,11 @@
         </ChildContent></AppDisclosure>
     </section>
 </SettingsSection>
-    <SettingsSection Title="@L["Appearance"]">
-<section class="settings-card" aria-labelledby="appearance-title">
-        <h2 id="appearance-title">@L["Appearance"]</h2>
-        <label for="theme">@L["Theme"]</label>
-        <select id="theme" value="@theme" @onchange="ChangeTheme" disabled="@(!ready)">
-            <option value="system">@L["Use system setting"]</option>
-            <option value="light">@L["Light"]</option>
-            <option value="dark">@L["Dark"]</option>
-        </select>
-        <p class="helper">@L["Choose a theme, or follow your device. Your choice is saved on this device."]</p>
-        <h3 class="settings-subheading">@L["Color theme"]</h3>
-        <div class="color-options" role="group" aria-label="@L["Color theme"]">
-            @foreach (var option in ColorOptions)
-            {
-                <button class="color-option" type="button" aria-pressed="@(color == option.Id ? "true" : "false")"
-                        disabled="@(!ready)" @onclick="() => ChangeColor(option.Id)">
-                    <span class="color-swatch" style="--swatch: @(option.Id == "custom" ? customColor : option.Swatch)" aria-hidden="true"></span>
-                    @option.Label
-                </button>
-            }
-        </div>
-        <p class="helper">@L["Your color theme is remembered when you close and reopen the app."]</p>
-        @if (color == "custom") { <ThemeColorPicker Value="@customColor" ValueChanged="ChangeCustomColor" /> }
-        @if (color == "rainbow")
-        {
-            <label class="toggle-row"><input type="checkbox" checked="@rainbowMotion" @onchange="ChangeRainbowMotion" disabled="@(!ready)" />@L["Colors follow scrolling"]</label>
-            <p class="helper">@L["Off: each element gets a fixed color from its position on the page, red at the top through violet at the bottom. On: colors change as controls move through the screen."]</p>
-        }
-        @if (themeError is not null)
-        {
-            <p class="error" role="alert">@L.Error(themeError)</p>
-        }
-    </section>
-</SettingsSection>
-    <SettingsSection Title="@L["Your profile"]"><ProfileEditor /></SettingsSection>
-    <SettingsSection Title="@L["NSFW spoilers"]"><SpoilerSettings /></SettingsSection>
-    <SettingsSection Title="@L["Editing"]"><LayerWarningSettings /><VideoPerformanceSettings /></SettingsSection>
-    <SettingsSection Title="@L["Editor layout"]" Anchor="editor-layout"><EditorLayoutSettings /></SettingsSection>
-    <SettingsSection Title="@L["App font"]"><InterfaceFontSettings OnFontsChanged="RefreshFontStats" /></SettingsSection>
-    <SettingsSection Title="@L["Touch feedback"]" Anchor="touch-feedback"><TapFeedbackSettings /></SettingsSection>
-    <SettingsSection Title="@L["Library statistics & storage"]"><LibraryStatisticsSettings @ref="fontStatistics" /></SettingsSection>
-
 </div>
 </section>
 <section role="tabpanel" id="developer-settings-panel" aria-labelledby="developer-settings-tab" hidden="@(selectedTab != "developer")" tabindex="0">
 <div class="settings-stack">
     <SettingsSection Title="@L["Diagnostics & error logs"]" Anchor="diagnostics"><DiagnosticsSettings /></SettingsSection>
-    <SettingsSection Title="@L["GIF search"]" Anchor="gif-search"><GifSearchSettings /></SettingsSection>
-    <SettingsSection Title="@L["Pack sharing"]" Anchor="pack-sharing"><PackSharingSettings /></SettingsSection>
         <SettingsSection Title="@L["Sticker storage"]" Anchor="storage">
 <section class="settings-card" id="storage" aria-labelledby="storage-title">
             <h2 id="storage-title">@L["Sticker storage"]</h2>

@@ -116,7 +116,7 @@ The image editor's Fit artwork to maximum action scans alpha bounds across every
 
 Raster and layered editors offer Save a copy alongside replacement. White meme templates add separate background and editable caption layers above, below or both; artwork is fitted into the remaining canvas. Existing saved templates can be opened and copied; device image templates can be loaded as layers.
 
-Android VIEW intents and iOS document types register the common `.wastickers`, `.wasticker` and `.wassticker` spellings. `PackFileInbox` stages granted file streams with a 100 MB limit and a bounded durable queue. `PackFileReceiver` imports staged archives only through the existing validated archive reader. Browser file pickers intentionally allow all MIME types because Android providers frequently label custom pack extensions as generic binary files; archive validation still runs on import.
+Android VIEW intents and iOS document types register the common `.wastickers`, `.wasticker` and `.wassticker` spellings. `PackFileInbox` stages granted file streams with a 100 MB limit and a bounded durable queue. `PackFileReceiver` imports staged archives only through the existing validated archive reader. Browser file pickers request `.wastickers` and `.wasstickers` extensions. Android requests binary/archive sticker MIME types because providers frequently label custom extensions as generic binary files. Both in-app import handlers enforce those extensions before archive validation; images, GIFs and ordinary ZIP filenames are rejected. OS file pickers may still display files outside the requested types.
 
 ## Media and library performance
 

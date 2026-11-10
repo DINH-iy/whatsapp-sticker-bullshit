@@ -18,7 +18,7 @@
         <label>@L["R"]<input type="number" min="0" max="255" value="@Channel(0)" @oninput="e => ChangeChannel(0, e)" aria-label="@L["Highlight red"]" /></label>
         <label>@L["G"]<input type="number" min="0" max="255" value="@Channel(1)" @oninput="e => ChangeChannel(1, e)" aria-label="@L["Highlight green"]" /></label>
         <label>@L["B"]<input type="number" min="0" max="255" value="@Channel(2)" @oninput="e => ChangeChannel(2, e)" aria-label="@L["Highlight blue"]" /></label>
-        <label hidden="@(!AllowAlpha)">@L["A · %"]<input type="number" min="0" max="100" value="@Math.Round(Channel(3) / 2.55)" @oninput="e => ChangeChannel(3, e)" aria-label="@L["Highlight alpha percent"]" /></label>
+        <label>@L["A · %"]<input type="number" min="0" max="100" value="@Math.Round(Channel(3) / 2.55)" @oninput="e => ChangeChannel(3, e)" disabled="@(!AllowAlpha)" aria-label="@L["Highlight alpha percent"]" /></label>
     </div>
     }
     <p class="helper">Choose a color on the wheel or enter @L[hexMode ? "HEX" : "RGBA"] values. Shades adapt for readable text.</p>

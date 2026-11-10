@@ -150,7 +150,13 @@ public sealed class StickerPreparationService(LibraryStore store, IJSRuntime js,
                 var library = await store.ReadAsync();
                 foreach (var id in statuses.Keys.Where(id => library.Stickers.All(image => image.Id != id)).ToList())
                     statuses.Remove(id);
-                foreach (var image in library.Stickers.Where(NeedsPreparation))
+                var batchImages = library.Stickers.Where(image => NeedsPreparation(image) && GetStatus(image) is null).ToList();
+                if (batchImages.Count == 0) continue;
+                worker ??= await js.InvokeAsync<IJSObjectReference>("import", token, "./_content/StickerApp.Shared/js/media/conversion/sticker-preparation.js");
+                await worker.InvokeVoidAsync("beginBatch", token, (object)batchImages.Select(image => image.Name).ToArray());
+                try
+                {
+                foreach (var image in batchImages)
                 {
                     token.ThrowIfCancellationRequested();
                     if (!foreground || editorLeases > 0) break;
@@ -179,7 +185,7 @@ public sealed class StickerPreparationService(LibraryStore store, IJSRuntime js,
                         }
                         worker ??= await js.InvokeAsync<IJSObjectReference>("import", jobToken, "./_content/StickerApp.Shared/js/media/conversion/sticker-preparation.js");
                         using var progressReference = DotNetObjectReference.Create(this);
-                        var result = await worker.InvokeAsync<string>("prepare", jobToken, source, image.Animated, progressReference);
+                        var result = await worker.InvokeAsync<string>("prepare", jobToken, source, image.Animated, progressReference, batchImages.IndexOf(image));
                         jobToken.ThrowIfCancellationRequested();
                         var output = Convert.FromBase64String(result[(result.IndexOf(',') + 1)..]);
                         var info = MediaInspector.Inspect(output);
@@ -214,6 +220,8 @@ public sealed class StickerPreparationService(LibraryStore store, IJSRuntime js,
                         ActiveName = null; Changed?.Invoke(false);
                     }
                 }
+                }
+                finally { await worker.InvokeVoidAsync("endBatch"); }
             }
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }

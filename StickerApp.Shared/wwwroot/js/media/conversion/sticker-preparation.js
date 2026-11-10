@@ -1,16 +1,18 @@
 import { conversionKey, cachedConversion, cacheConversion } from './result-cache.js';
 import { prepare as prepareOnMain } from './sticker-converter.js';
-import { requireForeground, onForegroundChanged, startJob } from '../../ui/foreground.js';
-let active;
+import { requireForeground, onForegroundChanged, startJob, startJobBatch } from '../../ui/foreground.js';
+let active, batch;
+export function beginBatch(names) { batch?.finish(); batch = startJobBatch(names); }
+export function endBatch() { batch?.finish(); batch = undefined; }
 onForegroundChanged(value => { if (!value) cancel(); });
 export function cancel() {
     if (!active) return;
     active.controller.abort(); active.worker?.terminate(); clearTimeout(active.timer);
     active.reject?.(new Error('Preparation cancelled.')); active.finish(); active = undefined;
 }
-export async function prepare(source, animated, reference) {
+export async function prepare(source, animated, reference, batchIndex) {
     requireForeground();
-    const job = { controller: new AbortController(), finish: startJob('Preparing sticker…') };
+    const job = { controller: new AbortController(), finish: batch && Number.isInteger(batchIndex) ? batch.job(batchIndex) : startJob('Preparing sticker…') };
     active = job;
     let lastProgress;
     const progress = value => {

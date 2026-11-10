@@ -63,7 +63,7 @@ const webp = await readFile(new URL('./fixtures/artwork.webp', import.meta.url))
 try {
     for (const mode of ['cold', 'warm']) {
         const title = `E2E ${mode} pack ${Date.now()}`;
-        const inserted = command(['shell', 'content', 'insert', '--uri', 'content://media/external_primary/downloads', '--bind', `_display_name:s:${mode}.wassticker`, '--bind', 'mime_type:s:application/octet-stream']);
+        const inserted = command(['shell', 'content', 'insert', '--uri', 'content://media/external_primary/downloads', '--bind', `_display_name:s:${mode}.wastickers`, '--bind', 'mime_type:s:application/octet-stream']);
         const uri = inserted.match(/content:\/\/[^\s]+/)?.[0];
         assert.ok(uri, `Could not create a MediaStore fixture: ${inserted}`);
         try {
@@ -89,16 +89,16 @@ try {
                 command(['shell', 'content', 'write', '--uri', uri], packArchive(webp, pickerTitle));
                 tap(await visible('Import pack'));
                 let file;
-                try { file = await visible('cold.wassticker', 8000); }
+                try { file = await visible('cold.wastickers', 8000); }
                 catch {
                     tap(await visible('Show roots'));
                     tap(await visible('Downloads'));
-                    file = await visible('cold.wassticker');
+                    file = await visible('cold.wastickers');
                 }
-                assert.notEqual(file.enabled, 'false', '.wassticker is disabled in the Android file picker');
+                assert.notEqual(file.enabled, 'false', '.wastickers is disabled in the Android file picker');
                 tap(file);
                 await visible(pickerTitle, 60_000); await screenshot('system-picker-imported');
-                console.log('PASS Android system picker selects a generic-binary .wassticker and imports it through the app');
+                console.log('PASS Android system picker selects a generic-binary .wastickers and imports it through the app');
             }
         } finally {
             command(['shell', 'content', 'delete', '--uri', uri]);

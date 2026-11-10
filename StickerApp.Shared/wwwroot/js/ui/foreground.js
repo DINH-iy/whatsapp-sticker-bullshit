@@ -35,3 +35,18 @@ export function trackRequest(controller, name = 'Network request…') {
     const unwatch = onForegroundChanged(active => { if (!active) controller.abort(); });
     return () => { unwatch(); finish(); };
 }
+
+export function startJobBatch(names) {
+    requireForeground();
+    const ids = names.map(name => { const id = ++sequence; jobs.set(id, { id, name }); return id; });
+    announce();
+    return {
+        job(index) {
+            const id = ids[index];
+            const finish = () => { const value = jobs.get(id); if (value) { jobs.set(id, { ...value, done: true }); announce(); } };
+            finish.progress = value => { if (jobs.has(id)) { jobs.set(id, { id, name: names[index], ...value }); announce(); } };
+            return finish;
+        },
+        finish() { for (const id of ids) jobs.delete(id); announce(); }
+    };
+}

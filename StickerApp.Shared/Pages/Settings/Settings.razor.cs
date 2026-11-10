@@ -48,7 +48,7 @@ public partial class Settings
         var uri = new Uri(Navigation.Uri);
         var fragment = uri.Fragment;
         var developer = uri.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries).Contains("tab=developer", StringComparer.Ordinal);
-        selectedTab = fragment is "#faq" or "#touch-feedback" ? "general" : developer || fragment is "#diagnostics" or "#gif-search" or "#pack-sharing" or "#storage" or "#cloud"
+        selectedTab = fragment is "#faq" or "#touch-feedback" or "#gif-search" or "#pack-sharing" ? "general" : developer || fragment is "#diagnostics" or "#storage" or "#cloud"
             ? "developer" : "general";
     }
 

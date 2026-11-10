@@ -53,7 +53,7 @@ public partial class LayerEditorDialog
     private EditorLayoutPreferences layout = new();
     private IJSObjectReference? layoutModule;
     private bool layerImageToolActive;
-    private bool focusQuickPanel, confirmQuickToolCancel;
+    private bool focusQuickPanel, focusText, confirmQuickToolCancel;
     private Task TogglePreview() => Run("Updating preview…", async () =>
     {
         state.PreviewPlaying = !state.PreviewPlaying;
@@ -74,6 +74,7 @@ public partial class LayerEditorDialog
     {
         if (!firstRender)
         {
+            if (focusText && !working && controller is not null) { focusText = false; await controller.InvokeVoidAsync("focusText"); }
             if (focusQuickPanel && controller is not null) { focusQuickPanel = false; await controller.InvokeVoidAsync("focusPanel"); }
             return;
         }
@@ -134,7 +135,7 @@ public partial class LayerEditorDialog
                 state = await controller.InvokeAsync<LayerEditorState>("addText");
                 if (IsDisposed) return;
             }
-            if (Selected?.Text is not null) layerCategory = "text";
+            if (Selected?.Text is not null) { layerCategory = "text"; focusText = StartWithText || StartWithMeme is not null; }
         }
         catch (Exception exception) when (IsExpected(exception)) { Report("Open layer editor", exception); }
         finally { working = loading = showOperationProgress = false; if (!IsDisposed) StateHasChanged(); }
@@ -203,8 +204,9 @@ public partial class LayerEditorDialog
         state=await controller!.InvokeAsync<LayerEditorState>("add",title,source,300);
         showShapes=false;quickPanel="";layerCategory="adjust";
     });
-    private Task AddMemeHeader() => Run("Adding meme header…", async () => { showAddMenu = false; quickPanel = ""; await FlushText(); state = await controller!.InvokeAsync<LayerEditorState>("addMemeHeader", memePlacement); layerCategory = "text"; });
-    private Task AddText() => Run("Adding text…", async () => { showAddMenu = false; await FlushText(); state = await controller!.InvokeAsync<LayerEditorState>("addText"); quickPanel = ""; layerCategory = "text"; });
+    private Task AddMemeAt(string placement) { memePlacement = placement; return AddMemeHeader(); }
+    private Task AddMemeHeader() => Run("Adding meme header…", async () => { showAddMenu = false; quickPanel = ""; await FlushText(); state = await controller!.InvokeAsync<LayerEditorState>("addMemeHeader", memePlacement); layerCategory = "text"; focusText = true; });
+    private Task AddText() => Run("Adding text…", async () => { showAddMenu = false; await FlushText(); state = await controller!.InvokeAsync<LayerEditorState>("addText"); quickPanel = ""; layerCategory = "text"; focusText = true; });
     private TextLayerOptions? queuedText;
     private async Task UpdateText(TextLayerOptions text)
     {
@@ -243,7 +245,7 @@ public partial class LayerEditorDialog
     private Task MarkLayer(int index) => Run("Selecting layers for grouping…", async () => { await FlushText(); state = await controller!.InvokeAsync<LayerEditorState>("mark", index); });
     private Task GroupLayers() => Run("Grouping layers…", async () => { await FlushText(); state = await controller!.InvokeAsync<LayerEditorState>("group", L["Group"]); });
     private Task UngroupLayers() => Run("Ungrouping layers…", async () => { state = await controller!.InvokeAsync<LayerEditorState>("ungroup"); });
-    private Task Select(int index) => Run("Selecting layer…", async () => { await FlushText(); state = await controller!.InvokeAsync<LayerEditorState>("select", index); if (Selected?.Text is not null) layerCategory = "text"; });
+    private Task Select(int index) => Run("Selecting layer…", async () => { await FlushText(); state = await controller!.InvokeAsync<LayerEditorState>("select", index); if (Selected?.Text is not null) layerCategory = "text"; focusText = true; });
     private Task Action(string action) => Run("Updating layers…", async () => { await FlushText(); state = await controller!.InvokeAsync<LayerEditorState>("action", action); });
     private Task ToggleTool(string tool) => Run("Opening layer tool…", async () =>
     {

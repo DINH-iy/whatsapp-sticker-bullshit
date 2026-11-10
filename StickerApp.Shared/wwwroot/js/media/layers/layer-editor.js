@@ -535,6 +535,7 @@ export function create(canvas, reference) {
             }
             return state();
         },
+        focusText() { const input = root.querySelector(".text-layer-editor textarea"); input?.scrollIntoView({ block: "center", behavior: "instant" }); input?.focus({ preventScroll: true }); input?.select(); },
         focusPanel() { render(); const panel = root.querySelector('.layer-tool-panel'); panel?.focus({ preventScroll: true }); },
         rotateBy(degrees) { return active() ? update('rotation', wrapAngle(active().rotation + degrees), false) : state(); },
         async open(composition) {

@@ -16,15 +16,15 @@
     <div class="status-info group-working-copy"><p>Group working copy · Revision @collectionLink.Revision. Your edits stay private here. Online group updates are under maintenance and will be added later.</p><div class="settings-actions"><OnlineOnly><button class="button" @onclick="UpdateGroupCollection" disabled="@(busy || FriendsFeature.UnderMaintenance)"><Icon Name="upload" />@L["Update group collection"]</button></OnlineOnly><a class="button" href="friends/collections/@collectionLink.CollectionId">@L["View shared collection"]</a></div></div>
 }
 
-<header class="page-header">
+<header class="page-header library-page-header">
     <div class="page-title">
         @if (PackHeaderCover is { } cover)
         {
-            <SpoilerPreview EyeBeside="true" IsSpoiler="@(CurrentPack is { } coverPack && library.IsNsfw(coverPack))" Name="@(CurrentPack?.Name ?? "Pack cover")"><StillPackCover Class="pack-title-cover spoiler-artwork" Source="@cover" Alt="@L["Pack cover"]" /></SpoilerPreview>
+            <SpoilerPreview EyeBeside="false" IsSpoiler="@(CurrentPack is { } coverPack && library.IsNsfw(coverPack))" Name="@(CurrentPack?.Name ?? "Pack cover")"><StillPackCover Class="pack-title-cover spoiler-artwork" Source="@cover" Alt="@L["Pack cover"]" /></SpoilerPreview>
         }
         else if (CurrentPack is not null && PackImages.FirstOrDefault() is { } firstCover)
         {
-            <SpoilerPreview EyeBeside="true" IsSpoiler="@library.IsNsfw(CurrentPack)" Name="@CurrentPack.Name"><LibraryThumbnail @key="firstCover.FileName" Image="firstCover" Class="pack-title-cover spoiler-artwork" Alt="@L["Pack cover"]" /></SpoilerPreview>
+            <SpoilerPreview EyeBeside="false" IsSpoiler="@library.IsNsfw(CurrentPack)" Name="@CurrentPack.Name"><LibraryThumbnail @key="firstCover.FileName" Image="firstCover" Class="pack-title-cover spoiler-artwork" Alt="@L["Pack cover"]" /></SpoilerPreview>
         }
         else if (CurrentPack is not null)
         {
@@ -95,8 +95,12 @@
     }
 }
 
+@if (CurrentPack is null)
+{
 <div class="settings-actions library-folder-tools">
-    <label>@L["Folder"]<select @bind="folderFilter"><option value="all">@L["All folders"]</option><option value="none">@L["Unfiled"]</option>@foreach (var folder in library.Folders.OrderBy(folder => folder.Name)) { <option value="@folder.Id">@folder.Name</option> }</select></label>
+    <label>@L["Folder"]<select @bind="folderFilter" @bind:after="() => folderMenuOpen = false"><option value="all">@L["All folders"]</option><option value="none">@L["Unfiled"]</option>@foreach (var folder in library.Folders.OrderBy(folder => folder.Name)) { <option value="@folder.Id">@folder.Name</option> }</select></label>
+    <AppDisclosure Popup="true" @bind-Open="folderMenuOpen" SummaryClass="button" Label="@L["Folder options"]"><Header><Icon Name="folder-plus" />@L["Folder options"]</Header><ChildContent>
+    <div class="folder-management-fields">
     <input aria-label="@L["Folder name"]" placeholder="@L["Folder name"]" maxlength="128" @bind="folderName" />
     <button class="button" @onclick="CreateFolder" disabled="@(busy || string.IsNullOrWhiteSpace(folderName))">@L["New folder"]</button>
     @if (Guid.TryParse(folderFilter, out _)) {
@@ -104,14 +108,17 @@
         <button class="button" @onclick="DeleteFolder" disabled="@busy">@L["Remove folder"]</button>
         <small class="helper">@L["Removing a folder keeps its stickers in the library."]</small>
     }
+    </div>
+    </ChildContent></AppDisclosure>
 </div>
+}
 @{ var visibleImages = Visible; }
 <div class="toolbar browse-toolbar">
     <label class="browse-search">@L["Search"]<input type="search" class="search" aria-label="@L["Search images"]" placeholder="@L["Search images or tags"]" @bind="search" @bind:event="oninput" /></label>
     <div class="browse-actions">
-        <LibraryViewToggle PreferenceKey="library" OnChanged="value => listView = value" />
         <button class="button @(sort != "default" ? "browse-action-active" : "")" type="button" aria-label="@L["Sort images"]" aria-haspopup="dialog" @onclick='() => browsePanel = "sort"'>@L["Sort"]</button>
         <button class="button @(FilterCount > 0 ? "browse-action-active" : "")" type="button" aria-label="@L["Filter images"]" aria-haspopup="dialog" @onclick='() => browsePanel = "filters"'>@L["Filters"] @if (FilterCount > 0) { <small class="filter-count">@FilterCount</small> }</button>
+        <LibraryViewToggle PreferenceKey="library" OnChanged="value => listView = value" />
         <button class="button icon-button selection-mode-toggle @(selectionMode ? "primary" : "")" type="button" @onclick="ToggleSelectionMode" aria-pressed="@selectionMode" disabled="@busy" title="@L[selectionMode ? "Done selecting" : "Select images"]" aria-label="@L[selectionMode ? "Done selecting" : "Select images"]"><Icon Name="@(selectionMode ? "close" : "select-all")" /></button>
     </div>
 </div>
@@ -194,11 +201,13 @@
         <strong title="@L.Format("{0} selected", selected.Count)" role="status">@L.Format("{0} selected", selected.Count)</strong>
         <button class="button icon-button" type="button" @onclick="SelectAllVisible" disabled="@(busy || visibleImages.Count == 0)" title="@L[FilterCount > 0 || !string.IsNullOrWhiteSpace(search) ? "Select all shown" : "Select all"]" aria-label="@L[FilterCount > 0 || !string.IsNullOrWhiteSpace(search) ? "Select all shown" : "Select all"]"><Icon Name="select-all" /></button>
         <button class="button icon-button" type="button" @onclick="() => selected.Clear()" disabled="@(busy || selected.Count == 0)" title="@L["Clear selection"]" aria-label="@L["Clear selection"]"><Icon Name="close" /></button>
-        <button class="button icon-button danger" type="button" @onclick="RequestBulkRemoval" disabled="@(busy || selected.Count == 0)" title="@L["Delete selected"]" aria-label="@L["Delete selected"]"><Icon Name="trash" /></button>
         <ActionMenu Label="@L["More selection actions"]" IconName="more" IconOnly="true" Disabled="@(busy || selected.Count == 0)">
             <div class="selection-pack-fields" @onclick:stopPropagation>
+                @if (CurrentPack is null)
+                {
                 <label>@L["Move to folder"]<select @bind="folderDestination"><option value="">@L["Unfiled"]</option>@foreach (var folder in library.Folders) { <option value="@folder.Id">@folder.Name</option> }</select></label>
                 <button class="button" @onclick="MoveSelectionToFolder" disabled="@busy">@L["Move to folder"]</button>
+                }
                 <label>@L["Copy to pack"]<select aria-label="@L["Destination pack"]" @bind="destination">
                     <option value="">@L["Choose pack"]</option>
                     @foreach (var pack in library.Packs) { <option value="@pack.Id">@pack.Name</option> }
@@ -210,6 +219,7 @@
                 <button class="toolbar-menu-option" type="button" @onclick="RemoveSelection"><Icon Name="remove" />@L["Remove from pack"]</button>
             }
         </ActionMenu>
+        <button class="button icon-button danger" type="button" @onclick="RequestBulkRemoval" disabled="@(busy || selected.Count == 0)" title="@L["Delete selected"]" aria-label="@L["Delete selected"]"><Icon Name="trash" /></button>
     </div>
     @if (FilterCount > 0 || !string.IsNullOrWhiteSpace(search)) { <p class="helper">@L["Select all applies to the current search and filters."]</p> }
 }
@@ -258,8 +268,8 @@ else
                     </div>
                 }
 
-                <small class="image-file-summary">@image.Width × @image.Height · @L[image.Animated ? "Animated" : "Still"]</small>
-                <small class="image-file-summary">@L.Format("File {0} · Stored {1}", Size(ImageSize(image).FileBytes), Size(ImageSize(image).TotalBytes))</small>
+                <div class="sticker-row-details"><small class="image-file-summary">@image.Width × @image.Height · @L[image.Animated ? "Animated" : "Still"]</small>
+                <small class="image-file-summary">@L.Format("File {0} · Stored {1}", Size(ImageSize(image).FileBytes), Size(ImageSize(image).TotalBytes))</small></div>
                 @if (Preparation.GetStatus(image)?.Cancelled == true)
                 {
                     <div class="sticker-problem-summary" @onclick:stopPropagation>

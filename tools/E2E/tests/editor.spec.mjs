@@ -62,8 +62,8 @@ for (const placement of ['top', 'bottom', 'both']) {
         const original = (await app.library()).Stickers[0], originalHash = hash(await app.bytes(original.FileName));
         const editor = await editImage(page, name);
         await editor.getByRole('button', { name: 'Layers', exact: true }).click();
-        await editor.getByRole('combobox', { name: 'Meme text position', exact: true }).selectOption(placement);
-        await editor.getByRole('button', { name: 'Add white meme template', exact: true }).click();
+        await editor.getByRole('button', { name: 'Meme text position', exact: true }).click();
+        await editor.getByRole('button', { name: placement === 'top' ? 'Above image' : placement === 'bottom' ? 'Below image' : 'Above and below', exact: true }).click();
         let layers = page.getByRole('dialog', { name: 'Layer editor', exact: true });
         const count = placement === 'both' ? 5 : 3;
         await expect(layers.getByText(`Layers (${count}) · top is front`, { exact: true })).toBeVisible();

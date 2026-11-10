@@ -74,8 +74,10 @@ public partial class Packs
 
     private Task ImportPack(InputFileChangeEventArgs args) => Run(async () =>
     {
-        await using var input = args.File.OpenReadStream(PackArchive.MaxArchiveBytes);
-        var id = await Store.ImportPackAsync(input);
+        if (!new[] { ".wastickers", ".wasstickers" }.Contains(Path.GetExtension(args.File.Name), StringComparer.OrdinalIgnoreCase))
+                throw new InvalidDataException("Choose a .wastickers pack file.");
+            await using var input = args.File.OpenReadStream(PackArchive.MaxArchiveBytes);
+        var id = await Store.ImportPackAsync(input, normalizeMedia: bytes => StickerApp.Shared.Services.PackImportMedia.NormalizeAsync(JS, bytes));
         Navigation.NavigateTo($"packs/{id}");
     });
 

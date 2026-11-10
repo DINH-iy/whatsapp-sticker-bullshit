@@ -46,7 +46,7 @@ npm run report --prefix tools/E2E
 | Copy versus replace | Different IDs and owned files for copies; unchanged template hash; replacement keeps the existing sticker identity/count |
 | Folders | Create, bulk move, filter, rename, reload, remove, retained media and unfiled membership |
 | List / tile views | Library, pack overview and pack contents; separate preferences, reload persistence, controls within the viewport |
-| Pack files | `.wassticker`, `.wasticker`, `.wastickers` and `.zip` with `application/octet-stream`, both import entry points, real ZIP validation, reload, invalid-file recovery |
+| Pack files | `.wastickers` and `.wasstickers` with `application/octet-stream`, both import entry points, real ZIP validation, reload, invalid-file recovery |
 
 `fixtures/artwork.webp` is a generated red test rectangle encoded with the app's real WebP encoder. All PNG/GIF/ZIP inputs are deterministic fixtures generated locally. The older `tools/EditorChecks/browser` fixtures remain useful for detailed raster/codec checks; they are module integration checks rather than substitutes for this UI suite.
 
@@ -68,7 +68,7 @@ The smoke test:
 2. Creates a temporary MediaStore Downloads pack, writes the real ZIP fixture and opens its URI with a read grant.
 3. Tests both a cold activity launch and delivery to the existing activity, presses **Import pack**, and verifies the pack title.
 4. Restarts the process and verifies the saved pack appears in My Packs.
-5. Opens the in-app pack picker, chooses the generic-binary `.wassticker` from Android DocumentsUI (Recents/Downloads), and verifies a distinct imported pack title. This directly detects the greyed-out-file regression.
+5. Opens the in-app pack picker, chooses the generic-binary `.wastickers` from Android DocumentsUI (Recents/Downloads), and verifies a distinct imported pack title. This directly detects the greyed-out-file regression.
 6. Removes only its temporary MediaStore files and saves screenshots/UI XML in `test-results/android`.
 
 It force-stops the test app during lifecycle checks, so finish any existing edits first. It **does not clear app data or remove existing packs**. Imported packs titled `E2E cold pack …`, its `… picker` copy and `E2E warm pack …` remain available for inspection. This script must actually pass on a device before claiming native opening is validated; a web-suite pass is insufficient. iOS document opening still needs its own device/simulator OS test.

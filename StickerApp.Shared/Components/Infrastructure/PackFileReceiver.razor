@@ -1,4 +1,5 @@
 @implements IDisposable
+@inject IJSRuntime JS
 @inject LibraryStore Store
 @inject NavigationManager Navigation
 @if (pending is not null || error is not null)
@@ -24,7 +25,7 @@
         try {
             var path = pending;
             await using var stream = File.OpenRead(path);
-            var id = await Store.ImportPackAsync(stream);
+            var id = await Store.ImportPackAsync(stream, normalizeMedia: bytes => StickerApp.Shared.Services.PackImportMedia.NormalizeAsync(JS, bytes));
             PackFileInbox.Remove(path);
             Navigation.NavigateTo($"packs/{id}");
         }

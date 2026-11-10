@@ -7,7 +7,7 @@ namespace StickerApp.Shared.Pages.Library;
 
 public partial class Home
 {
-    private bool listView;
+    private bool listView, folderMenuOpen;
     private StickerLibrary library = new();
     private Dictionary<Guid, string> previews = [];
     private readonly HashSet<Guid> selected = [];
@@ -15,9 +15,9 @@ public partial class Home
     private Guid? activePack;
     // Library filters and pack creation.
     private string folderFilter = "all", folderName = "", folderDestination = "";
-    private Task CreateFolder() => Run(async () => { folderFilter = (await Store.CreateFolderAsync(folderName)).ToString(); folderName = ""; });
+    private Task CreateFolder() => Run(async () => { folderFilter = (await Store.CreateFolderAsync(folderName)).ToString(); folderName = ""; folderMenuOpen = false; });
     private Task RenameFolder() => Run(async () => { if (Guid.TryParse(folderFilter, out var id)) await Store.RenameFolderAsync(id, folderName); folderName = ""; });
-    private Task DeleteFolder() => Run(async () => { if (Guid.TryParse(folderFilter, out var id)) await Store.DeleteFolderAsync(id); folderFilter = "all"; });
+    private Task DeleteFolder() => Run(async () => { if (Guid.TryParse(folderFilter, out var id)) await Store.DeleteFolderAsync(id); folderFilter = "all"; folderMenuOpen = false; });
     private Task MoveSelectionToFolder() => Run(async () => { await Store.MoveToFolderAsync(selected, Guid.TryParse(folderDestination, out var id) ? id : null); selected.Clear(); });
     private string search = "";
     private string destination = "";
@@ -163,6 +163,7 @@ public partial class Home
         var snapshot = await Store.ReadBrowseSnapshotAsync();
         var updatedLibrary = snapshot.Library;
         if (disposed || version != previewLoadVersion) return;
+        if (activePack != requestedPack) folderFilter = "all";
         activePack = requestedPack;
         library = updatedLibrary;
         browse = snapshot;

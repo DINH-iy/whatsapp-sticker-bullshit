@@ -93,8 +93,14 @@
                 break;
             case "layers":
                 @if(OnAddMeme.HasDelegate){
-                    <label>@L["Meme text position"]<select @bind="memePlacement" disabled="@working"><option value="top">@L["Above image"]</option><option value="bottom">@L["Below image"]</option><option value="both">@L["Above and below"]</option></select></label>
-                    <button class="button" type="button" @onclick="() => OnAddMeme.InvokeAsync(memePlacement)" disabled="@working">@L["Add white meme template"]</button>
+                    <AppDisclosure Popup="true" SummaryClass="button" Label="@L["Meme text position"]"><Header><Icon Name="text" />@L["Add white meme template"]</Header><ChildContent>
+                        <div class="meme-placement-options" role="group" aria-label="@L["Meme text position"]">
+                        @foreach (var placement in new[] { "top", "bottom", "both" })
+                        {
+                            <button class="button" type="button" @onclick="() => OnAddMeme.InvokeAsync(placement)" disabled="@working"><span class="meme-placement-preview meme-placement-@placement" aria-hidden="true"></span>@L[placement == "top" ? "Above image" : placement == "bottom" ? "Below image" : "Above and below"]</button>
+                        }
+                        </div>
+                    </ChildContent></AppDisclosure>
                 }
                 @if(OnAddShape.HasDelegate){<button class="button" type="button" @onclick="OnAddShape" disabled="@working"><Icon Name="shapes" /><span>@L["Add shape"]</span></button>}
                 @if (OnMakeLayered.HasDelegate) { <button class="button" type="button" @onclick="OnMakeLayered" disabled="@working"><Icon Name="layers" /><span>@L["Make layered"]</span></button> }
@@ -139,7 +145,7 @@
     private double previewStart = -1;
     private double? previewEnd;
     private string tool = "";
-    private string category = "cutout", memePlacement = "top";
+    private string category = "cutout";
     private EditorLayoutPreferences layout = new();
     private IJSObjectReference? layoutModule;
     private bool confirmToolCancel;

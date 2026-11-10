@@ -2068,7 +2068,7 @@ html[data-app-bold="true"] body, html[data-app-bold="true"] body :where(p,span,l
 
 .profile-picture-controls { margin-top: 16px; }
 .discord-favorites { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 12px; margin-block: 16px; }
-.discord-favorite { min-width: 0; border: 1px solid var(--border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px; overflow-wrap: anywhere; }
+.discord-favorite { min-width: 0; border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px; overflow-wrap: anywhere; }
 .discord-favorite img, .discord-favorite video { max-width: 100%; height: 160px; object-fit: contain; }
 .discord-favorite .toggle-row { align-items: start; }
 
@@ -2541,3 +2541,73 @@ button.danger, a.danger, .button.danger { color: var(--error-text) !important; b
 .library-list-view .sticker-grid-row { gap: 8px; margin-bottom: 8px; }
 img[data-thumbnail-state="waiting"], img[data-thumbnail-state="error"] { opacity: 0; }
 .sticker-grid { position: relative; }
+
+/* Compact browsing controls and rows. */
+.view-toggle { margin-inline-start: auto; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.view-toggle-track { width: 34px; height: 20px; padding: 3px; border-radius: 20px; background: var(--muted); display: inline-flex; }
+.view-toggle-track > span { width: 14px; height: 14px; border-radius: 50%; background: var(--surface, white); transition: transform .15s; }
+.view-toggle[aria-checked="true"] .view-toggle-track { background: var(--accent); }
+.view-toggle[aria-checked="true"] .view-toggle-track > span { transform: translateX(14px); }
+.library-page-header { flex-wrap: nowrap; gap: 10px; }
+.library-page-header .page-title { flex: 1 1 0; gap: 8px; }
+.library-page-header .header-actions { flex: 0 0 auto; }
+.pack-heading-name { gap: 5px; }
+.pack-heading-name h1 { font-size: clamp(18px, 3vw, 30px); }
+.pack-visibility-indicator { width: 20px; height: 24px; flex-basis: 20px; }
+.pack-visibility-indicator .app-icon { width: 16px; height: 16px; }
+.page-title > .spoiler-preview .spoiler-eye.button { width: 32px; height: 32px; min-width: 32px; padding: 6px; right: -3px; bottom: -3px; top: auto; }
+.library-folder-tools { display: flex; gap: 8px; align-items: center; flex-wrap: nowrap; }
+.library-folder-tools > label { display: flex; flex-direction: row; align-items: center; gap: 8px; min-width: 0; margin: 0; }
+.library-folder-tools > label select { min-width: 0; max-width: 220px; margin: 0; }
+.library-folder-tools > input { min-width: 0; flex: 1 1 100px; margin: 0; }
+.library-folder-tools > button { flex-shrink: 0; }
+.library-folder-tools > .helper { flex-basis: 100%; }
+.sticker-row-details { display: flex; gap: 3px 12px; flex-wrap: wrap; }
+.library-list-view .image-card { padding: 8px; }
+.library-list-view .image-card-content { grid-template-columns: 60px minmax(0,1fr) auto; gap: 3px 10px; }
+.library-list-view .image-card-content > .spoiler-preview { grid-row: 1 / span 4; }
+.library-list-view .image-card-content > strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.library-list-view .image-card-content > .card-actions { grid-row: 1 / span 4; }
+.library-list-view .image-preview { width: 60px; height: 60px; padding: 3px; }
+.library-list-view .image-file-summary { margin: 0; font-size: 11px; }
+.library-list-view .pack-card { grid-template-columns: 60px minmax(0,1fr) auto; padding: 8px; gap: 10px; }
+.library-list-view .pack-cover { height: 60px; width: 60px; }
+.library-list-view .pack-card > .pack-card-link { display: flex; flex-wrap: wrap; gap: 2px 10px; min-width: 0; }
+.library-list-view .pack-card-link strong { flex-basis: 100%; }
+.library-list-view .pack-card-link small { margin: 0; font-size: 11px; }
+.library-list-view .pack-card-actions .button span { display: none; }
+.theme-color-format { display: flex; justify-content: center; width: 100%; gap: 6px; }
+.theme-rgba-fields label { text-align: center; min-width: 0; }
+.theme-rgba-fields input { text-align: center; padding-inline: 2px; }
+.theme-rgb-fields { grid-template-columns: repeat(3,minmax(0,1fr)); }
+.meme-placement-options { z-index: 50; display: grid; gap: 8px; padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+.meme-placement-options .button { justify-content: flex-start; gap: 12px; }
+.meme-placement-preview { display: inline-block; width: 40px; height: 36px; border: 1px solid #999; border-radius: 3px; background: #888; }
+.meme-placement-top { border-top: 10px solid white; }
+.meme-placement-bottom { border-bottom: 10px solid white; }
+.meme-placement-both { border-block: 9px solid white; }
+@media(max-width:650px) {
+ .library-list-view .image-card-content { grid-template-columns: 52px minmax(0,1fr); }
+ .library-list-view .image-preview { width: 52px; height: 52px; }
+ .library-list-view .image-card-content > .card-actions { grid-column: 2; grid-row: auto; }
+ .library-list-view .pack-card { grid-template-columns: 52px minmax(0,1fr); }
+ .library-list-view .pack-cover { width: 52px; height: 52px; }
+ .library-list-view .pack-card-actions { grid-column: 2; display: flex; gap: 6px; }
+ .library-folder-tools { flex-wrap: wrap; }
+ .library-folder-tools > label { flex: 1 1 100%; }
+ .library-folder-tools > label select { flex: 1; max-width: none; }
+ .view-toggle-label { font-size: 11px; }
+ .library-page-header .sticker-toolbar > .toolbar-menu > .button { padding-inline: 9px; }
+}
+
+.library-list-view .card-actions { margin-top: 0; align-self: center; }
+.library-list-view .sticker-actions { display: flex; width: auto; gap: 6px; }
+.library-list-view .sticker-actions .button { width: 40px; min-width: 40px; height: 40px; flex: 0 0 40px; }
+.library-list-view .pack-card-actions .button { min-width: 40px; height: 40px; }
+.settings-group-title { font-size: 13px; color: var(--muted); margin: 24px 0 2px; font-weight: 650; }
+@media(max-width:650px) { .library-list-view .card-actions { justify-self: end; } }
+
+.folder-management-fields { z-index: 50; display: grid; gap: 10px; width: 280px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: 0 8px 24px #0002; }
+.folder-management-fields input { min-width: 0; width: 100%; max-width: none; }
+.library-folder-tools > .app-disclosure { margin: 0; flex: 0 0 auto; }
+@media(max-width:650px) { .library-folder-tools { flex-wrap: nowrap; } .library-folder-tools > label { flex: 1 1 0; } .library-folder-tools > label select { width: 100%; } }

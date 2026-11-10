@@ -642,10 +642,19 @@ public sealed partial class LibraryStore
         }
     }
 
-    public async Task<Guid> ImportPackAsync(Stream source, bool forcePrivate = false, bool preserveSourceIds = false)
+    public async Task<Guid> ImportPackAsync(Stream source, bool forcePrivate = false, bool preserveSourceIds = false, Func<byte[], Task<byte[]>>? normalizeMedia = null)
     {
         // Validate everything before touching the library. No archive entry is extracted by its supplied path.
         var imported = await PackArchive.ReadAsync(source);
+        var classified = new List<PackArchive.ImportedImage>();
+        foreach (var image in imported.Images)
+        {
+            // Editable backups preserve their source animation and layer timeline.
+            var bytes = image.CompositionBytes is null ? MediaInspector.UnwrapStillSticker(image.Bytes) : image.Bytes;
+            if (image.CompositionBytes is null && normalizeMedia is not null && MediaInspector.Inspect(bytes).Animated) bytes = await normalizeMedia(bytes);
+            classified.Add(image with { Bytes = bytes, Info = MediaInspector.Inspect(bytes) });
+        }
+        imported = imported with { Images = classified, Animated = classified.Any(image => image.Info.Animated) };
         await gate.WaitAsync();
         var createdFiles = new List<string>();
         try

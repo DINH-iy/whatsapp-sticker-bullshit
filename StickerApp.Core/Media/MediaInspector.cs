@@ -95,6 +95,38 @@ public static class MediaInspector
         return output.ToArray();
     }
 
+    /// <summary>Unwrap repeated, full-canvas replacement frames without re-encoding.</summary>
+    public static byte[] UnwrapStillSticker(byte[] source)
+    {
+        var info = Inspect(source);
+        if (info.MimeType != "image/webp" || !info.Animated) return source;
+        byte[]? payload = null, profile = null;
+        for (var offset = 12; offset + 8 <= source.Length;)
+        {
+            var length = checked((int)BinaryPrimitives.ReadUInt32LittleEndian(source.AsSpan(offset + 4)));
+            var body = source.AsSpan(offset + 8, length);
+            if (source.AsSpan(offset, 4).SequenceEqual("ICCP"u8)) profile = Chunk("ICCP", body);
+            if (source.AsSpan(offset, 4).SequenceEqual("ANMF"u8))
+            {
+                // Partial frames and alpha blending require composited pixel comparison.
+                if (body.Length < 16 || Read24(body) != 0 || Read24(body[3..]) != 0 ||
+                    Read24(body[6..]) + 1 != info.Width || Read24(body[9..]) + 1 != info.Height ||
+                    (body[15] & 2) == 0) return source;
+                if (payload is not null && !body[16..].SequenceEqual(payload)) return source;
+                payload ??= body[16..].ToArray();
+            }
+            offset += 8 + length + (length & 1);
+        }
+        if (payload is null) return source;
+        var header = new byte[10]; header[0] = (byte)(profile is null ? 0x10 : 0x30);
+        Write24(header, 4, info.Width - 1); Write24(header, 7, info.Height - 1);
+        var chunks = Join(Chunk("VP8X", header), profile ?? [], payload);
+        var output = new byte[chunks.Length + 12];
+        "RIFF"u8.CopyTo(output); BinaryPrimitives.WriteUInt32LittleEndian(output.AsSpan(4), (uint)(output.Length - 8));
+        "WEBP"u8.CopyTo(output.AsSpan(8)); chunks.CopyTo(output, 12);
+        return output;
+    }
+
     // Inspect the bytes, not a browser-supplied MIME type or file extension.
     public static MediaInfo Inspect(ReadOnlySpan<byte> data)
     {
