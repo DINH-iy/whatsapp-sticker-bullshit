@@ -4,6 +4,8 @@ namespace StickerApp.Shared.Pages.Library;
 public partial class Home
 {
     private bool showLayerEditor, compositionFromEditor, confirmLayeredText;
+    private string? compositionStartWithMeme;
+    private async Task AddMemeHeader(string placement) { await OpenEditedLayers(false); if (showLayerEditor) compositionStartWithMeme = placement; }
     private Guid? compositionStickerId;
     private bool compositionStartWithText,compositionStartWithShape,pendingLayeredShape;
     private bool? compositionInitialNsfw;
@@ -38,6 +40,7 @@ public partial class Home
     private async Task OpenEditedLayers(bool startWithText,bool startWithShape=false)
     {
         if (busy || customizing || editing is null) return;
+        compositionStartWithMeme = null;
         var version = ++layerOpeningVersion;
         try
         {
@@ -75,7 +78,7 @@ public partial class Home
 
     private void NewComposition()
     {
-        compositionFromEditor = false;
+        compositionFromEditor = false; compositionStartWithMeme = null;
         compositionStickerId = null;
         compositionStartWithText = compositionStartWithShape = false; compositionInitialSource = compositionInitialName = null; compositionInitialNsfw = null;
         showLayerEditor = true;

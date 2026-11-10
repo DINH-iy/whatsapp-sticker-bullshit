@@ -1,1 +1,1 @@
-import{process as o}from"./gif-engine.js";self.onmessage=async({data:s})=>{try{self.postMessage({id:s.id,value:await o(s)})}catch(e){self.postMessage({id:s.id,error:e.message||"Could not edit this GIF."})}};
+import{process as o}from"./gif-engine.js";self.onmessage=async({data:s})=>{try{self.postMessage({id:s.id,value:await o({...s,onProgress:e=>self.postMessage({id:s.id,progress:e})})})}catch(e){self.postMessage({id:s.id,error:e.message||"Could not edit this GIF."})}};

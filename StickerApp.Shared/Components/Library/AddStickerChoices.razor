@@ -34,8 +34,8 @@
 }
 <div class="toolbar-menu-divider"></div>
 <label class="toolbar-menu-option file-button">
-    <Icon Name="folder-import" /><span>@L["Import a pack file"]<small>@L["Open a .wastickers or ZIP file as a new pack."]</small></span>
-    <InputFile OnChange="OnImportPack" accept=".zip,.wastickers" disabled="@Disabled" aria-label="@L["Import pack file"]" />
+    <Icon Name="folder-import" /><span>@L["Import a pack file"]<small>@L["Open a .wastickers, .wasticker, .wassticker or ZIP file as a new pack."]</small></span>
+    <InputFile OnChange="OnImportPack" accept="*/*" disabled="@Disabled" aria-label="@L["Import pack file"]" />
 </label>
 
 @code {

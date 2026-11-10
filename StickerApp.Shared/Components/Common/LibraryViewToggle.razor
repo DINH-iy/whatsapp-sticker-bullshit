@@ -1,0 +1,25 @@
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
+@inject IJSRuntime JS
+<div class="settings-actions" role="group" aria-label="@L["View"]">
+    <button class="button" type="button" aria-pressed="@(!list ? "true" : "false")" @onclick="() => Change(false)">@L["Tile view"]</button>
+    <button class="button" type="button" aria-pressed="@(list ? "true" : "false")" @onclick="() => Change(true)">@L["List view"]</button>
+</div>
+@code {
+    [Parameter] public string PreferenceKey { get; set; } = "library";
+    [Parameter] public EventCallback<bool> OnChanged { get; set; }
+    private bool list;
+    private IJSObjectReference? module;
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender) {
+        if (!firstRender) return;
+        module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/library-view.js");
+        if (IsDisposed) return;
+        list = await module.InvokeAsync<bool>("read", PreferenceKey);
+        await OnChanged.InvokeAsync(list); StateHasChanged();
+    }
+    private async Task Change(bool value) {
+        list = value;
+        if (module is not null) await module.InvokeVoidAsync("write", PreferenceKey, list);
+        await OnChanged.InvokeAsync(list);
+    }
+    protected override async ValueTask DisposeInteropAsync() { if (module is not null) await module.DisposeAsync(); }
+}

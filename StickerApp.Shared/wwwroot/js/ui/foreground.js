@@ -20,7 +20,9 @@ const announce = () => { const snapshot = [...jobs.values()]; for (const observe
 export function startJob(name) {
     requireForeground();
     const id = ++sequence; jobs.set(id, { id, name }); announce();
-    return () => { jobs.delete(id); announce(); };
+    const finish = () => { jobs.delete(id); announce(); };
+    finish.progress = value => { if (jobs.has(id)) { jobs.set(id, { id, name, ...value }); announce(); } };
+    return finish;
 }
 export function watchJobs(reference) {
     const update = jobs => reference.invokeMethodAsync('JobsChanged', jobs).catch(() => {});

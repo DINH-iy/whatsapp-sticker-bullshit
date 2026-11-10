@@ -2511,3 +2511,28 @@ button.danger, a.danger, .button.danger { color: var(--error-text) !important; b
 .app-navigation .app-nav .offline-nav-item { white-space: nowrap; font-size: calc(14px * var(--app-font-scale,1)); border-radius: 8px; }
 @media(min-width:1201px) { .app-navigation .app-nav .offline-nav-item { padding: 0 7px; font-size: calc(12px * var(--app-font-scale,1)); } }
 @media(max-width:1200px) { .app-navigation .app-nav .offline-nav-item { width: 100%; justify-content: flex-start; box-sizing: border-box; } }
+
+/* The same cards retain their actions, selection and progress in either view. */
+.image-grid.library-list-view { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.library-list-view .image-card { min-width: 0; padding: 10px; }
+.library-list-view .image-card-content { display: grid; grid-template-columns: 76px minmax(0, 1fr) auto; gap: 6px 14px; align-items: center; }
+.library-list-view .image-card-content > .spoiler-preview { grid-column: 1; grid-row: 1 / span 5; }
+.library-list-view .image-card-content > :not(.spoiler-preview) { grid-column: 2; }
+.library-list-view .image-card-content > .card-actions { grid-column: 3; grid-row: 1 / span 5; }
+.library-list-view .image-preview { height: 76px; width: 76px; padding: 6px; margin: 0; }
+.library-list-view .image-preview img { width: 100%; height: 100%; object-fit: contain; }
+.library-list-view .pack-card { display: grid; grid-template-columns: 76px minmax(0, 1fr) auto; gap: 14px; align-items: center; }
+.library-list-view .pack-cover { height: 76px; margin: 0; }
+.library-list-view .pack-card-actions { margin: 0; }
+.library-list-view .add-sticker-card { min-height: 76px; }
+.library-list-view .sticker-processing-overlay { flex-direction: row; flex-wrap: wrap; gap: 8px; }
+.library-folder-tools { flex-wrap: wrap; margin-block: 12px; align-items: end; }
+.library-folder-tools input { max-width: 200px; }
+.processing-menu progress { width: 100%; }
+@media (max-width: 600px) {
+    .library-list-view .image-card-content { grid-template-columns: 64px minmax(0, 1fr); }
+    .library-list-view .image-card-content > .card-actions { grid-column: 2; grid-row: auto; }
+    .library-list-view .pack-card { grid-template-columns: 64px minmax(0, 1fr); }
+    .library-list-view .pack-card-actions { grid-column: 2; }
+    .library-list-view .image-preview { height: 64px; width: 64px; }
+}

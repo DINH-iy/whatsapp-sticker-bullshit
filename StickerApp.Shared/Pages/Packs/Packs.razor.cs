@@ -5,6 +5,7 @@ namespace StickerApp.Shared.Pages.Packs;
 
 public partial class Packs
 {
+    private bool listView;
     private StickerLibrary library = new();
     private readonly Dictionary<Guid, string> covers = [];
     private string? error;
@@ -85,7 +86,7 @@ public partial class Packs
         busy = true;
         error = null;
         try { await action(); }
-        catch (Exception exception) when (exception is IOException or InvalidOperationException or UnauthorizedAccessException or System.Text.Json.JsonException)
+        catch (Exception exception) when (exception is IOException or InvalidDataException or InvalidOperationException or UnauthorizedAccessException or System.Text.Json.JsonException)
         {
             var reference = Log.Error("Pack action", exception);
             error = exception.Message + $" Reference: {reference}.";

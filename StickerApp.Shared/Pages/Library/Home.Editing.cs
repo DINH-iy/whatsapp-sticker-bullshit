@@ -46,7 +46,7 @@ public partial class Home
         using var performance = Log.Measure("Editor: open image", $"animated={image.Animated}; bytes={image.Bytes}; pixels={image.Width}x{image.Height}");
         if (image.CompositionFileName is not null)
         {
-            compositionFromEditor = false;
+            compositionFromEditor = false; compositionStartWithMeme = null;
             compositionStickerId = image.Id;
             compositionStartWithText = false; compositionInitialSource = compositionInitialName = null; compositionInitialNsfw = null;
             showLayerEditor = true;
@@ -204,19 +204,24 @@ public partial class Home
         if (!double.IsFinite(trimStart) || !double.IsFinite(trimEnd) || trimStart < 0 || trimEnd > gifDuration || trimEnd - trimStart < 0.01)
             throw new InvalidOperationException("Start must be before end, within the GIF duration.");
     }
+    private StickerApp.Shared.Services.StickerPreparationService.Progress? animationProgress;
+    [JSInvokable] public Task AnimationProgress(StickerApp.Shared.Services.StickerPreparationService.Progress value) => InvokeAsync(() => { if (IsDisposed) return; animationProgress = value; StateHasChanged(); });
     private async Task<string> BuildTrim()
     {
         ValidateTrim();
         if (editRecipe is null) throw new InvalidOperationException("Wait for the animation editor to finish opening.");
-        return trimmedPreview ??= await gifSession!.InvokeAsync<string>("edit", TimeSpan.FromMinutes(4), editSource, trimStart, trimEnd, editRecipe.Value);
+        using var reference = DotNetObjectReference.Create(this);
+        return trimmedPreview ??= await gifSession!.InvokeAsync<string>("edit", TimeSpan.FromMinutes(4), editSource, trimStart, trimEnd, editRecipe.Value, reference);
     }
 
     private bool savingEditor;
-    private async Task Save()
+    private Task Save() => SaveEdited(false);
+    private Task SaveCopy() => SaveEdited(true);
+    private async Task SaveEdited(bool copy)
     {
         if (busy || customizing || editing is null)
             return;
-        busy = savingEditor = true;
+        busy = savingEditor = true; animationProgress = null;
         busyText = "Saving stickers…";
         editError = null;
         try
@@ -230,12 +235,19 @@ public partial class Home
                 var gif = await BuildTrim();
                 bytes = Convert.FromBase64String(gif[(gif.IndexOf(',') + 1)..]);
             }
-            if (bytes is not null)
+            var savedId = editing.Id;
+            if (copy)
+            {
+                bytes ??= Convert.FromBase64String(editSource[(editSource.IndexOf(',') + 1)..]);
+                savedId = await Store.ImportAsync(editName, bytes, activePack, keepEditOriginal);
+                await Store.MoveToFolderAsync([savedId], editing.FolderId);
+            }
+            else if (bytes is not null)
             {
                 if (!await Store.ReplaceImageAsync(editing.Id, bytes, editing.FileName, keepOriginal: keepEditOriginal))
                     throw new InvalidOperationException("This image changed while you were editing. Reopen it before saving.");
             }
-            await Store.EditStickerAsync(editing.Id, editName, editing.Tags, editNsfw);
+            await Store.EditStickerAsync(savedId, editName, editing.Tags, editNsfw);
             await Reload();
             editing = null;
             preparationLease?.Dispose(); preparationLease = null;

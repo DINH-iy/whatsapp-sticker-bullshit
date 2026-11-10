@@ -474,6 +474,32 @@ export function create(canvas, reference) {
     return {
         setFonts(fonts) { for(const font of fonts)fontRegistry.set(font.id,font); },
         validateFont(id,data) { return validateTextFont(data); },
+        async addMemeHeader(placement='top') {
+            if(!['top','bottom','both'].includes(placement))throw new Error('Choose a meme caption position.');
+            const positions=placement==='both'?['top','bottom']:[placement];
+            if(layers.length > maxLayers-positions.length*2) throw new Error('Leave room for the meme caption layers.');
+            const header=document.createElement('canvas');header.width=512;header.height=128;
+            const ctx=header.getContext('2d');ctx.fillStyle='#ffffff';ctx.fillRect(0,0,512,128);
+            const source=header.toDataURL('image/png'), image=await decode(source);
+            const captions=await Promise.all(positions.map(position=>textArtwork({...defaultText(),content:position==='top'?'TOP TEXT':'BOTTOM TEXT',font:'sans',fontSize:36,color:'#000000',outlineWidth:0,maxWidth:460})));
+            remember();
+            const artworkScale=(512-positions.length*128)/512, offsetX=(512-512*artworkScale)/2, offsetY=positions.includes('top')?128:0;
+            for(const layer of layers) {
+                const before={...layer};
+                layer.x=layer.x*artworkScale+offsetX;layer.y=layer.y*artworkScale+offsetY;layer.width*=artworkScale;layer.height*=artworkScale;
+                if(layer.children?.length)transformGroup(layer,before);
+            }
+            groupFrames.clear();
+            const base={rotation:0,opacity:1,flipX:false,tint:null,hue:0,colorStrength:1,borderWidth:0,borderColor:'#ffffff'};
+            for(const [index,position] of positions.entries()) {
+                const y=position==='top'?64:448, artwork=captions[index];
+                layers.push({...base,id:crypto.randomUUID(),name:position==='top'?'Top white meme header':'Bottom white meme header',source,x:256,y,width:512,height:128});images.set(source,image);
+                const scale=Math.min(1,480/artwork.width,112/artwork.height);
+                layers.push({...base,id:crypto.randomUUID(),name:position==='top'?'Top meme caption':'Bottom meme caption',source:artwork.source,text:artwork.text,x:256,y,width:artwork.width*scale,height:artwork.height*scale});
+                images.set(artwork.source,artwork.image);
+            }
+            selected=layers.length-1;render();return state();
+        },
         async addText(placement='random') {
             if(leafLayers(layers).length>=100)throw new Error('A composition supports at most 100 grouped layers.');
             if(layers.length>=maxLayers)throw new Error('A composition supports up to 10 layers.');
@@ -616,7 +642,7 @@ export function create(canvas, reference) {
             }
             render(); animate(); return state();
         },
-        async export() {
+        async export(progressReference) {
             if (!layers.length) throw new Error('Add at least one layer before saving.');
             exporting = true; cancelAnimationFrame(animationFrame); animationFrame = undefined;
             render(false);
@@ -625,7 +651,7 @@ export function create(canvas, reference) {
                     throw new Error('The sticker is completely transparent. Move a visible layer onto the canvas.');
                 const document = { version: layers.some(layer=>layer.children?.length)?2:1, layers: cloneLayers(layers) };
                 const png = leafLayers(layers).some(layer => layer.gifSource)
-                    ? await (await import('../animation/gif-editor.js')).compose(document)
+                    ? await (await import('../animation/gif-editor.js')).compose(document,progressReference)
                     : canvas.toDataURL('image/png');
                 return { png, document };
             } finally { exporting = false; render(); animate(); }

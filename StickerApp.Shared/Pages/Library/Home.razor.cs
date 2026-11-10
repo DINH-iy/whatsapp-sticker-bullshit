@@ -7,12 +7,18 @@ namespace StickerApp.Shared.Pages.Library;
 
 public partial class Home
 {
+    private bool listView;
     private StickerLibrary library = new();
     private Dictionary<Guid, string> previews = [];
     private readonly HashSet<Guid> selected = [];
     [Parameter] public Guid? PackId { get; set; }
     private Guid? activePack;
     // Library filters and pack creation.
+    private string folderFilter = "all", folderName = "", folderDestination = "";
+    private Task CreateFolder() => Run(async () => { folderFilter = (await Store.CreateFolderAsync(folderName)).ToString(); folderName = ""; });
+    private Task RenameFolder() => Run(async () => { if (Guid.TryParse(folderFilter, out var id)) await Store.RenameFolderAsync(id, folderName); folderName = ""; });
+    private Task DeleteFolder() => Run(async () => { if (Guid.TryParse(folderFilter, out var id)) await Store.DeleteFolderAsync(id); folderFilter = "all"; });
+    private Task MoveSelectionToFolder() => Run(async () => { await Store.MoveToFolderAsync(selected, Guid.TryParse(folderDestination, out var id) ? id : null); selected.Clear(); });
     private string search = "";
     private string destination = "";
     private LibraryBrowseSnapshot? browse;
@@ -23,7 +29,7 @@ public partial class Home
     private string sort = "default";
     private string? browsePanel;
     private string SmallSizeUnit => Store.DecimalStorageUnits ? "KB" : "KiB";
-    private int FilterCount => new[] { typeFilter, formatFilter, storageFilter, editingFilter,spoilerFilter,favoritesFilter,membershipFilter }.Count(value => value != "all");
+    private int FilterCount => (folderFilter != "all" ? 1 : 0) + new[] { typeFilter, formatFilter, storageFilter, editingFilter,spoilerFilter,favoritesFilter,membershipFilter }.Count(value => value != "all");
 
     // The editor keeps the source separate from its preview so Reset can restore it.
     private string editName = "";
@@ -92,13 +98,13 @@ public partial class Home
     private IReadOnlyList<PackRules.Issue> Issues => CurrentPack is { } p ? PackRules.Inspect(p, PackImages) : [];
     private IReadOnlyList<string> Validation => CurrentPack is { } p ? PackRules.Validate(p, PackImages) : [];
     private IReadOnlyList<Sticker> Visible => browse is null ? [] : LibraryBrowsing.Images(browse,
-        new(search, typeFilter, formatFilter, "all", storageFilter, sort,editingFilter,spoilerFilter,favoritesFilter,membershipFilter), Store.DecimalStorageUnits, activePack);
+        new(search, typeFilter, formatFilter, "all", storageFilter, sort,editingFilter,spoilerFilter,favoritesFilter,membershipFilter), Store.DecimalStorageUnits, activePack).Where(image => folderFilter == "all" || (folderFilter == "none" ? image.FolderId is null : image.FolderId?.ToString() == folderFilter)).ToList();
     private ImageStorageSize ImageSize(Sticker image) => browse?.ImageSizes.GetValueOrDefault(image.Id) ?? new(0, 0);
     private string Size(long bytes) => StorageDisplay.Format(bytes, Store.DecimalStorageUnits);
 
     private void ResetFilters()
     {
-        search = "";
+        search = ""; folderFilter = "all";
         typeFilter = formatFilter = storageFilter = editingFilter = spoilerFilter = favoritesFilter = membershipFilter = "all";
     }
 

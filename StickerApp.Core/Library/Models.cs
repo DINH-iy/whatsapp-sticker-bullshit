@@ -18,6 +18,7 @@ public sealed class Sticker
     public bool Animated { get; set; }
     public int DurationMs { get; set; }
     public int MinimumFrameMs { get; set; }
+    public Guid? FolderId { get; set; }
     public bool Favorite { get; set; }
     public string Tags { get; set; } = "";
 }
@@ -40,12 +41,19 @@ public sealed class StickerPack
     public string? CoverImage { get; set; }
 }
 
+public sealed class LibraryFolder
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Name { get; set; } = "";
+}
+
 public sealed class StickerLibrary
 {
     public int SchemaVersion { get; set; } = 1;
     public List<Sticker> Stickers { get; set; } = [];
     public List<StickerPack> Packs { get; set; } = [];
     public List<CustomFont> Fonts { get; set; } = [];
+    public List<LibraryFolder> Folders { get; set; } = [];
     public bool IsNsfw(Sticker sticker) => sticker.Nsfw || Packs.Any(pack => pack.Nsfw && pack.StickerIds.Contains(sticker.Id));
     public bool IsNsfw(StickerPack pack) => pack.Nsfw || Stickers.Any(sticker => pack.StickerIds.Contains(sticker.Id) && IsNsfw(sticker));
 }

@@ -7,7 +7,8 @@ namespace StickerApp.Shared.Services;
 /// <summary>One browser/device worker prepares images across page changes, respecting source-retention preferences.</summary>
 public sealed class StickerPreparationService(LibraryStore store, IJSRuntime js, AppLog log) : IAsyncDisposable
 {
-    public sealed record Status(string FileName, bool Working, string? Error = null, bool Cancelled = false);
+    public sealed record Status(string FileName, bool Working, string? Error = null, bool Cancelled = false, Progress? Progress = null);
+    public sealed record Progress(int Percent, int Completed, int Total, int Attempt, int Attempts);
     private readonly Dictionary<Guid, Status> statuses = [];
     private readonly Channel<bool> signals = Channel.CreateBounded<bool>(new BoundedChannelOptions(1)
     { FullMode = BoundedChannelFullMode.DropWrite, SingleReader = true });
@@ -19,6 +20,15 @@ public sealed class StickerPreparationService(LibraryStore store, IJSRuntime js,
     private CancellationTokenSource? jobCancellation;
     private TaskCompletionSource? jobFinished;
     private Guid? activeId;
+    [JSInvokable] public Task PreparationProgress(Progress progress)
+    {
+        if (activeId is { } id && jobCancellation?.IsCancellationRequested == false && statuses.TryGetValue(id, out var status) && status.Working)
+        {
+            statuses[id] = status with { Progress = progress };
+            Changed?.Invoke(false);
+        }
+        return Task.CompletedTask;
+    }
     public async Task SetForegroundAsync(bool value)
     {
         foreground = value;
@@ -168,7 +178,8 @@ public sealed class StickerPreparationService(LibraryStore store, IJSRuntime js,
                                 source = $"data:image/gif;base64,{Convert.ToBase64String(bytes)}";
                         }
                         worker ??= await js.InvokeAsync<IJSObjectReference>("import", jobToken, "./_content/StickerApp.Shared/js/media/conversion/sticker-preparation.js");
-                        var result = await worker.InvokeAsync<string>("prepare", jobToken, source, image.Animated);
+                        using var progressReference = DotNetObjectReference.Create(this);
+                        var result = await worker.InvokeAsync<string>("prepare", jobToken, source, image.Animated, progressReference);
                         jobToken.ThrowIfCancellationRequested();
                         var output = Convert.FromBase64String(result[(result.IndexOf(',') + 1)..]);
                         var info = MediaInspector.Inspect(output);

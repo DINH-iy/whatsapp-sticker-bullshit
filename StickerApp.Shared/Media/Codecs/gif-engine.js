@@ -120,41 +120,11 @@ function makeCanvas(width, height) {
     return canvas;
 }
 
-async function prepare(source, signal) {
-    const { duration } = load(source);
-    if (duration > 10000)
-        throw new Error('This GIF is longer than 10 seconds. Open Edit GIF, choose a section of at most 10 seconds, save, then prepare again.');
-    const sourceCanvas = makeCanvas(1, 1);
-    const canvas = makeCanvas(512, 512);
-    let lastAttemptBytes = 0;
-    for (const quality of [0.8, 0.55, 0.3, 0.1]) {
-        const frames = [];
-        let total = 0, previousPixels;
-        try {
-            await trim(source, 0, duration / 1000, false, async (pixels, width, height, delay) => {
-                signal?.throwIfAborted();
-                if (samePixels(previousPixels, pixels)) { frames[frames.length - 1].duration += delay; return; }
-                previousPixels = pixels.slice();
-                if (sourceCanvas.width !== width || sourceCanvas.height !== height) {
-                    sourceCanvas.width = width; sourceCanvas.height = height;
-                }
-                sourceCanvas.getContext('2d').putImageData(new ImageData(pixels, width, height), 0, 0);
-                fit(canvas.getContext('2d'), sourceCanvas, width, height);
-                // Let iOS paint controls between frames when a worker canvas is unavailable.
-                if (typeof document !== 'undefined') await new Promise(resolve => setTimeout(resolve, 0));
-                signal?.throwIfAborted();
-                const bytes = await encode(canvas, quality);
-                signal?.throwIfAborted();
-                total += bytes.length + 24;
-                lastAttemptBytes = total;
-                if (total > 500 * 1024) throw new Error('size');
-                frames.push({ bytes, duration: delay });
-            }, signal);
-            const bytes = animation(ensureAnimationFrames(frames));
-            if (bytes.length <= 500 * 1024) return dataUrl(bytes);
-        } catch (error) { if (error.message !== 'size') throw error; }
-    }
-    throw new Error(`This animation exceeds 500 KB: even at the lowest quality, encoded frames already require at least ${Math.ceil(lastAttemptBytes / 1024)} KB. Open Edit and shorten the animation, then save. Your source GIF is kept.`);
+async function prepare(source, signal, onProgress) {
+    const reader = await openAnimation(source);
+    const recipe = { width: reader.width, height: reader.height, edits: [] }, duration = reader.duration;
+    reader.dispose?.();
+    return editAnimation(source, 0, duration / 1000, recipe, false, signal, onProgress);
 }
 
 // Build all six timeline previews while compositing the animation once. Calling
@@ -233,7 +203,7 @@ export function createReader(source) {
     };
 }
 
-async function compose(composition, signal) {
+async function compose(composition, signal, onProgress) {
     const layers = composition.layers;
     const readers = new Map(), stills = new Map();
     const duration = Math.min(10000, Math.max(...layers.filter(layer => layer.gifSource).map(layer => (layer.trimEnd - layer.trimStart) * 1000)));
@@ -262,10 +232,13 @@ async function compose(composition, signal) {
         const times = [...changes].filter(time => time >= 0 && time <= duration).sort((a,b) => a-b);
         if (times.length === 2) times.splice(1,0,Math.round(duration/2));
         const frameCount = times.length - 1;
-        for (const quality of [0.65, 0.4, 0.2, 0.08]) {
+        const attempts = [{quality:.65,detail:512},{quality:.4,detail:512},{quality:.2,detail:512},{quality:.08,detail:512},{quality:.2,detail:384},{quality:.15,detail:256},{quality:.1,detail:192},{quality:.08,detail:128}];
+        const detailCanvas=makeCanvas(1,1);
+        for (const [attemptIndex,{quality,detail}] of attempts.entries()) {
             const output = []; let total = 0;
             for (let frameIndex = 0; frameIndex < frameCount; frameIndex++) {
                 signal?.throwIfAborted();
+                onProgress?.({percent:Math.floor(frameIndex/frameCount*100),completed:frameIndex,total:frameCount,attempt:attemptIndex+1,attempts:attempts.length});
                 const clock = times[frameIndex];
                 context.clearRect(0, 0, 512, 512);
                 for (const layer of layers) {
@@ -280,6 +253,10 @@ async function compose(composition, signal) {
                     context.rotate(layer.rotation * Math.PI / 180); context.scale(layer.flipX ? -1 : 1, 1);
                     drawLayerArtwork(context,source,layer); context.restore();
                 }
+                if(detail<512) {
+                    detailCanvas.width=detailCanvas.height=detail;detailCanvas.getContext('2d').drawImage(canvas,0,0,detail,detail);
+                    context.clearRect(0,0,512,512);context.drawImage(detailCanvas,0,0,512,512);
+                }
                 if (typeof document !== 'undefined' && typeof window !== 'undefined') await new Promise(resolve => setTimeout(resolve, 0));
                 const bytes = await encode(canvas, quality); total += bytes.length + 24;
                 if (total > 500 * 1024) break;
@@ -287,10 +264,10 @@ async function compose(composition, signal) {
             }
             if (total <= 500 * 1024) {
                 const result = animation(output);
-                if (result.length <= 500 * 1024) return dataUrl(result);
+                if (result.length <= 500 * 1024) { onProgress?.({percent:100,completed:frameCount,total:frameCount,attempt:attemptIndex+1,attempts:attempts.length}); return dataUrl(result); }
             }
         }
-        throw new Error('This animation exceeds 500 KB. Shorten the GIF selections or use fewer animated layers.');
+        throw new Error('This animation still exceeds 500 KB after reducing quality and detail. Try simpler layers or a shorter selection.');
     } finally { for (const image of stills.values()) image.close?.(); for (const reader of readers.values()) reader.dispose?.(); }
 }
 
@@ -312,7 +289,7 @@ async function inspectAnimation(source) {
     } finally { reader.dispose?.(); }
 }
 
-async function editAnimation(source, startSeconds, endSeconds, recipe, working = false, signal) {
+async function editAnimation(source, startSeconds, endSeconds, recipe, working = false, signal, onProgress) {
     const reader = await openAnimation(source), renderer = await createRasterRenderer(recipe);
     try {
         const start = Math.round(startSeconds * 1000), end = Math.round(endSeconds * 1000);
@@ -334,15 +311,31 @@ async function editAnimation(source, startSeconds, endSeconds, recipe, working =
         const canvas = makeCanvas(512, 512), context = canvas.getContext('2d');
         let visible = false;
         const limit = working ? 20 * 1024 * 1024 : 500 * 1024;
-        for (const quality of working ? [0.9] : [0.8, 0.55, 0.3, 0.1]) {
-            const output = []; let total = 0;
-            for (const item of times) {
+        const attempts = working ? [{quality:0.9, detail:512}] : [
+            {quality:0.8,detail:512},{quality:0.55,detail:512},{quality:0.3,detail:512},{quality:0.1,detail:512},
+            {quality:0.2,detail:384},{quality:0.15,detail:256},{quality:0.1,detail:192},{quality:0.08,detail:128}
+        ];
+        const detailCanvas = makeCanvas(1,1);
+        for (const [attemptIndex, {quality, detail}] of attempts.entries()) {
+            const output = []; let total = 0, previousPixels;
+            for (const [frameIndex, item] of times.entries()) {
+                onProgress?.({ percent: Math.floor(frameIndex / times.length * 100), completed: frameIndex, total: times.length, attempt: attemptIndex + 1, attempts: attempts.length });
                 if (signal?.aborted) throw new Error('Animation editor closed.');
                 const frame = renderer.render(reader.at(item.time));
                 if (recipe.layer) {
                     canvas.width = frame.width; canvas.height = frame.height; context.drawImage(frame, 0, 0);
                 } else fit(context, frame, frame.width, frame.height);
+                if (detail < 512) {
+                    detailCanvas.width = Math.max(1, Math.round(canvas.width * detail / 512));
+                    detailCanvas.height = Math.max(1, Math.round(canvas.height * detail / 512));
+                    detailCanvas.getContext('2d').drawImage(canvas,0,0,detailCanvas.width,detailCanvas.height);
+                    context.clearRect(0,0,canvas.width,canvas.height);
+                    context.drawImage(detailCanvas,0,0,canvas.width,canvas.height);
+                }
                 if (!visible) visible = context.getImageData(0, 0, canvas.width, canvas.height).data.some((value, index) => index % 4 === 3 && value > 0);
+                const pixels=context.getImageData(0,0,canvas.width,canvas.height).data;
+                if(samePixels(previousPixels,pixels)) { output[output.length-1].duration+=item.duration; continue; }
+                previousPixels=pixels.slice();
                 if (typeof document !== 'undefined') await new Promise(resolve => setTimeout(resolve, 0));
                 const bytes = await (working ? encodeWorkingFrame(canvas, quality) : encode(canvas, quality)); total += bytes.length + 24;
                 if (signal?.aborted) throw new Error('Animation editor closed.');
@@ -351,24 +344,24 @@ async function editAnimation(source, startSeconds, endSeconds, recipe, working =
             }
             if (total <= limit) {
                 if (!visible) throw new Error('The animation is completely transparent. Undo a cutout or increase opacity.');
-                const bytes = animation(output, canvas.width, canvas.height); if (bytes.length <= limit) return dataUrl(bytes);
+                const bytes = animation(ensureAnimationFrames(output), canvas.width, canvas.height); if (bytes.length <= limit) { onProgress?.({percent:100,completed:times.length,total:times.length,attempt:attemptIndex+1,attempts:attempts.length}); return dataUrl(bytes); }
             }
         }
-        throw new Error(working ? 'This GIF exceeds the 20 MiB import limit. Choose a smaller GIF.' : 'This animation exceeds 500 KB. Choose a shorter selection.');
+        throw new Error(working ? 'This GIF exceeds the 20 MiB import limit. Choose a smaller GIF.' : 'This animation still exceeds 500 KB after reducing quality and detail. Try a simpler image or a shorter selection.');
     } finally { reader.dispose?.(); renderer.dispose(); }
 }
 
 // The same engine can run on the main thread on iOS versions without OffscreenCanvas.
 export async function process(data) {
-    if (data.action === 'compose') return compose(data.composition, data.signal);
+    if (data.action === 'compose') return compose(data.composition, data.signal, data.onProgress);
     if (data.action === 'prepare') {
-        if (data.source.startsWith('data:image/gif;')) return prepare(data.source, data.signal);
+        if (data.source.startsWith('data:image/gif;')) return prepare(data.source, data.signal, data.onProgress);
         const reader = await openAnimation(data.source);
         const recipe = { width: reader.width, height: reader.height, edits: [] }, duration = reader.duration;
-        reader.dispose?.(); return editAnimation(data.source, 0, duration / 1000, recipe, false, data.signal);
+        reader.dispose?.(); return editAnimation(data.source, 0, duration / 1000, recipe, false, data.signal, data.onProgress);
     }
     if (data.action === 'inspect') return inspectAnimation(data.source);
-    if (data.action === 'stage') return editAnimation(data.source, data.start, data.end, data.composition, true, data.signal);
-    if (data.action === 'edit') return editAnimation(data.source, data.start, data.end, data.composition, false, data.signal);
+    if (data.action === 'stage') return editAnimation(data.source, data.start, data.end, data.composition, true, data.signal, data.onProgress);
+    if (data.action === 'edit') return editAnimation(data.source, data.start, data.end, data.composition, false, data.signal, data.onProgress);
     return trim(data.source, data.start, data.end, false, null, data.signal);
 }

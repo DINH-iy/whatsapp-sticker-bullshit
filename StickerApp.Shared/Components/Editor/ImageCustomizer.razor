@@ -6,6 +6,7 @@
     <div class="live-history-row" role="group" aria-label="@L["Edit history"]">
         <button class="button icon-button" type="button" @onclick='() => Run("undo")' disabled="@(working || tool != "")" aria-label="@L["Undo"]" title="@L["Undo"]"><Icon Name="undo" /></button>
         <button class="button icon-button" type="button" @onclick='() => Run("redo")' disabled="@(working || tool != "")" aria-label="@L["Redo"]" title="@L["Redo"]"><Icon Name="redo" /></button>
+        <button class="button artwork-maximize" type="button" @onclick='() => Run("maximize")' disabled="@(working || tool != "")" aria-label="@L["Fit artwork to maximum"]" title="@L["Fit artwork to maximum"]"><Icon Name="resize" /><span>@L["Fit artwork to maximum"]</span></button>
         <EditorViewControls />
         <EditorHelp Animated="Animated" />
         <EditorPopup Disabled="@(working || tool != "")">
@@ -91,6 +92,10 @@
                 <button class="button" @onclick='() => Transform("flip")' disabled="@working"><Icon Name="flip" /><span>@L["Flip"]</span></button>
                 break;
             case "layers":
+                @if(OnAddMeme.HasDelegate){
+                    <label>@L["Meme text position"]<select @bind="memePlacement" disabled="@working"><option value="top">@L["Above image"]</option><option value="bottom">@L["Below image"]</option><option value="both">@L["Above and below"]</option></select></label>
+                    <button class="button" type="button" @onclick="() => OnAddMeme.InvokeAsync(memePlacement)" disabled="@working">@L["Add white meme template"]</button>
+                }
                 @if(OnAddShape.HasDelegate){<button class="button" type="button" @onclick="OnAddShape" disabled="@working"><Icon Name="shapes" /><span>@L["Add shape"]</span></button>}
                 @if (OnMakeLayered.HasDelegate) { <button class="button" type="button" @onclick="OnMakeLayered" disabled="@working"><Icon Name="layers" /><span>@L["Make layered"]</span></button> }
                 break;
@@ -111,6 +116,7 @@
     [Parameter] public EventCallback OnReady { get; set; }
     [Parameter] public EventCallback OnAddText { get; set; }
     [Parameter] public EventCallback OnAddShape { get; set; }
+    [Parameter] public EventCallback<string> OnAddMeme { get; set; }
     [Parameter] public EventCallback OnMakeLayered { get; set; }
     [Parameter] public RenderFragment? Options { get; set; }
     [Parameter] public RenderFragment<PlaybackControlState>? Timeline { get; set; }
@@ -133,7 +139,7 @@
     private double previewStart = -1;
     private double? previewEnd;
     private string tool = "";
-    private string category = "cutout";
+    private string category = "cutout", memePlacement = "top";
     private EditorLayoutPreferences layout = new();
     private IJSObjectReference? layoutModule;
     private bool confirmToolCancel;

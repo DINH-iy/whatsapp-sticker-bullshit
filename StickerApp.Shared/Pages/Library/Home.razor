@@ -91,10 +91,21 @@
     }
 }
 
+<div class="settings-actions library-folder-tools">
+    <label>@L["Folder"]<select @bind="folderFilter"><option value="all">@L["All folders"]</option><option value="none">@L["Unfiled"]</option>@foreach (var folder in library.Folders.OrderBy(folder => folder.Name)) { <option value="@folder.Id">@folder.Name</option> }</select></label>
+    <input aria-label="@L["Folder name"]" placeholder="@L["Folder name"]" maxlength="128" @bind="folderName" />
+    <button class="button" @onclick="CreateFolder" disabled="@(busy || string.IsNullOrWhiteSpace(folderName))">@L["New folder"]</button>
+    @if (Guid.TryParse(folderFilter, out _)) {
+        <button class="button" @onclick="RenameFolder" disabled="@(busy || string.IsNullOrWhiteSpace(folderName))">@L["Rename folder"]</button>
+        <button class="button" @onclick="DeleteFolder" disabled="@busy">@L["Remove folder"]</button>
+        <small class="helper">@L["Removing a folder keeps its stickers in the library."]</small>
+    }
+</div>
 @{ var visibleImages = Visible; }
 <div class="toolbar browse-toolbar">
     <label class="browse-search">@L["Search"]<input type="search" class="search" aria-label="@L["Search images"]" placeholder="@L["Search images or tags"]" @bind="search" @bind:event="oninput" /></label>
     <div class="browse-actions">
+        <LibraryViewToggle PreferenceKey="library" OnChanged="value => listView = value" />
         <button class="button @(sort != "default" ? "browse-action-active" : "")" type="button" aria-label="@L["Sort images"]" aria-haspopup="dialog" @onclick='() => browsePanel = "sort"'>@L["Sort"]</button>
         <button class="button @(FilterCount > 0 ? "browse-action-active" : "")" type="button" aria-label="@L["Filter images"]" aria-haspopup="dialog" @onclick='() => browsePanel = "filters"'>@L["Filters"] @if (FilterCount > 0) { <small class="filter-count">@FilterCount</small> }</button>
         <button class="button icon-button selection-mode-toggle @(selectionMode ? "primary" : "")" type="button" @onclick="ToggleSelectionMode" aria-pressed="@selectionMode" disabled="@busy" title="@L[selectionMode ? "Done selecting" : "Select images"]" aria-label="@L[selectionMode ? "Done selecting" : "Select images"]"><Icon Name="@(selectionMode ? "close" : "select-all")" /></button>
@@ -182,6 +193,8 @@
         <button class="button icon-button danger" type="button" @onclick="RequestBulkRemoval" disabled="@(busy || selected.Count == 0)" title="@L["Delete selected"]" aria-label="@L["Delete selected"]"><Icon Name="trash" /></button>
         <ActionMenu Label="@L["More selection actions"]" IconName="more" IconOnly="true" Disabled="@(busy || selected.Count == 0)">
             <div class="selection-pack-fields" @onclick:stopPropagation>
+                <label>@L["Move to folder"]<select @bind="folderDestination"><option value="">@L["Unfiled"]</option>@foreach (var folder in library.Folders) { <option value="@folder.Id">@folder.Name</option> }</select></label>
+                <button class="button" @onclick="MoveSelectionToFolder" disabled="@busy">@L["Move to folder"]</button>
                 <label>@L["Copy to pack"]<select aria-label="@L["Destination pack"]" @bind="destination">
                     <option value="">@L["Choose pack"]</option>
                     @foreach (var pack in library.Packs) { <option value="@pack.Id">@pack.Name</option> }
@@ -203,7 +216,7 @@
 }
 else
 {
-    <div class="image-grid @(CurrentPack is not null ? "pack-stickers" : "")">
+    <div class="image-grid @(CurrentPack is not null ? "pack-stickers" : "") @(listView ? "library-list-view" : "")">
         @if (!selectionMode && CurrentPack is { } currentPack)
         {
             <ActionMenu Label="@L["Add sticker"]" TileStyle="true" Disabled="@busy">
@@ -273,6 +286,10 @@ else
                     <div class="sticker-processing-overlay" role="status" @onclick:stopPropagation>
                         <span class="feedback-spinner" aria-hidden="true"></span>
                         <strong>@L[Preparation.GetStatus(image)?.Working == true ? "Preparing sticker…" : "Queued for preparation…"]</strong>
+                        @if (Preparation.GetStatus(image)?.Progress is { } progress) {
+                            <progress max="100" value="@progress.Percent" aria-label="@L["Processing progress"]"></progress>
+                            <small>@progress.Percent% · @progress.Completed / @progress.Total @L["frames"] · @L["Attempt"] @progress.Attempt / @progress.Attempts</small>
+                        }
                         <small>@L["Ready to edit when processing finishes."]</small>
                         <div class="processing-actions">
                             <button class="button" type="button" @onclick="() => Run(() => Preparation.CancelAsync(image.Id))">@L["Stop processing"]</button>
@@ -297,7 +314,7 @@ else
 
 @if (showLayerEditor)
 {
-    <LayerEditorDialog StickerId="@compositionStickerId" PackId="@activePack" StartWithText="@compositionStartWithText" StartWithShape="@compositionStartWithShape" InitialSource="@compositionInitialSource" InitialName="@compositionInitialName" InitialNsfw="@compositionInitialNsfw" ReturnToEditor="@compositionFromEditor" Images="@library.Stickers" Previews="@previews"
+    <LayerEditorDialog StickerId="@compositionStickerId" PackId="@activePack" StartWithText="@compositionStartWithText" StartWithShape="@compositionStartWithShape" StartWithMeme="@compositionStartWithMeme" InitialSource="@compositionInitialSource" InitialName="@compositionInitialName" InitialNsfw="@compositionInitialNsfw" ReturnToEditor="@compositionFromEditor" Images="@library.Stickers" Previews="@previews"
                        OnCancel="CancelComposition" OnSaved="CompositionSaved" />
 }
 
@@ -313,7 +330,8 @@ else
             <h2 id="edit-title">@L[IsGif ? "Edit GIF" : editing.Animated || replacementAnimated ? "Edit animated image" : "Edit image"]</h2>
             <div class="editor-header-actions" hidden="@editorToolActive">
                 <button class="button icon-button" type="button" @onclick="CancelEditing" disabled="@((busy && !editorLoading && !openingLayers) || (customizing && !editorToolsLoading))" aria-label="@L["Cancel"]" title="@L["Cancel editing"]"><Icon Name="close" /></button>
-                @if (!EditorOpening) { <button class="button primary icon-button" type="button" @onclick="Save" disabled="@(busy || customizing)" aria-label="@L["Save"]" title="@L["Save sticker"]"><Icon Name="check" /></button> }
+                @if (!EditorOpening) { <button class="button primary icon-button" type="button" @onclick="Save" disabled="@(busy || customizing)" aria-label="@L["Replace current sticker"]" title="@L["Replace current sticker"]"><Icon Name="check" /></button> }
+                @if (!EditorOpening) { <button class="button icon-button" type="button" @onclick="SaveCopy" disabled="@(busy || customizing)" aria-label="@L["Save a copy"]" title="@L["Save a copy"]"><Icon Name="copy" /></button> }
             </div>
         </div>
         @if (EditorOpening)
@@ -326,7 +344,7 @@ else
         <div class="editor-dialog-body" hidden="@(EditorOpening || openingLayers)">
             @if (EditingStill || EditingAnimation)
             {
-                <ImageCustomizer @key="editSource" Source="@editSource" OnReady="EditorToolsReady" OnAddText="RequestAddText" OnAddShape="RequestAddShape" OnMakeLayered="MakeEditedLayered" Animated="@EditingAnimation" TrimStart="@trimStart" TrimEnd="@(gifDuration > 0 ? trimEnd : null)" OnEditsChanged="recipe => editRecipe = recipe" OnChanged="CustomizeImage" OnBusyChanged="value => customizing = value" OnToolActiveChanged="value => editorToolActive = value">
+                <ImageCustomizer @key="editSource" Source="@editSource" OnReady="EditorToolsReady" OnAddText="RequestAddText" OnAddShape="RequestAddShape" OnAddMeme="AddMemeHeader" OnMakeLayered="MakeEditedLayered" Animated="@EditingAnimation" TrimStart="@trimStart" TrimEnd="@(gifDuration > 0 ? trimEnd : null)" OnEditsChanged="recipe => editRecipe = recipe" OnChanged="CustomizeImage" OnBusyChanged="value => customizing = value" OnToolActiveChanged="value => editorToolActive = value">
                     <Timeline Context="playback">
                         @if (EditingAnimation && gifDuration > 0)
                         {
@@ -384,7 +402,7 @@ else
 }
 @if (openingLayers || savingEditor)
 {
-    <OperationProgressDialog Title="@(openingLayers ? "Opening layer editor…" : busyText)" Detail="@(openingLayers ? layerOpeningDetail : null)" CanCancel="@openingLayers" OnCancel="CancelLayerOpening" />
+    <OperationProgressDialog Title="@(openingLayers ? "Opening layer editor…" : busyText)" Detail="@(openingLayers ? layerOpeningDetail : animationProgress is { } p ? $"{p.Completed} / {p.Total} {L["frames"]} · {L["Attempt"]} {p.Attempt} / {p.Attempts}" : null)" Progress="@(savingEditor ? animationProgress?.Percent : null)" CanCancel="@openingLayers" OnCancel="CancelLayerOpening" />
 }
 
 

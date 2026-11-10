@@ -381,6 +381,36 @@ export function create(canvas, dotnet) {
             canvas.width = w; canvas.height = h; context.drawImage(output, 0, 0); snapshot = null; points = [];
             await notify();
         },
+        async maximize() {
+            stopPreview(); clearSelection(); await commitAdjustments();
+            const renderer = await createRasterRenderer(recipe());
+            let left = Infinity, top = Infinity, right = -1, bottom = -1;
+            try {
+                const scan = frame => {
+                    const {width, height} = frame, pixels = frame.getContext('2d').getImageData(0,0,width,height).data;
+                    for (let y=0;y<height;y++) for (let x=0;x<width;x++) if(pixels[(y*width+x)*4+3]) {
+                        left=Math.min(left,x);top=Math.min(top,y);right=Math.max(right,x);bottom=Math.max(bottom,y);
+                    }
+                };
+                if (animationReader) {
+                    let time=0;
+                    for(const delay of animationReader.frameDurations) {
+                        scan(renderer.render(animationReader.at(time)));time+=delay;
+                        await new Promise(resolve=>setTimeout(resolve,0));
+                        if(disposed) return;
+                    }
+                } else scan(canvas);
+            } finally { renderer.dispose(); }
+            if(right<left) throw new Error('The image is completely transparent.');
+            remember();
+            const crop={type:'crop',x:left,y:top,width:right-left+1,height:bottom-top+1};
+            const scale=512/Math.max(crop.width,crop.height);
+            const resize={type:'resize',width:Math.max(1,Math.round(crop.width*scale)),height:Math.max(1,Math.round(crop.height*scale))};
+            const replay=await createRasterRenderer({width:canvas.width,height:canvas.height,edits:[crop,resize]});
+            try { const frame=replay.render(canvas);canvas.width=frame.width;canvas.height=frame.height;context.drawImage(frame,0,0); }
+            finally { replay.dispose(); }
+            operations.push(crop,resize);syncPreview();await notify();
+        },
         async transform(action, width, height) {
             if (resizer.active) await controller.resizeAdjustment();
             stopPreview(); clearSelection();

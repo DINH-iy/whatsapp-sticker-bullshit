@@ -6,13 +6,15 @@
     <summary class="button icon-button" aria-label="@L.Format("App processing · {0} active", jobs.Length)" title="@L["App processing"]"><Icon Name="processing" /></summary>
     <div class="processing-menu-content" role="status">
         <strong>@L["App processing"]</strong>
-        @foreach (var job in jobs) { <p @key="job.Id"><span class="feedback-spinner" aria-hidden="true"></span> @L[job.Name]</p> }
+        @foreach (var job in jobs) { <p @key="job.Id"><span class="feedback-spinner" aria-hidden="true"></span> @L[job.Name]
+            @if (job.Percent is { } percent) { <span>@percent% · @job.Completed / @job.Total @L["frames"] · @L["Attempt"] @job.Attempt / @job.Attempts</span><progress max="100" value="@percent" aria-label="@L["Processing progress"]"></progress> }
+        </p> }
         <p class="helper">@L["Processing stops when you leave the app. Interrupted edits can be retried when you return."]</p>
     </div>
 </details>
 }
 @code {
-    public sealed class Job { public int Id { get; set; } public string Name { get; set; } = ""; }
+    public sealed class Job { public int Id { get; set; } public string Name { get; set; } = ""; public int? Percent { get; set; } public int Completed { get; set; } public int Total { get; set; } public int Attempt { get; set; } public int Attempts { get; set; } }
     private Job[] jobs = [];
     private IJSObjectReference? module, subscription;
     private DotNetObjectReference<ProcessingMenu>? reference;

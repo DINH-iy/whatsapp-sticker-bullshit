@@ -13,6 +13,8 @@ public partial class LayerEditorDialog
     [Parameter] public Guid? PackId { get; set; }
     [Parameter] public bool StartWithText { get; set; }
     [Parameter] public bool StartWithShape { get; set; }
+    [Parameter] public string? StartWithMeme { get; set; }
+    private string memePlacement = "top";
     private bool IsPreparing(Sticker image) => StickerApp.Shared.Services.StickerPreparationService.NeedsPreparation(image) && Preparation.GetStatus(image) is not { Error: not null } and not { Cancelled: true };
     private IDisposable? preparationLease;
     private bool showShapes;
@@ -39,6 +41,13 @@ public partial class LayerEditorDialog
     private bool working = true, loading = true, keepRatio = true, showOperationProgress;
     private string name = "Layered sticker", libraryImageId = "", progress = "Opening layer editor…";
     private string? error, operationDetail;
+    private int? operationPercent;
+    [JSInvokable] public Task AnimationProgress(StickerApp.Shared.Services.StickerPreparationService.Progress value) => InvokeAsync(() => {
+        if (IsDisposed) return;
+        operationPercent = value.Percent;
+        operationDetail = $"{value.Completed} / {value.Total} {L["frames"]} · {L["Attempt"]} {value.Attempt} / {value.Attempts}";
+        StateHasChanged();
+    });
     private string quickPanel = "";
     private string layerCategory = "adjust";
     private EditorLayoutPreferences layout = new();
@@ -116,6 +125,7 @@ public partial class LayerEditorDialog
                     if (IsDisposed) return;
                 }
             }
+            if (StartWithMeme is not null) state = await controller.InvokeAsync<LayerEditorState>("addMemeHeader", StartWithMeme);
             showShapes=StartWithShape;
             if (StartWithText)
             {
@@ -193,6 +203,7 @@ public partial class LayerEditorDialog
         state=await controller!.InvokeAsync<LayerEditorState>("add",title,source,300);
         showShapes=false;quickPanel="";layerCategory="adjust";
     });
+    private Task AddMemeHeader() => Run("Adding meme header…", async () => { showAddMenu = false; quickPanel = ""; await FlushText(); state = await controller!.InvokeAsync<LayerEditorState>("addMemeHeader", memePlacement); layerCategory = "text"; });
     private Task AddText() => Run("Adding text…", async () => { showAddMenu = false; await FlushText(); state = await controller!.InvokeAsync<LayerEditorState>("addText"); quickPanel = ""; layerCategory = "text"; });
     private TextLayerOptions? queuedText;
     private async Task UpdateText(TextLayerOptions text)
@@ -293,19 +304,23 @@ public partial class LayerEditorDialog
             state = await controller!.InvokeAsync<LayerEditorState>("add", Path.GetFileNameWithoutExtension(file.Name), source);
         }
     }, showProgress: true);
-    private Task Save() => Run("Rendering sticker and saving layers…", async () =>
+    private Task Save() => SaveLayered(false);
+    private Task SaveCopy() => SaveLayered(true);
+    private Task SaveLayered(bool copy) => Run("Rendering sticker and saving layers…", async () =>
     {
         await FlushText();
-        var export = await controller!.InvokeAsync<LayerExport>("export", TimeSpan.FromMinutes(4));
+        var export = await controller!.InvokeAsync<LayerExport>("export", TimeSpan.FromMinutes(4), reference);
         if (!export.Png.StartsWith("data:image/png;base64,", StringComparison.Ordinal) && !export.Png.StartsWith("data:image/webp;base64,", StringComparison.Ordinal)) throw new InvalidDataException("Could not export this sticker.");
         var bytes = Convert.FromBase64String(export.Png[(export.Png.IndexOf(',') + 1)..]);
-        var id = await Store.SaveCompositionAsync(StickerId, name, bytes, export.Document, PackId, nsfw);
+        var id = await Store.SaveCompositionAsync(copy ? null : StickerId, name, bytes, export.Document, PackId, nsfw);
+        if (copy && Images.FirstOrDefault(image => image.Id == StickerId) is { } original)
+            await Store.MoveToFolderAsync([id], original.FolderId);
         await OnSaved.InvokeAsync(id);
     }, showProgress: true);
     private Task Run(string message, Func<Task> action, bool showProgress = false) => RunInteropAsync(async () =>
     {
         if (working || controller is null) return;
-        working = true; loading = showOperationProgress = showProgress; error = null; progress = message;
+        working = true; loading = showOperationProgress = showProgress; error = null; progress = message; operationPercent = null;
         operationDetail = message == "Rendering sticker and saving layers…"
             ? "Rendering the finished artwork and saving its editable layers."
             : "Preparing the layer artwork and its preview.";

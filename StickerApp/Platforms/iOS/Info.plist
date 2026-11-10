@@ -10,6 +10,22 @@
         </dict></array></dict>
     </dict>
     <key>CFBundleURLTypes</key><array><dict><key>CFBundleURLName</key><string>Stik-er-in invitations</string><key>CFBundleURLSchemes</key><array><string>stikerin</string></array></dict></array>
+    <key>LSSupportsOpeningDocumentsInPlace</key><true/>
+    <key>CFBundleDocumentTypes</key><array><dict>
+        <key>CFBundleTypeName</key><string>WhatsApp Sticker Pack</string>
+        <key>CFBundleTypeRole</key><string>Viewer</string>
+        <key>LSHandlerRank</key><string>Alternate</string>
+        <key>LSItemContentTypes</key><array><string>com.stickerstudio.wastickers</string><string>public.zip-archive</string></array>
+    </dict></array>
+    <key>UTImportedTypeDeclarations</key><array><dict>
+        <key>UTTypeIdentifier</key><string>com.stickerstudio.wastickers</string>
+        <key>UTTypeDescription</key><string>WhatsApp Sticker Pack</string>
+        <key>UTTypeConformsTo</key><array><string>public.data</string><string>public.archive</string></array>
+        <key>UTTypeTagSpecification</key><dict>
+            <key>public.filename-extension</key><array><string>wastickers</string><string>wasticker</string><string>wassticker</string></array>
+            <key>public.mime-type</key><array><string>application/x-wastickers</string><string>application/vnd.wastickers</string></array>
+        </dict>
+    </dict></array>
     <key>LSRequiresIPhoneOS</key>
     <true/>
     <key>UIDeviceFamily</key>

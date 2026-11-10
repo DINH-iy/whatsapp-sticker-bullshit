@@ -12,9 +12,14 @@
         <AppDisclosure Class="layer-add-menu" @bind-Open="showAddMenu" SummaryClass="button" Label="@L["Add layer"]" Popup="true"><Header><Icon Name="plus" /></Header><ChildContent>
     <div class="layer-add-options">
         <button class="button" type="button" @onclick="AddText" disabled="@(working || state.Layers.Count >= 10)"><Icon Name="text" />@L["Add text"]</button>
+        <label>@L["Meme text position"]<select @bind="memePlacement" disabled="@working"><option value="top">@L["Above image"]</option><option value="bottom">@L["Below image"]</option><option value="both">@L["Above and below"]</option></select></label>
+        <button class="button" type="button" @onclick="AddMemeHeader" disabled="@(working || state.Layers.Count > (memePlacement == "both" ? 6 : 8))">@L["Add white meme template"]</button>
         <button class="button" type="button" @onclick="OpenShapes" disabled="@(working || layerEditSource is not null || state.Layers.Count>=10)"><Icon Name="shapes" />@L["Add shape"]</button>
         <label class="button file-button"><Icon Name="plus" /> @L["Add images"]
             <InputFile OnChange="AddFiles" accept="image/png,image/jpeg,image/webp,image/gif" multiple disabled="@(working || layerEditSource is not null || state.Layers.Count >= 10)" aria-label="@L["Add layer images from device"]" />
+        </label>
+        <label class="button file-button"><Icon Name="image" /> @L["Load meme template"]
+            <InputFile OnChange="AddFiles" accept="image/png,image/jpeg,image/webp,image/gif" disabled="@(working || layerEditSource is not null || state.Layers.Count >= 10)" aria-label="@L["Load meme template"]" />
         </label>
         <select aria-label="@L["Choose a library image for a layer"]" @bind="libraryImageId" disabled="@(working || layerEditSource is not null)">
             <option value="">@L["Choose from library…"]</option>
@@ -183,8 +188,9 @@
     </div>
     <div class="dialog-actions layer-footer" hidden="@(quickPanel != "" || layerEditSource is not null)">
         <div class="layer-save-actions">
+            @if (StickerId is not null) { <button class="button" type="button" @onclick="SaveCopy" disabled="@(working || layerEditSource is not null || state.Layers.Count == 0 || string.IsNullOrWhiteSpace(name))">@L["Save a copy"]</button> }
             <button class="button" type="button" @onclick="Cancel" disabled="@working" title="@L[ReturnToEditor ? "Discard layers and return to the previous editor" : "Cancel"]">@L[ReturnToEditor ? "Back to editor" : "Cancel"]</button>
-            <button class="button primary" type="button" @onclick="Save" disabled="@(working || layerEditSource is not null || state.Layers.Count == 0 || string.IsNullOrWhiteSpace(name))">@L["Save sticker"]</button>
+            <button class="button primary" type="button" @onclick="Save" disabled="@(working || layerEditSource is not null || state.Layers.Count == 0 || string.IsNullOrWhiteSpace(name))">@L[StickerId is null ? "Save sticker" : "Replace current sticker"]</button>
         </div>
     </div>
     @if (confirmQuickToolCancel)
@@ -195,5 +201,5 @@
 
 @if (showOperationProgress)
 {
-    <OperationProgressDialog Title="@progress" Detail="@operationDetail" CanCancel="false" />
+    <OperationProgressDialog Title="@progress" Detail="@operationDetail" Progress="@operationPercent" CanCancel="false" />
 }

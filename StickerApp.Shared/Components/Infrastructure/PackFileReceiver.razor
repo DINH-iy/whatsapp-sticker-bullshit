@@ -1,0 +1,35 @@
+@implements IDisposable
+@inject LibraryStore Store
+@inject NavigationManager Navigation
+@if (pending is not null || error is not null)
+{
+    <div class="status-info" role="status">
+        @if (error is not null) { <p class="error">@L.Error(error)</p><button class="button" @onclick="() => { error = null; PackFileInbox.ClearError(); }">@L["Dismiss"]</button> }
+        @if (pending is not null) {
+            <p>@L["A sticker pack is ready to import. Save any current edit before importing."]</p>
+            <div class="settings-actions"><button class="button" @onclick="Import" disabled="@working">@L[working ? "Importing pack…" : "Import pack"]</button><button class="button" @onclick="Discard" disabled="@working">@L["Discard"]</button></div>
+        }
+    </div>
+}
+@code {
+    private string? pending, error;
+    private bool working;
+    protected override void OnInitialized() { PackFileInbox.Changed += Refresh; Refresh(); }
+    private void Refresh() => _ = InvokeAsync(() => { pending = PackFileInbox.Peek(); error = PackFileInbox.Error; StateHasChanged(); });
+    private void Discard() { if (pending is { } path) PackFileInbox.Remove(path); error = null; }
+    private async Task Import()
+    {
+        if (working || pending is null) return;
+        working = true; error = null;
+        try {
+            var path = pending;
+            await using var stream = File.OpenRead(path);
+            var id = await Store.ImportPackAsync(stream);
+            PackFileInbox.Remove(path);
+            Navigation.NavigateTo($"packs/{id}");
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or InvalidOperationException or UnauthorizedAccessException or System.Text.Json.JsonException) { error = ex.Message; }
+        finally { working = false; }
+    }
+    public void Dispose() => PackFileInbox.Changed -= Refresh;
+}

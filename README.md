@@ -38,6 +38,8 @@ dotnet run --project tools/FriendsChecks
 dotnet build StickerApp.Web/StickerApp.Web.csproj
 ```
 
+For end-to-end UI coverage and Android file-opening smoke tests, see [the E2E suite](tools/E2E/README.md).
+
 See [the tools guide](tools/README.md) for individual suites and [browser checks](tools/EditorChecks/README.md) for real media conversion, rendering and worker cancellation checks.
 The Node suite's ZIP fixtures use the media-tool dependencies installed below.
 

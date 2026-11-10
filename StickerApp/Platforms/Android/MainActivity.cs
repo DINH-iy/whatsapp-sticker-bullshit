@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 namespace StickerApp;
 
 [IntentFilter(new[] { Intent.ActionView }, Categories = new[] { Intent.CategoryDefault, Intent.CategoryBrowsable }, DataScheme = "stikerin", DataHost = "join")]
+[IntentFilter(new[] { Intent.ActionView }, Categories = new[] { Intent.CategoryDefault, Intent.CategoryBrowsable }, DataSchemes = new[] { "content", "file" }, DataMimeTypes = new[] { "application/zip", "application/x-zip-compressed", "application/octet-stream", "application/x-wastickers", "application/vnd.wastickers", "application/x-wasticker", "application/x-wassticker" })]
+[IntentFilter(new[] { Intent.ActionView }, Categories = new[] { Intent.CategoryDefault, Intent.CategoryBrowsable }, DataSchemes = new[] { "content", "file" }, DataHost = "*", DataPathPatterns = new[] { ".*\\.wastickers", ".*\\.wasticker", ".*\\.wassticker" }, DataMimeType = "*/*")]
 [Activity(Exported = true, LaunchMode = LaunchMode.SingleTop, Theme = "@style/Maui.MainTheme.NoActionBar", MainLauncher = true, ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation | ConfigChanges.UiMode | ConfigChanges.ScreenLayout | ConfigChanges.SmallestScreenSize | ConfigChanges.Density)]
 public class MainActivity : MauiAppCompatActivity
 {
@@ -21,6 +23,7 @@ public class MainActivity : MauiAppCompatActivity
         current = this;
         base.OnCreate(savedInstanceState);
         StickerApp.Core.GroupInviteInbox.Receive(Intent?.DataString);
+        ReceivePack(Intent);
         // Native system bars use the neutral app background rather than MAUI's default purple.
         if (Window is { } window &&
             AndroidX.Core.View.WindowCompat.GetInsetsController(window, window.DecorView) is { } controller)
@@ -31,6 +34,20 @@ public class MainActivity : MauiAppCompatActivity
     {
         base.OnNewIntent(intent);
         StickerApp.Core.GroupInviteInbox.Receive(intent?.DataString);
+        ReceivePack(intent);
+    }
+
+    private async void ReceivePack(Intent? intent)
+    {
+        if (intent?.Action != Intent.ActionView || intent.Data is not { } uri || uri.Scheme is not ("content" or "file")) return;
+        try
+        {
+            using var stream = ContentResolver?.OpenInputStream(uri)
+                ?? throw new IOException("Could not open this pack file.");
+            await StickerApp.Core.PackFileInbox.ReceiveAsync(stream);
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or Java.Lang.SecurityException or Java.IO.IOException or InvalidOperationException)
+        { StickerApp.Core.PackFileInbox.ReportError(ex.Message); }
     }
 
     internal static Task<bool> AddStickerPackAsync(string identifier, string authority, string name)

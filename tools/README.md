@@ -4,6 +4,7 @@ Run these commands from the repository root. Checks use generated fixtures and t
 
 | Folder | Purpose | Command |
 | --- | --- | --- |
+| `E2E/` | Full app UI flows at desktop/mobile sizes, plus opt-in Android file-opening smoke test | `npm test --prefix tools/E2E` ([setup](E2E/README.md)) |
 | `EditorChecks/node/` | Video timing/budgets, workers, cancellation, deduplication and editor preferences | `node tools/check.mjs` |
 | `EditorChecks/browser/` | Actual browser rendering, media conversion and worker lifecycle checks | See [browser checks](EditorChecks/README.md) |
 | `FeatureChecks/` | Shared UI, import, lifecycle, diagnostics and library regressions | `dotnet run --project tools/FeatureChecks` |

@@ -11,7 +11,7 @@
     <div class="header-actions">
         <label class="button file-button" title="@L["Open a .wastickers pack or an editable ZIP backup"]">
             <Icon Name="folder-import" /> @L["Import pack"]
-            <InputFile OnChange="ImportPack" accept=".zip,.wastickers" disabled="@busy" aria-label="@L["Import pack file"]" />
+            <InputFile OnChange="ImportPack" accept="*/*" disabled="@busy" aria-label="@L["Import pack file"]" />
         </label>
     </div>
 </header>
@@ -32,6 +32,7 @@
 <div class="toolbar browse-toolbar">
     <label class="browse-search">@L["Search"]<input type="search" class="search" aria-label="@L["Search packs"]" placeholder="@L["Search packs or publishers"]" @bind="search" @bind:event="oninput" /></label>
     <div class="browse-actions">
+        <LibraryViewToggle PreferenceKey="packs" OnChanged="value => listView = value" />
         <button class="button @(sort != "default" ? "browse-action-active" : "")" type="button" aria-label="@L["Sort packs"]" aria-haspopup="dialog" @onclick='() => browsePanel = "sort"'>@L["Sort"]</button>
         <button class="button @(FilterCount > 0 ? "browse-action-active" : "")" type="button" aria-label="@L["Filter packs"]" aria-haspopup="dialog" @onclick='() => browsePanel = "filters"'>Filters @if (FilterCount > 0) { <small class="filter-count">@FilterCount</small> }</button>
     </div>
@@ -70,7 +71,7 @@
 <p class="helper browse-result" role="status">@L.Format("Showing {0} of {1} packs", visiblePacks.Count, library.Packs.Count)</p>
 @if (visiblePacks.Count > 0 || library.Packs.Count == 0)
 {
-<div class="image-grid pack-grid">
+<div class="image-grid pack-grid @(listView ? "library-list-view" : "")">
     <AddTile Title="@L["New pack"]" Hint="@L["Start a sticker collection"]" Disabled="@(busy || library.Packs.Count >= 10)" OnClick="() => showCreate = true" />
     @foreach (var pack in visiblePacks)
     {

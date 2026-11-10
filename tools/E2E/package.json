@@ -1,0 +1,17 @@
+{
+  "name": "stikerin-e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:android": "node android-open-pack.mjs",
+    "report": "playwright show-report",
+    "install:browsers": "playwright install chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.0",
+    "fflate": "0.8.3",
+    "gifenc": "1.0.3"
+  }
+}

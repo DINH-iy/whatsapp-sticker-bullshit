@@ -23,11 +23,12 @@ public static class MauiProgram
         {
             var handled = false;
             if (contexts is not null)
-                foreach (var context in contexts) handled |= GroupInviteInbox.Receive(context.Url.AbsoluteString);
+                foreach (var context in contexts) handled |= PackFileOpen.Receive(context.Url) || GroupInviteInbox.Receive(context.Url.AbsoluteString);
             return handled;
         })));
 #endif
 
+        PackFileInbox.Folder = Path.Combine(FileSystem.AppDataDirectory, "PackInbox");
         var diagnostics = new AppLog(Path.Combine(FileSystem.AppDataDirectory, "logs"));
         builder.Services.AddSingleton(diagnostics);
         builder.Logging.AddProvider(new AppLogProvider(diagnostics));

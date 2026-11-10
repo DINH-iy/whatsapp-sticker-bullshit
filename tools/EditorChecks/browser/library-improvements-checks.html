@@ -1,0 +1,57 @@
+<!doctype html><meta charset="utf-8"><title>Library improvements checks</title><pre id="result">Running…</pre>
+<script type="module">
+const output=document.querySelector('#result');
+const assert=(condition,message)=>{if(!condition)throw new Error(message);};
+const base='/_content/StickerApp.Shared/js/media/';
+try {
+    const {create}=await import(base+'image/image-customizer.js');
+    const {create: createLayers}=await import(base+'layers/layer-editor.js');
+    const {createRasterRenderer}=await import(base+'effects/raster-edits.js');
+    const {openAnimation}=await import(base+'animation/animation-reader.js');
+    const {encode,animation,dataUrl}=await import(base+'conversion/sticker-converter.js');
+    const {createSession}=await import(base+'animation/gif-editor.js');
+    const make=(width,height)=>{const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;return canvas;};
+    const root=document.createElement('div');root.className='image-customizer';const canvas=make(32,32);root.append(canvas);document.body.append(root);
+    let recipe;
+    const controller=create(canvas,{invokeMethodAsync:async(method,...args)=>{if(method==='ImageChanged')recipe=args[3];}});
+    const source=make(32,32),ctx=source.getContext('2d');ctx.fillStyle='red';ctx.fillRect(4,8,8,4);
+    await controller.open(source.toDataURL());await controller.maximize();
+    assert(canvas.width===512&&canvas.height===256,'still artwork expands after removing transparent bounds');
+    await controller.undo();assert(canvas.width===32,'maximize can be undone');await controller.redo();assert(canvas.width===512,'maximize can be redone');
+    ctx.clearRect(0,0,32,32);
+    await controller.open(source.toDataURL());
+    let transparentRejected=false;try{await controller.maximize();}catch{transparentRejected=true;}
+    assert(transparentRejected,'transparent artwork gives a useful error');
+    const frames=[];
+    for(const x of [4,24]){ctx.clearRect(0,0,32,32);ctx.fillStyle='red';ctx.fillRect(x,8,4,8);frames.push({bytes:await encode(source,.9),duration:100});}
+    const animated=dataUrl(animation(frames,32,32));await controller.open(animated,512,512,true);await controller.maximize();
+    assert(recipe.edits.at(-2).x===4&&recipe.edits.at(-2).width===24,'animation uses bounds across every frame');
+    const reader=await openAnimation(animated),renderer=await createRasterRenderer(recipe);
+    for(const time of [0,100]){const frame=renderer.render(reader.at(time));assert(frame.width===512&&frame.height===171,'animated replay uses the same fixed crop and scale');assert(frame.getContext('2d').getImageData(0,0,frame.width,frame.height).data.some((v,i)=>i%4===3&&v>0),'moving artwork remains visible');}
+    renderer.dispose();reader.dispose?.();controller.dispose();root.remove();
+    for(const placement of ['top','bottom','both']){
+        const host=document.createElement('dialog');host.className='layer-editor-dialog live-layer-editor';const canvas=make(512,512);host.append(canvas);document.body.append(host);host.showModal();
+        const layers=createLayers(canvas,{invokeMethodAsync:async()=>{}});await layers.open(null);await layers.add('Artwork',animated,512);
+        const state=await layers.addMemeHeader(placement),exported=await layers.export();
+        const captions=exported.document.layers.filter(layer=>layer.text);
+        assert(captions.length===(placement==='both'?2:1),'caption count matches '+placement);
+        assert(exported.document.layers.length===(placement==='both'?5:3),'header and caption are separate editable layers');
+        assert(captions.every(layer=>layer.y===64||layer.y===448),'captions remain in the white bars');
+        assert(exported.document.layers[0].gifSource,'meme template preserves the original animation');
+        await layers.action('undo');assert((await layers.export()).document.layers.length===1,'meme template is one undo step');
+        layers.dispose();host.remove();
+    }
+    const noise=make(512,512),noiseContext=noise.getContext('2d'),noisyFrames=[];let seed=12345;
+    for(let i=0;i<12;i++){
+        const pixels=noiseContext.createImageData(512,512);
+        for(let p=0;p<pixels.data.length;p+=4){for(let c=0;c<3;c++){seed=(Math.imul(seed,1664525)+1013904223)|0;pixels.data[p+c]=seed>>>24;}pixels.data[p+3]=255;}
+        noiseContext.putImageData(pixels,0,0);noisyFrames.push({bytes:await encode(noise,.9),duration:80});
+    }
+    const input=dataUrl(animation(noisyFrames)),session=createSession();let attempts=0,progress=0;
+    const converted=await session.edit(input,0,.96,{width:512,height:512,edits:[]},{invokeMethodAsync:async(method,value)=>{attempts=Math.max(attempts,value.attempt);progress=value.percent;}});
+    const compressed=await openAnimation(converted);
+    assert(compressed.duration===960,'compression preserves the full duration');assert(atob(converted.split(',')[1]).length<=500*1024,'compressed output fits WhatsApp budget');
+    assert(attempts>4&&progress===100,'detail reduction is used and real progress reaches completion');compressed.dispose?.();session.release();
+    output.textContent='PASS maximize still/animation bounds, transparent rejection, undo/redo, top/bottom/both editable animated memes, adaptive compression, duration and real progress';
+}catch(error){output.textContent='FAIL '+error.stack;console.error(error);}
+</script>

@@ -186,6 +186,8 @@
 /* Keep utility controls together; collapse labels before sacrificing a row. */
 .live-editor .live-history-row { container: editor-history / inline-size; flex-wrap: nowrap; min-width: 0; }
 @container editor-history (max-width: 420px) {
+    .live-editor .live-history-row > .artwork-maximize { width: 34px; min-width: 34px; flex: 0 0 34px; padding: 6px; }
+    .live-history-row > .artwork-maximize > span { display: none; }
     .live-editor .live-history-row > .editor-popup-trigger:not(.icon-button) { width: 34px; min-width: 34px; flex: 0 0 34px; padding: 6px; }
     .live-history-row > .editor-popup-trigger > span { display: none; }
 }

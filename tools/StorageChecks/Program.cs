@@ -23,6 +23,23 @@ var checks = 0;
 
 try
 {
+    await Check("folders persist, move selections, reject stale destinations and retain stickers on removal", async store =>
+    {
+        var id = await store.ImportAsync("folder fixture", png);
+        var folderId = await store.CreateFolderAsync("Templates");
+        await store.MoveToFolderAsync([id], folderId);
+        await store.RenameFolderAsync(folderId, "Memes");
+        var reopened = new LibraryStore(store.Root);
+        var saved = await reopened.ReadAsync();
+        Require(saved.Folders.Single().Name == "Memes" && saved.Stickers.Single().FolderId == folderId, "Folder or membership did not persist");
+        await Throws(() => store.MoveToFolderAsync([id], Guid.NewGuid()));
+        Require((await store.ReadAsync()).Stickers.Single().FolderId == folderId, "Rejected move changed the folder");
+        await store.DeleteFolderAsync(folderId);
+        saved = await store.ReadAsync();
+        Require(saved.Folders.Count == 0 && saved.Stickers.Single().FolderId is null, "Removing a folder must retain its sticker");
+        Require(File.Exists(store.MediaPath(saved.Stickers.Single().FileName)), "Removing a folder deleted artwork");
+    });
+
     await Check("duplicates merge pack membership, order, favorites and tags", async store =>
     {
         var firstId = await store.ImportAsync("First.png", png);
@@ -314,6 +331,51 @@ try
         try { await store.SaveCompositionAsync(id, "Invalid still animation", animated, composition); }
         catch (InvalidDataException) { rejected = true; }
         Require(rejected, "A still WebP was accepted as an animation source");
+    });
+
+    await Check("saving a template copy keeps independent artwork and editable sources", async store =>
+    {
+        var document = new LayerComposition { Layers = [new CompositionLayer {
+            Id = "template", Name = "Template", Source = "data:image/png;base64," + Convert.ToBase64String(png)
+        }] };
+        var original = await store.SaveCompositionAsync(null, "Template", webp, document);
+        var copy = await store.SaveCompositionAsync(null, "Template copy", webp, document);
+        var library = await store.ReadAsync();
+        var template = library.Stickers.Single(image => image.Id == original);
+        var duplicate = library.Stickers.Single(image => image.Id == copy);
+        var before = await File.ReadAllBytesAsync(store.MediaPath(template.CompositionFileName!));
+        Require(original != copy && template.FileName != duplicate.FileName && template.CompositionFileName != duplicate.CompositionFileName, "A copy must own independent files");
+        document.Layers[0].Name = "Edited copy";
+        await store.SaveCompositionAsync(copy, "Edited copy", webp, document);
+        Require((await File.ReadAllBytesAsync(store.MediaPath(template.CompositionFileName!))).SequenceEqual(before), "Editing the copy changed its template");
+        Require((await store.ReadCompositionAsync(original))!.Layers[0].Name == "Template", "Template source was changed");
+    });
+
+    await Check("incoming pack files stage durably and import through archive validation", async store =>
+    {
+        var previousFolder = PackFileInbox.Folder;
+        PackFileInbox.Folder = Path.Combine(store.Root, "incoming");
+        try
+        {
+            var image = await store.ImportAsync("Pack image", png);
+            await store.CreatePackWithStickerAsync("Incoming pack", image);
+            var pack = (await store.ReadAsync()).Packs.Single();
+            using var archive = new MemoryStream(); await store.ExportPackAsync(pack.Id, archive);
+            archive.Position = 0; await PackFileInbox.ReceiveAsync(archive);
+            var staged = PackFileInbox.Peek();
+            Require(staged is not null && File.Exists(staged), "Incoming file was not persisted");
+            await using (var input = File.OpenRead(staged!)) await store.ImportPackAsync(input);
+            PackFileInbox.Remove(staged!);
+            Require(PackFileInbox.Peek() is null && (await store.ReadAsync()).Packs.Count == 2, "Incoming pack did not import or clear");
+            using var invalid = new MemoryStream(new byte[] { 1, 2, 3 }); await PackFileInbox.ReceiveAsync(invalid);
+            var rejected = false;
+            await using (var input = File.OpenRead(PackFileInbox.Peek()!)) {
+                try { await store.ImportPackAsync(input); } catch (InvalidDataException) { rejected = true; }
+            }
+            Require(rejected, "Invalid incoming archive was accepted");
+            Require((await store.ReadAsync()).Packs.Count == 2, "Invalid incoming archive changed the library");
+        }
+        finally { PackFileInbox.Folder = previousFolder; }
     });
 
     await Check("custom fonts persist, deduplicate, count toward storage, and survive cleanup", async store =>
