@@ -22,6 +22,10 @@
         {
             <SpoilerPreview EyeBeside="true" IsSpoiler="@(CurrentPack is { } coverPack && library.IsNsfw(coverPack))" Name="@(CurrentPack?.Name ?? "Pack cover")"><StillPackCover Class="pack-title-cover spoiler-artwork" Source="@cover" Alt="@L["Pack cover"]" /></SpoilerPreview>
         }
+        else if (CurrentPack is not null && PackImages.FirstOrDefault() is { } firstCover)
+        {
+            <SpoilerPreview EyeBeside="true" IsSpoiler="@library.IsNsfw(CurrentPack)" Name="@CurrentPack.Name"><LibraryThumbnail @key="firstCover.FileName" Image="firstCover" Class="pack-title-cover spoiler-artwork" Alt="@L["Pack cover"]" /></SpoilerPreview>
+        }
         else if (CurrentPack is not null)
         {
             <span class="pack-title-cover pack-title-placeholder"><Icon Name="image" /></span>
@@ -216,7 +220,8 @@
 }
 else
 {
-    <div class="image-grid @(CurrentPack is not null ? "pack-stickers" : "") @(listView ? "library-list-view" : "")">
+    <StickerGrid Images="visibleImages" ListView="listView" Class="@(CurrentPack is not null ? "pack-stickers" : "")" Ready="@(!visibleImages.Any(StickerApp.Shared.Services.StickerPreparationService.NeedsPreparation))">
+        <FirstTile>
         @if (!selectionMode && CurrentPack is { } currentPack)
         {
             <ActionMenu Label="@L["Add sticker"]" TileStyle="true" Disabled="@busy">
@@ -224,8 +229,9 @@ else
                 <ChildContent>@StickerImportChoices</ChildContent>
             </ActionMenu>
         }
-        @foreach (var image in visibleImages)
-        {
+        </FirstTile>
+        <ChildContent Context="image">
+        @{
             var processing = IsPreparing(image);
             var failure = Preparation.GetStatus(image)?.Error;
             <article class="image-card @(processing ? "image-card-processing" : "") @(failure is not null ? "image-card-failed" : "") @(selectionMode ? "image-card-selecting" : "") @(selected.Contains(image.Id) ? "image-card-selected" : "")" @key="image.Id" @onclick="() => ActivateImage(image)" aria-busy="@(processing && !selectionMode ? "true" : "false")">
@@ -240,7 +246,7 @@ else
                 @if (failure is not null) { <button type="button" class="sticker-failure-badge" @onclick:stopPropagation @onclick="() => infoImageId = image.Id" aria-label="@L["Sticker needs attention. View problem and fixes."]">!</button> }
                 <SpoilerPreview IsSpoiler="@library.IsNsfw(image)" Name="@image.Name">
                 <button class="image-preview" @onclick:stopPropagation aria-label="@L.Format("Edit {0}", image.Name)" @onclick="() => ActivateImage(image)">
-                    <img class="spoiler-artwork" src="@previews[image.Id]" alt="@image.Name" loading="lazy" />
+                    <LibraryThumbnail @key="image.FileName" Image="image" Class="spoiler-artwork" Alt="@image.Name" />
                 </button>
                 </SpoilerPreview>
                 <strong>@image.Name</strong>
@@ -285,9 +291,9 @@ else
                 {
                     <div class="sticker-processing-overlay" role="status" @onclick:stopPropagation>
                         <span class="feedback-spinner" aria-hidden="true"></span>
-                        <strong>@L[Preparation.GetStatus(image)?.Working == true ? "Preparing sticker…" : "Queued for preparation…"]</strong>
+                        <strong>@L[Preparation.GetStatus(image)?.Working == true ? Preparation.GetStatus(image)?.Progress?.Stage == "sampling" ? "Finding compression settings…" : "Preparing sticker…" : "Queued for preparation…"]</strong>
                         @if (Preparation.GetStatus(image)?.Progress is { } progress) {
-                            <progress max="100" value="@progress.Percent" aria-label="@L["Processing progress"]"></progress>
+                            <progress max="100" value="@progress.Percent" data-stage="@progress.Stage" data-encoded-frames="@progress.EncodedFrames" data-skipped-attempts="@progress.SkippedAttempts" aria-label="@L["Processing progress"]"></progress>
                             <small>@progress.Percent% · @progress.Completed / @progress.Total @L["frames"] · @L["Attempt"] @progress.Attempt / @progress.Attempts</small>
                         }
                         <small>@L["Ready to edit when processing finishes."]</small>
@@ -299,7 +305,8 @@ else
                 }
             </article>
         }
-    </div>
+        </ChildContent>
+    </StickerGrid>
 }
 
 @if (CurrentPack is not null && PackImages.Count > 0 && visibleImages.Count == 0)
@@ -342,7 +349,7 @@ else
             </div>
         }
         <div class="editor-dialog-body" hidden="@(EditorOpening || openingLayers)">
-            @if (EditingStill || EditingAnimation)
+            @if (!editorLoading && (EditingStill || EditingAnimation))
             {
                 <ImageCustomizer @key="editSource" Source="@editSource" OnReady="EditorToolsReady" OnAddText="RequestAddText" OnAddShape="RequestAddShape" OnAddMeme="AddMemeHeader" OnMakeLayered="MakeEditedLayered" Animated="@EditingAnimation" TrimStart="@trimStart" TrimEnd="@(gifDuration > 0 ? trimEnd : null)" OnEditsChanged="recipe => editRecipe = recipe" OnChanged="CustomizeImage" OnBusyChanged="value => customizing = value" OnToolActiveChanged="value => editorToolActive = value">
                     <Timeline Context="playback">

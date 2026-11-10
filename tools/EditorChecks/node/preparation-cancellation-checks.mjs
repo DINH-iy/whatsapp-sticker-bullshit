@@ -11,6 +11,7 @@ globalThis.Worker = class {
     postMessage() {}
     terminate() { live.delete(this); terminations++; }
 };
+const until = async test => { for(let i=0;i<1000&&!test();i++)await new Promise(resolve=>setTimeout(resolve,1));assert.ok(test(),'asynchronous preparation stage starts'); };
 const { prepare, cancel } = await import('../../../StickerApp.Shared/wwwroot/js/media/conversion/sticker-preparation.js');
 const { watchJobs } = await import('../../../StickerApp.Shared/wwwroot/js/ui/foreground.js');
 let jobs = [];
@@ -18,6 +19,7 @@ const subscription = watchJobs({ invokeMethodAsync: async (_, value) => { jobs =
 for (const animated of [false, true]) {
     const pending = prepare(animated ? 'data:image/gif;base64,fixture' : 'data:image/png;base64,fixture', animated);
     const rejected = assert.rejects(pending, /cancelled/i);
+    await until(()=>live.size===1);
     assert.equal(live.size, 1);
     cancel();
     assert.equal(live.size, 0, 'Cancel must terminate the worker immediately, before awaiting its result');
@@ -26,12 +28,14 @@ for (const animated of [false, true]) {
 }
 const pending = prepare('data:image/gif;base64,fixture', true);
 const rejected = assert.rejects(pending, /cancelled/i);
+await until(()=>live.size===1);
 window.stickerSetForeground(false);
 assert.equal(live.size, 0, 'Leaving the app must terminate preparation workers');
 await rejected;
 assert.equal(jobs.length, 0);
 window.stickerSetForeground(true);
 const completed = prepare('data:image/png;base64,fixture', false);
+await until(()=>live.size===1);
 [...live][0].onmessage({ data: { value: 'finished' } });
 assert.equal(await completed, 'finished');
 assert.equal(live.size, 0, 'Successful preparation must also terminate its worker');
@@ -48,9 +52,12 @@ globalThis.Image = class {
 };
 const fallback = prepare('data:image/png;base64,fixture', false);
 const fallbackRejected = assert.rejects(fallback, /decode stopped/);
+await until(()=>!!decoding);
 cancel();
 await fallbackRejected;
 assert.equal(jobs.length, 0);
 assert.equal(live.size, 0);
+const early=prepare('data:image/png;base64,early',false);
+const earlyRejected=assert.rejects(early,/aborted|cancelled/i);cancel();await earlyRejected;assert.equal(live.size,0,'cancellation during hashing must not start a worker');
 subscription.dispose();
 console.log('PASS cancel/background/success terminate preparation workers; fallback cancellation stops decoding before encoding');

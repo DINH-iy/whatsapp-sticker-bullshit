@@ -1,3 +1,4 @@
+import { compressionSearch, stickerAttempts } from '../../wwwroot/js/media/conversion/compression-search.js';
 import { samePixels, ensureAnimationFrames } from '../../wwwroot/js/media/shared/frame-dedup.js';
 import { drawLayerArtwork } from '../../wwwroot/js/media/effects/object-outline.js';
 import { applyColorEffect } from '../../wwwroot/js/media/effects/color-effect.js';
@@ -10,8 +11,8 @@ import { GIFEncoder, quantize, applyPalette } from 'gifenc';
 let cachedSource, cached;
 const delayOf = frame => Math.max(20, (frame.gce?.delay || 10) * 10);
 
-function load(source) {
-    if (source === cachedSource) return cached;
+function load(source, retain = true) {
+    if (retain && source === cachedSource) return cached;
     if (!source.startsWith('data:image/gif;base64,')) throw new Error('Select a GIF.');
     const binary = atob(source.slice(source.indexOf(',') + 1));
     if (binary.length > 20 * 1024 * 1024) throw new Error('Maximum file size: 20 MiB.');
@@ -23,9 +24,9 @@ function load(source) {
     if (width * height > 4_000_000 || frames.length > 1000 || width * height * frames.length > 80_000_000)
         throw new Error('GIF too large to edit. Use a smaller GIF.');
     const duration = frames.reduce((sum, frame) => sum + delayOf(frame), 0);
-    cached = { gif, frames, width, height, duration };
-    cachedSource = source;
-    return cached;
+    const result = { gif, frames, width, height, duration };
+    if (retain) { cached = result; cachedSource = source; }
+    return result;
 }
 
 async function trim(source, startSeconds, endSeconds, thumbnail = false, onFrame = null, signal) {
@@ -166,8 +167,8 @@ async function inspect(source) {
 }
 
 // Incremental, disposal-aware GIF decoding, shared by live layer preview and export.
-export function createReader(source) {
-    const { gif, frames, width, height, duration } = load(source);
+export function createReader(source, retain = true) {
+    const { gif, frames, width, height, duration } = load(source, retain);
     const canvas = makeCanvas(width, height), context = canvas.getContext('2d');
     const screen = new Uint8ClampedArray(width * height * 4);
     const background = gif.gct?.[gif.lsd.backgroundColorIndex] || [0, 0, 0];
@@ -233,12 +234,8 @@ async function compose(composition, signal, onProgress) {
         if (times.length === 2) times.splice(1,0,Math.round(duration/2));
         const frameCount = times.length - 1;
         const attempts = [{quality:.65,detail:512},{quality:.4,detail:512},{quality:.2,detail:512},{quality:.08,detail:512},{quality:.2,detail:384},{quality:.15,detail:256},{quality:.1,detail:192},{quality:.08,detail:128}];
-        const detailCanvas=makeCanvas(1,1);
-        for (const [attemptIndex,{quality,detail}] of attempts.entries()) {
-            const output = []; let total = 0;
-            for (let frameIndex = 0; frameIndex < frameCount; frameIndex++) {
-                signal?.throwIfAborted();
-                onProgress?.({percent:Math.floor(frameIndex/frameCount*100),completed:frameIndex,total:frameCount,attempt:attemptIndex+1,attempts:attempts.length});
+        const search = compressionSearch({ count: frameCount, attempts, limit: 500 * 1024, signal, progress: onProgress, encode,
+            render(frameIndex) {
                 const clock = times[frameIndex];
                 context.clearRect(0, 0, 512, 512);
                 for (const layer of layers) {
@@ -253,20 +250,26 @@ async function compose(composition, signal, onProgress) {
                     context.rotate(layer.rotation * Math.PI / 180); context.scale(layer.flipX ? -1 : 1, 1);
                     drawLayerArtwork(context,source,layer); context.restore();
                 }
-                if(detail<512) {
-                    detailCanvas.width=detailCanvas.height=detail;detailCanvas.getContext('2d').drawImage(canvas,0,0,detail,detail);
-                    context.clearRect(0,0,512,512);context.drawImage(detailCanvas,0,0,512,512);
+                return canvas;
+            }
+        });
+        try {
+            const firstAttempt = await search.start();
+            for (let attemptIndex = firstAttempt; attemptIndex < attempts.length; attemptIndex++) {
+                const output = []; let total = 0;
+                for (let frameIndex = 0; frameIndex < frameCount; frameIndex++) {
+                    search.report(attemptIndex, frameIndex, 'encoding');
+                    const artwork = search.frame(frameIndex, attempts[attemptIndex].detail);
+                    const bytes = await search.bytes(frameIndex, attemptIndex, artwork); total += bytes.length + 24;
+                    if (total > 500 * 1024) break;
+                    output.push({ bytes, duration: times[frameIndex + 1] - times[frameIndex] });
                 }
-                if (typeof document !== 'undefined' && typeof window !== 'undefined') await new Promise(resolve => setTimeout(resolve, 0));
-                const bytes = await encode(canvas, quality); total += bytes.length + 24;
-                if (total > 500 * 1024) break;
-                output.push({ bytes, duration: times[frameIndex + 1] - clock });
+                if (total <= 500 * 1024) {
+                    const result = animation(output);
+                    if (result.length <= 500 * 1024) { search.report(attemptIndex, frameCount, 'encoding'); return dataUrl(result); }
+                }
             }
-            if (total <= 500 * 1024) {
-                const result = animation(output);
-                if (result.length <= 500 * 1024) { onProgress?.({percent:100,completed:frameCount,total:frameCount,attempt:attemptIndex+1,attempts:attempts.length}); return dataUrl(result); }
-            }
-        }
+        } finally { search.dispose(); }
         throw new Error('This animation still exceeds 500 KB after reducing quality and detail. Try simpler layers or a shorter selection.');
     } finally { for (const image of stills.values()) image.close?.(); for (const reader of readers.values()) reader.dispose?.(); }
 }
@@ -311,42 +314,40 @@ async function editAnimation(source, startSeconds, endSeconds, recipe, working =
         const canvas = makeCanvas(512, 512), context = canvas.getContext('2d');
         let visible = false;
         const limit = working ? 20 * 1024 * 1024 : 500 * 1024;
-        const attempts = working ? [{quality:0.9, detail:512}] : [
-            {quality:0.8,detail:512},{quality:0.55,detail:512},{quality:0.3,detail:512},{quality:0.1,detail:512},
-            {quality:0.2,detail:384},{quality:0.15,detail:256},{quality:0.1,detail:192},{quality:0.08,detail:128}
-        ];
-        const detailCanvas = makeCanvas(1,1);
-        for (const [attemptIndex, {quality, detail}] of attempts.entries()) {
-            const output = []; let total = 0, previousPixels;
-            for (const [frameIndex, item] of times.entries()) {
-                onProgress?.({ percent: Math.floor(frameIndex / times.length * 100), completed: frameIndex, total: times.length, attempt: attemptIndex + 1, attempts: attempts.length });
-                if (signal?.aborted) throw new Error('Animation editor closed.');
-                const frame = renderer.render(reader.at(item.time));
-                if (recipe.layer) {
-                    canvas.width = frame.width; canvas.height = frame.height; context.drawImage(frame, 0, 0);
-                } else fit(context, frame, frame.width, frame.height);
-                if (detail < 512) {
-                    detailCanvas.width = Math.max(1, Math.round(canvas.width * detail / 512));
-                    detailCanvas.height = Math.max(1, Math.round(canvas.height * detail / 512));
-                    detailCanvas.getContext('2d').drawImage(canvas,0,0,detailCanvas.width,detailCanvas.height);
-                    context.clearRect(0,0,canvas.width,canvas.height);
-                    context.drawImage(detailCanvas,0,0,canvas.width,canvas.height);
+        const attempts = working ? [{quality: .9, detail: 512}] : stickerAttempts;
+        const search = compressionSearch({ count: times.length, attempts, limit, signal, progress: onProgress,
+            encode: working ? encodeWorkingFrame : encode,
+            render(index) {
+                const frame = renderer.render(reader.at(times[index].time));
+                if (recipe.layer) { canvas.width = frame.width; canvas.height = frame.height; context.drawImage(frame, 0, 0); }
+                else fit(context, frame, frame.width, frame.height);
+                return canvas;
+            }
+        });
+        try {
+            const firstAttempt = await search.start();
+            for (let attemptIndex = firstAttempt; attemptIndex < attempts.length; attemptIndex++) {
+                const {detail} = attempts[attemptIndex];
+                const output = []; let total = 0, previousPixels;
+                for (const [frameIndex, item] of times.entries()) {
+                    search.report(attemptIndex, frameIndex, 'encoding');
+                    signal?.throwIfAborted();
+                    const artwork = search.frame(frameIndex, detail), pixelsContext = artwork.getContext('2d');
+                    if (!visible) visible = pixelsContext.getImageData(0, 0, artwork.width, artwork.height).data.some((value, index) => index % 4 === 3 && value > 0);
+                    const pixels=pixelsContext.getImageData(0,0,artwork.width,artwork.height).data;
+                    if(samePixels(previousPixels,pixels)) { output[output.length-1].duration+=item.duration; continue; }
+                    previousPixels=pixels.slice();
+                    const bytes = await search.bytes(frameIndex, attemptIndex, artwork); total += bytes.length + 24;
+                    if (signal?.aborted) throw new Error('Animation editor closed.');
+                    if (total > limit) break;
+                    output.push({ bytes, duration: item.duration });
                 }
-                if (!visible) visible = context.getImageData(0, 0, canvas.width, canvas.height).data.some((value, index) => index % 4 === 3 && value > 0);
-                const pixels=context.getImageData(0,0,canvas.width,canvas.height).data;
-                if(samePixels(previousPixels,pixels)) { output[output.length-1].duration+=item.duration; continue; }
-                previousPixels=pixels.slice();
-                if (typeof document !== 'undefined') await new Promise(resolve => setTimeout(resolve, 0));
-                const bytes = await (working ? encodeWorkingFrame(canvas, quality) : encode(canvas, quality)); total += bytes.length + 24;
-                if (signal?.aborted) throw new Error('Animation editor closed.');
-                if (total > limit) break;
-                output.push({ bytes, duration: item.duration });
+                if (total <= limit) {
+                    if (!visible) throw new Error('The animation is completely transparent. Undo a cutout or increase opacity.');
+                    const bytes = animation(ensureAnimationFrames(output), canvas.width, canvas.height); if (bytes.length <= limit) { search.report(attemptIndex, times.length, 'encoding'); return dataUrl(bytes); }
+                }
             }
-            if (total <= limit) {
-                if (!visible) throw new Error('The animation is completely transparent. Undo a cutout or increase opacity.');
-                const bytes = animation(ensureAnimationFrames(output), canvas.width, canvas.height); if (bytes.length <= limit) { onProgress?.({percent:100,completed:times.length,total:times.length,attempt:attemptIndex+1,attempts:attempts.length}); return dataUrl(bytes); }
-            }
-        }
+        } finally { search.dispose(); }
         throw new Error(working ? 'This GIF exceeds the 20 MiB import limit. Choose a smaller GIF.' : 'This animation still exceeds 500 KB after reducing quality and detail. Try a simpler image or a shorter selection.');
     } finally { reader.dispose?.(); renderer.dispose(); }
 }

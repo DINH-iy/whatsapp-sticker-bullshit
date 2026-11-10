@@ -26,12 +26,12 @@ export function png(width = 512, height = 512, artwork = { x: 192, y: 224, width
     }
     return Buffer.concat([Buffer.from('89504e470d0a1a0a', 'hex'), chunk('IHDR', header), chunk('IDAT', deflateSync(rows)), chunk('IEND', Buffer.alloc(0))]);
 }
-export function movingGif() {
+export function movingGif(delay = 80) {
     const encoder = gifenc.GIFEncoder();
     for (const x of [8, 104]) {
         const indices = new Uint8Array(128 * 128);
         for (let y = 48; y < 80; y++) indices.fill(1, y * 128 + x, y * 128 + x + 16);
-        encoder.writeFrame(indices, 128, 128, { palette: [[0, 0, 0], [220, 45, 65]], transparent: true, transparentIndex: 0, dispose: 2, delay: 80, repeat: 0 });
+        encoder.writeFrame(indices, 128, 128, { palette: [[0, 0, 0], [220, 45, 65]], transparent: true, transparentIndex: 0, dispose: 2, delay, repeat: 0 });
     }
     encoder.finish(); return Buffer.from(encoder.bytes());
 }

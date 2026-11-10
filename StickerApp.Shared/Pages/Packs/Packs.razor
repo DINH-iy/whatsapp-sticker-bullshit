@@ -81,7 +81,11 @@
                 <div class="pack-cover">
                     @if (covers.TryGetValue(pack.Id, out var cover))
                     {
-                        <StillPackCover Class="spoiler-artwork" Source="@cover" />
+                        <LibraryThumbnail Source="@cover" Class="spoiler-artwork" Alt="@pack.Name" />
+                    }
+                    else if (library.Stickers.FirstOrDefault(image => image.Id == pack.StickerIds.FirstOrDefault()) is { } first)
+                    {
+                        <LibraryThumbnail @key="first.FileName" Image="first" Class="spoiler-artwork" Alt="@pack.Name" />
                     }
                     else
                     {

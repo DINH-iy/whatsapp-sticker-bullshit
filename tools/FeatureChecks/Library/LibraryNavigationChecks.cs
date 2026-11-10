@@ -26,7 +26,7 @@ internal static class LibraryNavigationChecks
             Set(home, "L", new AppLanguage()); Set(home, "BulkImporter", new NoFolderPicker());
             Set(home, "Exporter", new BrowserWhatsAppExporter()); Set(home, "PackId", pack);
             await Invoke(home, "LoadLibrary");
-            if (((Dictionary<Guid, string>)Get(home, "previews")!).Count != 1) throw new Exception("Expected a pack-only preview cache before navigation");
+            if (((Dictionary<Guid, string>)Get(home, "previews")!).Count != 0) throw new Exception("Navigation must not read original media eagerly");
             var gate = (SemaphoreSlim)Get(store, "gate")!;
             await gate.WaitAsync();
             Set(home, "PackId", null);
@@ -40,9 +40,9 @@ internal static class LibraryNavigationChecks
                 RenderChildren(builder);
             }
             finally { gate.Release(); await navigation; }
-            if (Get(home, "activePack") is not null || ((Dictionary<Guid, string>)Get(home, "previews")!).Count != 2)
-                throw new Exception("Pack-to-library navigation did not publish all library previews");
-            Console.WriteLine("PASS pack-to-library navigation renders safely while previews are blocked, then publishes the complete library");
+            if (Get(home, "activePack") is not null || ((Dictionary<Guid, string>)Get(home, "previews")!).Count != 0 || ((StickerLibrary)Get(home, "library")!).Stickers.Count != 2)
+                throw new Exception("Pack-to-library navigation did not publish library metadata without eager media");
+            Console.WriteLine("PASS pack-to-library navigation renders safely while previews are blocked, then publishes complete metadata without eager preview reads");
             return 1;
         }
         finally { Directory.Delete(root, true); }

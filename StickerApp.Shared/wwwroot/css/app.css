@@ -2536,3 +2536,8 @@ button.danger, a.danger, .button.danger { color: var(--error-text) !important; b
     .library-list-view .pack-card-actions { grid-column: 2; }
     .library-list-view .image-preview { height: 64px; width: 64px; }
 }
+.sticker-grid-probe { display: grid; grid-template-columns: inherit; position: absolute; height: 0; width: 100%; visibility: hidden; pointer-events: none; }
+.sticker-grid-row { display: grid; gap: 16px; margin-bottom: 16px; }
+.library-list-view .sticker-grid-row { gap: 8px; margin-bottom: 8px; }
+img[data-thumbnail-state="waiting"], img[data-thumbnail-state="error"] { opacity: 0; }
+.sticker-grid { position: relative; }

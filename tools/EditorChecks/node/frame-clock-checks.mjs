@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import { framePosition, frameLoop } from '../../../StickerApp.Shared/wwwroot/js/media/animation/frame-clock.js';
+const reader = { frameDurations: [100, 300, 200], duration: 600 };
+assert.deepEqual(framePosition(reader, 0), { index: 0, time: 0, delay: 100 });
+assert.equal(framePosition(reader, .099).index, 0);
+assert.equal(framePosition(reader, .1).index, 1);
+assert.equal(framePosition(reader, .6).index, 0);
+assert.deepEqual(framePosition(reader, .1, .15, .45), { index: 1, time: 250, delay: 150 });
+assert.equal(framePosition(reader, .3, .15, .45).index, 1);
+let clock = 0, sequence = 0, draws = 0;
+const timers = new Map();
+globalThis.setTimeout = (action, delay) => { const id = ++sequence; timers.set(id, { action, at: clock + delay }); return id; };
+globalThis.clearTimeout = id => timers.delete(id);
+globalThis.requestAnimationFrame = action => setTimeout(action, 0);
+globalThis.cancelAnimationFrame = clearTimeout;
+const loop = frameLoop(() => { const frame = framePosition(reader, clock / 1000); return {key: frame.index, delay: frame.delay}; }, () => draws++);
+loop.start(); assert.equal(draws, 1);
+function advance(end) { while (true) { const next = [...timers].sort((a,b)=>a[1].at-b[1].at)[0]; if(!next||next[1].at>end)break;clock=next[1].at;timers.delete(next[0]);next[1].action(); } clock=end; }
+advance(99); assert.equal(draws, 1); advance(100); assert.equal(draws, 2);
+advance(399); assert.equal(draws, 2); advance(600); assert.equal(draws, 4);
+loop.stop(); advance(2000); assert.equal(draws, 4); assert.equal(timers.size, 0);
+console.log('PASS trimmed/looping frame boundaries, redraws only at frame changes, and cancellation removes all scheduled work');

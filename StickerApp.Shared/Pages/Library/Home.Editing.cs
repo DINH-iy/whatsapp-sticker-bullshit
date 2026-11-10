@@ -60,7 +60,7 @@ public partial class Home
         keepEditOriginal = image.KeepOriginalOverride ?? (image.Animated ? Store.KeepOriginalAnimations : Store.KeepOriginalStillImages);
         editName = image.Name;
         editNsfw = image.Nsfw;
-        editSource = editPreview = previews[image.Id];
+        editSource = editPreview = "";
         replacement = null;
         transformed = false;
         editRecipe = null;

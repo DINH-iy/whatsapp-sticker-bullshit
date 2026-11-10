@@ -1875,5 +1875,6 @@
   "Processing progress": "Progresul procesării",
   "A sticker pack is ready to import. Save any current edit before importing.": "Un pachet de stickere este gata de import. Salvează modificările curente înainte de import.",
   "Open a .wastickers, .wasticker, .wassticker or ZIP file as a new pack.": "Deschide un fișier .wastickers, .wasticker, .wassticker sau ZIP ca pachet nou.",
-  "Replace current sticker": "Înlocuiește stickerul curent"
+  "Replace current sticker": "Înlocuiește stickerul curent",
+  "Finding compression settings…": "Se determină setările de compresie…"
 }

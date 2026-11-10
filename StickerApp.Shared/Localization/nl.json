@@ -1875,5 +1875,6 @@
   "Processing progress": "Verwerkingsvoortgang",
   "A sticker pack is ready to import. Save any current edit before importing.": "Een stickerpack staat klaar voor import. Sla je huidige bewerking eerst op.",
   "Open a .wastickers, .wasticker, .wassticker or ZIP file as a new pack.": "Open een .wastickers-, .wasticker-, .wassticker- of ZIP-bestand als nieuw pack.",
-  "Replace current sticker": "Huidige sticker vervangen"
+  "Replace current sticker": "Huidige sticker vervangen",
+  "Finding compression settings…": "Compressie-instellingen bepalen…"
 }

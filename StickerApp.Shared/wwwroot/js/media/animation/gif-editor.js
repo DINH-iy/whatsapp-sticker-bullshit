@@ -1,3 +1,4 @@
+import { conversionKey, cachedConversion, cacheConversion } from '../conversion/result-cache.js';
 import { beginTiming } from '../../ui/performance.js';
 import { requireForeground, onForegroundChanged, startJob } from '../../ui/foreground.js';
 import { leafLayers } from '../layers/layer-groups.js';
@@ -16,7 +17,7 @@ export function createSession() {
         const entry = pending.get(id);
         if (!entry) return;
         clearTimeout(entry.timer); entry.finish(); entry.finishTiming(); pending.delete(id);
-        if (error) entry.reject(new Error(error)); else entry.resolve(value);
+        if (error) entry.reject(new Error(error)); else { cacheConversion(entry.cacheKey, value); entry.resolve(value); }
     }
     function request(action, source, start, end, composition, reference) {
         requireForeground();
@@ -34,17 +35,28 @@ export function createSession() {
             };
             pending.get(id).progress=progress;
             const data = { id, action, source, start, end, composition };
-            if (typeof OffscreenCanvas === 'undefined') {
-                import('../codecs/gif-engine.js').then(engine => pending.has(id) ? engine.process({ ...data, signal: controller.signal, onProgress: progress }) : undefined)
-                    .then(value => settle(id, value), error => settle(id, null, error.message));
-                return;
-            }
-            if (!worker) {
-                worker = new Worker(new URL('../codecs/gif-worker.js', import.meta.url), { type: 'module' });
-                worker.onmessage = ({ data }) => data.progress ? pending.get(data.id)?.progress(data.progress) : settle(data.id, data.value, data.error);
-                worker.onerror = () => reset('Could not process this animation.');
-            }
-            worker.postMessage(data);
+            const dispatch = async () => {
+                if (['prepare', 'edit', 'compose'].includes(action)) {
+                    const key = await conversionKey(source, { action, start, end, composition });
+                    if (!pending.has(id)) return;
+                    pending.get(id).cacheKey = key;
+                    const cached = cachedConversion(key);
+                    if (cached) { settle(id, cached); return; }
+                }
+                if (!pending.has(id)) return;
+                if (typeof OffscreenCanvas === 'undefined') {
+                    import('../codecs/gif-engine.js').then(engine => pending.has(id) ? engine.process({ ...data, signal: controller.signal, onProgress: progress }) : undefined)
+                        .then(value => settle(id, value), error => settle(id, null, error.message));
+                    return;
+                }
+                if (!worker) {
+                    worker = new Worker(new URL('../codecs/gif-worker.js', import.meta.url), { type: 'module' });
+                    worker.onmessage = ({ data }) => data.progress ? pending.get(data.id)?.progress(data.progress) : settle(data.id, data.value, data.error);
+                    worker.onerror = () => reset('Could not process this animation.');
+                }
+                worker.postMessage(data);
+            };
+            dispatch().catch(error => settle(id, null, error.message));
         });
     }
     return {

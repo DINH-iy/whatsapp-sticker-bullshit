@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import { conversionKey, cachedConversion, cacheConversion } from '../../../StickerApp.Shared/wwwroot/js/media/conversion/result-cache.js';
+const source = 'data:image/gif;base64,fixture';
+const original = await conversionKey(source, {start:0,end:1});
+assert.equal(original, await conversionKey(source, {start:0,end:1}));
+assert.notEqual(original, await conversionKey(source, {start:0,end:.5}));
+assert.notEqual(original, await conversionKey(source+'different', {start:0,end:1}));
+assert.equal(cachedConversion(original), null);
+cacheConversion(original, 'failed'); assert.equal(cachedConversion(original), null);
+cacheConversion(original, 'data:image/webp;base64,valid'); assert.equal(cachedConversion(original), 'data:image/webp;base64,valid');
+for(let i=0;i<12;i++)cacheConversion('key-'+i,'data:image/webp;base64,'+'A'.repeat(256*1024));
+assert.equal(cachedConversion(original),null);assert.equal(cachedConversion('key-0'),null);assert.ok(cachedConversion('key-11'));
+console.log('PASS digest keys distinguish source and edit settings; only final WebP outputs are cached and the memory budget evicts older results');

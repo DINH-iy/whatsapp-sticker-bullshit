@@ -62,8 +62,7 @@ public partial class Packs
         {
             if (pack.CoverImage is not null)
                 covers[pack.Id] = pack.CoverImage;
-            else if (library.Stickers.FirstOrDefault(image => image.Id == pack.StickerIds.FirstOrDefault()) is { } first)
-                covers[pack.Id] = await Store.PreviewAsync(first);
+
         }
     }
 

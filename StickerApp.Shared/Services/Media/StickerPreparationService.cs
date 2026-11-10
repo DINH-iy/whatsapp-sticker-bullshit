@@ -8,7 +8,7 @@ namespace StickerApp.Shared.Services;
 public sealed class StickerPreparationService(LibraryStore store, IJSRuntime js, AppLog log) : IAsyncDisposable
 {
     public sealed record Status(string FileName, bool Working, string? Error = null, bool Cancelled = false, Progress? Progress = null);
-    public sealed record Progress(int Percent, int Completed, int Total, int Attempt, int Attempts);
+    public sealed record Progress(int Percent, int Completed, int Total, int Attempt, int Attempts, string? Stage = null, int EncodedFrames = 0, int SkippedAttempts = 0);
     private readonly Dictionary<Guid, Status> statuses = [];
     private readonly Channel<bool> signals = Channel.CreateBounded<bool>(new BoundedChannelOptions(1)
     { FullMode = BoundedChannelFullMode.DropWrite, SingleReader = true });

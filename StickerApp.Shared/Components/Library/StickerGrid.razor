@@ -1,0 +1,54 @@
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
+@inject IJSRuntime JS
+<div @ref="element" class="image-grid sticker-grid @Class @(ListView ? "library-list-view" : "")" style="@(UseVirtualization ? "display:block" : null)">
+    <div class="sticker-grid-probe" aria-hidden="true"></div>
+    @if (UseVirtualization)
+    {
+        <Virtualize @key="columns" Items="rows" Context="row" ItemSize="@(ListView ? 160 : 280)" OverscanCount="2">
+            <div class="sticker-grid-row" style="grid-template-columns:repeat(@columns,minmax(0,1fr))">
+                @foreach (var sticker in row) { @ChildContent(sticker) }
+            </div>
+        </Virtualize>
+    }
+    else
+    {
+        @FirstTile
+        @foreach (var sticker in Images) { @ChildContent(sticker) }
+    }
+</div>
+@code {
+    [Parameter] public IReadOnlyList<Sticker> Images { get; set; } = [];
+    [Parameter] public bool ListView { get; set; }
+    [Parameter] public bool Ready { get; set; } = true;
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? FirstTile { get; set; }
+    [Parameter, EditorRequired] public RenderFragment<Sticker> ChildContent { get; set; } = default!;
+    private bool UseVirtualization => Images.Count > 60 && Ready;
+    private int columns = 1;
+    private List<List<Sticker>> rows = [];
+    private ElementReference element;
+    private IJSObjectReference? module, observer;
+    private DotNetObjectReference<StickerGrid>? reference;
+    protected override void OnParametersSet() => GroupRows();
+    private void GroupRows() => rows = Images.Chunk(ListView ? 1 : columns).Select(row => row.ToList()).ToList();
+    [JSInvokable] public Task ColumnsChanged(int count) => InvokeAsync(() => {
+        if (IsDisposed || count < 1 || count == columns) return;
+        columns = count; GroupRows(); StateHasChanged();
+    });
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
+    {
+        if (firstRender) {
+            module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/sticker-grid.js");
+            if (IsDisposed) return;
+            reference = DotNetObjectReference.Create(this);
+            observer = await module.InvokeAsync<IJSObjectReference>("watch", element, reference);
+            if (IsDisposed) return;
+        }
+        if (observer is not null) await observer.InvokeVoidAsync("measure");
+    }
+    protected override async ValueTask StopInteropAsync() { if (observer is not null) await observer.InvokeVoidAsync("dispose"); }
+    protected override async ValueTask DisposeInteropAsync() {
+        if (observer is not null) { await observer.InvokeVoidAsync("dispose"); await observer.DisposeAsync(); }
+        if (module is not null) await module.DisposeAsync(); reference?.Dispose();
+    }
+}

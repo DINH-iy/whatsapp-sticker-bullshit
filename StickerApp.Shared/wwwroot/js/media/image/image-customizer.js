@@ -1,3 +1,4 @@
+import { frameLoop, framePosition } from '../animation/frame-clock.js';
 import { timed } from '../../ui/performance.js';
 import { onForegroundChanged } from '../../ui/foreground.js';
 import { snapRotation } from '../shared/rotation-snap.js';
@@ -22,7 +23,7 @@ export function create(canvas, dotnet) {
     const recipe = () => ({ width: initialWidth, height: initialHeight, edits: [...operations, ...(hasAdjustment() ? [adjustmentEdit()] : [])] });
     const stopPreview = () => {
         if (!playback) return;
-        cancelAnimationFrame(playback.frame); playback.renderer.dispose();
+        playback.loop.stop(); playback.renderer.dispose();
         canvas.width = playback.still.width; canvas.height = playback.still.height;
         context.drawImage(playback.still, 0, 0); playback = null;
         if (!disposed) dotnet.invokeMethodAsync('PreviewChanged', false).catch(() => {});
@@ -202,7 +203,7 @@ export function create(canvas, dotnet) {
         speed(rate) {
             if (![0.1, 0.25, 0.5, 1].includes(rate)) return;
             if (playback) { playback.offset = (previewTime - playback.start) * 1000; playback.origin = performance.now(); }
-            previewRate = rate;
+            previewRate = rate; playback?.loop.start();
         },
         error: error => dotnet.invokeMethodAsync('PreviewFailed', error.message).catch(() => {})
     });
@@ -290,20 +291,21 @@ export function create(canvas, dotnet) {
             const last = end ?? animationReader.duration / 1000;
             const offset = previewTime >= start && previewTime < last ? (previewTime - start) * 1000 : 0;
             playback = { renderer, still, start, end, offset, origin: performance.now() };
-            const draw = now => {
-                if (!playback || disposed) return;
+            playback.loop = frameLoop(() => {
+                if (!playback || disposed) return null;
                 const { start, end, origin, offset } = playback;
-                const duration = Math.max(20, (end ?? animationReader.duration / 1000) * 1000 - start * 1000);
-                previewTime = start + (offset + (now - origin) * previewRate) % duration / 1000;
+                const position = framePosition(animationReader, (offset + (performance.now() - origin) * previewRate) / 1000, start, end ?? animationReader.duration / 1000);
+                previewTime = position.time / 1000;
+                return { key: position.index, delay: position.delay / previewRate };
+            }, () => {
                 const frame = renderer.render(animationReader.at(previewTime * 1000));
                 controls.update(previewTime);
                 canvas.width = frame.width; canvas.height = frame.height; context.drawImage(frame, 0, 0);
-                playback.frame = requestAnimationFrame(draw);
-            };
-            playback.frame = requestAnimationFrame(draw); await dotnet.invokeMethodAsync('PreviewChanged', true);
+            });
+            playback.loop.start(); await dotnet.invokeMethodAsync('PreviewChanged', true);
         },
         setPreviewRange(start, end) {
-            if (playback) { playback.start = start; playback.end = end; playback.offset = 0; playback.origin = performance.now(); }
+            if (playback) { playback.start = start; playback.end = end; playback.offset = 0; playback.origin = performance.now(); playback.loop.start(); }
         },
         seek: seekPreview,
         beginAdjustments, adjust,

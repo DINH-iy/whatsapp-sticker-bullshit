@@ -94,7 +94,7 @@ public partial class Home
             .OfType<Sticker>()
             .ToList()
         : [];
-    private string? PackHeaderCover => CurrentPack?.CoverImage ?? (PackImages.FirstOrDefault() is { } first && previews.TryGetValue(first.Id, out var preview) ? preview : null);
+    private string? PackHeaderCover => CurrentPack?.CoverImage;
     private IReadOnlyList<PackRules.Issue> Issues => CurrentPack is { } p ? PackRules.Inspect(p, PackImages) : [];
     private IReadOnlyList<string> Validation => CurrentPack is { } p ? PackRules.Validate(p, PackImages) : [];
     private IReadOnlyList<Sticker> Visible => browse is null ? [] : LibraryBrowsing.Images(browse,
@@ -162,19 +162,13 @@ public partial class Home
         using var performance = Log.Measure("Library: read and load previews");
         var snapshot = await Store.ReadBrowseSnapshotAsync();
         var updatedLibrary = snapshot.Library;
-        var updatedPreviews = new Dictionary<Guid, string>();
-        var packIds = requestedPack is { } packId ? updatedLibrary.Packs.FirstOrDefault(pack => pack.Id == packId)?.StickerIds.ToHashSet() : null;
-        var previewImages = packIds is not null ? updatedLibrary.Stickers.Where(image => packIds.Contains(image.Id)) : updatedLibrary.Stickers;
-        foreach (var image in previewImages)
-            updatedPreviews[image.Id] = await Store.PreviewAsync(image);
-
         if (disposed || version != previewLoadVersion) return;
-        // Route scope, visible IDs and previews must change in the same render.
-        // Otherwise pack -> library navigation exposes uncached outside images.
         activePack = requestedPack;
         library = updatedLibrary;
         browse = snapshot;
-        previews = updatedPreviews;
+        // Original media is fetched only by near-viewport thumbnail components
+        // or explicitly opened editors. No full-library data URL dictionary.
+        previews.Clear();
         selected.IntersectWith(library.Stickers.Select(s => s.Id));
     }
 

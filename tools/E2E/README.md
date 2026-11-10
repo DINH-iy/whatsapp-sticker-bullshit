@@ -72,3 +72,9 @@ The smoke test:
 6. Removes only its temporary MediaStore files and saves screenshots/UI XML in `test-results/android`.
 
 It force-stops the test app during lifecycle checks, so finish any existing edits first. It **does not clear app data or remove existing packs**. Imported packs titled `E2E cold pack …`, its `… picker` copy and `E2E warm pack …` remain available for inspection. This script must actually pass on a device before claiming native opening is validated; a web-suite pass is insufficient. iOS document opening still needs its own device/simulator OS test.
+
+## Performance regression checks
+
+`optimizations.spec.mjs` exercises a 180-sticker library, verifying bounded mounted card/thumbnail counts, persistent poster-cache hits after reload, virtualized scrolling, full-filter selection and 512px editor sources. It instruments real canvas draw calls over defined playback windows to detect regressions to display-rate GIF rendering, checks that pause stops redraws, and still saves/exports editable animated layers. Real Worker construction is counted to verify identical successful conversions are reused while different inputs are encoded independently.
+
+The noisy GIF cases also require representative-frame sampling, skipped full passes and a bounded number of real encoder calls, while retaining all frames/timing and the final 500 KiB budget. Both worker and main-thread fallback paths run. These are deterministic work-regression checks; they do not claim a measured battery-life improvement.

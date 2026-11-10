@@ -10,7 +10,7 @@ async function watchProgress(page) {
             const detail = meter.parentElement.textContent;
             const percent = Number(meter.getAttribute('value'));
             const key = percent + ':' + detail;
-            if (window.e2eProgress.at(-1)?.key !== key) window.e2eProgress.push({ key, percent, detail });
+            if (window.e2eProgress.at(-1)?.key !== key) window.e2eProgress.push({ key, percent, detail, stage: meter.dataset.stage, encodedFrames: Number(meter.dataset.encodedFrames), skippedAttempts: Number(meter.dataset.skippedAttempts) });
         });
         window.e2eProgressObserver.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
     });
@@ -29,6 +29,9 @@ for (const fallback of [false, true]) {
         const samples = await page.evaluate(() => { window.e2eProgressObserver.disconnect(); return window.e2eProgress; });
         await testInfo.attach('gif-progress', { body: Buffer.from(JSON.stringify({ image, samples }, null, 2)), contentType: 'application/json' });
         expect(samples.some(sample => sample.percent > 0 && sample.percent < 100), 'intermediate progress reaches the rendered library card').toBe(true);
+        expect(samples.some(sample => sample.stage === 'sampling')).toBe(true);
+        expect(Math.max(...samples.map(sample => sample.encodedFrames))).toBeLessThanOrEqual(36);
+        expect(samples.some(sample => sample.skippedAttempts >= 1)).toBe(true);
         expect(samples.every(sample => sample.percent >= 0 && sample.percent <= 100)).toBe(true);
         expect(samples.some(sample => /frames.*Attempt [5-8] \/ 8/.test(sample.detail)), 'detail-reduction retries reach the rendered UI').toBe(true);
         await page.reload();

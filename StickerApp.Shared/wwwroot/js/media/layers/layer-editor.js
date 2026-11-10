@@ -1,3 +1,4 @@
+import { frameLoop, framePosition } from '../animation/frame-clock.js';
 import { timed } from '../../ui/performance.js';
 import { onForegroundChanged, isForeground } from '../../ui/foreground.js';
 import { snapRotation, rotationStep } from '../shared/rotation-snap.js';
@@ -67,31 +68,32 @@ export function create(canvas, reference) {
     const groupSelection = new Set(), groupFrames = new Map();
     const syncGroups = () => { for (const layer of layers.filter(item => item.children?.length)) { const before = groupFrames.get(layer.id); if (before) transformGroup(layer, before); groupFrames.set(layer.id, { ...layer }); } };
     const images = new Map(), tints = new Map(), thumbnails = new WeakMap(), gifs = new Map();
-    let animationFrame, animationTime = 0, playbackOrigin = performance.now(), exporting = false, paused = false, pausedTime = 0, playbackOffset = 0, playbackRate = 1;
+    let playbackOrigin = performance.now(), exporting = false, paused = false, pausedTime = 0, playbackOffset = 0, playbackRate = 1;
     const unwatchForeground = onForegroundChanged(active => {
-        if (!active) { pausedTime = elapsed(); paused = true; cancelAnimationFrame(animationFrame); animationFrame = undefined; reference.invokeMethodAsync('PreviewChanged', false).catch(() => {}); }
+        if (!active) { pausedTime = elapsed(); paused = true; animation.stop(); reference.invokeMethodAsync('PreviewChanged', false).catch(() => {}); }
     });
     const elapsed = () => paused ? pausedTime : playbackOffset + (performance.now() - playbackOrigin) * playbackRate;
     const controls = previewControls(root, {
         seek(seconds) {
             const layer = active()?.gifSource ? active() : leafLayers(layers).find(layer => layer.gifSource); if (!layer) return;
             pausedTime = Math.max(0, (clamp(seconds, layer.trimStart, layer.trimEnd - 0.001) - layer.trimStart) * 1000);
-            paused = true; cancelAnimationFrame(animationFrame); animationFrame = undefined;
+            paused = true; animation.stop();
             render(); reference.invokeMethodAsync('PreviewChanged', false).catch(() => {});
         },
         speed(rate) {
             if (![0.1, 0.25, 0.5, 1].includes(rate)) return;
-            playbackOffset = elapsed(); playbackOrigin = performance.now(); playbackRate = rate;
+            playbackOffset = elapsed(); playbackOrigin = performance.now(); playbackRate = rate; animate();
         },
         error: () => {}
     });
-    function play(now) {
-        animationFrame = undefined;
-        if (!isForeground() || disposed || exporting || paused || !leafLayers(layers).some(layer => layer.gifSource)) return;
-        if (now - animationTime >= 16) { animationTime = now; render(); }
-        animationFrame = requestAnimationFrame(play);
-    }
-    function animate() { if (!animationFrame && !disposed && !exporting) animationFrame = requestAnimationFrame(play); }
+    const animation = frameLoop(() => {
+        if (!isForeground() || disposed || exporting || paused) return null;
+        const animated = leafLayers(layers).filter(layer => layer.gifSource && gifs.has(layer.gifSource));
+        if (!animated.length) return null;
+        const positions = animated.map(layer => framePosition(gifs.get(layer.gifSource).reader, elapsed() / 1000, layer.trimStart, layer.trimEnd));
+        return { key: positions.map(item => item.index).join(':'), delay: Math.min(...positions.map(item => item.delay)) / playbackRate };
+    }, () => render());
+    function animate() { animation.start(); }
     const fontRegistry = new Map();
     const sourceSize = layer => layer.children?.length ? layer.children.reduce((sum, child) => sum + sourceSize(child), 0) : layer.source.length + (layer.gifSource?.length ?? 0) + (layer.text?.fontData?.length ?? 0);
     const snapshot = () => ({ layers: cloneLayers(layers), selected });
@@ -520,7 +522,7 @@ export function create(canvas, reference) {
         placeText(placement) { if(active()?.text){remember();positionText(active(),placement);render();}return state(); },
         preview(playing) {
             if (playing && paused) { playbackOffset = pausedTime; playbackOrigin = performance.now(); paused = false; animate(); }
-            else if (!playing && !paused) { pausedTime = elapsed(); paused = true; cancelAnimationFrame(animationFrame); animationFrame = undefined; render(false); }
+            else if (!playing && !paused) { pausedTime = elapsed(); paused = true; animation.stop(); render(false); }
         },
         beginTool() { toolCheckpoint = { document: snapshot(), undo: [...undo], redo: [...redo] }; },
         hasToolChanges() { return !!toolCheckpoint && JSON.stringify(layers)!==JSON.stringify(toolCheckpoint.document.layers); },
@@ -644,7 +646,7 @@ export function create(canvas, reference) {
         },
         async export(progressReference) {
             if (!layers.length) throw new Error('Add at least one layer before saving.');
-            exporting = true; cancelAnimationFrame(animationFrame); animationFrame = undefined;
+            exporting = true; animation.stop();
             render(false);
             try {
                 if (!leafLayers(layers).some(layer => layer.gifSource) && !context.getImageData(0, 0, size, size).data.some((value, index) => index % 4 === 3 && value > 0))
@@ -658,7 +660,7 @@ export function create(canvas, reference) {
         },
         dispose() { unwatchForeground(); view.dispose();
             disposed = true; toolCheckpoint = null; controls.dispose();
-            cancelAnimationFrame(animationFrame); orderControls.dispose();
+            animation.stop(); orderControls.dispose();
             clearTimeout(notifyTimer);
             resizeObserver.disconnect(); overlay.remove();
             root.removeEventListener('pointerdown', dialDown); root.removeEventListener('pointermove', dialMove);

@@ -10,11 +10,12 @@ function checkForeground() {
         throw new Error('Animation loading stopped because the app is in the background. Try again when you return.');
 }
 export function openAnimation(source) { return timed('Animation: decode source', () => openAnimationCore(source)); }
-async function openAnimationCore(source) {
+export function openAnimationPoster(source) { return openAnimationCore(source, true); }
+async function openAnimationCore(source, firstFrameOnly = false) {
     checkForeground();
     if (source.startsWith('data:image/gif;base64,')) {
         const engine = await import('../codecs/gif-engine.js');
-        return engine.createReader(source);
+        return engine.createReader(source, !firstFrameOnly);
     }
     if (!source.startsWith('data:image/webp;base64,')) throw new Error('Choose a GIF or animated WebP.');
     const binary = atob(source.slice(source.indexOf(',') + 1));
@@ -34,6 +35,7 @@ async function openAnimationCore(source) {
             const frame = { x: uint24(data) * 2, y: uint24(data + 3) * 2, width: uint24(data + 6) + 1,
                 height: uint24(data + 9) + 1, duration: Math.max(8, uint24(data + 12)), flags: bytes[data + 15], chunks: bytes.slice(data + 16, data + length) };
             frames.push(frame); duration += frame.duration;
+            if (firstFrameOnly) break;
         }
         offset = data + length + (length & 1);
     }

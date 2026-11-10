@@ -1875,5 +1875,6 @@
   "Processing progress": "Processing progress",
   "A sticker pack is ready to import. Save any current edit before importing.": "A sticker pack is ready to import. Save any current edit before importing.",
   "Open a .wastickers, .wasticker, .wassticker or ZIP file as a new pack.": "Open a .wastickers, .wasticker, .wassticker or ZIP file as a new pack.",
-  "Replace current sticker": "Replace current sticker"
+  "Replace current sticker": "Replace current sticker",
+  "Finding compression settings…": "Finding compression settings…"
 }

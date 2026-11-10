@@ -1,0 +1,44 @@
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
+@inject IJSRuntime JS
+@inject LibraryStore Store
+<img @ref="image" class="@Class" alt="@Alt" decoding="async" data-thumbnail-key="@Key" />
+@code {
+    [Parameter] public Sticker? Image { get; set; }
+    [Parameter] public string? Source { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string Alt { get; set; } = "";
+    private string Key => Image is { } sticker ? "v1:" + sticker.FileName + ":" + sticker.Bytes : "cover:" + coverKey;
+    private string? coverSource, coverKey;
+    protected override void OnParametersSet() {
+        if (coverSource == Source) return;
+        coverSource = Source;
+        coverKey = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(Source ?? "")));
+    }
+    private ElementReference image;
+    private IJSObjectReference? module, subscription;
+    private DotNetObjectReference<LibraryThumbnail>? reference;
+    private string? loadedKey;
+    [JSInvokable] public async Task<string> LoadThumbnailSource()
+    {
+        if (IsDisposed) return "";
+        if (Source is not null) return Source;
+        return Image is { } sticker ? await Store.PreviewAsync(sticker) : "";
+    }
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
+    {
+        if (loadedKey == Key) return;
+        if (subscription is not null) { await subscription.InvokeVoidAsync("dispose"); await subscription.DisposeAsync(); subscription = null; }
+        loadedKey = Key;
+        module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/media/image/library-thumbnail.js");
+        if (IsDisposed) return;
+        reference ??= DotNetObjectReference.Create(this);
+        subscription = await module.InvokeAsync<IJSObjectReference>("watch", image, reference, Key, Image?.Animated == true);
+    }
+    protected override async ValueTask StopInteropAsync() { if (subscription is not null) await subscription.InvokeVoidAsync("dispose"); }
+    protected override async ValueTask DisposeInteropAsync()
+    {
+        if (subscription is not null) { await subscription.InvokeVoidAsync("dispose"); await subscription.DisposeAsync(); }
+        if (module is not null) await module.DisposeAsync();
+        reference?.Dispose();
+    }
+}

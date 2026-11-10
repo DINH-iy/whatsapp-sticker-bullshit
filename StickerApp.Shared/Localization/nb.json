@@ -1875,5 +1875,6 @@
   "Processing progress": "Behandlingsfremdrift",
   "A sticker pack is ready to import. Save any current edit before importing.": "En klistremerkepakke er klar til import. Lagre gjeldende endringer først.",
   "Open a .wastickers, .wasticker, .wassticker or ZIP file as a new pack.": "Åpne en .wastickers-, .wasticker-, .wassticker- eller ZIP-fil som en ny pakke.",
-  "Replace current sticker": "Erstatt gjeldende klistremerke"
+  "Replace current sticker": "Erstatt gjeldende klistremerke",
+  "Finding compression settings…": "Finner komprimeringsinnstillinger…"
 }
