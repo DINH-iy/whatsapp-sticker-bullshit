@@ -142,8 +142,8 @@ public partial class GifSearch
             if (FormFactor.GetFormFactor() == "Web" || OperatingSystem.IsBrowser())
             {
                 importSession ??= await client.InvokeAsync<IJSObjectReference>("createImportSession");
-                await using var reference = await importSession.InvokeAsync<IJSStreamReference>("download", token, gif.ShareUrl, LibraryStore.MaxGifImportBytes);
-                await using var input = await reference.OpenReadStreamAsync(LibraryStore.MaxGifImportBytes, token);
+                await using var reference = await importSession.InvokeAsync<IJSStreamReference>("download", token, gif.ShareUrl, Store.GifImportLimitBytes);
+                await using var input = await reference.OpenReadStreamAsync(Store.GifImportLimitBytes, token);
                 using var memory = new MemoryStream();
                 await input.CopyToAsync(memory, token);
                 bytes = memory.ToArray();
@@ -151,7 +151,7 @@ public partial class GifSearch
             else
             {
                 nativeDownloadClient ??= new HttpClient(new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false }) { Timeout = TimeSpan.FromSeconds(45) };
-                bytes = await KlipyGifDownloadClient.DownloadAsync(nativeDownloadClient, gif.ShareUrl, token);
+                bytes = await KlipyGifDownloadClient.DownloadAsync(nativeDownloadClient, gif.ShareUrl, token, Store.GifImportLimitBytes);
             }
             if (MediaInspector.Inspect(bytes).MimeType != "image/gif")
                 throw new InvalidDataException("The downloaded file is not a valid GIF.");

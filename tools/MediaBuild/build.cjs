@@ -36,7 +36,7 @@ async function buildMedia() {
     });
     await esbuild.build({
         ...options, entryPoints: [path.join(media, 'gif-worker.js')],
-        outfile: path.join(output, 'gif-worker.js'), external: ['./gif-engine.js']
+        outfile: path.join(output, 'gif-worker.js'), external: ['./gif-engine.js'], plugins: [runtimeModules]
     });
     await esbuild.build({
         ...options, entryPoints: [path.join(media, 'video-gif-encoder.js')],

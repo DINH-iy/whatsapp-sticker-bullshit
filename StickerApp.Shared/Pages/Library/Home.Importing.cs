@@ -22,12 +22,12 @@ public partial class Home
         noticeIsError = false;
     }
 
-    private static async Task<byte[]> ReadFile(IBrowserFile file)
+    private async Task<byte[]> ReadFile(IBrowserFile file)
     {
         var gif = file.ContentType == "image/gif" || Path.GetExtension(file.Name).Equals(".gif", StringComparison.OrdinalIgnoreCase);
-        if (file.Size > (gif ? LibraryStore.MaxGifImportBytes : LibraryStore.MaxImportBytes))
-            throw new InvalidDataException(gif ? LibraryStore.GifSizeError : "Choose a file smaller than 10 MB.");
-        await using var stream = file.OpenReadStream(LibraryStore.MaxGifImportBytes);
+        if (file.Size > (gif ? Store.GifImportLimitBytes : LibraryStore.MaxImportBytes))
+            throw new InvalidDataException(gif ? LibraryStore.GifLimitError(Store.GifImportLimitBytes) : "Choose a file smaller than 10 MB.");
+        await using var stream = file.OpenReadStream(Math.Max(LibraryStore.MaxImportBytes, Store.GifImportLimitBytes));
         using var memory = new MemoryStream();
         await stream.CopyToAsync(memory);
         return memory.ToArray();

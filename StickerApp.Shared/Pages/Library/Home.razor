@@ -20,11 +20,11 @@
     <div class="page-title">
         @if (PackHeaderCover is { } cover)
         {
-            <SpoilerPreview EyeBeside="false" IsSpoiler="@(CurrentPack is { } coverPack && library.IsNsfw(coverPack))" Name="@(CurrentPack?.Name ?? "Pack cover")"><StillPackCover Class="pack-title-cover spoiler-artwork" Source="@cover" Alt="@L["Pack cover"]" /></SpoilerPreview>
+            <SpoilerPreview EyeBeside="true" IsSpoiler="@(CurrentPack is { } coverPack && library.IsNsfw(coverPack))" Name="@(CurrentPack?.Name ?? "Pack cover")"><StillPackCover Class="pack-title-cover spoiler-artwork" Source="@cover" Alt="@L["Pack cover"]" /></SpoilerPreview>
         }
         else if (CurrentPack is not null && PackImages.FirstOrDefault() is { } firstCover)
         {
-            <SpoilerPreview EyeBeside="false" IsSpoiler="@library.IsNsfw(CurrentPack)" Name="@CurrentPack.Name"><LibraryThumbnail @key="firstCover.FileName" Image="firstCover" Class="pack-title-cover spoiler-artwork" Alt="@L["Pack cover"]" /></SpoilerPreview>
+            <SpoilerPreview EyeBeside="true" IsSpoiler="@library.IsNsfw(CurrentPack)" Name="@CurrentPack.Name"><LibraryThumbnail @key="firstCover.FileName" Image="firstCover" Class="pack-title-cover spoiler-artwork" Alt="@L["Pack cover"]" /></SpoilerPreview>
         }
         else if (CurrentPack is not null)
         {
@@ -118,6 +118,8 @@
     <div class="browse-actions">
         <button class="button @(sort != "default" ? "browse-action-active" : "")" type="button" aria-label="@L["Sort images"]" aria-haspopup="dialog" @onclick='() => browsePanel = "sort"'>@L["Sort"]</button>
         <button class="button @(FilterCount > 0 ? "browse-action-active" : "")" type="button" aria-label="@L["Filter images"]" aria-haspopup="dialog" @onclick='() => browsePanel = "filters"'>@L["Filters"] @if (FilterCount > 0) { <small class="filter-count">@FilterCount</small> }</button>
+    </div>
+    <div class="browse-view-actions">
         <LibraryViewToggle PreferenceKey="library" OnChanged="value => listView = value" />
         <button class="button icon-button selection-mode-toggle @(selectionMode ? "primary" : "")" type="button" @onclick="ToggleSelectionMode" aria-pressed="@selectionMode" disabled="@busy" title="@L[selectionMode ? "Done selecting" : "Select images"]" aria-label="@L[selectionMode ? "Done selecting" : "Select images"]"><Icon Name="@(selectionMode ? "close" : "select-all")" /></button>
     </div>
@@ -303,8 +305,8 @@ else
                         <span class="feedback-spinner" aria-hidden="true"></span>
                         <strong>@L[Preparation.GetStatus(image)?.Working == true ? Preparation.GetStatus(image)?.Progress?.Stage == "sampling" ? "Finding compression settings…" : "Preparing sticker…" : "Queued for preparation…"]</strong>
                         @if (Preparation.GetStatus(image)?.Progress is { } progress) {
-                            <progress max="100" value="@progress.Percent" data-stage="@progress.Stage" data-encoded-frames="@progress.EncodedFrames" data-skipped-attempts="@progress.SkippedAttempts" aria-label="@L["Processing progress"]"></progress>
-                            <small>@progress.Percent% · @progress.Completed / @progress.Total @L["frames"] · @L["Attempt"] @progress.Attempt / @progress.Attempts</small>
+                            <progress max="100" value="@(progress.Stage == "sampling" ? null : (int?)progress.Percent)" data-stage="@progress.Stage" data-encoded-frames="@progress.EncodedFrames" data-skipped-attempts="@progress.SkippedAttempts" aria-label="@L["Processing progress"]"></progress>
+                            <small>@progress.Detail</small>
                         }
                         <small>@L["Ready to edit when processing finishes."]</small>
                         <div class="processing-actions">
@@ -419,7 +421,7 @@ else
 }
 @if (openingLayers || savingEditor)
 {
-    <OperationProgressDialog Title="@(openingLayers ? "Opening layer editor…" : busyText)" Detail="@(openingLayers ? layerOpeningDetail : animationProgress is { } p ? $"{p.Completed} / {p.Total} {L["frames"]} · {L["Attempt"]} {p.Attempt} / {p.Attempts}" : null)" Progress="@(savingEditor ? animationProgress?.Percent : null)" CanCancel="@openingLayers" OnCancel="CancelLayerOpening" />
+    <OperationProgressDialog Title="@(openingLayers ? "Opening layer editor…" : busyText)" Detail="@(openingLayers ? layerOpeningDetail : animationProgress is { } p ? p.Detail : null)" Progress="@(savingEditor && animationProgress?.Stage != "sampling" ? animationProgress?.Percent : null)" CanCancel="@openingLayers" OnCancel="CancelLayerOpening" />
 }
 
 

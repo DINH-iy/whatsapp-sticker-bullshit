@@ -1,3 +1,4 @@
+import { qualityCeiling } from './media-settings.js';
 // Fit, rather than stretch or crop, so preparing a sticker preserves its artwork.
 export function fit(context, image, width, height) {
     const scale = Math.min(1, 512 / Math.max(width, height));
@@ -12,7 +13,7 @@ export async function encode(canvas, quality, signal) {
     const software = await import('../codecs/webp-encoder.js');
     signal?.throwIfAborted();
     const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
-    return software.encode(pixels, quality);
+    return software.encode(pixels, Math.min(quality, qualityCeiling()));
 }
 
 // Intermediate editor artwork does not need the final sticker's size budget.

@@ -1,3 +1,4 @@
+import { read as mediaSettings } from '../conversion/media-settings.js';
 import { conversionKey, cachedConversion, cacheConversion } from '../conversion/result-cache.js';
 import { beginTiming } from '../../ui/performance.js';
 import { requireForeground, onForegroundChanged, startJob } from '../../ui/foreground.js';
@@ -28,16 +29,16 @@ export function createSession() {
             pending.set(id, { resolve, reject, timer, controller, finishTiming: beginTiming('Animation worker: ' + action), finish: startJob(action === 'inspect' ? 'Reading animation…' : 'Processing animation…') });
             const progress = value => {
                 const entry=pending.get(id); if(!entry)return;
-                if(entry.lastProgress === `${value.attempt}:${value.percent}`)return;
-                entry.lastProgress=`${value.attempt}:${value.percent}`;
+                if(entry.lastProgress === `${value.stage}:${value.attempt}:${value.percent}`)return;
+                entry.lastProgress=`${value.stage}:${value.attempt}:${value.percent}`;
                 entry.finish.progress(value);
                 reference?.invokeMethodAsync('AnimationProgress',value).catch(()=>{});
             };
             pending.get(id).progress=progress;
-            const data = { id, action, source, start, end, composition };
+            const data = { id, action, source, start, end, composition, settings: mediaSettings() };
             const dispatch = async () => {
                 if (['prepare', 'edit', 'compose'].includes(action)) {
-                    const key = await conversionKey(source, { action, start, end, composition });
+                    const key = await conversionKey(source, { action, start, end, composition, settings: data.settings });
                     if (!pending.has(id)) return;
                     pending.get(id).cacheKey = key;
                     const cached = cachedConversion(key);

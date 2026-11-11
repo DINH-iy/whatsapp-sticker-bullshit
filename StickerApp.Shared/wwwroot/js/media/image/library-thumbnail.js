@@ -62,7 +62,11 @@ async function limited(action) {
 }
 export function watch(image, reference, key, animated) {
     let disposed = false, loading = false, near = false;
-    image.src = placeholder; image.dataset.thumbnailState = 'waiting';
+    image.dataset.thumbnailState = 'waiting';
+    // Preserve the poster when reattaching the same item; a different key must
+    // never briefly show the previous item's artwork.
+    if (image.dataset.thumbnailBoundKey !== key || !image.getAttribute('src')) image.src = placeholder;
+    image.dataset.thumbnailBoundKey = key;
     const load = async () => {
         if (disposed || loading || !near || document.hidden) return;
         loading = true;
@@ -90,5 +94,5 @@ export function watch(image, reference, key, animated) {
     }, { rootMargin: '100px' });
     const visible = () => { if (!document.hidden && near && image.dataset.thumbnailState !== 'ready') load(); };
     observer.observe(image); document.addEventListener('visibilitychange', visible);
-    return { dispose() { disposed = true; observer.disconnect(); document.removeEventListener('visibilitychange', visible); image.src = placeholder; } };
+    return { dispose() { disposed = true; observer.disconnect(); document.removeEventListener('visibilitychange', visible); } };
 }

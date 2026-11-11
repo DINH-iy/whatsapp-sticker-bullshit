@@ -12,14 +12,7 @@
         <AppDisclosure Class="layer-add-menu" @bind-Open="showAddMenu" SummaryClass="button" Label="@L["Add layer"]" Popup="true"><Header><Icon Name="plus" /></Header><ChildContent>
     <div class="layer-add-options">
         <button class="button" type="button" @onclick="AddText" disabled="@(working || state.Layers.Count >= 10)"><Icon Name="text" />@L["Add text"]</button>
-        <AppDisclosure Popup="true" SummaryClass="button" Label="@L["Meme text position"]"><Header><Icon Name="text" />@L["Add white meme template"]</Header><ChildContent>
-            <div class="meme-placement-options" role="group" aria-label="@L["Meme text position"]">
-            @foreach (var placement in new[] { "top", "bottom", "both" })
-            {
-                <button class="button" type="button" @onclick="() => AddMemeAt(placement)" disabled="@(working || state.Layers.Count > (placement == "both" ? 6 : 8))"><span class="meme-placement-preview meme-placement-@placement" aria-hidden="true"></span>@L[placement == "top" ? "Above image" : placement == "bottom" ? "Below image" : "Above and below"]</button>
-            }
-            </div>
-        </ChildContent></AppDisclosure>
+        <MemeTemplatePicker AvailableLayers="@(10 - state.Layers.Count)" OnChoose="@(EventCallback.Factory.Create<string>(this, AddMemeAt))" Disabled="@working" />
         <button class="button" type="button" @onclick="OpenShapes" disabled="@(working || layerEditSource is not null || state.Layers.Count>=10)"><Icon Name="shapes" />@L["Add shape"]</button>
         <label class="button file-button"><Icon Name="plus" /> @L["Add images"]
             <InputFile OnChange="AddFiles" accept="image/png,image/jpeg,image/webp,image/gif" multiple disabled="@(working || layerEditSource is not null || state.Layers.Count >= 10)" aria-label="@L["Add layer images from device"]" />

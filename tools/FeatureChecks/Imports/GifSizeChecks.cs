@@ -35,7 +35,25 @@ internal static class GifSizeChecks
             catch (InvalidDataException) { }
             if ((await store.ReadAsync()).Stickers.Count != 2) throw new Exception("Size rejection saved partial files");
             Console.WriteLine("PASS GIF above 20 MiB gives a specific error; still images retain their 10 MiB limit");
-            return 2;
+            await store.SetGifImportLimitAsync(50);
+            var reloaded = new LibraryStore(root);
+            if (reloaded.GifImportLimitBytes != 50 * 1024 * 1024) throw new Exception("GIF setting was not persisted");
+            await reloaded.ImportAsync("Larger.gif", tooBig, pack);
+            using var largerBackup = new MemoryStream();
+            await reloaded.ExportPackAsync(pack, largerBackup);
+            largerBackup.Position = 0;
+            var largerReceiver = new LibraryStore(Path.Combine(root, "larger-receiver"));
+            await largerReceiver.SetGifImportLimitAsync(50);
+            await largerReceiver.ImportPackAsync(largerBackup);
+            if ((await largerReceiver.ReadAsync()).Stickers.Count != 3) throw new Exception("Larger GIF backup did not round-trip");
+            await reloaded.SetGifImportLimitAsync(5);
+            try { await reloaded.ImportAsync("Over chosen limit.gif", boundary); throw new Exception("Chosen GIF limit ignored"); }
+            catch (InvalidDataException ex) when (ex.Message.Contains("5 MiB")) { }
+            try { await reloaded.SetGifImportLimitAsync(101); throw new Exception("Invalid limit accepted"); }
+            catch (ArgumentOutOfRangeException) { }
+            if ((await reloaded.ReadAsync()).Stickers.Count != 3) throw new Exception("Configured limit rejection changed the library");
+            Console.WriteLine("PASS GIF limit persists, accepts larger GIFs, rejects above chosen limit and validates range");
+            return 3;
         }
         finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
     }

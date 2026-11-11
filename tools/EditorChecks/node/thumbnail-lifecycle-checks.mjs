@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+const listeners = new Set();
+globalThis.document = { addEventListener: (_, callback) => listeners.add(callback), removeEventListener: (_, callback) => listeners.delete(callback) };
+let disconnected = 0;
+globalThis.IntersectionObserver = class { observe() {} disconnect() { disconnected++; } };
+const { watch } = await import('../../../StickerApp.Shared/wwwroot/js/media/image/library-thumbnail.js');
+const image = { src: 'cached-poster', dataset: { thumbnailBoundKey: 'sticker-a' }, getAttribute() { return this.src; } };
+const first = watch(image, {}, 'sticker-a', false);
+assert.equal(image.src, 'cached-poster');
+first.dispose();
+assert.equal(image.src, 'cached-poster', 'teardown must not blank a recycled image');
+const second = watch(image, {}, 'sticker-b', false);
+assert.notEqual(image.src, 'cached-poster', 'a different sticker must not show the previous poster');
+second.dispose();
+assert.equal(listeners.size, 0);
+assert.equal(disconnected, 2);
+console.log('PASS thumbnail reattachment preserves matching posters, clears stale artwork and removes observers/listeners');

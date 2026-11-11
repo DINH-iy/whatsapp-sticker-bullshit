@@ -1,3 +1,4 @@
+import { gifLimitBytes } from '../../wwwroot/js/media/conversion/media-settings.js';
 import { compressionSearch, stickerAttempts } from '../../wwwroot/js/media/conversion/compression-search.js';
 import { samePixels, ensureAnimationFrames } from '../../wwwroot/js/media/shared/frame-dedup.js';
 import { drawLayerArtwork } from '../../wwwroot/js/media/effects/object-outline.js';
@@ -15,7 +16,7 @@ function load(source, retain = true) {
     if (retain && source === cachedSource) return cached;
     if (!source.startsWith('data:image/gif;base64,')) throw new Error('Select a GIF.');
     const binary = atob(source.slice(source.indexOf(',') + 1));
-    if (binary.length > 20 * 1024 * 1024) throw new Error('Maximum file size: 20 MiB.');
+    if (binary.length > gifLimitBytes()) throw new Error('GIF exceeds your import limit. Change GIF import limit in Settings → Editing.');
     const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
     const gif = parseGIF(bytes.buffer);
     const frames = gif.frames.filter(frame => frame.image);

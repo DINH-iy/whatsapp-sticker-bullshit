@@ -33,7 +33,7 @@ for (const fallback of [false, true]) {
         expect(Math.max(...samples.map(sample => sample.encodedFrames))).toBeLessThanOrEqual(36);
         expect(samples.some(sample => sample.skippedAttempts >= 1)).toBe(true);
         expect(samples.every(sample => sample.percent >= 0 && sample.percent <= 100)).toBe(true);
-        expect(samples.some(sample => /frames.*Attempt [5-8] \/ 8/.test(sample.detail)), 'detail-reduction retries reach the rendered UI').toBe(true);
+        expect(samples.some(sample => /Encoding frames.*compression setting [5-8]\/8/.test(sample.detail)), 'detail-reduction retries reach the rendered UI').toBe(true);
         await page.reload();
         await expect(page.locator('.image-card')).toHaveCount(1);
         await expect(page.locator('.sticker-processing-overlay')).toHaveCount(0);
@@ -62,8 +62,8 @@ test('animated meme copy retains the full animation and editable source on reope
     await page.locator('.image-card').first().getByRole('button', { name: 'Edit Animated-template', exact: true }).last().click();
     const editor = page.getByRole('dialog', { name: /Edit (GIF|animated image)/ });
     await editor.getByRole('button', { name: 'Layers', exact: true }).click();
-    await editor.getByRole('button', { name: 'Meme text position', exact: true }).click();
-        await editor.getByRole('button', { name: 'Above and below', exact: true }).click();
+    await editor.getByRole('button', { name: 'Add meme template', exact: true }).click();
+        await page.getByRole('dialog', { name: 'Meme text position', exact: true }).getByRole('button', { name: 'Above and below', exact: true }).click();
     const layers = page.getByRole('dialog', { name: 'Layer editor', exact: true });
     await expect(layers.getByText('Layers (5) · top is front', { exact: true })).toBeVisible();
     await layers.getByRole('button', { name: 'Save a copy', exact: true }).click();

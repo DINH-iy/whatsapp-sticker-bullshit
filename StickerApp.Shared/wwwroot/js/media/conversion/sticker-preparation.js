@@ -1,3 +1,4 @@
+import { read as mediaSettings } from './media-settings.js';
 import { conversionKey, cachedConversion, cacheConversion } from './result-cache.js';
 import { prepare as prepareOnMain } from './sticker-converter.js';
 import { requireForeground, onForegroundChanged, startJob, startJobBatch } from '../../ui/foreground.js';
@@ -17,13 +18,14 @@ export async function prepare(source, animated, reference, batchIndex) {
     let lastProgress;
     const progress = value => {
         if (active !== job || job.controller.signal.aborted) return;
-        const key = `${value.attempt}:${value.percent}`;
+        const key = `${value.stage}:${value.attempt}:${value.percent}`;
         if(lastProgress===key)return;lastProgress=key;
         job.finish.progress(value);
         reference?.invokeMethodAsync('PreparationProgress', value).catch(() => {});
     };
     try {
-        const key = await conversionKey(source, { action: 'prepare', animated });
+        const settings = mediaSettings();
+        const key = await conversionKey(source, { action: 'prepare', animated, settings });
         job.controller.signal.throwIfAborted();
         const cached = cachedConversion(key);
         if (cached) return cached;
@@ -43,7 +45,7 @@ export async function prepare(source, animated, reference, batchIndex) {
             job.timer = setTimeout(() => reject(new Error('Preparation took too long. Try a smaller image or trim the GIF.')), 180000);
             worker.onmessage = ({ data }) => data.progress ? progress(data.progress) : data.error ? reject(new Error(data.error)) : resolve(data.value);
             worker.onerror = () => reject(new Error('Could not prepare this image. Open Edit to adjust or replace it.'));
-            worker.postMessage({ id: 1, action: 'prepare', source });
+            worker.postMessage({ id: 1, action: 'prepare', source, settings });
         }));
     } finally {
         job.worker?.terminate(); clearTimeout(job.timer); job.finish(); if (active === job) active = undefined;

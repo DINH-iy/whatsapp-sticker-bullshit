@@ -1,8 +1,10 @@
+import { configure } from './media-settings.js';
 import { fit, encode, dataUrl } from './sticker-converter.js';
 
 self.onmessage = async ({ data }) => {
     let image;
     try {
+        configure(data.settings);
         const blob = await (await fetch(data.source)).blob();
         image = await createImageBitmap(blob);
         if (image.width * image.height > 32000000)

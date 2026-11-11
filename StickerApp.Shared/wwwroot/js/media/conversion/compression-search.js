@@ -33,7 +33,7 @@ export function compressionSearch({ count, attempts, limit, render, encode, sign
         } else canvas.getContext('2d').drawImage(source, 0, 0);
         return canvas;
     }
-    const report = (attempt, completed, stage) => progress?.({ percent: Math.floor(completed / count * 100), completed, total: count, attempt: attempt + 1, attempts: attempts.length, stage, encodedFrames, skippedAttempts: selected });
+    const report = (attempt, completed, stage) => progress?.({ percent: Math.floor(completed / (stage === 'sampling' ? indices.length : count) * 100), completed, total: stage === 'sampling' ? indices.length : count, attempt: attempt + 1, attempts: attempts.length, stage, encodedFrames, skippedAttempts: selected });
     async function bytes(index, attempt, artwork) {
         const key = `${attempt}:${index}`;
         if (encoded.has(key)) return encoded.get(key);
@@ -52,6 +52,7 @@ export function compressionSearch({ count, attempts, limit, render, encode, sign
             if (count < 6 || attempts.length === 1) return 0;
             for (let attempt = 0; attempt < attempts.length - 1; attempt++) {
                 let total = 0;
+                report(attempt, 0, 'sampling');
                 for (const [sample, index] of indices.entries()) {
                     total += (await bytes(index, attempt)).length + 24;
                     report(attempt, sample + 1, 'sampling');

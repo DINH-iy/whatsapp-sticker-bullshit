@@ -4,8 +4,8 @@
     <div class="sticker-grid-probe" aria-hidden="true"></div>
     @if (UseVirtualization)
     {
-        <Virtualize @key="columns" Items="rows" Context="row" ItemSize="@(ListView ? 112 : 280)" OverscanCount="2">
-            <div class="sticker-grid-row" style="grid-template-columns:repeat(@columns,minmax(0,1fr))">
+        <Virtualize @key="(columns, ListView)" Items="rows" Context="row" ItemSize="@(ListView ? 112 : 280)" OverscanCount="2">
+            <div @key="row[0].Id" class="sticker-grid-row" style="grid-template-columns:repeat(@columns,minmax(0,1fr))">
                 @foreach (var sticker in row) { @ChildContent(sticker) }
             </div>
         </Virtualize>

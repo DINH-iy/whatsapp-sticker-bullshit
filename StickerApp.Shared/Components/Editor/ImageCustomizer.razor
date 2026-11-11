@@ -93,14 +93,7 @@
                 break;
             case "layers":
                 @if(OnAddMeme.HasDelegate){
-                    <AppDisclosure Popup="true" SummaryClass="button" Label="@L["Meme text position"]"><Header><Icon Name="text" />@L["Add white meme template"]</Header><ChildContent>
-                        <div class="meme-placement-options" role="group" aria-label="@L["Meme text position"]">
-                        @foreach (var placement in new[] { "top", "bottom", "both" })
-                        {
-                            <button class="button" type="button" @onclick="() => OnAddMeme.InvokeAsync(placement)" disabled="@working"><span class="meme-placement-preview meme-placement-@placement" aria-hidden="true"></span>@L[placement == "top" ? "Above image" : placement == "bottom" ? "Below image" : "Above and below"]</button>
-                        }
-                        </div>
-                    </ChildContent></AppDisclosure>
+                    <MemeTemplatePicker OnChoose="@(OnAddMeme)" Disabled="@working" />
                 }
                 @if(OnAddShape.HasDelegate){<button class="button" type="button" @onclick="OnAddShape" disabled="@working"><Icon Name="shapes" /><span>@L["Add shape"]</span></button>}
                 @if (OnMakeLayered.HasDelegate) { <button class="button" type="button" @onclick="OnMakeLayered" disabled="@working"><Icon Name="layers" /><span>@L["Make layered"]</span></button> }

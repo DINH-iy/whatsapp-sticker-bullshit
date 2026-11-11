@@ -13,9 +13,6 @@
 .sticker-toolbar { flex-wrap: nowrap; }
 .browse-actions { align-items: center; }
 .selection-mode-toggle { margin-inline-start: auto; flex: 0 0 44px; }
-@media (max-width: 650px) {
-    .browse-actions { flex-basis: 100%; }
-}
 
 .selection-mode-toggle { margin-inline-start: 0; }
 .selection-pack-fields { display: grid; gap: 14px; padding: 14px; min-width: 0; }

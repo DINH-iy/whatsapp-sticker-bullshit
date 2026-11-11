@@ -1,0 +1,20 @@
+<button class="button" type="button" @onclick="() => open = true" disabled="@Disabled"><Icon Name="text" /><span>@L["Add meme template"]</span></button>
+@if (open)
+{
+    <BrowseOptionsPopup Title="Meme text position" OnClose="() => open = false">
+        <p class="helper">@L["Add editable text on a white panel around your image."]</p>
+        <div class="meme-placement-options">
+        @foreach (var placement in new[] { "top", "bottom", "both" })
+        {
+            <button class="button" type="button" disabled="@(Disabled || AvailableLayers < (placement == "both" ? 4 : 2))" @onclick="() => Choose(placement)"><span class="meme-placement-preview meme-placement-@placement" aria-hidden="true"></span><span>@L[placement == "top" ? "Above image" : placement == "bottom" ? "Below image" : "Above and below"]</span></button>
+        }
+        </div>
+    </BrowseOptionsPopup>
+}
+@code {
+    [Parameter] public int AvailableLayers { get; set; } = 10;
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public EventCallback<string> OnChoose { get; set; }
+    private bool open;
+    private async Task Choose(string placement) { open = false; await OnChoose.InvokeAsync(placement); }
+}

@@ -73,8 +73,8 @@ test('animation previews redraw at frame changes, pause cleanly, and preserve la
     const stopped = await page.evaluate(() => window.e2eDraws.image);
     await page.waitForTimeout(600); expect(await page.evaluate(() => window.e2eDraws.image)).toBe(stopped);
     await editor.getByRole('button', { name: 'Layers', exact: true }).click();
-    await editor.getByRole('button', { name: 'Meme text position', exact: true }).click();
-        await editor.getByRole('button', { name: 'Above and below', exact: true }).click();
+    await editor.getByRole('button', { name: 'Add meme template', exact: true }).click();
+        await page.getByRole('dialog', { name: 'Meme text position', exact: true }).getByRole('button', { name: 'Above and below', exact: true }).click();
     const layers = page.getByRole('dialog', { name: 'Layer editor', exact: true });
     await expect(layers.getByText('Layers (5) · top is front', { exact: true })).toBeVisible();
     const initial = await page.evaluate(() => window.e2eDraws.layer);

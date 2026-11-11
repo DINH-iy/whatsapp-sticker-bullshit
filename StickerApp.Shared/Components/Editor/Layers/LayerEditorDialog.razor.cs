@@ -44,8 +44,8 @@ public partial class LayerEditorDialog
     private int? operationPercent;
     [JSInvokable] public Task AnimationProgress(StickerApp.Shared.Services.StickerPreparationService.Progress value) => InvokeAsync(() => {
         if (IsDisposed) return;
-        operationPercent = value.Percent;
-        operationDetail = $"{value.Completed} / {value.Total} {L["frames"]} · {L["Attempt"]} {value.Attempt} / {value.Attempts}";
+        operationPercent = value.Stage == "sampling" ? null : value.Percent;
+        operationDetail = L[value.Detail];
         StateHasChanged();
     });
     private string quickPanel = "";
@@ -297,11 +297,11 @@ public partial class LayerEditorDialog
         foreach (var file in args.GetMultipleFiles(10))
         {
             if (state.Layers.Count >= 10) throw new InvalidOperationException("A composition supports up to 10 layers.");
-            await using var stream = file.OpenReadStream(LibraryStore.MaxGifImportBytes);
+            await using var stream = file.OpenReadStream(Math.Max(LibraryStore.MaxImportBytes, Store.GifImportLimitBytes));
             using var memory = new MemoryStream();
             await stream.CopyToAsync(memory);
             var bytes = memory.ToArray();
-            var info = MediaInspector.Inspect(bytes);
+            var info = LibraryStore.InspectImport(bytes, Store.GifImportLimitBytes);
             var source = $"data:{info.MimeType};base64,{Convert.ToBase64String(bytes)}";
             state = await controller!.InvokeAsync<LayerEditorState>("add", Path.GetFileNameWithoutExtension(file.Name), source);
         }

@@ -1,0 +1,40 @@
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
+@inject IJSRuntime JS
+@inject LibraryStore Store
+<section class="settings-card">
+    <h2>@L["GIF import & sticker quality"]</h2>
+    <label>@L["GIF import limit (MiB)"]<input type="number" min="5" max="100" step="1" value="@(Store.GifImportLimitBytes / (1024 * 1024))" @onchange="ChangeLimit" disabled="@(!ready)" aria-describedby="gif-limit-warning" /></label>
+    <p id="gif-limit-warning" class="helper">@L["Default: 20 MiB. Higher limits allow larger GIF files, but importing and converting can take much longer and use more memory, battery, and storage. Your phone may become hot or unresponsive. Start with a smaller GIF if processing fails. Frame and pixel safety limits still apply; WhatsApp animations remain limited to 10 seconds and 500 KB."]</p>
+    <label>@L["Sticker quality"]<select value="@quality.ToString(System.Globalization.CultureInfo.InvariantCulture)" @onchange="ChangeQuality" disabled="@(!ready)"><option value="0.9">@L["High · more detail (default)"]</option><option value="0.75">@L["Balanced"]</option><option value="0.55">@L["Smaller file · less detail"]</option></select></label>
+    <p class="helper">@L["Sets the maximum WebP quality for newly prepared images and GIFs. Higher quality preserves more detail but makes larger files and may need more compression passes. Lower quality can soften edges and text. The app still reduces quality or detail to meet WhatsApp's size limit. Saved stickers are unchanged; reimport or edit and save to convert again."]</p>
+    <p class="helper">@L["Conversion first tests a few sample frames to choose compression settings, then encodes the animation. Settings may be skipped and frame progress restarts if a smaller file is needed."]</p>
+    @if (error is not null) { <p class="error" role="alert">@error</p> }
+</section>
+@code {
+    private bool ready;
+    private double quality = .9;
+    private string? error;
+    private IJSObjectReference? module;
+    private sealed record Preferences(int GifMiB, double Quality);
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender) {
+        if (!firstRender) return;
+        module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/media/conversion/media-settings.js");
+        if (IsDisposed) return;
+        var settings = await module.InvokeAsync<Preferences>("read");
+        if (IsDisposed) return;
+        quality = settings.Quality;
+        await SaveBrowserSettings(); if (IsDisposed) return; ready = true; StateHasChanged();
+    }
+    private async Task SaveBrowserSettings() { if (module is not null) await module.InvokeVoidAsync("write", new Preferences(Store.GifImportLimitBytes / (1024 * 1024), quality)); }
+    private async Task ChangeLimit(ChangeEventArgs args) {
+        if (!int.TryParse(args.Value?.ToString(), out var value) || value is < 5 or > 100) { error = L["Choose a GIF limit between 5 and 100 MiB."]; return; }
+        try { await Store.SetGifImportLimitAsync(value); await SaveBrowserSettings(); error = null; }
+        catch (Exception ex) when (ex is IOException or JSException) { error = L["Could not save the setting. Please try again."]; }
+    }
+    private async Task ChangeQuality(ChangeEventArgs args) {
+        if (!double.TryParse(args.Value?.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var value)) return;
+        quality = value;
+        try { await SaveBrowserSettings(); error = null; } catch (JSException) { error = L["Could not save the setting. Please try again."]; }
+    }
+    protected override async ValueTask DisposeInteropAsync() { if (module is not null) await module.DisposeAsync(); }
+}

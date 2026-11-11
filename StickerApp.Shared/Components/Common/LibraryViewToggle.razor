@@ -1,7 +1,7 @@
 @inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
 @inject IJSRuntime JS
 <button class="button view-toggle" type="button" role="switch" aria-checked="@(list ? "true" : "false")" aria-label="@L["List view"]" title="@L[list ? "Tile view" : "List view"]" @onclick="() => Change(!list)">
-    <span class="view-toggle-label">@L[list ? "List view" : "Tile view"]</span><span class="view-toggle-track" aria-hidden="true"><span></span></span>
+    <span class="view-toggle-label">@L[list ? "List view" : "Tile view"]</span>
 </button>
 @code {
     [Parameter] public string PreferenceKey { get; set; } = "library";

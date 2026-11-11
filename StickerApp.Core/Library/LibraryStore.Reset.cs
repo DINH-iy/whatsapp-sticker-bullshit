@@ -49,7 +49,7 @@ public sealed partial class LibraryStore
                     files.Add(index);
                     files.Add(index + ".tmp");
                 }
-                foreach (var file in new[] { settingsFile, ProfileFile, Path.Combine(DefaultRoot, "profile-identity.json") })
+                foreach (var file in new[] { settingsFile, MediaSettingsFile, ProfileFile, Path.Combine(DefaultRoot, "profile-identity.json") })
                 {
                     files.Add(file); files.Add(file + ".tmp");
                 }
@@ -70,6 +70,7 @@ public sealed partial class LibraryStore
                 }
                 progress?.Report(new("Restoring app defaults…", completed, pending.Count));
                 Root = DefaultRoot;
+                GifImportLimitBytes = MaxGifImportBytes;
                 KeepOriginalStillImages = false; KeepOriginalAnimations = true;
                 StorageLimitBytes = null; DecimalStorageUnits = DonutStorageChart = false;
                 AskForOriginalOnImport = BlurNsfwPreviews = true;

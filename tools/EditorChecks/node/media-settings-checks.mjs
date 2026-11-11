@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+const values = new Map();
+globalThis.localStorage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) };
+const settings = await import('../../../StickerApp.Shared/wwwroot/js/media/conversion/media-settings.js');
+assert.deepEqual(settings.read(), { gifMiB: 20, quality: .9 });
+settings.write({ gifMiB: 50, quality: .55 });
+assert.equal(settings.gifLimitBytes(), 50 * 1024 * 1024);
+assert.equal(settings.qualityCeiling(), .55);
+settings.syncGifLimit(30 * 1024 * 1024);
+assert.deepEqual(settings.read(), { gifMiB: 30, quality: .55 });
+assert.deepEqual(settings.normalize({ gifMiB: Infinity, quality: 1 }), { gifMiB: 20, quality: .9 });
+const snapshot = settings.read();
+delete globalThis.localStorage;
+settings.configure(snapshot);
+assert.deepEqual(settings.read(), snapshot);
+console.log('PASS media setting defaults, persistence, validation, server limit sync and worker snapshot');

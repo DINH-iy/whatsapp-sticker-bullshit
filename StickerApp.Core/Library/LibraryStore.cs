@@ -14,11 +14,11 @@ public sealed partial class LibraryStore
 
     public static int ImportLimit(string mimeType) => mimeType == "image/gif" ? MaxGifImportBytes : MaxImportBytes;
 
-    public static MediaInfo InspectImport(ReadOnlySpan<byte> bytes)
+    public static MediaInfo InspectImport(ReadOnlySpan<byte> bytes, int gifLimit = MaxGifImportBytes)
     {
         var gif = bytes.Length >= 6 && (bytes[..6].SequenceEqual("GIF87a"u8) || bytes[..6].SequenceEqual("GIF89a"u8));
-        if (bytes.Length == 0 || bytes.Length > (gif ? MaxGifImportBytes : MaxImportBytes))
-            throw new InvalidDataException(gif ? GifSizeError : "Choose a file smaller than 10 MB.");
+        if (bytes.Length == 0 || bytes.Length > (gif ? gifLimit : MaxImportBytes))
+            throw new InvalidDataException(gif ? GifLimitError(gifLimit) : "Choose a file smaller than 10 MB.");
         return MediaInspector.Inspect(bytes);
     }
     private readonly SemaphoreSlim gate = new(1, 1);
@@ -53,6 +53,7 @@ public sealed partial class LibraryStore
         BlurNsfwPreviews = saved?.BlurNsfwPreviews ?? true;
         if (saved is not null && !Directory.Exists(Root))
             throw new DirectoryNotFoundException($"The sticker folder is unavailable: {Root}. Reconnect it before starting the app.");
+        LoadMediaSettings();
         Directory.CreateDirectory(Path.Combine(Root, "media"));
     }
 
@@ -253,7 +254,7 @@ public sealed partial class LibraryStore
         await gate.WaitAsync(cancellationToken);
         try
         {
-            var info = InspectImport(bytes);
+            var info = InspectImport(bytes, GifImportLimitBytes);
             var s = new Sticker
             {
                 Name = CleanName(Path.GetFileNameWithoutExtension(name)),
@@ -336,11 +337,11 @@ public sealed partial class LibraryStore
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 await using var input = File.OpenRead(file.Path);
-                if (input.Length is 0 or > MaxGifImportBytes)
-                    throw new InvalidDataException("Images must be at most 10 MiB; GIFs at most 20 MiB.");
+                if (input.Length == 0 || input.Length > Math.Max(MaxImportBytes, GifImportLimitBytes))
+                    throw new InvalidDataException($"Images must be at most 10 MiB; GIFs at most {GifImportLimitBytes / (1024 * 1024)} MiB.");
                 var bytes = new byte[(int)input.Length];
                 await input.ReadExactlyAsync(bytes, cancellationToken);
-                var info = InspectImport(bytes);
+                var info = InspectImport(bytes, GifImportLimitBytes);
                 var sticker = new Sticker
                 {
                     Name = CleanName(file.Name), MimeType = info.MimeType,
@@ -360,10 +361,10 @@ public sealed partial class LibraryStore
                     if (sticker.KeepOriginalOverride == true)
                     {
                         await using var original = File.OpenRead(file.OriginalPath);
-                        if (original.Length is <= 0 or > MaxGifImportBytes) throw new InvalidDataException(GifSizeError);
+                        if (original.Length <= 0 || original.Length > GifImportLimitBytes) throw new InvalidDataException(GifLimitError(GifImportLimitBytes));
                         var source = new byte[(int)original.Length];
                         await original.ReadExactlyAsync(source, cancellationToken);
-                        if (InspectImport(source).MimeType != "image/gif" || !info.Animated)
+                        if (InspectImport(source, GifImportLimitBytes).MimeType != "image/gif" || !info.Animated)
                             throw new InvalidDataException("The animation backup must be the original GIF.");
                         sticker.OriginalFileName = $"{sticker.Id:N}-original.gif";
                         var originalPath = MediaPath(sticker.OriginalFileName);
@@ -504,7 +505,7 @@ public sealed partial class LibraryStore
                 var current = (await ReadInternalAsync()).Stickers.FirstOrDefault(image => image.Id == id);
                 if (current is null || current.FileName != expectedFileName) return false;
             }
-            var info = InspectImport(bytes);
+            var info = InspectImport(bytes, GifImportLimitBytes);
             var fileName = Guid.NewGuid().ToString("N") + info.Extension;
             var path = MediaPath(fileName);
             var obsoleteFiles = new List<string>();
@@ -645,7 +646,7 @@ public sealed partial class LibraryStore
     public async Task<Guid> ImportPackAsync(Stream source, bool forcePrivate = false, bool preserveSourceIds = false, Func<byte[], Task<byte[]>>? normalizeMedia = null)
     {
         // Validate everything before touching the library. No archive entry is extracted by its supplied path.
-        var imported = await PackArchive.ReadAsync(source);
+        var imported = await PackArchive.ReadAsync(source, GifImportLimitBytes);
         var classified = new List<PackArchive.ImportedImage>();
         foreach (var image in imported.Images)
         {

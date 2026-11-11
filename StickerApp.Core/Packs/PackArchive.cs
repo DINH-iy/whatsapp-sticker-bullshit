@@ -64,8 +64,8 @@ public static partial class PackArchive
             {
                 var image = images[index];
                 await using var source = openImage(image);
-                var bytes = await ReadBoundedAsync(source, LibraryStore.MaxGifImportBytes);
-                var info = LibraryStore.InspectImport(bytes);
+                var bytes = await ReadBoundedAsync(source, 100 * 1024 * 1024);
+                var info = LibraryStore.InspectImport(bytes, 100 * 1024 * 1024);
 
                 totalBytes += bytes.Length;
                 if (totalBytes > MaxArchiveBytes)
@@ -114,7 +114,7 @@ public static partial class PackArchive
         return new ExportInfo(FileNameFor(pack.Name), hash);
     }
 
-    public static async Task<ImportedPack> ReadAsync(Stream source)
+    public static async Task<ImportedPack> ReadAsync(Stream source, int gifLimit = LibraryStore.MaxGifImportBytes)
     {
         // A bounded temporary file avoids loading an entire compressed archive into memory.
         var temporaryPath = Path.Combine(Path.GetTempPath(), $"sticker-import-{Guid.NewGuid():N}.zip");
@@ -149,21 +149,21 @@ public static partial class PackArchive
             var image = manifest.Images[index];
             var entry = archive.GetEntry(image.File)
                 ?? throw new InvalidDataException($"The image “{image.Name}” is missing.");
-            if (entry.Length > LibraryStore.MaxGifImportBytes)
-                throw new InvalidDataException("A pack image exceeds the 20 MiB file limit.");
+            if (entry.Length > Math.Max(LibraryStore.MaxImportBytes, gifLimit))
+                throw new InvalidDataException(LibraryStore.GifLimitError(gifLimit));
             totalBytes += entry.Length;
             if (totalBytes > MaxArchiveBytes)
                 throw new InvalidDataException("The unpacked images exceed the 100 MB pack limit.");
 
             await using var input = entry.Open();
-            var bytes = await ReadBoundedAsync(input, LibraryStore.MaxGifImportBytes);
+            var bytes = await ReadBoundedAsync(input, Math.Max(LibraryStore.MaxImportBytes, gifLimit));
             if (bytes.LongLength != entry.Length)
                 throw new InvalidDataException("An image has an incorrect length.");
             var hash = Convert.ToHexString(SHA256.HashData(bytes));
             if (!string.Equals(hash, image.Sha256, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException($"The image “{image.Name}” failed its checksum. Download the pack again.");
 
-            var info = LibraryStore.InspectImport(bytes);
+            var info = LibraryStore.InspectImport(bytes, gifLimit);
             if (image.File != $"media/{index:D2}{info.Extension}")
                 throw new InvalidDataException("An image does not match the pack format.");
 

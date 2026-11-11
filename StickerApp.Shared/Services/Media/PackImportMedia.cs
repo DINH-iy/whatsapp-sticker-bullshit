@@ -17,6 +17,6 @@ public static class PackImportMedia
 
     public static string PickerAccept(object? formFactor)
     {
-        return ".zip,.wastickers,application/zip,application/octet-stream";
+        return ".wastickers,.wasstickers";
     }
 }
