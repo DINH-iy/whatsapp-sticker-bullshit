@@ -262,7 +262,7 @@ else
                 }
                 <div class="image-card-content" inert="@(processing || selectionMode)">
                 @if (failure is not null) { <button type="button" class="sticker-failure-badge" @onclick:stopPropagation @onclick="() => infoImageId = image.Id" aria-label="@L["Sticker needs attention. View problem and fixes."]">!</button> }
-                <SpoilerPreview IsSpoiler="@library.IsNsfw(image)" Name="@image.Name">
+                <SpoilerPreview EyeBeside="true" IsSpoiler="@library.IsNsfw(image)" Name="@image.Name">
                 <button class="image-preview" @onclick:stopPropagation aria-label="@L.Format("Edit {0}", image.Name)" @onclick="() => ActivateImage(image)">
                     <LibraryThumbnail @key="image.FileName" Image="image" Class="spoiler-artwork" Alt="@image.Name" />
                 </button>
@@ -290,11 +290,11 @@ else
                 {
                 <div class="card-actions card-overflow-actions" @onclick:stopPropagation>
                     <ActionMenu Label="@L.Format("Sticker options for {0}", image.Name)" IconOnly="true" Disabled="@busy">
-                        <button class="toolbar-menu-option" type="button" @onclick="() => Edit(image)" aria-label="@L.Format("Edit {0}", image.Name)"><Icon Name="edit" />@L["Edit image"]</button>
-                        <button class="toolbar-menu-option" type="button" @onclick="() => infoImageId = image.Id" aria-label="@L.Format("Details for {0}", image.Name)"><Icon Name="info" />@L["Details"]</button>
-                        <button class="toolbar-menu-option" type="button" @onclick="() => imageToAdd = image" aria-label="@L.Format("Add {0} to pack", image.Name)"><Icon Name="folder-plus" />@L["Add to pack"]</button>
+                        <button class="toolbar-menu-option" type="button" @onclick="() => Edit(image)" aria-label="@L.Format("Edit {0}", image.Name)"><Icon Name="edit" /><span>@L["Edit image"]</span></button>
+                        <button class="toolbar-menu-option" type="button" @onclick="() => infoImageId = image.Id" aria-label="@L.Format("Details for {0}", image.Name)"><Icon Name="info" /><span>@L["Details"]</span></button>
+                        <button class="toolbar-menu-option" type="button" @onclick="() => imageToAdd = image" aria-label="@L.Format("Add {0} to pack", image.Name)"><Icon Name="folder-plus" /><span>@L["Add to pack"]</span></button>
                         <div class="toolbar-menu-divider"></div>
-                        <button class="toolbar-menu-option danger" type="button" @onclick="() => pendingRemoval = image" aria-label="@L.Format("Remove {0}", image.Name)"><Icon Name="trash" />@L["Remove sticker"]</button>
+                        <button class="toolbar-menu-option danger" type="button" @onclick="() => pendingRemoval = image" aria-label="@L.Format("Remove {0}", image.Name)"><Icon Name="trash" /><span>@L["Remove sticker"]</span></button>
                     </ActionMenu>
                 </div>
                 }
@@ -311,7 +311,7 @@ else
                         <small>@L["Ready to edit when processing finishes."]</small>
                         <div class="processing-actions">
                             <button class="button" type="button" @onclick="() => Run(() => Preparation.CancelAsync(image.Id))">@L["Stop processing"]</button>
-                            <button class="button danger" type="button" @onclick="() => pendingRemoval = image"><Icon Name="trash" />@L["Remove sticker"]</button>
+                            <button class="button danger" type="button" @onclick="() => pendingRemoval = image"><Icon Name="trash" /><span>@L["Remove sticker"]</span></button>
                         </div>
                     </div>
                 }

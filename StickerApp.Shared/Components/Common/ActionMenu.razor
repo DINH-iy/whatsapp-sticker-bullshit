@@ -6,7 +6,7 @@
     <button class="@(TileStyle ? "add-sticker-card" : $"button {(Primary ? "primary" : "")} {(IconOnly ? "icon-button" : "")}")" type="button" @onclick="Toggle" disabled="@Disabled" @ref="trigger" aria-label="@(IconOnly ? Label : null)" title="@(IconOnly ? Label : null)"
             aria-expanded="@(open ? "true" : "false")" aria-controls="@id">
         @if (TriggerContent is not null) { @TriggerContent }
-        else { <Icon Name="@IconName" /> @if (!IconOnly) { @Label } }
+        else { <Icon Name="@IconName" /> @if (!IconOnly) { <span class="toolbar-menu-trigger-label">@Label</span> } }
     </button>
     @if (open)
     {

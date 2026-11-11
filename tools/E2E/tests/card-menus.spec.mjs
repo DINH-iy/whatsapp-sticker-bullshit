@@ -4,6 +4,27 @@ import { writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 
+async function compactMenu(menu) {
+    await expect(menu).toBeVisible();
+    await expect(menu).toHaveCSS('opacity', '1');
+    const metrics = await menu.evaluate(el => {
+        const bounds = el.getBoundingClientRect();
+        const rows = [...el.querySelectorAll('.toolbar-menu-option')];
+        return {
+            width: bounds.width,
+            bottomPadding: bounds.bottom - rows.at(-1).getBoundingClientRect().bottom,
+            rows: rows.map(row => {
+                const icon = row.querySelector('.app-icon').getBoundingClientRect();
+                const text = row.querySelector('span').getBoundingClientRect();
+                return { height: row.getBoundingClientRect().height, offset: Math.abs(icon.y + icon.height / 2 - text.y - text.height / 2) };
+            })
+        };
+    });
+    expect(metrics.width).toBeLessThanOrEqual(240);
+    expect(metrics.bottomPadding).toBeLessThanOrEqual(8);
+    for (const row of metrics.rows) { expect(row.height).toBeGreaterThanOrEqual(44); expect(row.height).toBeLessThanOrEqual(46); expect(row.offset).toBeLessThan(1.5); }
+}
+
 for (const list of [false, true]) {
     test(`${list ? 'list' : 'tile'} cards use options menus for library, pack stickers and packs`, async ({ page, app }) => {
         await openLibrary(page, app);
@@ -21,7 +42,7 @@ for (const list of [false, true]) {
             const options = card.getByRole('button', { name: `Sticker options for ${name}`, exact: true });
             await options.click();
             const menu = card.locator('.toolbar-dropdown');
-            await expect(menu).toBeVisible(); await assertNoOverflow(page, menu);
+            await compactMenu(menu); await assertNoOverflow(page, menu);
             // Opening the menu must not activate the image or editor.
             await expect(page.getByRole('dialog')).toHaveCount(0);
             await menu.getByRole('button', { name: `Details for ${name}`, exact: true }).click();
@@ -51,7 +72,7 @@ for (const list of [false, true]) {
         const options = pack.getByRole('button', { name: 'Pack options for Menu pack', exact: true });
         await options.click();
         const menu = pack.locator('.toolbar-dropdown');
-        await expect(menu).toBeVisible(); await assertNoOverflow(page, menu);
+        await compactMenu(menu); await assertNoOverflow(page, menu);
         await page.screenshot({ path: `test-results/${list ? 'list' : 'tile'}-pack-menu-${page.viewportSize().width}.png` });
         await menu.getByRole('button', { name: 'Edit details for Menu pack', exact: true }).click();
         const editing = page.getByRole('dialog', { name: /Edit pack/ });
