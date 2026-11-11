@@ -9,6 +9,8 @@ assert.equal(settings.qualityCeiling(), .55);
 settings.syncGifLimit(30 * 1024 * 1024);
 assert.deepEqual(settings.read(), { gifMiB: 30, quality: .55 });
 assert.deepEqual(settings.normalize({ gifMiB: Infinity, quality: 1 }), { gifMiB: 20, quality: .9 });
+settings.syncGifLimit(50_000_000);
+assert.equal(settings.gifLimitBytes(), 50_000_000, 'decimal units must not round the GIF byte limit');
 const snapshot = settings.read();
 delete globalThis.localStorage;
 settings.configure(snapshot);

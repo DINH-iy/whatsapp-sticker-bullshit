@@ -26,7 +26,7 @@ public partial class Home
     {
         var gif = file.ContentType == "image/gif" || Path.GetExtension(file.Name).Equals(".gif", StringComparison.OrdinalIgnoreCase);
         if (file.Size > (gif ? Store.GifImportLimitBytes : LibraryStore.MaxImportBytes))
-            throw new InvalidDataException(gif ? LibraryStore.GifLimitError(Store.GifImportLimitBytes) : "Choose a file smaller than 10 MB.");
+            throw new InvalidDataException(gif ? LibraryStore.GifLimitError(Store.GifImportLimitBytes, Store.DecimalStorageUnits) : "Choose a file smaller than 10 MB.");
         await using var stream = file.OpenReadStream(Math.Max(LibraryStore.MaxImportBytes, Store.GifImportLimitBytes));
         using var memory = new MemoryStream();
         await stream.CopyToAsync(memory);

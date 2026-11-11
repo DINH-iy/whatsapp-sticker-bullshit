@@ -58,12 +58,17 @@ function mapGif(item) {
     const formats = item.file || {};
     const preview = formats.sm?.gif || formats.xs?.gif || formats.md?.gif || formats.hd?.gif;
     const fullSize = formats.hd?.gif || formats.md?.gif || preview;
+    const fullUrl = mediaUrl(fullSize?.url);
+    const previewUrl = mediaUrl(preview?.url);
+    // Never fetch the original as a fallback preview before download consent.
+    const posterUrl = mediaUrl((formats.sm?.jpg || formats.xs?.jpg || formats.md?.jpg || formats.hd?.jpg)?.url);
 
     return {
         slug: item.slug || '',
         title: item.title || 'Untitled GIF',
-        previewUrl: mediaUrl(preview?.url),
-        shareUrl: mediaUrl(fullSize?.url)
+        previewUrl: previewUrl !== fullUrl ? previewUrl : posterUrl,
+        shareUrl: fullUrl,
+        sizeBytes: Number.isSafeInteger(Number(fullSize?.size)) && Number(fullSize.size) > 0 ? Number(fullSize.size) : null
     };
 }
 
@@ -156,7 +161,21 @@ export async function registerShare(slug, query) {
 export function createImportSession() {
     let active = null, disposed = false;
     return {
-        async download(url, maxBytes = 20 * 1024 * 1024) {
+        async inspectSize(url) {
+            if (disposed || active) return null;
+            if (!mediaUrl(url)) throw new Error('This GIF does not have a supported KLIPY download URL.');
+            const controller = new AbortController(); active = controller;
+            const timeout = setTimeout(() => controller.abort(), 8000);
+            try {
+                // HEAD reads headers only: never download the GIF to discover its size.
+                const response = await fetch(url, { method: 'HEAD', signal: controller.signal, credentials: 'omit', cache: 'no-store', redirect: 'error' });
+                if (!response.ok || response.headers.get('content-encoding') && response.headers.get('content-encoding') !== 'identity') return null;
+                const bytes = Number(response.headers.get('content-length'));
+                return Number.isSafeInteger(bytes) && bytes > 0 ? bytes : null;
+            } catch { return null; }
+            finally { clearTimeout(timeout); controller.abort(); if (active === controller) active = null; }
+        },
+        async download(url, maxBytes = 20 * 1024 * 1024, decimalUnits = false) {
             if (disposed) throw new Error('This GIF search has closed.');
             if (active) throw new Error('Wait for the current GIF import to finish.');
             if (!mediaUrl(url)) throw new Error('This GIF does not have a supported KLIPY download URL.');
@@ -169,7 +188,7 @@ export function createImportSession() {
                 const response = await fetch(url, { signal: controller.signal, credentials: 'omit', cache: 'no-store', redirect: 'error' });
                 if (!response.ok) throw new Error('KLIPY could not deliver this GIF. Try another result.');
                 const length = Number(response.headers.get('content-length'));
-                if (length > maxBytes) throw new Error(`This GIF exceeds the ${Math.floor(maxBytes / (1024 * 1024))} MiB import limit. Change GIF import limit in Settings → Editing or choose a smaller GIF.`);
+                if (length > maxBytes) throw new Error(`This GIF exceeds the ${Number((maxBytes / (decimalUnits ? 1_000_000 : 1_048_576)).toFixed(2))} ${decimalUnits ? 'MB' : 'MiB'} import limit. Change GIF import limit in Settings → Imports, quality & editing or choose a smaller GIF.`);
                 if (!response.body) throw new Error('The GIF download was empty. Try another result.');
                 reader = response.body.getReader();
                 let bytes = 0; const chunks = [];
@@ -177,7 +196,7 @@ export function createImportSession() {
                     const { done, value } = await reader.read();
                     if (done) break;
                     bytes += value.byteLength;
-                    if (bytes > maxBytes) throw new Error(`This GIF exceeds the ${Math.floor(maxBytes / (1024 * 1024))} MiB import limit. Change GIF import limit in Settings → Editing or choose a smaller GIF.`);
+                    if (bytes > maxBytes) throw new Error(`This GIF exceeds the ${Number((maxBytes / (decimalUnits ? 1_000_000 : 1_048_576)).toFixed(2))} ${decimalUnits ? 'MB' : 'MiB'} import limit. Change GIF import limit in Settings → Imports, quality & editing or choose a smaller GIF.`);
                     chunks.push(value);
                 }
                 if (controller.signal.aborted || disposed) throw new DOMException('Cancelled', 'AbortError');

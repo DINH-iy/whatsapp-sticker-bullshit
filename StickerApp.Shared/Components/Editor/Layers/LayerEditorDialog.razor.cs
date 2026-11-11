@@ -301,7 +301,7 @@ public partial class LayerEditorDialog
             using var memory = new MemoryStream();
             await stream.CopyToAsync(memory);
             var bytes = memory.ToArray();
-            var info = LibraryStore.InspectImport(bytes, Store.GifImportLimitBytes);
+            var info = LibraryStore.InspectImport(bytes, Store.GifImportLimitBytes, Store.DecimalStorageUnits);
             var source = $"data:{info.MimeType};base64,{Convert.ToBase64String(bytes)}";
             state = await controller!.InvokeAsync<LayerEditorState>("add", Path.GetFileNameWithoutExtension(file.Name), source);
         }

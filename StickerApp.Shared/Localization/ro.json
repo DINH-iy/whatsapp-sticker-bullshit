@@ -524,6 +524,7 @@
   "Editable content": "Conținut editabil",
   "Editable layer artwork is unavailable for this backup.": "Datele straturilor editabile nu sunt disponibile pentru această copie.",
   "Editable layers": "Straturi editabile",
+  "Imports, quality & editing": "Import, calitate și editare",
   "Editing": "Editare",
   "Editing categories": "Categorii de editare",
   "Editing help": "Ajutor pentru editare",
@@ -1173,6 +1174,7 @@
   "Ready for WhatsApp.": "Pregătit pentru WhatsApp.",
   "Receive a limited-use group invitation link or code.": "Primește un link sau cod de grup cu utilizare limitată.",
   "Recent diagnostic log": "Jurnal recent de diagnosticare",
+  "Newest added": "Adăugate recent",
   "Recently added": "Adăugate recent",
   "Recently updated": "Actualizate recent",
   "Redo": "Refă",
@@ -1876,5 +1878,7 @@
   "A sticker pack is ready to import. Save any current edit before importing.": "Un pachet de stickere este gata de import. Salvează modificările curente înainte de import.",
   "Open a .wastickers, .wasticker, .wassticker or ZIP file as a new pack.": "Deschide un fișier .wastickers, .wasticker, .wassticker sau ZIP ca pachet nou.",
   "Replace current sticker": "Înlocuiește stickerul curent",
-  "Finding compression settings…": "Se determină setările de compresie…"
+  "Finding compression settings…": "Se determină setările de compresie…",
+  "Sticker options for {0}": "Opțiuni sticker pentru {0}",
+  "Pack options for {0}": "Opțiuni pachet pentru {0}"
 }

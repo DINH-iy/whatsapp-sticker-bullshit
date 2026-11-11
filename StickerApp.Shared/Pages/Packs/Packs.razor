@@ -2,9 +2,15 @@
 @inject AppLog Log
 @inject IJSRuntime JS
 @page "/"
+@implements IDisposable
 @inject LibraryStore Store
 @inject StickerApp.Shared.Services.StickerPreparationService Preparation
 @inject NavigationManager Navigation
+
+@if (browse is not null)
+{
+    <BrowsePreferences Scope="packs" Values="@BrowsePreferenceValues" OnRestored="RestoreBrowsePreferences" />
+}
 
 <PageTitle>@L["My Packs · Stik-er-in"]</PageTitle>
 <header class="page-header">
@@ -46,7 +52,7 @@
     @if (browsePanel == "sort")
     {
     <label>@L["Sort by"]<select aria-label="@L["Sort packs"]" @bind="sort">
-        <option value="default">@L["Oldest added"]</option><option value="newest">@L["Recently added"]</option>
+        <option value="default">@L["Oldest added"]</option><option value="newest">@L["Newest added"]</option>
         <option value="name-asc">@L["Name: A–Z"]</option><option value="name-desc">@L["Name: Z–A"]</option><option value="publisher">@L["Publisher: A–Z"]</option>
         <option value="updated-desc">@L["Recently updated"]</option><option value="updates-desc">@L["Most updates"]</option><option value="public-first">@L["Public packs first"]</option>
         <option value="group-first">@L["Group packs first"]</option><option value="solo-first">@L["Solo packs first"]</option>
@@ -100,13 +106,18 @@
             </SpoilerPreview>
             <a class="pack-card-link" href="@($"packs/{pack.Id}")">
                 <strong>@pack.Name @if(pack.Nsfw){<span class="nsfw-name-tag">@L["[NSFW]"]</span>}</strong>
-                <small class="pack-card-publisher" title="@pack.Publisher">@L.Format("By {0}", pack.Publisher)</small>
-                <small>@pack.StickerIds.Count @L[pack.StickerIds.Count == 1 ? "sticker" : "stickers"] · @L[PackTypeLabel(pack)]</small>
-                <small class="image-file-summary">@L.Format("{0} stored", PackSize(pack)) · @L[pack.Public ? "Public" : "Private"]</small>
+                <div class="pack-row-details">
+                    <small class="pack-card-publisher" title="@pack.Publisher">@L.Format("By {0}", pack.Publisher) · @pack.StickerIds.Count @L[pack.StickerIds.Count == 1 ? "sticker" : "stickers"]</small>
+                    <small class="image-file-summary">@L[PackTypeLabel(pack)] · @L.Format("{0} stored", PackSize(pack)) · @L[pack.Public ? "Public" : "Private"]</small>
+                </div>
             </a>
-            <div class="pack-card-actions">
-                <button class="button icon-button" type="button" disabled="@busy" @onclick="() => editingPack = pack" title="@L["Edit pack details"]" aria-label="@L.Format("Edit details for {0}", pack.Name)"><Icon Name="edit" /><span>@L["Edit"]</span></button>
-                <button class="button icon-button danger" type="button" disabled="@busy" @onclick="() => {error=null;deletingPack=pack;}" title="@L["Delete pack"]" aria-label="@L.Format("Delete pack {0}", pack.Name)"><Icon Name="trash" /></button>
+            <div class="pack-card-actions card-overflow-actions">
+                <ActionMenu Label="@L.Format("Pack options for {0}", pack.Name)" IconOnly="true" Disabled="@busy">
+                    <button class="toolbar-menu-option" type="button" @onclick="() => editingPack = pack" aria-label="@L.Format("Edit details for {0}", pack.Name)"><Icon Name="edit" />@L["Edit details"]</button>
+                    <button class="toolbar-menu-option" type="button" @onclick="() => packToShare = pack"><Icon Name="share" />@L["Share or export"]</button>
+                    <div class="toolbar-menu-divider"></div>
+                    <button class="toolbar-menu-option danger" type="button" @onclick="() => {error=null;deletingPack=pack;}" aria-label="@L.Format("Delete pack {0}", pack.Name)"><Icon Name="trash" />@L["Delete pack"]</button>
+                </ActionMenu>
             </div>
         </article>
     }
@@ -125,4 +136,9 @@
 @if (library.Packs.Count >= 10)
 {
     <p class="helper">@L["This build supports up to 10 packs."]</p>
+}
+
+@if (packToShare is not null)
+{
+    <SharePackDialog Pack="@packToShare" PreparationPending="@library.Stickers.Any(image => packToShare.StickerIds.Contains(image.Id) && StickerApp.Shared.Services.StickerPreparationService.NeedsPreparation(image))" OnClose="() => packToShare = null" />
 }

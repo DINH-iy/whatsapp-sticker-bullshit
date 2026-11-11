@@ -52,6 +52,14 @@ internal static class ImportDownloadChecks
             Console.WriteLine("PASS KLIPY network and disposal stay off UI context: " + mode);
             passed++;
         }
+        foreach (var size in new long?[] { 3_000_000, null })
+        {
+            using var headClient = new HttpClient(new HeaderHandler(size));
+            var actual = await KlipyGifDownloadClient.InspectSizeAsync(headClient, "https://static.klipy.com/headers.gif");
+            if (actual != size) throw new Exception("HEAD file-size inspection lost known/unknown metadata");
+            passed++;
+        }
+        Console.WriteLine("PASS native GIF size preflight uses only HEAD and never reads the media body");
         foreach (var id in new[] { "ozD1q2COi", "31w30freR", "ENue35Kpm" })
         {
             var text = @"Uite ce panou am creat pe Pinterest! https\://pin.it/" + id;
@@ -60,6 +68,22 @@ internal static class ImportDownloadChecks
             passed++;
         }
         return passed;
+    }
+
+    private sealed class HeaderHandler(long? size) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
+        {
+            if (request.Method != HttpMethod.Head) throw new Exception("Size preflight tried to download the GIF");
+            var content = new HeaderOnlyContent();
+            content.Headers.ContentLength = size;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = content });
+        }
+    }
+    private sealed class HeaderOnlyContent : HttpContent
+    {
+        protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context) => throw new Exception("Preflight read a GIF body");
+        protected override bool TryComputeLength(out long length) { length = 0; return false; }
     }
 
     private sealed class Handler(Func<HttpResponseMessage> response) : HttpMessageHandler

@@ -68,3 +68,18 @@
 @media (prefers-reduced-motion: reduce) { .feedback-spinner { animation: none; } }
 
 .settings-card .tap-feedback-toggle { flex-direction: row; align-items: center; gap: 10px; }
+
+/* Rainbow feedback follows the selected theme and stays still for reduced motion. */
+:root[data-color="rainbow"] .feedback-spinner {
+    border-color: #e86679 #e0b343 #4ab58b #6c83e8;
+    animation: feedback-spin 800ms linear infinite, rainbow-loader-color 3s linear infinite;
+}
+:root[data-color="rainbow"] .media-loading-ring::before {
+    border-color: #e86679 #e0b343 #4ab58b #6c83e8;
+    animation: media-loading-spin 1s linear infinite, rainbow-loader-color 3s linear infinite;
+}
+@keyframes rainbow-loader-color { from { filter: hue-rotate(0deg); } to { filter: hue-rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+    :root[data-color="rainbow"] .feedback-spinner,
+    :root[data-color="rainbow"] .media-loading-ring::before { animation: none; }
+}

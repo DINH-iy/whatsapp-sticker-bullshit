@@ -69,6 +69,7 @@ public static class LibraryBrowsing
             ? (snapshot.Library.Packs.FirstOrDefault(pack => pack.Id == id)?.StickerIds ?? [])
                 .Select(stickerId => all.FirstOrDefault(image => image.Id == stickerId)).OfType<Sticker>()
             : all.AsEnumerable().Reverse();
+        var addedOrder = all.Select((image, index) => (image.Id, index)).ToDictionary(item => item.Id, item => item.index);
         var search = options.Search.Trim();
         var matches = source.Where(image => (image.Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
                 image.Tags.Contains(search, StringComparison.OrdinalIgnoreCase)) &&
@@ -99,7 +100,8 @@ public static class LibraryBrowsing
             "groups-desc"=>matches.OrderByDescending(image=>snapshot.LayerDetails?.GetValueOrDefault(image.Id)?.GroupCount??0),
             "favorites-first"=>matches.OrderByDescending(image=>image.Favorite),
             "type" => matches.OrderBy(image => image.Animated).ThenBy(image => image.MimeType).ThenBy(image => image.Name, StringComparer.OrdinalIgnoreCase),
-            "oldest" when packId is null => matches.Reverse(),
+            "newest" => matches.OrderByDescending(image => addedOrder[image.Id]),
+            "oldest" => matches.OrderBy(image => addedOrder[image.Id]),
             _ => matches
         }).ToList();
     }

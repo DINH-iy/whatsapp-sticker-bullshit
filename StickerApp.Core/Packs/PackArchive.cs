@@ -114,7 +114,7 @@ public static partial class PackArchive
         return new ExportInfo(FileNameFor(pack.Name), hash);
     }
 
-    public static async Task<ImportedPack> ReadAsync(Stream source, int gifLimit = LibraryStore.MaxGifImportBytes)
+    public static async Task<ImportedPack> ReadAsync(Stream source, int gifLimit = LibraryStore.MaxGifImportBytes, bool decimalUnits = false)
     {
         // A bounded temporary file avoids loading an entire compressed archive into memory.
         var temporaryPath = Path.Combine(Path.GetTempPath(), $"sticker-import-{Guid.NewGuid():N}.zip");
@@ -150,7 +150,7 @@ public static partial class PackArchive
             var entry = archive.GetEntry(image.File)
                 ?? throw new InvalidDataException($"The image “{image.Name}” is missing.");
             if (entry.Length > Math.Max(LibraryStore.MaxImportBytes, gifLimit))
-                throw new InvalidDataException(LibraryStore.GifLimitError(gifLimit));
+                throw new InvalidDataException(LibraryStore.GifLimitError(gifLimit, decimalUnits));
             totalBytes += entry.Length;
             if (totalBytes > MaxArchiveBytes)
                 throw new InvalidDataException("The unpacked images exceed the 100 MB pack limit.");
@@ -163,7 +163,7 @@ public static partial class PackArchive
             if (!string.Equals(hash, image.Sha256, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException($"The image “{image.Name}” failed its checksum. Download the pack again.");
 
-            var info = LibraryStore.InspectImport(bytes, gifLimit);
+            var info = LibraryStore.InspectImport(bytes, gifLimit, decimalUnits);
             if (image.File != $"media/{index:D2}{info.Extension}")
                 throw new InvalidDataException("An image does not match the pack format.");
 

@@ -72,7 +72,7 @@ public sealed partial class LibraryStore
                 Root = DefaultRoot;
                 GifImportLimitBytes = MaxGifImportBytes;
                 KeepOriginalStillImages = false; KeepOriginalAnimations = true;
-                StorageLimitBytes = null; DecimalStorageUnits = DonutStorageChart = false;
+                StorageLimitBytes = null; DecimalStorageUnits = true; DonutStorageChart = false;
                 AskForOriginalOnImport = BlurNsfwPreviews = true;
                 Directory.CreateDirectory(Path.Combine(Root, "media"));
             });

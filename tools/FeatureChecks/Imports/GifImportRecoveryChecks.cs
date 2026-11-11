@@ -31,7 +31,7 @@ internal static class GifImportRecoveryChecks
                 await renderer.Dispatcher.InvokeAsync(() => Invoke(component, "ImportGif", gif));
                 if (Get(component, "importError") is not string { Length: > 0 } || Get(component, "importCancellation") is not null)
                     throw new Exception("Failed GIF import did not recover its UI state: " + mode);
-                if (mode == "oversized" && !(Get(component, "importError") as string)!.Contains("20 MiB"))
+                if (mode == "oversized" && !(Get(component, "importError") as string)!.Contains("20.97 MB"))
                     throw new Exception("Oversized GIF did not explain the size limit");
                 if (renderer.Errors.Count != 0 || (await store.ReadAsync()).Stickers.Count != 0)
                     throw new Exception("Failed GIF import escaped to the renderer or saved a sticker");

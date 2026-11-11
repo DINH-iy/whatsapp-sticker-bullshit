@@ -524,6 +524,7 @@
   "Editable content": "Bewerkbare inhoud",
   "Editable layer artwork is unavailable for this backup.": "Bewerkbare laaggegevens ontbreken voor deze back-up.",
   "Editable layers": "Bewerkbare lagen",
+  "Imports, quality & editing": "Importeren, kwaliteit en bewerken",
   "Editing": "Bewerken",
   "Editing categories": "Bewerkingscategorieën",
   "Editing help": "Hulp bij bewerken",
@@ -1173,6 +1174,7 @@
   "Ready for WhatsApp.": "Klaar voor WhatsApp.",
   "Receive a limited-use group invitation link or code.": "Ontvang een groepsuitnodigingslink of code met beperkt gebruik.",
   "Recent diagnostic log": "Recent diagnostisch log",
+  "Newest added": "Nieuwst toegevoegd",
   "Recently added": "Recent toegevoegd",
   "Recently updated": "Onlangs bijgewerkt",
   "Redo": "Opnieuw uitvoeren",
@@ -1876,5 +1878,7 @@
   "A sticker pack is ready to import. Save any current edit before importing.": "Een stickerpack staat klaar voor import. Sla je huidige bewerking eerst op.",
   "Open a .wastickers, .wasticker, .wassticker or ZIP file as a new pack.": "Open een .wastickers-, .wasticker-, .wassticker- of ZIP-bestand als nieuw pack.",
   "Replace current sticker": "Huidige sticker vervangen",
-  "Finding compression settings…": "Compressie-instellingen bepalen…"
+  "Finding compression settings…": "Compressie-instellingen bepalen…",
+  "Sticker options for {0}": "Stickeropties voor {0}",
+  "Pack options for {0}": "Pakketopties voor {0}"
 }

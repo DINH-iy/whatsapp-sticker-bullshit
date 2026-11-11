@@ -1,0 +1,29 @@
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
+@inject IJSRuntime JS
+@code {
+    [Parameter, EditorRequired] public string Scope { get; set; } = "";
+    [Parameter, EditorRequired] public Dictionary<string, string> Values { get; set; } = [];
+    [Parameter] public EventCallback<Dictionary<string, string>> OnRestored { get; set; }
+    private IJSObjectReference? module;
+    private bool restored;
+    private string? saved;
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/browse-preferences.js");
+            if (IsDisposed) return;
+            var values = await module.InvokeAsync<Dictionary<string, string>>("read", Scope);
+            if (IsDisposed) return;
+            restored = true;
+            await OnRestored.InvokeAsync(values);
+            return;
+        }
+        if (!restored || module is null) return;
+        var snapshot = System.Text.Json.JsonSerializer.Serialize(Values);
+        if (snapshot == saved) return;
+        await module.InvokeVoidAsync("write", Scope, Values);
+        saved = snapshot;
+    }
+    protected override async ValueTask DisposeInteropAsync() { if (module is not null) await module.DisposeAsync(); }
+}

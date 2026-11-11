@@ -9,6 +9,11 @@
 @inject NavigationManager Navigation
 @inject StickerApp.Shared.Services.StickerPreparationService Preparation
 
+@if (browse is not null && !loadingLibrary)
+{
+    <BrowsePreferences @key="BrowsePreferenceScope" Scope="@BrowsePreferenceScope" Values="@BrowsePreferenceValues" OnRestored="RestoreBrowsePreferences" />
+}
+
 <PageTitle>@(CurrentPack?.Name ?? L["My Library"]) · Stik-er-in</PageTitle>
 
 @if (CurrentPack?.Collection is { } collectionLink)
@@ -130,8 +135,9 @@
     @if (browsePanel == "sort")
     {
     <label>@L["Sort by"]<select aria-label="@L["Sort images"]" @bind="sort">
-        <option value="default">@L[CurrentPack is null ? "Recently added" : "Saved pack order"]</option>
-        @if (CurrentPack is null) { <option value="oldest">@L["Oldest added"]</option> }
+        <option value="default">@L[CurrentPack is null ? "Newest added" : "Saved pack order"]</option>
+        @if (CurrentPack is not null) { <option value="newest">@L["Newest added"]</option> }
+        <option value="oldest">@L["Oldest added"]</option>
         <option value="name-asc">@L["Name: A–Z"]</option><option value="name-desc">@L["Name: Z–A"]</option>
         <option value="type">@L["Type"]</option>
         <option value="favorites-first">@L["Favorites first"]</option>
@@ -282,20 +288,14 @@ else
                 else if (failure is null && StickerApp.Shared.Services.StickerPreparationService.NeedsPreparation(image)) { <small class="sticker-preparation-status">@L["Preparing…"]</small> }
                 @if (!selectionMode)
                 {
-                <div class="card-actions" @onclick:stopPropagation>
-                    <div class="sticker-actions">
-                        <button class="button icon-button" type="button" @onclick="() => infoImageId = image.Id" title="@L["Sticker details"]" aria-label="@L.Format("Details for {0}", image.Name)"><Icon Name="info" /></button>
-                        <button class="button icon-button" type="button" @onclick="() => imageToAdd = image"
-                                disabled="@busy" title="@L["Add to pack"]" aria-label="@L.Format("Add {0} to pack", image.Name)">
-                            <Icon Name="folder-plus" />
-                        </button>
-                        <button class="button icon-button" @onclick="() => Edit(image)" title="@L["Edit image"]" aria-label="@L.Format("Edit {0}", image.Name)">
-                            <Icon Name="edit" />
-                        </button>
-                        <button class="button icon-button danger" @onclick="() => pendingRemoval = image" title="@L["Remove sticker"]" aria-label="@L.Format("Remove {0}", image.Name)">
-                            <Icon Name="trash" />
-                        </button>
-                    </div>
+                <div class="card-actions card-overflow-actions" @onclick:stopPropagation>
+                    <ActionMenu Label="@L.Format("Sticker options for {0}", image.Name)" IconOnly="true" Disabled="@busy">
+                        <button class="toolbar-menu-option" type="button" @onclick="() => Edit(image)" aria-label="@L.Format("Edit {0}", image.Name)"><Icon Name="edit" />@L["Edit image"]</button>
+                        <button class="toolbar-menu-option" type="button" @onclick="() => infoImageId = image.Id" aria-label="@L.Format("Details for {0}", image.Name)"><Icon Name="info" />@L["Details"]</button>
+                        <button class="toolbar-menu-option" type="button" @onclick="() => imageToAdd = image" aria-label="@L.Format("Add {0} to pack", image.Name)"><Icon Name="folder-plus" />@L["Add to pack"]</button>
+                        <div class="toolbar-menu-divider"></div>
+                        <button class="toolbar-menu-option danger" type="button" @onclick="() => pendingRemoval = image" aria-label="@L.Format("Remove {0}", image.Name)"><Icon Name="trash" />@L["Remove sticker"]</button>
+                    </ActionMenu>
                 </div>
                 }
                 </div>

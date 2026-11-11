@@ -15,6 +15,56 @@ public partial class GifSearch
     private readonly HashSet<string> importedUrls = [];
     private string? importingUrl, importNotice, importError;
     private bool importCommitting;
+    private GifResult? pendingDownload;
+    private long? pendingDownloadBytes;
+    private bool checkingDownloadSize;
+    private CancellationTokenSource? sizeCancellation;
+
+    private async Task ReviewGifDownload(GifResult gif)
+    {
+        if (client is null || IsImporting || pendingDownload is not null || isDisposed) return;
+        pendingDownload = gif; pendingDownloadBytes = gif.SizeBytes is > 0 ? gif.SizeBytes : null;
+        if (pendingDownloadBytes is not null) return;
+        checkingDownloadSize = true;
+        StateHasChanged();
+        using var cancellation = Activity.BeginOperation(TimeSpan.FromSeconds(8));
+        sizeCancellation = cancellation;
+        try
+        {
+            long? bytes;
+            if (FormFactor.GetFormFactor() == "Web" || OperatingSystem.IsBrowser())
+            {
+                importSession ??= await client.InvokeAsync<IJSObjectReference>("createImportSession");
+                bytes = await importSession.InvokeAsync<long?>("inspectSize", cancellation.Token, gif.ShareUrl);
+            }
+            else
+            {
+                nativeDownloadClient ??= new HttpClient(new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false }) { Timeout = TimeSpan.FromSeconds(45) };
+                bytes = await KlipyGifDownloadClient.InspectSizeAsync(nativeDownloadClient, gif.ShareUrl, cancellation.Token);
+            }
+            if (!isDisposed && pendingDownload == gif && !cancellation.IsCancellationRequested) pendingDownloadBytes = bytes;
+        }
+        catch (Exception exception) when (exception is OperationCanceledException or HttpRequestException or JSException or InvalidDataException)
+        { /* Missing size metadata must be shown as unknown, never guessed. */ }
+        finally
+        {
+            if (sizeCancellation == cancellation) sizeCancellation = null;
+            if (pendingDownload == gif) checkingDownloadSize = false;
+            if (!isDisposed) StateHasChanged();
+        }
+    }
+    private async Task CancelDownloadReview()
+    {
+        pendingDownload = null; checkingDownloadSize = false;
+        sizeCancellation?.Cancel();
+        if (importSession is not null) await importSession.InvokeVoidAsync("cancel");
+    }
+    private async Task ConfirmGifDownload()
+    {
+        if (pendingDownload is not { } gif || checkingDownloadSize || pendingDownloadBytes > Store.GifImportLimitBytes) return;
+        pendingDownload = null;
+        await ImportGif(gif);
+    }
     private bool IsImporting => importCancellation is not null;
     private readonly List<GifResult> results = [];
     private IJSObjectReference? client;
@@ -37,6 +87,7 @@ public partial class GifSearch
         public string Title { get; set; } = "";
         public string PreviewUrl { get; set; } = "";
         public string ShareUrl { get; set; } = "";
+        public long? SizeBytes { get; set; }
     }
 
     public sealed class GifSearchResponse
@@ -142,7 +193,7 @@ public partial class GifSearch
             if (FormFactor.GetFormFactor() == "Web" || OperatingSystem.IsBrowser())
             {
                 importSession ??= await client.InvokeAsync<IJSObjectReference>("createImportSession");
-                await using var reference = await importSession.InvokeAsync<IJSStreamReference>("download", token, gif.ShareUrl, Store.GifImportLimitBytes);
+                await using var reference = await importSession.InvokeAsync<IJSStreamReference>("download", token, gif.ShareUrl, Store.GifImportLimitBytes, Store.DecimalStorageUnits);
                 await using var input = await reference.OpenReadStreamAsync(Store.GifImportLimitBytes, token);
                 using var memory = new MemoryStream();
                 await input.CopyToAsync(memory, token);
@@ -151,7 +202,7 @@ public partial class GifSearch
             else
             {
                 nativeDownloadClient ??= new HttpClient(new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false }) { Timeout = TimeSpan.FromSeconds(45) };
-                bytes = await KlipyGifDownloadClient.DownloadAsync(nativeDownloadClient, gif.ShareUrl, token, Store.GifImportLimitBytes);
+                bytes = await KlipyGifDownloadClient.DownloadAsync(nativeDownloadClient, gif.ShareUrl, token, Store.GifImportLimitBytes, Store.DecimalStorageUnits);
             }
             if (MediaInspector.Inspect(bytes).MimeType != "image/gif")
                 throw new InvalidDataException("The downloaded file is not a valid GIF.");
@@ -209,6 +260,7 @@ public partial class GifSearch
     protected override void OnRemoving()
     {
         isDisposed = true;
+        sizeCancellation?.Cancel();
         if (!importCommitting) importCancellation?.Cancel();
     }
     protected override async ValueTask StopInteropAsync()
@@ -218,6 +270,7 @@ public partial class GifSearch
     protected override async ValueTask DisposeInteropAsync()
     {
         isDisposed = true;
+        sizeCancellation?.Cancel();
         if (!importCommitting) importCancellation?.Cancel();
         nativeDownloadClient?.Dispose();
         if (client is null)

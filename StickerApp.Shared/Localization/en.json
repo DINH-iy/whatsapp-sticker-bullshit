@@ -524,6 +524,7 @@
   "Editable content": "Editable content",
   "Editable layer artwork is unavailable for this backup.": "Editable layer artwork is unavailable for this backup.",
   "Editable layers": "Editable layers",
+  "Imports, quality & editing": "Imports, quality & editing",
   "Editing": "Editing",
   "Editing categories": "Editing categories",
   "Editing help": "Editing help",
@@ -1173,6 +1174,7 @@
   "Ready for WhatsApp.": "Ready for WhatsApp.",
   "Receive a limited-use group invitation link or code.": "Receive a limited-use group invitation link or code.",
   "Recent diagnostic log": "Recent diagnostic log",
+  "Newest added": "Newest added",
   "Recently added": "Recently added",
   "Recently updated": "Recently updated",
   "Redo": "Redo",
@@ -1876,5 +1878,7 @@
   "A sticker pack is ready to import. Save any current edit before importing.": "A sticker pack is ready to import. Save any current edit before importing.",
   "Open a .wastickers, .wasticker, .wassticker or ZIP file as a new pack.": "Open a .wastickers, .wasticker, .wassticker or ZIP file as a new pack.",
   "Replace current sticker": "Replace current sticker",
-  "Finding compression settings…": "Finding compression settings…"
+  "Finding compression settings…": "Finding compression settings…",
+  "Sticker options for {0}": "Sticker options for {0}",
+  "Pack options for {0}": "Pack options for {0}"
 }

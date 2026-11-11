@@ -524,6 +524,7 @@
   "Editable content": "Redigerbart innhold",
   "Editable layer artwork is unavailable for this backup.": "Redigerbare lagbilder er utilgjengelige for denne sikkerhetskopien.",
   "Editable layers": "Redigerbare lag",
+  "Imports, quality & editing": "Import, kvalitet og redigering",
   "Editing": "Redigering",
   "Editing categories": "Redigeringskategorier",
   "Editing help": "Redigeringshjelp",
@@ -1173,6 +1174,7 @@
   "Ready for WhatsApp.": "Klar for WhatsApp.",
   "Receive a limited-use group invitation link or code.": "Motta en gruppeinvitasjonslenke eller kode med begrenset bruk.",
   "Recent diagnostic log": "Nylig diagnostikklogg",
+  "Newest added": "Nyeste lagt til",
   "Recently added": "Nylig lagt til",
   "Recently updated": "Nylig oppdatert",
   "Redo": "Gjør om",
@@ -1876,5 +1878,7 @@
   "A sticker pack is ready to import. Save any current edit before importing.": "En klistremerkepakke er klar til import. Lagre gjeldende endringer først.",
   "Open a .wastickers, .wasticker, .wassticker or ZIP file as a new pack.": "Åpne en .wastickers-, .wasticker-, .wassticker- eller ZIP-fil som en ny pakke.",
   "Replace current sticker": "Erstatt gjeldende klistremerke",
-  "Finding compression settings…": "Finner komprimeringsinnstillinger…"
+  "Finding compression settings…": "Finner komprimeringsinnstillinger…",
+  "Sticker options for {0}": "Klistremerkevalg for {0}",
+  "Pack options for {0}": "Pakkevalg for {0}"
 }

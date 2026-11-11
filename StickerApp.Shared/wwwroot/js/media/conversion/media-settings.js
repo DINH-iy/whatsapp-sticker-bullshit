@@ -2,7 +2,7 @@
 let current;
 export function normalize(value = {}) {
     const limit = Number(value.gifMiB), quality = Number(value.quality);
-    return { gifMiB: Number.isFinite(limit) && limit >= 5 && limit <= 100 ? Math.round(limit) : 20,
+    return { gifMiB: Number.isFinite(limit) && limit >= 5 && limit <= 100 ? limit : 20,
         quality: [.55, .75, .9].includes(quality) ? quality : .9 };
 }
 export function read() {
@@ -11,7 +11,7 @@ export function read() {
 }
 export function write(value) { current = normalize(value); localStorage.setItem('stickers.mediaSettings', JSON.stringify(current)); return current; }
 export function configure(value) { current = normalize(value); }
-export function gifLimitBytes() { return read().gifMiB * 1024 * 1024; }
+export function gifLimitBytes() { return Math.round(read().gifMiB * 1024 * 1024); }
 export function qualityCeiling() { return read().quality; }
 
 export function syncGifLimit(bytes) {

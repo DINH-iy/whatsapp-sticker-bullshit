@@ -257,6 +257,13 @@ try
         LibraryBrowsing.Images(snapshot,new(Sort:"name-asc"),true,mixed.Id);
         Require(mixed.StickerIds.SequenceEqual([still.Id,animation.Id]),"Viewing a sort changed saved pack order");
         Require(LibraryBrowsing.Images(snapshot,new(),true,mixed.Id).Select(image=>image.Id).SequenceEqual(mixed.StickerIds),"Default pack order was not restored");
+        Require(LibraryBrowsing.Images(snapshot,new(Sort:"newest"),true).Select(image=>image.Id).SequenceEqual([portrait.Id,animation.Id,still.Id]),"Newest stickers did not follow import order");
+        Require(LibraryBrowsing.Images(snapshot,new(Sort:"oldest"),true).Select(image=>image.Id).SequenceEqual([still.Id,animation.Id,portrait.Id]),"Oldest stickers did not follow import order");
+        mixed.StickerIds.Reverse();
+        Require(LibraryBrowsing.Images(snapshot,new(Sort:"newest"),true,mixed.Id)[0].Id==animation.Id,"Newest sticker in a pack followed saved order instead of import order");
+        Require(LibraryBrowsing.Images(snapshot,new(Sort:"oldest"),true,mixed.Id)[0].Id==still.Id,"Oldest sticker in a pack followed saved order instead of import order");
+        Require(mixed.StickerIds.SequenceEqual([animation.Id,still.Id]),"Chronological sorting changed saved pack order");
+        Require(LibraryBrowsing.Packs(snapshot,new(Sort:"newest"),true)[0].Id==empty.Id,"Newest pack sort failed");
         return Task.CompletedTask;
     });
 
@@ -786,7 +793,7 @@ try
         var library = await fresh.ReadAsync();
         Require(library.Stickers.Count == 0 && library.Packs.Count == 0 && library.Fonts.Count == 0, "Reset left library content");
         Require(!(await fresh.ReadProfileAsync()).SetupComplete, "Reset did not restore first-launch setup");
-        Require(fresh.Root == originalRoot && !fresh.KeepOriginalStillImages && fresh.KeepOriginalAnimations && fresh.AskForOriginalOnImport && fresh.BlurNsfwPreviews, "Reset did not restore storage defaults");
+        Require(fresh.DecimalStorageUnits && fresh.Root == originalRoot && !fresh.KeepOriginalStillImages && fresh.KeepOriginalAnimations && fresh.AskForOriginalOnImport && fresh.BlurNsfwPreviews, "Reset did not restore storage defaults");
         Require(generatedFiles.All(file => !File.Exists(file)) && !File.Exists(orphan) && !File.Exists(Path.Combine(movedRoot, "library.json")), "Reset left generated files or a relocated library index");
         Require(File.Exists(external) && File.Exists(unknown), "Reset deleted an external backup or unrelated file");
         Require((await fresh.ReadProfileOverviewAsync()).Identity.Id != identity, "Reset retained the old profile identity");

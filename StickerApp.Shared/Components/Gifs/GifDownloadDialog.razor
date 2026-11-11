@@ -1,0 +1,40 @@
+@inherits StickerApp.Shared.Components.Infrastructure.InteropComponentBase
+@inject IJSRuntime JS
+<dialog @ref="dialog" class="folder-dialog browse-options-popup" aria-labelledby="gif-download-title" @onkeydown="HandleKey" @onkeydown:stopPropagation @oncancel="OnCancel" @oncancel:preventDefault>
+    <div class="folder-dialog-heading"><h2 id="gif-download-title">@L["Download this GIF?"]</h2><button class="button icon-button" type="button" aria-label="@L["Cancel download"]" @onclick="OnCancel"><Icon Name="close" /></button></div>
+    <strong>@GifTitle</strong>
+    <div class="settings-card" role="status">
+        @if (Checking) { <p><span class="feedback-spinner" aria-hidden="true"></span> @L["Checking file size…"]</p> }
+        else if (SizeBytes is { } size) { <p>@L.Format("Full GIF size: {0}", Size(size))</p> }
+        else { <p>@L["File size unavailable. KLIPY did not provide a readable size; the download will stop if it exceeds your limit."]</p> }
+        <p class="helper">@L.Format("Your import limit: {0}", Size(LimitBytes))</p>
+    </div>
+    @if (SizeBytes > LimitBytes)
+    {
+        <p class="error" role="alert">@L["This GIF exceeds your import limit. Choose another GIF or increase the limit in Settings → Imports, quality & editing."]</p>
+        <a href="settings#media-editing">@L["Change GIF import limit"]</a>
+    }
+    <p class="helper">@L["Larger GIFs use more data and storage and can take much longer to download and prepare. Converting them may use more memory and battery and make your phone warm. The finished WhatsApp sticker must still fit its size and duration limits."]</p>
+    <div class="dialog-actions"><button class="button" type="button" @onclick="OnCancel">@L["Cancel"]</button><button class="button primary" type="button" @onclick="OnConfirm" disabled="@(Checking || SizeBytes > LimitBytes)">@L["Download GIF"]</button></div>
+</dialog>
+@code {
+    [Parameter] public string GifTitle { get; set; } = "";
+    [Parameter] public long? SizeBytes { get; set; }
+    [Parameter] public int LimitBytes { get; set; }
+    [Parameter] public bool DecimalUnits { get; set; }
+    [Parameter] public bool Checking { get; set; }
+    [Parameter] public EventCallback OnConfirm { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    private string Size(long bytes) => StorageDisplay.Format(bytes, DecimalUnits);
+    private ElementReference dialog;
+    private IJSObjectReference? helper;
+    protected override async Task OnAfterRenderInteropAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        helper = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/StickerApp.Shared/js/ui/dialog.js");
+        if (IsDisposed) return;
+        await helper.InvokeVoidAsync("open", dialog);
+    }
+    private Task HandleKey(KeyboardEventArgs args) => args.Key == "Escape" ? OnCancel.InvokeAsync() : Task.CompletedTask;
+    protected override async ValueTask DisposeInteropAsync() { if (helper is not null) await helper.DisposeAsync(); }
+}

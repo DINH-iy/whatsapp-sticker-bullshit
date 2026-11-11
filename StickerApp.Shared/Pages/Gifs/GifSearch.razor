@@ -35,7 +35,7 @@ else
     </form></OnlineOnly>
 
     <HelpDisclosure Summary="@L["About importing GIFs"]">
-        <p class="helper">@L["Choose Import to save a GIF to your library, then choose a pack or keep it in My Library. Imports use your GIF original-file setting; sticker preparation runs automatically. Maximum file size: 20 MiB."]</p>
+        <p class="helper">@L["Choose Import to save a GIF to your library, then choose a pack or keep it in My Library. Imports use your GIF original-file setting; sticker preparation runs automatically. The full GIF size is checked before download; choose Download GIF to confirm."]</p>
     </HelpDisclosure>
     @if (IsImporting)
     {
@@ -68,8 +68,9 @@ else
                 }
                 <div class="gif-card-footer">
                     <span title="@gif.Title">@gif.Title</span>
+                    <small class="helper">@(gif.SizeBytes is > 0 ? StorageDisplay.Format(gif.SizeBytes.Value, Store.DecimalStorageUnits) : L["Size checked before download"])</small>
                     <div class="gif-card-actions">
-<OnlineOnly>                        <button class="button primary gif-import-button" type="button" @onclick="() => ImportGif(gif)"
+<OnlineOnly>                        <button class="button primary gif-import-button" type="button" @onclick="() => ReviewGifDownload(gif)"
                                 disabled="@(IsImporting || string.IsNullOrEmpty(gif.ShareUrl) || importedUrls.Contains(gif.ShareUrl))"
                                 aria-label="@L[importedUrls.Contains(gif.ShareUrl) ? $"Imported {gif.Title}" : $"Import {gif.Title}"]">
                             <Icon Name="@(importedUrls.Contains(gif.ShareUrl) ? "check" : "plus")" />
@@ -121,4 +122,9 @@ else
     <AddToPackDialog Image="@importedImage" Title="@L["Add imported GIF to a pack?"]" CancelLabel="Keep in library"
                      Description="Your GIF is saved. Choose a pack below, or keep it in My Library."
                      OnAdded="ImportAddedToPack" OnCancel="KeepImportedInLibrary" />
+}
+
+@if (pendingDownload is { } pending)
+{
+    <GifDownloadDialog GifTitle="@pending.Title" SizeBytes="@pendingDownloadBytes" LimitBytes="@Store.GifImportLimitBytes" DecimalUnits="@Store.DecimalStorageUnits" Checking="@checkingDownloadSize" OnConfirm="ConfirmGifDownload" OnCancel="CancelDownloadReview" />
 }

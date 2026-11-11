@@ -5,14 +5,14 @@ namespace StickerApp.Shared.Pages.Packs;
 
 public partial class Packs
 {
-    private bool listView;
+    private bool listView, disposed;
     private StickerLibrary library = new();
     private readonly Dictionary<Guid, string> covers = [];
     private string? error;
     private bool busy;
     private bool showCreate;
     private string ownershipFilter="all";
-    private StickerPack? editingPack, deletingPack;
+    private StickerPack? editingPack, deletingPack, packToShare;
     private LibraryBrowseSnapshot? browse;
     private string search = "";
     private string visibilityFilter="all",spoilerFilter="all",contentFilter="all";
@@ -51,7 +51,18 @@ public partial class Packs
         await Reload();
     });
 
-    protected override Task OnInitializedAsync() => Run(Reload);
+    protected override async Task OnInitializedAsync()
+    {
+        Store.Changed += OnLibraryChanged;
+        await Run(Reload);
+    }
+    private void OnLibraryChanged() => _ = InvokeAsync(async () =>
+    {
+        if (disposed || busy) return;
+        await Run(Reload);
+        if (!disposed) StateHasChanged();
+    });
+    public void Dispose() { disposed = true; Store.Changed -= OnLibraryChanged; }
 
     private async Task Reload()
     {

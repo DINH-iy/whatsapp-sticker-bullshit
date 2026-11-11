@@ -2639,3 +2639,15 @@ img[data-thumbnail-state="waiting"], img[data-thumbnail-state="error"] { opacity
     .library-list-view .image-card-content > .card-actions { grid-column: 2; grid-row: 3; justify-self: start; margin-top: 4px; }
     .library-list-view .pack-card-actions { grid-column: 2; justify-self: start; }
 }
+
+/* One overflow menu keeps card actions in the same place in both views. */
+.card-overflow-actions { justify-content: flex-end; }
+.pack-card-actions.card-overflow-actions > .toolbar-menu { flex: 0 0 auto; }
+.pack-row-details { display: flex; flex-direction: column; gap: 2px; min-width: 0; width: 100%; }
+.pack-row-details small { margin: 0; }
+.library-list-view .image-card-content { grid-template-columns: 56px minmax(0,1fr) 44px; grid-template-rows: auto auto; }
+.library-list-view .image-card-content > .card-actions { grid-column: 3; grid-row: 1 / -1; justify-self: end; align-self: center; margin: 0; }
+.library-list-view .sticker-row-details { flex-direction: column; gap: 1px; }
+.library-list-view .pack-card { grid-template-columns: 56px minmax(0,1fr) 44px; }
+.library-list-view .pack-card-actions { grid-column: 3; grid-row: 1; justify-self: end; align-self: center; }
+.library-list-view .card-overflow-actions > .toolbar-menu > .button { width: 44px; height: 44px; padding: 10px; }

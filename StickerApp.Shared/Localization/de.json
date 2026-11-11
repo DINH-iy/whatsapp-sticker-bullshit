@@ -524,6 +524,7 @@
   "Editable content": "Bearbeitbarer Inhalt",
   "Editable layer artwork is unavailable for this backup.": "Bearbeitbare Ebenendaten sind für diese Sicherung nicht verfügbar.",
   "Editable layers": "Bearbeitbare Ebenen",
+  "Imports, quality & editing": "Import, Qualität und Bearbeitung",
   "Editing": "Bearbeiten",
   "Editing categories": "Bearbeitungskategorien",
   "Editing help": "Bearbeitungshilfe",
@@ -1173,6 +1174,7 @@
   "Ready for WhatsApp.": "Bereit für WhatsApp.",
   "Receive a limited-use group invitation link or code.": "Erhalte einen Gruppeneinladungslink oder Code mit begrenzter Nutzung.",
   "Recent diagnostic log": "Aktuelles Diagnoseprotokoll",
+  "Newest added": "Zuletzt hinzugefügt",
   "Recently added": "Zuletzt hinzugefügt",
   "Recently updated": "Kürzlich aktualisiert",
   "Redo": "Wiederholen",
@@ -1876,5 +1878,7 @@
   "A sticker pack is ready to import. Save any current edit before importing.": "Ein Stickerpaket ist zum Import bereit. Speichere zuerst deine aktuellen Änderungen.",
   "Open a .wastickers, .wasticker, .wassticker or ZIP file as a new pack.": "Eine .wastickers-, .wasticker-, .wassticker- oder ZIP-Datei als neues Paket öffnen.",
   "Replace current sticker": "Aktuellen Sticker ersetzen",
-  "Finding compression settings…": "Kompressionseinstellungen ermitteln…"
+  "Finding compression settings…": "Kompressionseinstellungen ermitteln…",
+  "Sticker options for {0}": "Stickeroptionen für {0}",
+  "Pack options for {0}": "Paketoptionen für {0}"
 }
