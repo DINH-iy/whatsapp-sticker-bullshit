@@ -71,9 +71,9 @@ public partial class DiscordImport
         try
         {
             var reporter = new Progress<DiscordImportProgress>(value => { if (!disposed) { progress = value; _ = InvokeAsync(StateHasChanged); } });
-            await client.ImportAsync(Store, batch, Guid.TryParse(destination, out var id) ? id : null,
-                ReviewVideo, reporter, operation.Token, destination == "new" ? newPackName : null,
-                destination == "new" ? publisher : null, Store.AskForOriginalOnImport ? batch.ToDictionary(item => item.Id, _ => keepOriginals) : null);
+            await client.ImportAsync(Store, batch, PackId ?? (Guid.TryParse(destination, out var id) ? id : null),
+                ReviewVideo, reporter, operation.Token, PackId is null && destination == "new" ? newPackName : null,
+                PackId is null && destination == "new" ? publisher : null, Store.AskForOriginalOnImport ? batch.ToDictionary(item => item.Id, _ => keepOriginals) : null);
             foreach (var item in batch) imported.Add(item.Id);
             selected.Clear(); previews.Clear(); packs = (await Store.ReadAsync()).Packs;
             notice = $"Imported {batch.Length} favourites.";

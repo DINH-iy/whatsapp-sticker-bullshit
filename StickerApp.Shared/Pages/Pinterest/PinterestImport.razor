@@ -74,6 +74,8 @@
             }
         </div>
         <div class="pinterest-destination-row">
+@if (PackId is null)
+{
             <div class="pinterest-destination-field">
                 <label for="pinterest-destination">@L["Import into"]</label>
                 <select id="pinterest-destination" @bind="destination" disabled="@busy">
@@ -85,6 +87,8 @@
                     }
                 </select>
             </div>
+}
+
             @if (CreatingPack)
             {
                 <div class="pinterest-destination-field">

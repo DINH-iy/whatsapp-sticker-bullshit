@@ -20,6 +20,18 @@ public partial class MainLayout
         finally{languageReady=true;StateHasChanged();}
     }
 
+    private string ImportHref(string page)
+    {
+        var path = Navigation.ToBaseRelativePath(Navigation.Uri).Split('?', '#')[0].TrimEnd('/');
+        Guid? packId = path.StartsWith("packs/", StringComparison.OrdinalIgnoreCase) && Guid.TryParse(path[6..], out var id) ? id : null;
+        if (packId is null && path is "gifs" or "pinterest" or "imgur" or "discord")
+        {
+            var query = System.Web.HttpUtility.ParseQueryString(new Uri(Navigation.Uri).Query);
+            if (Guid.TryParse(query["pack"], out var queryId)) packId = queryId;
+        }
+        return packId is { } destination ? $"{page}?pack={destination}" : page;
+    }
+
     private void ToggleMenu() => menuOpen = !menuOpen;
 
     private void CloseMenu() => menuOpen = false;

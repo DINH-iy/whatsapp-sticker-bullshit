@@ -11,6 +11,7 @@ public partial class Home
     private sealed record PendingImageImport(OriginalImportChoice Choice, Func<Task<byte[]>> ReadBytes);
     private List<PendingImageImport>? pendingImports;
     private Guid? pendingImportPackId;
+    private bool pendingImportChooseDestination;
     private string? pendingImportNote;
     private int importPickerVersion;
     private bool showVideoImport;
@@ -18,6 +19,7 @@ public partial class Home
     {
         showVideoImport = false;
         await Reload();
+        if (activePack is null) imageToAdd = library.Stickers.Single(image => image.Id == id);
         notice = "Animated sticker added. It is ready to edit and use.";
         noticeIsError = false;
     }
@@ -47,8 +49,9 @@ public partial class Home
     private async Task BeginImageImport(List<PendingImageImport> files, Guid? packId, string? note = null)
     {
         if (files.Count == 0) return;
-        if (Store.AskForOriginalOnImport)
+        if (packId is null || Store.AskForOriginalOnImport)
         {
+            pendingImportChooseDestination = packId is null;
             pendingImports = files;
             pendingImportPackId = packId;
             pendingImportNote = note;
@@ -60,7 +63,7 @@ public partial class Home
     private Task ConfirmImageImport(bool useDefaults) => Run(async () =>
     {
         if (pendingImports is null) return;
-        if (useDefaults) await Store.SetAskForOriginalOnImportAsync(false);
+        if (useDefaults && Store.AskForOriginalOnImport) await Store.SetAskForOriginalOnImportAsync(false);
         var files = pendingImports;
         var packId = pendingImportPackId;
         var note = pendingImportNote;
@@ -125,9 +128,10 @@ public partial class Home
             if (!new[] { ".wastickers", ".wasstickers" }.Contains(Path.GetExtension(args.File.Name), StringComparer.OrdinalIgnoreCase))
                 throw new InvalidDataException("Choose a .wastickers pack file.");
             await using var input = args.File.OpenReadStream(PackArchive.MaxArchiveBytes);
-            var importedPack = await Store.ImportPackAsync(input, normalizeMedia: bytes => StickerApp.Shared.Services.PackImportMedia.NormalizeAsync(JS, bytes));
+            var importedPack = await Store.ImportPackAsync(input, normalizeMedia: bytes => StickerApp.Shared.Services.PackImportMedia.NormalizeAsync(JS, bytes), destinationPackId: activePack);
             selected.Clear();
-            Navigation.NavigateTo($"packs/{importedPack}");
+            if (activePack == importedPack) await Reload();
+            else Navigation.NavigateTo($"packs/{importedPack}");
         }
         finally
         {

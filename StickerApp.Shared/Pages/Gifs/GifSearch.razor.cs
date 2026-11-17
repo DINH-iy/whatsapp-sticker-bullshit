@@ -8,6 +8,7 @@ public partial class GifSearch
 {
     [Parameter] public bool Embedded { get; set; }
     [Parameter] public Guid? PackId { get; set; }
+    [SupplyParameterFromQuery(Name = "pack")] public Guid? QueryPackId { get; set; }
     [Parameter] public EventCallback OnImported { get; set; }
     private IJSObjectReference? importSession;
     private HttpClient? nativeDownloadClient;
@@ -185,6 +186,7 @@ public partial class GifSearch
         if (client is null || IsImporting || isDisposed || importedUrls.Contains(gif.ShareUrl)) return;
         using var cancellation = Activity.BeginOperation(TimeSpan.FromSeconds(90));
         importCancellation = cancellation;
+        var packId = PackId ?? QueryPackId;
         importingUrl = gif.ShareUrl; importNotice = importError = null;
         try
         {
@@ -212,11 +214,14 @@ public partial class GifSearch
             // applies before this point, never to a partially committed sticker.
             importCommitting = true;
             StateHasChanged();
-            var stickerId = await Store.ImportAsync(ImportFileName(gif), bytes);
+            var stickerId = await Store.ImportAsync(ImportFileName(gif), bytes, packId);
             importedUrls.Add(gif.ShareUrl);
             if (isDisposed) return;
-            importedImage = (await Store.ReadAsync()).Stickers.Single(image => image.Id == stickerId);
-            importNotice = "GIF imported into My Library.";
+            var library = await Store.ReadAsync();
+            importedImage = packId is null ? library.Stickers.Single(image => image.Id == stickerId) : null;
+            importNotice = packId is { } id
+                ? $"Added “{library.Stickers.Single(image => image.Id == stickerId).Name}” to “{library.Packs.Single(pack => pack.Id == id).Name}”."
+                : "GIF imported into My Library.";
             await OnImported.InvokeAsync();
             await client.InvokeVoidAsync("registerShare", gif.Slug, activeQuery);
         }

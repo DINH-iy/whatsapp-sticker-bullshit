@@ -6,26 +6,41 @@
         <h2 id="import-original-title">@L["Add images & GIFs"]</h2>
         <button class="button icon-button" type="button" @onclick="() => OnCancel.InvokeAsync()" aria-label="@L["Cancel import"]"><Icon Name="close" /></button>
     </div>
-    <p class="helper">@L["Choose which source files to keep alongside the smaller prepared stickers. Nothing is saved until you choose Add."]</p>
-    <div class="import-original-list">
-        @foreach (var item in Items)
-        {
-            <div class="import-original-row" @key="item">
-                <span class="import-file-icon"><Icon Name="@(item.Animated ? "animation" : "image")" /></span>
-                <div class="import-original-file"><strong>@item.Name</strong><span class="helper">@L[item.Animated ? "GIF / animation" : "Image"] · @item.SizeLabel</span></div>
-                <label class="toggle-row"><input type="checkbox" @bind="item.KeepOriginal" disabled="@useDefaults" /> @L["Keep original"]</label>
-            </div>
-        }
-    </div>
-    <p class="status-info" role="note">@L["Discarding an original saves space after preparation succeeds. You cannot restore the full-size image or uncut GIF without reimporting your own saved copy. Prepared animated WebP stickers can still be trimmed and edited. Failed preparation keeps a recovery source."]</p>
-    <label class="toggle-row"><input type="checkbox" @bind="useDefaults" /> @L["Always use my Settings defaults; skip these choices next time"]</label>
-    @if (useDefaults)
+    @if (ChooseDestination)
     {
-        <p class="helper">@L["This import will use your image/GIF defaults instead of the choices above. You can turn these choices back on in Settings → General → Keep original files."]</p>
+        <label>@L["Destination"]
+            <select @bind="DestinationPackId" @bind:after="() => DestinationPackIdChanged.InvokeAsync(DestinationPackId)">
+                <option value="">@L["My Library"]</option>
+                @foreach (var pack in Packs)
+                {
+                    <option value="@pack.Id" disabled="@(pack.StickerIds.Count + Items.Count > 30)">@pack.Name (@pack.StickerIds.Count/30)</option>
+                }
+            </select>
+        </label>
+    }
+    @if (ShowOriginalChoices)
+    {
+        <p class="helper">@L["Choose which source files to keep alongside the smaller prepared stickers. Nothing is saved until you choose Add."]</p>
+        <div class="import-original-list">
+            @foreach (var item in Items)
+            {
+                <div class="import-original-row" @key="item">
+                    <span class="import-file-icon"><Icon Name="@(item.Animated ? "animation" : "image")" /></span>
+                    <div class="import-original-file"><strong>@item.Name</strong><span class="helper">@L[item.Animated ? "GIF / animation" : "Image"] · @item.SizeLabel</span></div>
+                    <label class="toggle-row"><input type="checkbox" @bind="item.KeepOriginal" disabled="@useDefaults" /> @L["Keep original"]</label>
+                </div>
+            }
+        </div>
+        <p class="status-info" role="note">@L["Discarding an original saves space after preparation succeeds. You cannot restore the full-size image or uncut GIF without reimporting your own saved copy. Prepared animated WebP stickers can still be trimmed and edited. Failed preparation keeps a recovery source."]</p>
+        <label class="toggle-row"><input type="checkbox" @bind="useDefaults" /> @L["Always use my Settings defaults; skip these choices next time"]</label>
+        @if (useDefaults)
+        {
+            <p class="helper">@L["This import will use your image/GIF defaults instead of the choices above. You can turn these choices back on in Settings → General → Keep original files."]</p>
+        }
     }
     <div class="dialog-actions">
         <button class="button" type="button" @onclick="() => OnCancel.InvokeAsync()">@L["Cancel"]</button>
-        <button class="button primary" type="button" @onclick="() => OnConfirm.InvokeAsync(useDefaults)"><Icon Name="plus" /> @L.Format("Add {0} files", Items.Count)</button>
+        <button class="button primary" type="button" @onclick="() => OnConfirm.InvokeAsync(!ShowOriginalChoices || useDefaults)"><Icon Name="plus" /> @L.Format("Add {0} files", Items.Count)</button>
     </div>
 </dialog>
 
@@ -33,6 +48,11 @@
     [Parameter, EditorRequired] public IReadOnlyList<OriginalImportChoice> Items { get; set; } = [];
     [Parameter] public EventCallback<bool> OnConfirm { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public bool ShowOriginalChoices { get; set; } = true;
+    [Parameter] public bool ChooseDestination { get; set; }
+    [Parameter] public IReadOnlyList<StickerPack> Packs { get; set; } = [];
+    [Parameter] public Guid? DestinationPackId { get; set; }
+    [Parameter] public EventCallback<Guid?> DestinationPackIdChanged { get; set; }
     private ElementReference dialog;
     private IJSObjectReference? helper;
     private bool useDefaults;

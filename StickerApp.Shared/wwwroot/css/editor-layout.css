@@ -335,3 +335,8 @@
 @media(prefers-reduced-motion:reduce) { .media-loading-ring::before { animation: none; } }
 
 @keyframes media-loading-spin { to { transform: rotate(360deg); } }
+
+/* Let a processing list row size itself to its progress and actions. */
+.library-list-view .image-card:has(> .sticker-processing-overlay) { display: grid; }
+.library-list-view .image-card:has(> .sticker-processing-overlay) > .image-card-content { grid-area: 1 / 1; }
+.library-list-view .image-card > .sticker-processing-overlay { position: relative; inset: auto; grid-area: 1 / 1; min-width: 0; box-sizing: border-box; }

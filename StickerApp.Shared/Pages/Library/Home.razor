@@ -339,7 +339,7 @@ else
 
 @if (pendingImports is not null)
 {
-    <ImportOriginalChoices Items="@pendingImports.Select(file => file.Choice).ToList()" OnConfirm="ConfirmImageImport" OnCancel="CancelImageImport" />
+    <ImportOriginalChoices Items="@pendingImports.Select(file => file.Choice).ToList()" ShowOriginalChoices="@Store.AskForOriginalOnImport" ChooseDestination="@pendingImportChooseDestination" Packs="@library.Packs" @bind-DestinationPackId="pendingImportPackId" OnConfirm="ConfirmImageImport" OnCancel="CancelImageImport" />
 }
 
 @if (editing is not null)

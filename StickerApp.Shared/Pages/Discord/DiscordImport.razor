@@ -57,7 +57,11 @@
     </section>
     <section class="settings-card">
         <h2>@L.Format("Import {0} selected", selected.Count)</h2>
+@if (PackId is null)
+{
         <label>@L["Destination"]<select @bind="destination" disabled="@busy"><option value="">@L["My Library"]</option>@foreach (var pack in packs) { <option value="@pack.Id">@pack.Name (@pack.StickerIds.Count/30)</option> }<option value="new">@L["Create a new pack"]</option></select></label>
+}
+
         @if (destination == "new")
         {
             <label>@L["Pack name"]<input @bind="newPackName" maxlength="128" disabled="@busy" /></label>

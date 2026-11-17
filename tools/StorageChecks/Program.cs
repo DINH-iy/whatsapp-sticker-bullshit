@@ -220,6 +220,33 @@ try
         Require((await author.ReadToEndAsync()).Trim() == "Studio Example", "WhatsApp archive author was not updated");
     });
 
+    await Check("pack-file imports add to the open pack atomically and retain its details", async store =>
+    {
+        var source = await store.CreatePackAsync("Source", "Source author");
+        await store.ImportAsync("Source sticker", webp, source);
+        using var archive = new MemoryStream();
+        await store.ExportPackAsync(source, archive);
+        var target = await store.CreatePackAsync("Current pack", "Current author");
+        var original = await store.ImportAsync("Existing", webp, target);
+        archive.Position = 0;
+        Require(await store.ImportPackAsync(archive, destinationPackId: target) == target, "Import changed the destination");
+        var state = await store.ReadAsync();
+        var pack = state.Packs.Single(p => p.Id == target);
+        Require(state.Packs.Count == 2 && pack.Name == "Current pack" && pack.Publisher == "Current author" &&
+            pack.StickerIds.Count == 2 && pack.StickerIds.Contains(original), "Import replaced the current pack or created another pack");
+        while (pack.StickerIds.Count < 30)
+        {
+            await store.ImportAsync("Filler", webp, target);
+            pack = (await store.ReadAsync()).Packs.Single(p => p.Id == target);
+        }
+        var before = await store.ReadAsync();
+        archive.Position = 0;
+        await Throws(() => store.ImportPackAsync(archive, destinationPackId: target));
+        var after = await store.ReadAsync();
+        Require(after.Stickers.Count == before.Stickers.Count && after.Packs.Count == before.Packs.Count &&
+            (await store.GetStatisticsAsync()).UnusedFiles == 0, "Rejected archive import partially saved files or membership");
+    });
+
     await Check("combined filters distinguish file bytes, stored bytes and dimensions without reordering packs", store =>
     {
         var still = new Sticker { Name="Zulu", Tags="cats", Width=1024,Height=512,MimeType="image/png",Bytes=200 };

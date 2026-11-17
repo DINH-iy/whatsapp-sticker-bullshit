@@ -54,9 +54,33 @@ internal static class GifImportRecoveryChecks
                     throw new Exception("The supplied KLIPY GIF did not import successfully through the native component");
                 Console.WriteLine("PASS supplied 13,700,196-byte GIF imports through native component after failed retries");
             }
+            var packId = await store.CreatePackAsync("Current pack");
+            var gifBytes = Convert.FromBase64String("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7");
+            using (var destinationClient = new HttpClient(new ActualGifHandler(gifBytes)))
+            {
+                Set(component, "nativeDownloadClient", destinationClient);
+                foreach (var destination in new Guid?[] { packId, null })
+                {
+                    typeof(GifSearch).GetProperty(nameof(GifSearch.PackId))!.SetValue(component, destination);
+                    var url = "https://static.klipy.com/" + Guid.NewGuid().ToString("N") + ".gif";
+                    await renderer.Dispatcher.InvokeAsync(() => Invoke(component, "ImportGif", new GifSearch.GifResult { Title = "Destination GIF", ShareUrl = url }));
+                    if (Get(component, "importError") is not null) throw new Exception("Destination GIF import failed: " + Get(component, "importError"));
+                    var library = await store.ReadAsync();
+                    var pack = library.Packs.Single(p => p.Id == packId);
+                    if (destination is not null)
+                    {
+                        if (pack.StickerIds.Count != 1 || Get(component, "importedImage") is not null)
+                            throw new Exception("GIF import did not add directly to the current pack without a picker");
+                    }
+                    else if (Get(component, "importedImage") is not Sticker image || pack.StickerIds.Contains(image.Id))
+                        throw new Exception("Library GIF import did not retain the destination picker");
+                    if (renderer.Errors.Count != 0) throw new Exception("Destination import escaped to the renderer");
+                }
+            }
+            Console.WriteLine("PASS GIF imports add directly to the current pack and only prompt in My Library");
             Set(component, "nativeDownloadClient", null);
             if (!log.Report().Contains("KLIPY GIF import")) throw new Exception("GIF errors were not logged");
-            return 3;
+            return 5;
         }
         finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
     }

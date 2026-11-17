@@ -35,7 +35,7 @@
 }
 <div class="toolbar-menu-divider"></div>
 <label class="toolbar-menu-option file-button">
-    <Icon Name="folder-import" /><span>@L["Import a pack file"]<small>@L["Open a .wastickers pack file as a new pack."]</small></span>
+    <Icon Name="folder-import" /><span>@L["Import a pack file"]<small>@L[PackId is null ? "Open a .wastickers pack file as a new pack." : $"Add to {PackName}"]</small></span>
     <InputFile OnChange="OnImportPack" accept="@StickerApp.Shared.Services.PackImportMedia.PickerAccept(FormFactor)" disabled="@Disabled" aria-label="@L["Import pack file"]" />
 </label>
 

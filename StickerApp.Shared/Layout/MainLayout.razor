@@ -35,10 +35,10 @@
         @if(FriendsFeature.UnderMaintenance){<div class="navigation-maintenance" @onclick:stopPropagation><span aria-disabled="true">@L["Friends’ packs"]<small>@L["Under maintenance"]</small></span><EditorPopup Title="@L["Friends’ packs · Under maintenance"]" IconName="info" IconOnly="true" CloseLabel="Close"><FriendsGuideContent /></EditorPopup></div>}
         else{<OnlineNavLink Href="friends" Label="Friends’ packs" />}
         <NavLink href="library">@L["My Library"]</NavLink>
-        <OnlineNavLink Href="gifs" Label="GIF search" />
-        <OnlineNavLink Href="pinterest" Label="Import from Pinterest" />
-        <OnlineNavLink Href="imgur" Label="Import from Imgur" />
-        <NavLink href="discord">@L["Import from Discord"]</NavLink>
+        <OnlineNavLink Href="@ImportHref("gifs")" Label="GIF search" />
+        <OnlineNavLink Href="@ImportHref("pinterest")" Label="Import from Pinterest" />
+        <OnlineNavLink Href="@ImportHref("imgur")" Label="Import from Imgur" />
+        <NavLink href="@ImportHref("discord")">@L["Import from Discord"]</NavLink>
         <NavLink href="requests">@L["Feature requests"]</NavLink>
         <NavLink class="navigation-settings-link" href="settings">@L["Settings"]</NavLink>
     </nav>

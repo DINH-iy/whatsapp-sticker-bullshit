@@ -644,7 +644,7 @@ public sealed partial class LibraryStore
         }
     }
 
-    public async Task<Guid> ImportPackAsync(Stream source, bool forcePrivate = false, bool preserveSourceIds = false, Func<byte[], Task<byte[]>>? normalizeMedia = null)
+    public async Task<Guid> ImportPackAsync(Stream source, bool forcePrivate = false, bool preserveSourceIds = false, Func<byte[], Task<byte[]>>? normalizeMedia = null, Guid? destinationPackId = null)
     {
         // Validate everything before touching the library. No archive entry is extracted by its supplied path.
         var imported = await PackArchive.ReadAsync(source, GifImportLimitBytes, DecimalStorageUnits);
@@ -662,8 +662,15 @@ public sealed partial class LibraryStore
         try
         {
             var library = await ReadInternalAsync();
-            if (library.Packs.Count >= 10)
+            if (destinationPackId is null && library.Packs.Count >= 10)
                 throw new InvalidOperationException("This build supports up to 10 packs.");
+            if (destinationPackId is { } targetId)
+            {
+                var target = library.Packs.FirstOrDefault(p => p.Id == targetId)
+                    ?? throw new InvalidOperationException("This pack no longer exists.");
+                if (target.StickerIds.Count + imported.Images.Count > 30)
+                    throw new InvalidOperationException("A pack can contain at most 30 stickers.");
+            }
 
             var pack = new StickerPack { Name = imported.Name, Animated = imported.Animated, CoverImage = imported.CoverImage, Publisher = imported.Publisher, Nsfw = imported.Nsfw, Public = imported.Public && !forcePrivate };
             var images = new List<Sticker>();
@@ -706,9 +713,15 @@ public sealed partial class LibraryStore
             await MutateInternalAsync(state =>
             {
                 state.Stickers.AddRange(images);
-                state.Packs.Add(pack);
+                if (destinationPackId is { } id)
+                {
+                    var target = state.Packs.Single(p => p.Id == id);
+                    target.StickerIds.AddRange(pack.StickerIds);
+                    Touch(target);
+                }
+                else state.Packs.Add(pack);
             });
-            return pack.Id;
+            return destinationPackId ?? pack.Id;
         }
         catch
         {

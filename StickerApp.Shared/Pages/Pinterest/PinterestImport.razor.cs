@@ -42,8 +42,8 @@ public partial class PinterestImport
         _ => null
     };
 
-    private Guid? DestinationId => Guid.TryParse(destination, out var id) ? id : null;
-    private bool CreatingPack => destination == "new";
+    private Guid? DestinationId => PackId ?? (Guid.TryParse(destination, out var id) ? id : null);
+    private bool CreatingPack => PackId is null && destination == "new";
     private string? CapacityError
     {
         get
